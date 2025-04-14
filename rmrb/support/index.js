@@ -108,7 +108,7 @@ function showError(message, showHomeLink = true) {
         </div>
         ${generateFooter()}
     `;
-     // Ensure focus is managed correctly after error state
+    // Ensure focus is managed correctly after error state
     contentDiv.removeAttribute('tabindex');
 }
 
@@ -145,7 +145,6 @@ async function loadMonthData(monthString) {
     }
 
     const isLocal = window.location.protocol === 'file:';
-
     if (isLocal) {
         // --- Local File Loading (using <script> tag) ---
         const jsPath = `data/${monthString}.js`;
@@ -197,7 +196,7 @@ async function loadMonthData(monthString) {
         }
 
         const gzPath = `data/${monthString}.js.gz`;
-        console.log(`Fetching and decompressing: ${gzPath}`);
+        console.log(`Workspaceing and decompressing: ${gzPath}`);
 
         try {
             const response = await fetch(gzPath);
@@ -212,6 +211,7 @@ async function loadMonthData(monthString) {
             const decompressedStream = response.body.pipeThrough(ds);
             let jsContent = await new Response(decompressedStream).text();
 
+            // Remove potential leading/trailing whitespace and the variable assignment
             jsContent = jsContent.trim().replace(/^const\s+ARTICLES\s*=\s*/, '').replace(/;$/, '');
 
             const articles = JSON.parse(jsContent);
@@ -250,7 +250,7 @@ function displayYearList() {
         return;
     }
 
-    const years = Object.keys(ARCHIVE_INDEX).sort(); 
+    const years = Object.keys(ARCHIVE_INDEX).sort();
 
     if (years.length === 0) {
         showError("No archive data found. Please run the 'create-index.py' script.", false);
@@ -286,11 +286,9 @@ function displayMonthList(year) {
     const currentYearIndex = allYears.indexOf(year);
     const prevYear = currentYearIndex > 0 ? allYears[currentYearIndex - 1] : null;
     const nextYear = currentYearIndex < allYears.length - 1 ? allYears[currentYearIndex + 1] : null;
-
     // Format month numbers to month names for display (optional)
     const monthNames = ["January", "February", "March", "April", "May", "June",
                         "July", "August", "September", "October", "November", "December"];
-
     let html = `<h2>${year}</h2><ul class="item-list month-list">`;
     months.forEach(month => {
         const monthString = `${year}.${month}`;
@@ -310,7 +308,6 @@ function displayMonthList(year) {
         </div>
         ${generateFooter()}
     `;
-
     fadeTransition(() => {
         contentDiv.innerHTML = html;
         document.title = `${year} - Archive`;
@@ -345,10 +342,9 @@ async function displayDayList(monthString) {
         }
 
         const [year, month] = monthString.split('.');
-
         // Find previous/next months from ARCHIVE_INDEX
         const allMonthsForYear = ARCHIVE_INDEX[year];
-         // Handle case where year might not be in index (shouldn't happen if navigation is correct)
+        // Handle case where year might not be in index (shouldn't happen if navigation is correct)
         if (!allMonthsForYear) {
             showError(`Index data missing for year ${year}.`);
             return;
@@ -394,6 +390,7 @@ async function displayDayList(monthString) {
             const dayLink = createUrl('index.html', { month: monthString, day: day });
             // Add full view link
             const fullViewLink = createUrl('index.html', { month: monthString, day: day, full: 'yes' });
+
             html += `
                 <li>
                     <a href="${dayLink}">Day ${day}</a>
@@ -413,13 +410,11 @@ async function displayDayList(monthString) {
             </div>
             ${generateFooter()}
         `;
-
         fadeTransition(() => {
             contentDiv.innerHTML = html;
             document.title = `${monthString} - Archive`;
              setupNavigation(prevMonthString ? { month: prevMonthString } : null, nextMonthString ? { month: nextMonthString } : null);
         });
-
     } catch (error) {
         // Error likely already shown by loadMonthData
         console.error("Error displaying day list:", error);
@@ -437,15 +432,13 @@ async function displayDayList(monthString) {
  */
 async function displayArticleListForDay(monthString, day) {
      showLoading(`Loading articles for ${monthString}-${day}...`);
-    try {
+     try {
         const articles = await loadMonthData(monthString);
         // Ensure date format matches YYYY-MM-DD for filtering
         const dayPadded = day.padStart(2, '0'); // Ensure day is two digits
         const dayDate = `${monthString.replace('.', '-')}-${dayPadded}`;
-
         // Filter articles for the specific day
         const dayArticlesRaw = articles.filter(a => a.date === dayDate);
-
         if (dayArticlesRaw.length === 0) {
             showError(`No articles found for ${dayDate}.`);
             return;
@@ -472,28 +465,23 @@ async function displayArticleListForDay(monthString, day) {
             // If pages are the same or both invalid, sort by path
             return a.path.localeCompare(b.path);
         });
-
-
         // Find previous/next days with articles within the month
         const allDaysInMonth = [...new Set(
              articles
                 .map(a => a.date ? a.date.split('-')[2] : null)
                 .filter(d => d !== null)
         )].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
         // Find index using the original (potentially unpadded) day parameter
         const currentDayIndex = allDaysInMonth.indexOf(day);
         const prevDay = currentDayIndex > 0 ? allDaysInMonth[currentDayIndex - 1] : null;
         const nextDay = currentDayIndex < allDaysInMonth.length - 1 ? allDaysInMonth[currentDayIndex + 1] : null;
 
         let html = `<h2>${dayDate}</h2>`;
-
         // Move Full Day View button to the top
         html += `
             <div class="day-actions-top">
                  <a href="${createUrl('index.html', { month: monthString, day: day, full: 'yes' })}" class="nav-link-fullday">Full Day View</a>
             </div>`;
-
         html += `<ul class="item-list article-list">`;
 
         // Add page number headers
@@ -517,10 +505,9 @@ async function displayArticleListForDay(monthString, day) {
                 <li class="article-list-item">
                     <a href="${createUrl('index.html', { articlePath: article.path })}" class="article-title-link">${smartTitle}</a>
                     ${article.author ? `<span class="article-meta-info">by ${article.author}</span>` : ''}
-                 </li>`;
+                </li>`;
         });
         html += `</ul>`;
-
         // Navigation (bottom)
         html += `
             <div class="navigation-controls">
@@ -532,16 +519,14 @@ async function displayArticleListForDay(monthString, day) {
             </div>
             ${generateFooter()}
         `;
-
         fadeTransition(() => {
             contentDiv.innerHTML = html;
             document.title = `${dayDate} - Archive`;
             setupNavigation(prevDay ? { month: monthString, day: prevDay } : null, nextDay ? { month: monthString, day: nextDay } : null);
         });
-
-    } catch (error) {
+     } catch (error) {
         console.error(`Error displaying article list for ${monthString}-${day}:`, error);
-         if (!contentDiv.querySelector('.error')) {
+        if (!contentDiv.querySelector('.error')) {
              showError(`An error occurred while displaying articles for ${monthString}-${day}.`);
          }
     }
@@ -563,7 +548,6 @@ function formatArticleContent(content) {
     const chinesePart = chinesePartRaw.replace(/^Original:\s*/i, '').trim();
 
     let html = '';
-
     // Function to wrap paragraphs and handle '###' bolding
     const formatParas = (text) => {
         // Replace multiple newlines with a single one, then split
@@ -638,12 +622,33 @@ async function displayArticle(articlePath) {
         }
 
 
-        // Find previous/next articles within the same day (sorted by path for consistency)
-        const dayArticles = articles.filter(a => a.date === article.date).sort((a,b) => a.path.localeCompare(b.path));
+        // Find previous/next articles within the same day (sorted by page, then path)
+        const dayArticles = articles
+            .filter(a => a.date === article.date)
+            .sort((a, b) => {
+                const pageA = parseInt(a.page_number, 10);
+                const pageB = parseInt(b.page_number, 10);
+
+                // Handle cases where page_number might be missing or NaN
+                const isAPageValid = !isNaN(pageA);
+                const isBPageValid = !isNaN(pageB);
+
+                if (isAPageValid && isBPageValid) {
+                    if (pageA !== pageB) {
+                        return pageA - pageB; // Sort by page number first
+                    }
+                } else if (isAPageValid) {
+                    return -1; // Articles with page numbers come first
+                } else if (isBPageValid) {
+                    return 1; // Articles without page numbers come last
+                }
+                // If pages are the same or both invalid, sort by path
+                return a.path.localeCompare(b.path);
+            });
+
         const currentIndex = dayArticles.findIndex(a => a.path === articlePath);
         const prevArticle = currentIndex > 0 ? dayArticles[currentIndex - 1] : null;
         const nextArticle = currentIndex < dayArticles.length - 1 ? dayArticles[currentIndex + 1] : null;
-
         // **MODIFICATION: Use smartenQuotes for the title**
         const smartTitle = smartenQuotes(article.title || 'Untitled');
         const smartAuthor = smartenQuotes(article.author || ''); // Also smarten author if present
@@ -661,7 +666,6 @@ async function displayArticle(articlePath) {
                 ${formatArticleContent(article.content)}
             </div>
         `;
-
         // Navigation
         html += `
             <div class="navigation-controls">
@@ -673,17 +677,15 @@ async function displayArticle(articlePath) {
             </div>
             ${generateFooter()}
         `;
-
-         fadeTransition(() => {
+        fadeTransition(() => {
             contentDiv.innerHTML = html;
             document.title = `${smartTitle} - ${article.date}`; // Use smart title here too
             window.scrollTo(0, 0); // Scroll to top on article load
             setupNavigation(prevArticle ? { articlePath: prevArticle.path } : null, nextArticle ? { articlePath: nextArticle.path } : null);
         });
-
     } catch (error) {
          console.error(`Error displaying article ${articlePath}:`, error);
-          if (!contentDiv.querySelector('.error')) {
+         if (!contentDiv.querySelector('.error')) {
              showError(`An error occurred while displaying article ${articlePath}.`);
          }
     }
@@ -700,7 +702,6 @@ async function displayFullDayView(monthString, day) {
         const articles = await loadMonthData(monthString);
         const dayPadded = day.padStart(2, '0'); // Ensure day is two digits
         const dayDate = `${monthString.replace('.', '-')}-${dayPadded}`;
-
         // Filter and sort articles for the day (by page then path, same as list view)
         const dayArticles = articles
             .filter(a => a.date === dayDate)
@@ -715,8 +716,6 @@ async function displayFullDayView(monthString, day) {
                   else if (isBPageValid) return 1;
                 return a.path.localeCompare(b.path);
             });
-
-
         if (dayArticles.length === 0) {
             showError(`No articles found for ${dayDate}.`);
             return;
@@ -728,13 +727,10 @@ async function displayFullDayView(monthString, day) {
                 .map(a => a.date ? a.date.split('-')[2] : null)
                 .filter(d => d !== null)
         )].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
         // Use original day param for finding index
         const currentDayIndex = allDaysInMonth.indexOf(day);
         const prevDay = currentDayIndex > 0 ? allDaysInMonth[currentDayIndex - 1] : null;
         const nextDay = currentDayIndex < allDaysInMonth.length - 1 ? allDaysInMonth[currentDayIndex + 1] : null;
-
-
         let html = `<h2>${dayDate} - Full View</h2>`;
 
         let currentPage = null; // Track page for headers
@@ -773,8 +769,6 @@ async function displayFullDayView(monthString, day) {
                      </div>
                 </div>`; // Close article-container-full
         });
-
-
         // Navigation
         html += `
             <div class="navigation-controls">
@@ -786,7 +780,6 @@ async function displayFullDayView(monthString, day) {
             </div>
             ${generateFooter()}
         `;
-
         fadeTransition(() => {
             contentDiv.innerHTML = html;
             document.title = `${dayDate} Full View - Archive`;
@@ -797,10 +790,9 @@ async function displayFullDayView(monthString, day) {
                 nextDay ? { month: monthString, day: nextDay, full: 'yes' } : null
             );
         });
-
     } catch (error) {
         console.error(`Error displaying full day view for ${monthString}-${day}:`, error);
-         if (!contentDiv.querySelector('.error')) {
+        if (!contentDiv.querySelector('.error')) {
              showError(`An error occurred while displaying the full day view for ${monthString}-${day}.`);
          }
     }
@@ -811,7 +803,6 @@ async function displayFullDayView(monthString, day) {
 
 let currentPrevTarget = null;
 let currentNextTarget = null;
-
 /**
  * Sets up the target parameters for the current prev/next navigation actions.
  * @param {object|null} prevTargetParams - Params for the 'prev' action, or null if none.
@@ -821,14 +812,11 @@ function setupNavigation(prevTargetParams, nextTargetParams) {
     currentPrevTarget = prevTargetParams;
     currentNextTarget = nextTargetParams;
     console.log("Navigation setup:", "Prev:", currentPrevTarget, "Next:", currentNextTarget);
-
     // Add visual indicators to links if they exist
     const prevLink = document.querySelector('.nav-link-prev:not(.nav-link-disabled)');
     const nextLink = document.querySelector('.nav-link-next:not(.nav-link-disabled)');
-
     // Clear existing indicators first
     document.querySelectorAll('.keyboard-shortcut-indicator').forEach(el => el.remove());
-
     if (prevLink) {
         const indicator = document.createElement('span');
         indicator.className = 'keyboard-shortcut-indicator';
@@ -898,7 +886,6 @@ function universalKeyHandler(e) {
  */
 function handleSwipe() {
     const swipeDistance = touchEndX - touchStartX;
-
     if (Math.abs(swipeDistance) < MIN_SWIPE_DISTANCE) {
         return; // Ignore minor movements
     }
@@ -927,7 +914,6 @@ function initializeDisplay() {
     const day = getUrlParam('day');
     const articlePath = getUrlParam('articlePath');
     const fullDay = getUrlParam('full') === 'yes';
-
     // Use requestAnimationFrame to ensure DOM is ready for potential focus setting
     // and to prevent potential layout issues during initial load
     requestAnimationFrame(() => {
@@ -941,7 +927,7 @@ function initializeDisplay() {
             } else if (month) {
                 displayDayList(month);
             } else if (year) {
-                displayMonthList(year);
+                 displayMonthList(year);
             } else {
                 displayYearList();
             }
@@ -993,4 +979,3 @@ window.onload = () => {
     console.log("Window loaded. Initializing display...");
     initializeDisplay();
 };
-

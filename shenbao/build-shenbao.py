@@ -4,22 +4,14 @@ import os
 import re
 import sys
 from pathlib import Path
-import json # To safely embed data into HTML/JS
-
-# --- Natural Sorting Helper ---
+import json
 
 def natural_sort_key(s, _nsre=re.compile('([0-9]+)')):
-    """Key for natural sorting (e.g., file1, file2, file10)."""
     return [int(text) if text.isdigit() else text.lower()
             for text in re.split(_nsre, str(s))]
 
-# --- CSS Content ---
-
-# Updated CSS content - Ensure this matches articles-styles.css
-# Reflects changes for button styling and floating container backgrounds
 CSS_CONTENT = """
 :root {
-    /* Color Palette Inspired by index-styles.css */
     --primary-color: #1e472e;
     --secondary-color: #363e35;
     --accent-color: #3c5244;
@@ -27,57 +19,82 @@ CSS_CONTENT = """
     --link-color-inspired: #2a4b30;
     --link-hover-color-inspired: #436542;
     --button-text-color: white;
-
-    /* Original Variables */
+    --inactive-button-bg: #a3cca3;
     --chinese-font: 'Noto Serif TC', serif;
     --english-font: Georgia, serif;
     --border-color: #ccc;
-    --control-bg: #f0f0f0e0;
-    --pane-padding: 15px;
-    --control-area-padding: 60px;
+    --control-bg: #f0f0f0e0; /* Background for floating elements */
+    --pane-base-padding: 15px; /* Base padding for content */
+    --pane-top-padding: 50px;  /* Extra top padding to avoid overlap */
 }
 html { height: 100%; }
 body {
     font-family: sans-serif; margin: 0;
-    padding-top: var(--control-area-padding);
-    padding-bottom: calc(var(--control-area-padding) / 2);
     box-sizing: border-box;
     height: 100%;
+    /* Removed body padding */
 }
 .controls {
     position: fixed; top: 10px; left: 10px;
-    display: flex; gap: 8px; align-items: center;
+    display: flex; gap: 8px;
+    align-items: center;
     z-index: 10;
+    background-color: var(--control-bg); /* Keep background for floating */
+    padding: 5px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Lighter shadow */
+}
+.view-mode-buttons {
+    display: inline-flex;
+    border: 1px solid var(--accent-color);
 }
 .controls button {
     padding: 5px 10px; cursor: pointer;
     background-color: var(--accent-color);
     color: var(--button-text-color);
-    border: 1px solid var(--accent-color);
-    border-radius: 5px;
+    border: none;
+    border-radius: 0;
     transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
 }
 .controls button:hover {
     background-color: var(--link-hover-color-inspired);
-    border-color: var(--link-hover-color-inspired);
+}
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg);
+    min-width: 30px;
+}
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color);
+}
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired);
+    font-weight: bold;
+}
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired);
 }
 .container {
-    display: flex; height: 100%; width: 100%;
+    display: flex; height: 100%; width: 100%; /* Occupy full viewport */
     overflow: hidden; box-sizing: border-box;
+    /* Removed margin-top */
 }
 .pane {
     border: 1px solid transparent;
-    padding: var(--pane-padding);
+    /* Apply base padding + specific top padding */
+    padding: var(--pane-top-padding) var(--pane-base-padding) var(--pane-base-padding);
     overflow-y: auto; box-sizing: border-box;
+    height: 100%; /* Ensure panes fill container height */
 }
 .pane .article-title {
-    font-size: 1.1em; font-weight: bold; color: #555;
-    margin-top: 0; margin-bottom: 1em;
-    border-bottom: 1px solid #eee; padding-bottom: 0.5em;
+    display: none;
 }
 #content-t h1 {
     font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
     color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* No extra padding needed here */
     padding-bottom: 0; border-bottom: none;
 }
 .pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
@@ -85,51 +102,81 @@ body {
 #content-t { font-family: var(--english-font); }
 #content-base h3 { font-size: 1.3em; }
 body.view-hsplit .container { flex-direction: row; }
-body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit .pane { width: 50%; }
 body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
 body.view-hsplit #content-t { display: block !important; }
 body.view-hsplit .toggle-language-btn { display: none; }
 body.view-vsplit .container { flex-direction: column; }
-body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit .pane { width: 100%; height: 50%; } /* Height adjusted for split */
 body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
 body.view-vsplit #content-t { display: block !important; }
 body.view-vsplit .toggle-language-btn { display: none; }
 body.view-single .container { flex-direction: column; }
-body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single .pane { width: 100%; height: 100%; } /* Full height in single */
 body.view-single #content-base { display: block; }
 body.view-single #content-t { display: none; }
 body.view-single.show-t #content-base { display: none !important; }
 body.view-single.show-t #content-t { display: block !important; }
 body.view-single .toggle-language-btn { display: inline-block; }
-footer { position: fixed; bottom: 10px; right: 10px; z-index: 10; }
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
 footer a {
-    color: var(--link-color-inspired); text-decoration: none; font-size: 0.9em;
-    padding: 5px 10px; background-color: var(--control-bg);
-    border: 1px solid var(--border-color-inspired); border-radius: 5px;
-    display: inline-block; transition: background-color 0.2s ease, color 0.2s ease;
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg); /* Keep background */
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 3px; /* Match controls rounding */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Match controls shadow */
+    margin-right: 15px;
 }
 footer a:hover {
     color: var(--link-hover-color-inspired);
     background-color: #e0e0e0e0; text-decoration: none;
 }
 @media (max-width: 768px) {
-    :root { --control-area-padding: 75px; }
+    /* No body padding override needed */
+    .container {
+         /* Height already 100% */
+    }
+    .controls {
+        /* Style is already fine, ensure no conflicting overrides */
+        background-color: var(--control-bg); /* Keep background */
+        padding: 5px;
+        border-radius: 3px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        flex-direction: row; /* Ensure horizontal */
+    }
+    .pane {
+       /* Ensure top padding is consistent */
+       padding-top: var(--pane-top-padding);
+    }
+    #view-hsplit-btn, #view-vsplit-btn {
+        display: none;
+    }
+    #view-single-btn {
+        display: inline-block;
+        border-right: none;
+    }
+    .controls .view-mode-buttons {
+        border: 1px solid var(--accent-color);
+    }
+    .toggle-language-btn {
+        display: inline-block !important;
+    }
+    /* Single view layout rules remain the same */
     .container { flex-direction: column !important; }
     .pane { width: 100% !important; height: 100% !important; border: none !important;}
     #content-base { display: block !important; }
     #content-t { display: none !important; }
     body.show-t #content-base { display: none !important; }
     body.show-t #content-t { display: block !important; }
-    .toggle-language-btn { display: inline-block !important; }
-    .controls { flex-direction: column; align-items: flex-start; gap: 5px; }
-    .controls button { width: auto; }
 }
 """
 
-# --- Helper Functions (Markdown/File Reading - unchanged) ---
-
 def convert_markdown_headers_to_html(markdown_text):
-    """Converts '#', '##', '###' lines to h1/h2/h3 and other lines to <p>."""
     lines = markdown_text.splitlines()
     html_lines = []
     if not markdown_text:
@@ -157,37 +204,30 @@ def convert_markdown_headers_to_html(markdown_text):
 
 
 def read_file_content(file_path):
-    """Reads text content from a file path, returns empty string on error or if missing."""
     content = ""
     try:
         if file_path and file_path.exists():
             content = file_path.read_text(encoding='utf-8')
         else:
-             pass # Return empty string if path is None or doesn't exist
+             pass
     except IOError as e:
         print(f"      Error reading {file_path}: {e}", file=sys.stderr)
-    except Exception as e: # Catch other potential errors like decoding errors
+    except Exception as e:
         print(f"      Unexpected error reading {file_path}: {e}", file=sys.stderr)
     return content
 
-# --- HTML Generation ---
-
 def create_interactive_html(output_path, base_filename, display_title, content_base_html, content_t_html, prev_file_stem, next_file_stem):
-    """Creates a single interactive HTML file with enhanced features and external CSS."""
 
     nav_data = json.dumps({
         "prev": prev_file_stem + ".html" if prev_file_stem else None,
         "next": next_file_stem + ".html" if next_file_stem else None
     })
 
-    # **MODIFICATION**: Add H1 with display_title ONLY to the beginning of English content
     if content_t_html and not content_t_html.strip().startswith(("<p><em>Content not available.</em>", "<p><em>Content seems empty.</em>")):
         content_t_html = f"<h1>{display_title}</h1>\n{content_t_html}"
-    elif not content_t_html: # Handle case where _t file might be missing but we still want a placeholder
+    elif not content_t_html:
          content_t_html = f"<h1>{display_title}</h1>\n<p><em>Content not available.</em></p>"
 
-
-    # HTML template - Note: article-title div is still present in both panes for structure
     html_template = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -201,8 +241,12 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
 <body>
 
 <div class="controls">
-    <button id="cycle-view-btn">View Mode</button>
-    <button id="toggle-language-btn" class="toggle-language-btn">Show English (_t)</button>
+    <div class="view-mode-buttons">
+        <button id="view-hsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-vsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">To English</button>
 </div>
 
 <div class="container">
@@ -211,7 +255,6 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
         {content_base_html}
     </div>
     <div id="content-t" class="pane">
-        {/* Removed the redundant article-title div here, H1 is added above */}
         {content_t_html}
     </div>
 </div>
@@ -224,64 +267,97 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
 
 <script>
     const body = document.body;
-    const cycleViewBtn = document.getElementById('cycle-view-btn');
     const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn');
+    const viewSingleBtn = document.getElementById('view-single-btn');
+    const viewButtons = [viewHsplitBtn, viewVsplitBtn, viewSingleBtn];
     const navData = JSON.parse(document.getElementById('nav-data').textContent);
-    const viewModes = ['view-hsplit', 'view-vsplit', 'view-single'];
-    const viewNames = {{ // Map class name to display name
-        'view-hsplit': 'Horizontal Split',
-        'view-vsplit': 'Vertical Split',
-        'view-single': 'Single Toggle'
-    }};
-    let currentViewIndex = 0; // Default determined below
+    const validViewClasses = ['view-hsplit', 'view-vsplit', 'view-single'];
+    const smallScreenBreakpoint = 768;
 
-    function setView(viewIndex, updateURL = false) {{
-        currentViewIndex = viewIndex % viewModes.length;
-        const newViewClass = viewModes[currentViewIndex];
-        // Reset classes before applying the new one
-        body.className = ''; // Clear all previous view/state classes
-        body.classList.add(newViewClass); // Add the new view class
-
-        // *** Ensure button text is updated ***
-        if (cycleViewBtn) {{ // Add check just in case
-             cycleViewBtn.textContent = `View: ${{viewNames[newViewClass]}}`;
-        }}
-
-        // Adjust toggle button text and visibility based on the new view
-        if (newViewClass === 'view-single') {{
-            if (toggleLangBtn) {{
-                toggleLangBtn.style.display = ''; // Make visible
-                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Show Chinese' : 'Show English (_t)';
+    function getCurrentViewClass() {{
+        for (const vc of validViewClasses) {{
+            if (body.classList.contains(vc)) {{
+                return vc;
             }}
-        }} else {{
-             if (toggleLangBtn) {{
-                toggleLangBtn.style.display = 'none'; // Hide toggle button
-             }}
-             body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
         }}
+        return null;
+    }}
 
-        if (updateURL && window.history && window.history.replaceState) {{
-             const currentUrl = new URL(window.location.href);
-             currentUrl.searchParams.set('view', newViewClass);
-             window.history.replaceState({{ view: newViewClass }}, '', currentUrl.toString());
+    function updateURLState(currentViewClass) {{
+        if (!currentViewClass) return;
+        if (window.history && window.history.replaceState) {{
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('view', currentViewClass);
+
+            if (currentViewClass === 'view-single' && body.classList.contains('show-t')) {{
+                currentUrl.searchParams.set('lang', 't');
+            }} else {{
+                currentUrl.searchParams.delete('lang');
+            }}
+            try {{
+                window.history.replaceState({{ view: currentViewClass, lang: body.classList.contains('show-t') ? 't' : null }}, '', currentUrl.toString());
+            }} catch (e) {{
+                 console.error("Error updating URL state:", e);
+            }}
         }}
     }}
 
-    function cycleView() {{
-        setView(currentViewIndex + 1, true);
+    function setView(newViewClass, updateURL = false, fromResize = false) {{
+        if (!validViewClasses.includes(newViewClass)) {{
+            console.warn('Invalid view class requested:', newViewClass);
+            return;
+        }}
+
+        const isSmallScreen = window.innerWidth <= smallScreenBreakpoint;
+        if (isSmallScreen && newViewClass !== 'view-single') {{
+             newViewClass = 'view-single';
+        }}
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        const isSingleView = newViewClass === 'view-single';
+
+        body.className = '';
+        body.classList.add(newViewClass);
+
+        viewButtons.forEach(btn => {{
+             if (btn) {{
+                 btn.classList.toggle('active-view', btn.dataset.view === newViewClass);
+                 btn.style.backgroundColor = '';
+            }}
+        }});
+
+        if (isSingleView) {{
+            toggleLangBtn.style.display = '';
+            let showT = body.classList.contains('show-t');
+            // Only apply langParam if not coming from resize and lang wasn't already set
+            if (!fromResize && langParam === 't' && !showT) {{
+                 body.classList.add('show-t');
+                 showT = true;
+             }}
+             // Update button text based on the final state
+            toggleLangBtn.textContent = showT ? 'Show Chinese' : 'Show English';
+        }} else {{
+            toggleLangBtn.style.display = 'none';
+            body.classList.remove('show-t'); // Ensure show-t is removed if not single view
+        }}
+
+        if (updateURL) {{
+             updateURLState(newViewClass);
+        }}
     }}
 
     function toggleLanguage() {{
         if (body.classList.contains('view-single')) {{
             body.classList.toggle('show-t');
-            if (toggleLangBtn) {{
-                 toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Show Chinese' : 'Show English (_t)';
-            }}
+            toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Show Chinese' : 'Show English';
+            updateURLState('view-single');
         }}
     }}
 
     function handleKeyDown(event) {{
-        // Allow keyboard shortcuts if focus is not on an input/button
         if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {{
              return;
         }}
@@ -289,19 +365,26 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
         if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {{
             const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
             if (targetFile) {{
-                const currentViewClass = viewModes[currentViewIndex];
-                // Preserve current view mode when navigating
-                window.location.href = `${{targetFile}}?view=${{currentViewClass}}`;
+                 let currentViewClass = getCurrentViewClass() || 'view-hsplit';
+                 if (window.innerWidth <= smallScreenBreakpoint) {{
+                     currentViewClass = 'view-single';
+                 }}
+                 let targetUrl = `${{targetFile}}?view=${{currentViewClass}}`;
+                 if (currentViewClass === 'view-single' && body.classList.contains('show-t')) {{
+                    targetUrl += '&lang=t';
+                 }}
+                 window.location.href = targetUrl;
             }} else {{
-                // Visual feedback for reaching the end
                 console.log(`Already at the ${{event.key === 'ArrowLeft' ? 'first' : 'last'}} file.`);
                 body.style.transition = 'background-color 0.1s ease-in-out';
-                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                body.style.backgroundColor = '#ffeeee';
                 setTimeout(() => {{ body.style.backgroundColor = ''; body.style.transition = ''; }}, 200);
             }}
-        }} else if (event.key === 'v' || event.key === 'V') {{ // Cycle view with 'v'
-             cycleView();
-        }} else if (event.key === 't' || event.key === 'T') {{ // Toggle language with 't'
+        }}
+        else if (event.key === 'h' || event.key === 'H') {{ if(window.innerWidth > smallScreenBreakpoint) setView('view-hsplit', true); }}
+        else if (event.key === 'v' || event.key === 'V') {{ if(window.innerWidth > smallScreenBreakpoint) setView('view-vsplit', true); }}
+        else if (event.key === 's' || event.key === 'S') {{ setView('view-single', true); }}
+        else if (event.key === 't' || event.key === 'T') {{
              if (body.classList.contains('view-single')) {{
                  toggleLanguage();
              }}
@@ -311,28 +394,58 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
     function initializeView() {{
          const urlParams = new URLSearchParams(window.location.search);
          const viewParam = urlParams.get('view');
-         let initialViewIndex = -1;
+         const langParam = urlParams.get('lang');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenBreakpoint;
 
-         if (viewParam && viewModes.includes(viewParam)) {{
-             initialViewIndex = viewModes.indexOf(viewParam);
+         if (isSmallScreen) {{
+             initialViewClass = 'view-single';
+         }} else if (viewParam && validViewClasses.includes(viewParam)) {{
+             initialViewClass = viewParam;
          }} else {{
-             // Default to single view on small screens, horizontal split otherwise
-             initialViewIndex = (window.innerWidth <= 768)
-                ? viewModes.indexOf('view-single')
-                : viewModes.indexOf('view-hsplit');
+             initialViewClass = 'view-hsplit'; // Default to horizontal split on larger screens
          }}
-         // *** Removed setTimeout wrapper - call setView directly ***
-         setView(initialViewIndex);
+
+        setView(initialViewClass, false); // Set initial view without updating URL yet
+
+        // Re-check language state AFTER setView potentially changed the view class
+        if (body.classList.contains('view-single') && langParam === 't') {{
+            if (!body.classList.contains('show-t')) {{ // Check if not already set by setView
+                body.classList.add('show-t');
+            }}
+            toggleLangBtn.textContent = 'Chinese'; // Ensure button text is correct
+        }}
+
+        // Update URL state once everything is initialized
+        updateURLState(getCurrentViewClass());
     }}
 
-    // Event Listeners
-    cycleViewBtn.addEventListener('click', cycleView);
-    if (toggleLangBtn) {{ // Check if button exists before adding listener
-        toggleLangBtn.addEventListener('click', toggleLanguage);
-    }}
+    function handleResize() {{
+         const isSmallScreen = window.innerWidth <= smallScreenBreakpoint;
+         const currentView = getCurrentViewClass();
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+
+         if (isSmallScreen && currentView !== 'view-single') {{
+             console.log("Resized small, forcing single view");
+             setView('view-single', true, true);
+         }} else if (!isSmallScreen && currentView === 'view-single') {{
+             // Only switch away from single if it wasn't explicitly requested via URL
+             if (viewParam !== 'view-single') {{
+                 console.log("Resized large from single view, switching to horizontal");
+                 setView('view-hsplit', true, true);
+             }}
+         }}
+     }}
+
+    if (viewHsplitBtn) {{ viewHsplitBtn.addEventListener('click', () => setView('view-hsplit', true)); }}
+    if (viewVsplitBtn) {{ viewVsplitBtn.addEventListener('click', () => setView('view-vsplit', true)); }}
+    if (viewSingleBtn) {{ viewSingleBtn.addEventListener('click', () => setView('view-single', true)); }}
+
+    toggleLangBtn.addEventListener('click', toggleLanguage);
     document.addEventListener('keydown', handleKeyDown);
-    // Use DOMContentLoaded to ensure elements are ready before initializing view
     document.addEventListener('DOMContentLoaded', initializeView);
+    window.addEventListener('resize', handleResize);
 
 </script>
 
@@ -350,15 +463,11 @@ def create_interactive_html(output_path, base_filename, display_title, content_b
         print(f"    Unexpected error creating interactive HTML {output_path}: {e}", file=sys.stderr)
         return False
 
-# --- File Writing Function ---
-
 def write_css_file(css_path, content):
-    """Writes the CSS content to a file if it doesn't exist or is different."""
     should_write = True
     if css_path.exists():
         try:
             existing_content = css_path.read_text(encoding='utf-8').strip()
-            # Normalize line endings for comparison
             if existing_content == content.strip():
                 should_write = False
                 print(f"CSS file '{css_path}' is up-to-date.")
@@ -369,17 +478,13 @@ def write_css_file(css_path, content):
 
     if should_write:
         try:
-            # Create directories if they don't exist
             css_path.parent.mkdir(parents=True, exist_ok=True)
             css_path.write_text(content, encoding='utf-8')
             print(f"CSS file '{css_path}' written successfully.")
         except Exception as e:
             print(f"Error writing CSS file '{css_path}': {e}", file=sys.stderr)
 
-# --- Main Processing Logic ---
-
 def process_directory_pair(base_dir_path, t_dir_path, final_dir_path):
-    """Processes a pair of directories with natural sorting and view state preservation."""
     print(f"\nProcessing pair: {base_dir_path.name} <=> {t_dir_path.name if t_dir_path.exists() else t_dir_path.name + ' (missing)'}")
     print(f"  Output directory: {final_dir_path}")
 
@@ -406,23 +511,19 @@ def process_directory_pair(base_dir_path, t_dir_path, final_dir_path):
         print("  No markdown files found in base directory to process.")
         return
 
-    # Regex to capture year and issue number from stem (improved robustness)
-    title_regex = re.compile(r"(\d{4})\s*[-_]?\s*(\d+)(?:[-_].*)?") # More flexible separators
+    title_regex = re.compile(r"(\d{4})\s*[-_]?\s*(\d+)(?:[-_].*)?")
 
     for i, base_file_path in enumerate(base_md_files):
         base_filename_stem = base_file_path.stem
         print(f"  Processing file ({i+1}/{len(base_md_stems)}): {base_file_path.name} -> {base_filename_stem}.html")
 
-        # --- Extract and Format Title ---
-        display_title = base_filename_stem # Default title if format fails
+        display_title = base_filename_stem
         match = title_regex.match(base_filename_stem)
         if match:
             year, issue_num = match.groups()
-            # Format consistently as YYYY - n##
-            display_title = f"{year} - n{int(issue_num):02d}" # Pad issue number if needed
+            display_title = f"{year} - n{int(issue_num):02d}"
         else:
             print(f"      Warning: Could not parse year/issue from filename '{base_filename_stem}' using regex. Using stem as title.")
-        # --- End Title Extraction ---
 
         prev_file_stem = base_md_stems[i-1] if i > 0 else None
         next_file_stem = base_md_stems[i+1] if i < len(base_md_stems) - 1 else None
@@ -439,19 +540,15 @@ def process_directory_pair(base_dir_path, t_dir_path, final_dir_path):
         create_interactive_html(
             output_html_path,
             base_filename_stem,
-            display_title, # Pass the formatted title
+            display_title,
             content_base_html,
             content_t_html,
             prev_file_stem,
             next_file_stem
         )
 
-# --- Main Function ---
-
 def main():
-    """Main function to find directory pairs and process them."""
     current_dir = Path('.')
-    # Place CSS file in the root, assuming HTML files are in subdirs like '1945_final'
     css_file_path = current_dir / "articles-styles.css"
 
     print(f"Checking/Writing CSS file: {css_file_path}")
@@ -473,33 +570,27 @@ def main():
 
     for base_name in sorted_base_names:
         base_dir = base_dirs[base_name]
-        t_dir = t_dirs.get(base_name) # Use .get() to handle missing _t dirs gracefully
+        t_dir = t_dirs.get(base_name)
         final_dir = current_dir / f"{base_name}_final"
 
-        # Decide the path for the corresponding _t directory, even if it doesn't exist
         t_dir_path_for_processing = t_dir if t_dir else current_dir / f"{base_name}_t"
 
         if t_dir:
              process_directory_pair(base_dir, t_dir_path_for_processing, final_dir)
              processed_count += 1
         else:
-            # Process even if _t is missing, read_file_content handles it
             print(f"\nNote: Found base directory '{base_dir.name}' but no matching '_t' directory '{t_dir_path_for_processing.name}'. Processing base files only.")
             process_directory_pair(base_dir, t_dir_path_for_processing, final_dir)
-            # You might not want to increment processed_count here if you only count pairs
-            # processed_count += 1 # Uncomment if you want to count base dirs processed alone
 
     print("-" * 20)
-    # Refined message based on whether any base dirs were found and processed
     if not base_dirs:
          print("No base directories found to process.")
     elif processed_count == 0 and not any(p in t_dirs for p in base_dirs):
          print("\nProcessed base directories, but no matching '_t' pairs were found.")
     elif processed_count > 0:
          print(f"\nFinished processing {processed_count} directory pair(s).")
-    else: # Case where base dirs exist, but no _t dirs exist at all
+    else:
          print("\nFinished processing base directories (no corresponding '_t' directories found).")
-
 
 if __name__ == "__main__":
     main()
