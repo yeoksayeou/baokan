@@ -250,7 +250,7 @@ function displayYearList() {
         return;
     }
 
-    const years = Object.keys(ARCHIVE_INDEX).sort().reverse(); // Show newest first
+    const years = Object.keys(ARCHIVE_INDEX).sort(); 
 
     if (years.length === 0) {
         showError("No archive data found. Please run the 'create-index.py' script.", false);

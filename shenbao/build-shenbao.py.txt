@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+import os
+import json
+import re
+import gzip
+import shutil
+
+# Directory containing the subfolders with issue files
+root_dir = "issues"
+# Directory where the output JS and GZ files will be saved
+output_dir = "data"
+
+# --- Function to read the entire file content ---
+def read_full_content(file_path):
+    """Reads and returns the entire content of a file."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Error reading file {file_path}: {e}")
+        return None
+
+# --- Main script execution ---
+
+# Check if root_dir exists
+if not os.path.isdir(root_dir):
+    print(f"Error: Root directory '{root_dir}' not found.")
+    exit(1)
+
+# Create the output directory if it doesn't exist
+os.makedirs(output_dir, exist_ok=True)
+print(f"Output directory: '{output_dir}'")
+
+# Get subdirectories within the root_dir
+subfolders = []
+for item in os.listdir(root_dir):
+    item_path = os.path.join(root_dir, item)
+    if os.path.isdir(item_path):
+        subfolders.append(item)
+
+# Sort subfolders alphabetically
+subfolders.sort()
+
+total_files_processed = 0
+
+# Process each subfolder inside the root directory
+for subfolder_name in subfolders:
+    dirpath = os.path.join(root_dir, subfolder_name)
+    entries_in_folder = [] # List to hold entries for the current subfolder
+
+    print(f"\nProcessing directory: {subfolder_name}...")
+
+    # Get all files within the subfolder
+    try:
+        filenames = os.listdir(dirpath)
+    except OSError as e:
+        print(f"  -> Error accessing directory {dirpath}: {e}")
+        continue # Skip to the next subfolder
+
+    # Process each file in the current subfolder
+    for filename in filenames:
+        # --- Add check to ignore .DS_Store files ---
+        if filename == ".DS_Store":
+            continue # Skip this file
+
+        file_path = os.path.join(dirpath, filename)
+
+        # Skip if it's a directory (redundant check after listdir, but safe)
+        if os.path.isdir(file_path):
+            continue
+
+        # Attempt to parse filename: "YYYY - N - XXXXXXX.md"
+        match = re.match(r'^(\d{4})\s*-\s*(\d+)\s*-.*$', filename)
+
+        if match:
+            year = match.group(1)
+            issue_number = match.group(2)
+            full_content = read_full_content(file_path)
+
+            if full_content is not None:
+                relative_path = os.path.join(subfolder_name, filename).replace('\\', '/')
+                entry_data = {
+                    'path': relative_path,
+                    'year': year,
+                    'issue_number': issue_number,
+                    'content': full_content
+                }
+                entries_in_folder.append(entry_data)
+                total_files_processed += 1
+        else:
+            # Only print skip message if it wasn't .DS_Store
+            print(f"  -> Skipping file (unrecognized format): {filename}")
+
+
+    # Write the collected entries for this subfolder to its JS and GZ files
+    if entries_in_folder:
+        output_js_filename_base = subfolder_name
+        output_js_filepath = os.path.join(output_dir, f"{output_js_filename_base}.js")
+        output_gz_filepath = os.path.join(output_dir, f"{output_js_filename_base}.js.gz")
+
+        js_written = False
+        # Write the uncompressed JS file
+        try:
+            with open(output_js_filepath, "w", encoding="utf-8") as out:
+                out.write("const ARTICLES = ")
+                json.dump(entries_in_folder, out, indent=2, ensure_ascii=False)
+                out.write(";")
+            print(f"  -> Successfully processed {len(entries_in_folder)} files into {output_js_filepath}")
+            js_written = True
+        except Exception as e:
+            print(f"  -> Error writing output file {output_js_filepath}: {e}")
+
+        # Create the GZ file if the JS file was written successfully
+        if js_written:
+            try:
+                with open(output_js_filepath, 'rb') as f_in:
+                    with gzip.open(output_gz_filepath, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                print(f"  -> Successfully created compressed file {output_gz_filepath}")
+            except Exception as e:
+                print(f"  -> Error creating compressed file {output_gz_filepath}: {e}")
+
+    else:
+        print(f"  -> No valid files found or processed in {subfolder_name}.")
+
+print(f"\nFinished processing. Total files processed: {total_files_processed}")

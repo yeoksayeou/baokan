@@ -1,0 +1,4 @@
+- run build.py for the Korean and build_en.py for the English 
+- These will create data.js and data_en.js
+- for the data_en.js the titles and metadata are messed up so run node jsonreplace.js with titles_en.js in the directory so that it fixes the titles.
+- then use split-articles-by-issue.js and en-split-articles-by-issue.js to create index and index_en folders which you put in the support folder.

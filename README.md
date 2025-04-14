@@ -6,7 +6,7 @@ These translations must be treated with care: they have not been checked by a hu
 
 **人民日报**
 
-The raw text for the newspaper was taken from [this repository](https://github.com/fangj/rmrb). Not much is known about where this raw text came from or how it was extracted from the original newspaper issues. The translations for the newspaper were carried out using Mistral Small 3.1, in April, 2025. Some of the earliest issues were done with Google Gemini 2.0 Flash and included a request to extract named entities, but when switching to Mistral, results of this were less satisfactory and this feature was removed. The translation prompt that was used can be found [here](prompt.txt). 
+The raw text for the newspaper was taken from [this repository](https://github.com/fangj/rmrb). Not much is known about where this raw text came from or how it was extracted from the original newspaper issues. The translations for the newspaper were carried out using Mistral Small 3.1, in April, 2025. Some of the earliest issues were done with Google Gemini 2.0 Flash and included a request to extract named entities, but when switching to Mistral, results of this were less satisfactory and this feature was removed. The translation prompt that was used can be found [here](prompt-rmrb.txt). 
 
 **Shortcuts**
 
