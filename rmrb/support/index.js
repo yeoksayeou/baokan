@@ -77,7 +77,7 @@ function generateFooter() {
 
     return `
         <footer class="site-footer">
-            <p><a href="../index.html">Project Home</a> | <a href="../about.html">About this Project</a> | <a href="index.html">Newspaper Home</a></p>
+            <p><a href="../index.html">Project Home</a> | <a href="../about.html">About this Project</a> | <a href="index.html">Newspaper Home</a> | Text Source: <a href="https://github.com/fangj/rmrb">fangj/rmrb</a></p>
             ${sourceLink && sourceName ? `<p>Source of texts: <a href="${sourceLink}" target="_blank" rel="noopener noreferrer">${sourceName}</a></p>` : ''}
             ${lastUpdated ? `<p>Last updated: ${lastUpdated}</p>` : ''}
         </footer>
