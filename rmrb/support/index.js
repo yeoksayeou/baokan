@@ -251,13 +251,18 @@ function displayYearList() {
     }
 
     const years = Object.keys(ARCHIVE_INDEX).sort();
+    const introHTML = window.SITE_INFO.introductionText
+      ? `<div class="introduction-text">${window.SITE_INFO.introductionText}</div>`
+      : '';
 
     if (years.length === 0) {
         showError("No archive data found. Please run the 'create-index.py' script.", false);
         return;
     }
 
-    let html = `<h1>The People’s Daily - Translations</h1><ul class="item-list year-list">`;
+    let html = `<h1>The People’s Daily - Translations</h1>
+    ${introHTML}
+    <ul class="item-list year-list">`;
     years.forEach(year => {
         html += `<li><a href="${createUrl('index.html', { year: year })}">${year}</a></li>`;
     });
@@ -293,7 +298,7 @@ function displayMonthList(year) {
     months.forEach(month => {
         const monthString = `${year}.${month}`;
         const monthName = monthNames[parseInt(month, 10) - 1] || month; // Fallback to number
-        html += `<li><a href="${createUrl('index.html', { month: monthString })}">${monthName} (${month})</a></li>`;
+        html += `<li><a href="${createUrl('index.html', { month: monthString })}">${monthName}</a></li>`;
     });
     html += `</ul>`;
 
