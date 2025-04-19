@@ -574,7 +574,7 @@ function formatArticleContent(content) {
     };
 
     if (englishPart) {
-        html += `<div class="english-content">${formatParas(englishPart)}</div>`;
+        html += `<div class="english-content" lang="en">${formatParas(englishPart)}</div>`;
     }
 
     if (englishPart && chinesePart) {
@@ -582,7 +582,7 @@ function formatArticleContent(content) {
     }
 
     if (chinesePart) {
-        html += `<div class="chinese-content">${formatParas(chinesePart)}</div>`;
+        html += `<div class="chinese-content" lang="zh-Hans">${formatParas(chinesePart)}</div>`;
     }
 
     // Handle cases where only one part exists but the other might be empty string after split
@@ -602,6 +602,11 @@ function formatArticleContent(content) {
  */
 async function displayArticle(articlePath) {
     const monthMatch = articlePath.match(/^(\d{4}\.\d{2})\//);
+    const hideEnglish = getUrlParam('lang') === 'cn';
+    const toggleParams = { articlePath };
+    if (!hideEnglish) toggleParams.lang = 'cn';
+    const toggleUrl = createUrl('index.html', toggleParams);
+
     if (!monthMatch) {
         showError(`Invalid article path format: ${articlePath}`);
         return;
@@ -665,28 +670,52 @@ async function displayArticle(articlePath) {
                     ${smartAuthor ? `<span><span class="meta-label">Author:</span> ${smartAuthor}</span>` : ''}
                     <span><span class="meta-label">Date:</span> ${article.date}</span>
                     ${article.page_number ? `<span><span class="meta-label">Page:</span> ${article.page_number}</span>` : ''}
+                    <a
+                      href="${toggleUrl}"
+                      class="lang-toggle-btn ${hideEnglish ? 'hidden' : ''}"
+                      aria-pressed="${hideEnglish}"
+                      aria-label="${hideEnglish ? 'Show English' : 'Hide English'}"
+                    >E</a> 
                 </div>
             </div>
             <div class="article-content">
-                ${formatArticleContent(article.content)}
+                ${(() => {
+                   let rawContent = article.content;
+                   if (hideEnglish) {
+                     const parts = rawContent.split('<hr />');
+                     rawContent = parts.length > 1 ? parts.slice(1).join('<hr />') : rawContent;
+                   }
+                   return formatArticleContent(rawContent);
+                 })()}
             </div>
         `;
         // Navigation
         html += `
-            <div class="navigation-controls">
-                <a href="${createUrl('index.html', { month: monthString, day: day })}" class="nav-link-back">&laquo; Back to ${article.date}</a>
-                 <div class="nav-pagination">
-                    ${prevArticle ? `<a href="${createUrl('index.html', { articlePath: prevArticle.path })}" class="nav-link-prev">‹ Prev Article</a>` : `<span class="nav-link-disabled">‹ Prev Article</span>`}
-                    ${nextArticle ? `<a href="${createUrl('index.html', { articlePath: nextArticle.path })}" class="nav-link-next">Next Article ›</a>` : `<span class="nav-link-disabled">Next Article ›</span>`}
-                </div>
-            </div>
+              <div class="navigation-controls">
+                  <a href="${createUrl('index.html', { month: monthString, day })}" class="nav-link-back">« Back</a>
+                  <div class="nav-pagination">
+                      ${prevArticle
+                        ? `<a href="${createUrl('index.html', { articlePath: prevArticle.path, ...(hideEnglish && { lang:'cn' }) })}" class="nav-link-prev">‹ Prev Article</a>`
+                        : `<span class="nav-link-disabled">‹ Prev Article</span>`}
+                      ${nextArticle
+                        ? `<a href="${createUrl('index.html', { articlePath: nextArticle.path, ...(hideEnglish && { lang:'cn' }) })}" class="nav-link-next">Next Article ›</a>`
+                        : `<span class="nav-link-disabled">Next Article ›</span>`}
+                  </div>
+              </div>
             ${generateFooter()}
         `;
         fadeTransition(() => {
             contentDiv.innerHTML = html;
             document.title = `${smartTitle} - ${article.date}`; // Use smart title here too
             window.scrollTo(0, 0); // Scroll to top on article load
-            setupNavigation(prevArticle ? { articlePath: prevArticle.path } : null, nextArticle ? { articlePath: nextArticle.path } : null);
+            // setupNavigation(prevArticle ? { articlePath: prevArticle.path } : null, nextArticle ? { articlePath: nextArticle.path } : null);
+            const prevParams = prevArticle ? { articlePath: prevArticle.path } : null;
+            const nextParams = nextArticle ? { articlePath: nextArticle.path } : null;
+            if (hideEnglish) {
+              if (prevParams) prevParams.lang = 'cn';
+              if (nextParams) nextParams.lang = 'cn';
+            }
+            setupNavigation(prevParams, nextParams);
         });
     } catch (error) {
          console.error(`Error displaying article ${articlePath}:`, error);
