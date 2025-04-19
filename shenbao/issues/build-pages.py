@@ -42,7 +42,6 @@ body {
     font-family: sans-serif; margin: 0;
     box-sizing: border-box;
     height: 100%;
-    padding-top: var(--control-area-padding); /* Add padding to prevent content overlap */
 }
 .controls {
     position: fixed; top: 10px; left: 10px;
@@ -96,7 +95,8 @@ body {
 
 
 .container {
-    display: flex; height: calc(100% - var(--control-area-padding)); /* Adjust height calculation */
+    display: flex; 
+    height: 100%;
     width: 100%;
     overflow: hidden; box-sizing: border-box;
 }
@@ -527,17 +527,17 @@ def process_directory_pair(base_dir_path, t_dir_path, final_dir_path):
         print("  No markdown files found in base directory to process.")
         return
 
-    title_regex = re.compile(r"(\d{4})\s*[-_]?\s*(\d+)(?:[-_].*)?")
+    date_regex = re.compile(r"^(\d{4})[._-]?(\d{2})[._-]?(\d{2})$")
 
     for i, base_file_path in enumerate(base_md_files):
         base_filename_stem = base_file_path.stem
         print(f"  Processing file ({i+1}/{len(base_md_stems)}): {base_file_path.name} -> {base_filename_stem}.html")
 
         display_title = base_filename_stem
-        match = title_regex.match(base_filename_stem)
+        match = date_regex.match(base_filename_stem)
         if match:
-            year, issue_num = match.groups()
-            display_title = f"{year} - n{int(issue_num):02d}"
+            year, month, day = match.groups()
+            display_title = f"{year}.{month}.{day}"
         else:
             print(f"      Warning: Could not parse year/issue from filename '{base_filename_stem}' using regex. Using stem as title.")
 

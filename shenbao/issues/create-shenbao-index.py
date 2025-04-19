@@ -1,94 +1,57 @@
 #!/usr/bin/env python3
-
-import os
-import json
 import re
-import sys # Import sys to redirect print statements
-from collections import defaultdict
+import json
+from pathlib import Path
 
-def create_archive_index(root_dir='.'):
-    """
-    Scans a directory structure for HTML files named 'year - issue - id.html',
-    extracts the year and issue number, and builds an index.
+# Match directories named YYYY
+YEAR_DIR_RE = re.compile(r'^\d{4}$')
+# Match files named YYYY.MM.DD.html
+DATE_HTML_RE = re.compile(r'^(\d{4})\.(\d{2})\.(\d{2})\.html$')
 
-    Args:
-        root_dir (str): The root directory to scan. Defaults to the current directory.
+OUTPUT_FILE = 'shenbao-index.js'
 
-    Returns:
-        dict: A dictionary where keys are years (str) and values are lists of
-              dictionaries, each containing 'issue' (str) and 'path' (str).
-              Issues within each year are sorted numerically.
-    """
-    archive_index = defaultdict(list)
-    filename_pattern = re.compile(r"^(\d{4})\s*-\s*(\d+)\s*-.*\.html$", re.IGNORECASE)
+def build_js_index(output_file=OUTPUT_FILE):
+    base = Path('.')
+    archive = {}
 
-    # Print status messages to stderr instead of stdout
-    print(f"Scanning directory: {os.path.abspath(root_dir)}", file=sys.stderr)
+    # Scan each year directory
+    for year_dir in sorted(base.iterdir()):
+        if not year_dir.is_dir() or not YEAR_DIR_RE.match(year_dir.name):
+            continue
+        year = year_dir.name
+        for p in year_dir.iterdir():
+            if not p.is_file():
+                continue
+            m = DATE_HTML_RE.match(p.name)
+            if not m:
+                continue
+            _, month, day = m.groups()
+            archive.setdefault(year, {}).setdefault(month, []).append({
+                'day': day,
+                'path': f"{year}/{p.name}"
+            })
 
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        current_dir_name = os.path.basename(dirpath)
+    # Sort days in each month
+    for months in archive.values():
+        for month, days in months.items():
+            days.sort(key=lambda x: x['day'])
 
-        if os.path.abspath(dirpath) == os.path.abspath(root_dir):
-           dirnames[:] = [d for d in dirnames if d.isdigit() and len(d) == 4]
-           # Print status messages to stderr
-           print(f"Found potential year directories: {dirnames}", file=sys.stderr)
-           continue
+    # Build sorted archive: years and months in order
+    sorted_archive = {
+        year: {
+            month: archive[year][month]
+            for month in sorted(archive[year].keys())
+        }
+        for year in sorted(archive.keys())
+    }
 
-        if current_dir_name.isdigit() and len(current_dir_name) == 4:
-            year = current_dir_name
-            # Print status messages to stderr
-            print(f" Processing year: {year}", file=sys.stderr)
-            for filename in filenames:
-                match = filename_pattern.match(filename)
-                if match:
-                    file_year, issue_number = match.groups()
-                    if file_year == year:
-                        full_path = os.path.join(dirpath, filename)
-                        normalized_path = os.path.normpath(full_path)
-                        relative_path = os.path.relpath(normalized_path, root_dir)
-                        archive_index[year].append({
-                            "issue": issue_number,
-                            "path": relative_path.replace(os.sep, '/')
-                        })
-                    else:
-                         # Print warnings to stderr
-                         print(f"  Warning: File year '{file_year}' in '{filename}' does not match directory '{year}'. Skipping.", file=sys.stderr)
-                elif filename.lower().endswith('.html'):
-                     # Print warnings to stderr
-                     print(f"  Warning: File '{filename}' in directory '{year}' does not match expected pattern 'YYYY - Issue - ID.html'. Skipping.", file=sys.stderr)
+    # Emit JS object
+    with open(output_file, 'w', encoding='utf-8') as out:
+        out.write('window.ARCHIVE_INDEX = ')
+        json.dump(sorted_archive, out, indent=2)
+        out.write(';\n')
 
-            dirnames[:] = []
-        else:
-             dirnames[:] = []
+    print(f"Generated {output_file} with {len(sorted_archive)} years.")
 
-    sorted_archive_index = {}
-    for year in sorted(archive_index.keys()):
-        sorted_issues = sorted(archive_index[year], key=lambda x: int(x['issue']))
-        sorted_archive_index[year] = sorted_issues
-
-    return sorted_archive_index
-
-if __name__ == "__main__":
-    target_directory = '.'
-    output_filename = 'index.js'
-
-    # --- You might want to change the target directory ---
-    # Example: target_directory = '/path/to/your/html/archive'
-
-    if not os.path.isdir(target_directory):
-        # Print errors to stderr
-        print(f"Error: Directory '{target_directory}' not found.", file=sys.stderr)
-    else:
-        index_data = create_archive_index(target_directory)
-
-        # Format the output as an *exportable* JavaScript const assignment
-        js_output_string = f"// Archive index generated by create_index.py\nexport const ARCHIVE_INDEX = {json.dumps(index_data, indent=2)};\n"
-
-        try:
-            with open(output_filename, 'w', encoding='utf-8') as f:
-                f.write(js_output_string)
-            # Print final success message to stderr
-            print(f"\nIndex successfully written to {output_filename}", file=sys.stderr)
-        except IOError as e:
-             # Print errors to stderr
-             print(f"\nError writing index to file '{output_filename}': {e}", file=sys.stderr)
+if __name__ == '__main__':
+    build_js_index()
