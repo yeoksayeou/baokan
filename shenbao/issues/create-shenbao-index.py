@@ -3,8 +3,8 @@ import re
 import json
 from pathlib import Path
 
-# Match directories named YYYY
-YEAR_DIR_RE = re.compile(r'^\d{4}$')
+# Match directories that contain a 4-digit year, possibly followed by other characters
+YEAR_DIR_RE = re.compile(r'^(\d{4})(.*)$')
 # Match files named YYYY.MM.DD.html
 DATE_HTML_RE = re.compile(r'^(\d{4})\.(\d{2})\.(\d{2})\.html$')
 
@@ -16,9 +16,17 @@ def build_js_index(output_file=OUTPUT_FILE):
 
     # Scan each year directory
     for year_dir in sorted(base.iterdir()):
-        if not year_dir.is_dir() or not YEAR_DIR_RE.match(year_dir.name):
+        if not year_dir.is_dir():
             continue
-        year = year_dir.name
+            
+        # Check if directory name contains a year
+        year_match = YEAR_DIR_RE.match(year_dir.name)
+        if not year_match:
+            continue
+            
+        # Use the full directory name as the year key
+        year_key = year_dir.name
+        
         for p in year_dir.iterdir():
             if not p.is_file():
                 continue
@@ -26,17 +34,14 @@ def build_js_index(output_file=OUTPUT_FILE):
             if not m:
                 continue
             _, month, day = m.groups()
-            archive.setdefault(year, {}).setdefault(month, []).append({
+            
+            # Store each variant (like 1939SH) as its own separate entry
+            archive.setdefault(year_key, {}).setdefault(month, []).append({
                 'day': day,
-                'path': f"{year}/{p.name}"
+                'path': f"{year_key}/{p.name}"
             })
 
-    # Sort days in each month
-    for months in archive.values():
-        for month, days in months.items():
-            days.sort(key=lambda x: x['day'])
-
-    # Build sorted archive: years and months in order
+    # Build sorted archive: each year variant is treated as a separate year
     sorted_archive = {
         year: {
             month: archive[year][month]

@@ -92,7 +92,12 @@ function displayYearList() {
   html += `<div class="intro">${introHTML}</div>`;
   html += `<div class="year-grid">`;
   years.forEach(y => {
-    html += `<a class="year-box" href="${createUrl('index.html',{year:y})}">${y}</a>`;
+    if (y.includes(' ')) {
+        const [year, location] = y.split(' ');
+        html += `<a class="year-box" href="${createUrl('index.html',{year:y})}">${year}<span class="location">${location}</span></a>`;
+      } else {
+        html += `<a class="year-box" href="${createUrl('index.html',{year:y})}">${y}</a>`;
+      }
   });
   html += `</div>${generateFooter()}`;
 
@@ -105,6 +110,7 @@ function displayYearList() {
 
 function displayMonthDayList(year) {
   const data = ARCHIVE_INDEX[year];
+  const numericYear = parseInt(year.split(' ')[0], 10);
   if (!data) return showError(`No data for ${year}.`);
 
   const years = Object.keys(ARCHIVE_INDEX).sort();
@@ -115,11 +121,11 @@ function displayMonthDayList(year) {
   let html = `<h2>${year}</h2>`;
   Object.keys(data).sort().forEach(mon => {
     const mi = parseInt(mon, 10) - 1;
-    const monthName = new Date(year, mi, 1)
+    const monthName = new Date(numericYear, mi, 1)
       .toLocaleString('default', { month: 'long' });
-    const daysInMonth = new Date(year, mi + 1, 0).getDate();
+    const daysInMonth = new Date(numericYear, mi + 1, 0).getDate();
     const availDays = new Set(data[mon].map(o => o.day));
-    const firstDow = new Date(year, mi, 1).getDay();
+    const firstDow = new Date(numericYear, mi, 1).getDay();
 
     html += `<div class="month-block">
       <h3>${monthName}</h3>
