@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.02.05 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 384 - 4924387</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日空軍活躍　新島戰局無變化　英軍稱正等候日軍攻擊澳陸長廣播增援在途中</h3>
+<p>東京四日同盟社電日方飛機與砲隊、今日繼續轟擊新加坡、日機並加緊猛襲緬甸中部英軍陣地、至於陸上日軍、聞仍有小隊渡薩爾溫江西進、</p>
+<p>新加坡三日哈瓦斯電官方頃發表公報稱、過去二十四小時中、日機在新加坡上空極為活躍、曾更番轟炸各軍事目標、引起數處大火、但死傷甚微、</p>
+<p>東京四日海通社電據新山戰訊稱、新加坡塞勒達要塞之汽油庫、前晨中彈起火後、昨仍在延燒中、火勢甚烈、</p>
+<p>新加坡四日路透社電日機昨日續襲新加坡、英方防空隊積極迎擊、英美軍則以緊張情緖、等候陸地攻擊、據今日遠東英軍指揮部公報、戰局無變化可報、英砲隊轟擊新山之日軍摩托運輸隊、新島昨遭日機數度襲擊、稍受損害、但從昨夜至今晨、新島天空並無日機活動、</p>
+<p>盤谷四日海通社電澳洲陸軍大臣福特昨由康白拉向新加坡之澳軍作廣播演說、指稱聯軍之增援已在途中、日軍之行動隨時均可加以阻遏云、</p>
+<p>倫敦三日哈瓦斯電每日電聞報本日載稱、當日軍正在對新加坡發展攻勢之際、吾人雖不久將不能利用該島之飛行塲、但我機亦新加坡上空活動、非不可能、良以在我戰鬭機活動範圍內、仍有其他根據地、此項根據地、當為蘇門答臘或荷印之飛行塲云、</p>
+<p>倫敦三日路透社電軍事評論家稱、今日遠東方面均少消息、日方顯在集中力量、以圖進攻新加坡、其準備期間、自需相當時日、因此戰顯非易事、日本飛機則巳開始加緊襲擊新加坡島、其上英空軍根據地均甚暴露、恐無復能於防守中利用、日機亦曾轟炸爪哇島上荷蘭主要海軍根據地泗水、此舉可以表示日本空中活動範圍之廣泛、外傳日軍巳突過薩爾溫江上游之說、無證實之消息、日本目前或有可能將暫不攻擊新加坡、而移其攻勢於緬甸、圖以不斷進擊之方式征服荷印、目前日本在陸、海、空三方面均完全佔據主動地位、</p>
+<p>新加坡島上動靜</p>
+<p>新山四日同盟社電自此間遙望新加坡景物不甚淸楚、然以望遠鏡瞭望、一切動靜歷歷在目、如置身新加坡、英軍陣地亦在眼前、發現三烟囱類似巡洋艦之輪隻一艘擱淺於灘上、英軍海軍本部四周並無人類自該處軍港通柱新加坡市之公路上、軍用卡車往來繁忙、有將軍需品移往新加坡市方面模樣、海軍方面公路、一部份置有障碍物、以蔽視綫、故不能見車輛行駛、路上不見市民往來、殆已向四鄕逃避、該處觸目皆是堡壘、雖予偽裝、然仔細注視、可見堡壘槍口皆向新山、在軍港附近、有曾遭日機轟炸之重油油池二十六處、其中五處、至今尙在焚燒中、自望遠鏡並能望見海軍碼頭破壞之情形、該地一帶高射砲陣地、僅有四處、均在可斯威橋右側、高射砲陣之後面、即為雪律德飛機塲、然不見有一架戰鬥機或轟炸機起飛者、僅有類似運輸機飛起頗多、此或係向荷印方面退却、</p>
+<p>瑞士京城三日哈瓦斯電「聯合報」頃戰有駐倫敦訪員來電稱、新加坡雖已被圍因、但一切生活安謐如常、水菓蔬菜、均於數日前實行限制購買辦法、當局並已擬就計劃、在所有可耕地、種植各種蔬菜、惟飲料問題、仍為當局所關切者、據悉、當局業已採取各項必要措置、以防飲料匱乏、局勢雖極嚴重、但戲院及電影院、仍照常營業云、</p>
+<p>華維爾電勉英軍</p>
+<p>新加坡四日路透電　西南太平洋聯軍總司令華維爾將軍、今日致電被圍於新加坡島要塞之英軍、加以勉勵、電文略謂、吾人務必爭取時間、以待英美刻正遣來東方戰塲之生力軍開到、諸君須為每寸土地而奮戰、盟友荷人抱犧牲決心、正在荷印各地實施此項政策、至望諸君不復存退却之念、而使新加坡保衛戰如杜白魯克之同樣為人紀念一、</p>
+<p>瑞典京城四日海通社電據倫敦消息、英報及民衆對於仰光之命運、頗為關心、因仰光被佔及緬滇路被封銷、則中國將無接濟路錢、英報認新加坡局勢亦極嚴重、認僅有大批戰鬭機可救新加坡、此項機隊須駐於蘇門答臘、因新加坡之三機塲在日軍砲程之內、</p>
+<h3>顧維鈞　在英演說　論新加坡重要</h3>
+<p>倫敦三日哈瓦斯電中國駐英大使顧維鈞、頃在此間基爾特大廈發表演說、略謂、新加坡地位重要、故其安危匪特足以決定何方取獲無窮之資源、抑且足以決定何方在全世界戰爭之中佔得軍略優勢、日軍倘能佔領新加坡、南洋必將為日本所控制、果爾、則將大有助於軸心國所擬之大規模鉗形戰略、易詞言之、屆時德、日兩國即將同時並進、德軍由高加索、伊朗、伊拉克向東進攻、而日軍則自馬來及甫洋方面之新陣地向西進攻是也、</p>
+<h3>雪梨東海岸　演習防空</h3>
+<p>墨爾缽三日合衆社電澳洲巳停止與英帝國間之郵航、雪梨東部之一百二十七哩海岸區域，亦舉行防空及燈火管制演習、又澳總理寇丁聲稱，渠最近赴澳洲西部、與秘密防務有關、並已派遣貝爾西佛担任重要任務、</p>
+<h3>日軍公布佔領　婆羅洲斗湖港　安汷島尙在激戰中日機炸緬中部機場</h3>
+<p>東京四日同盟社電大本營今日午後十二時三十分宣布日本陸軍已於上月二十四日佔領北婆羅洲斗湖港、該地位於塔拉根北面一百公里、</p>
+<p>巴達維亞三日哈瓦斯電　官方宣佈、此間與安汶島各交通錢、均已中斷、但該島荷軍仍以寡敵衆、與日軍對抗、</p>
+<p>仰光四日路透社電官方昨夜宣布、日軍飛機昨曾兩次轟炸緬甸中部飛行塲、但仰光方面、昨日並無日機出現、僅發出兩次空襲警報、英機則曾掩護陸軍攻擊日軍陣地、</p>
+<p>日軍猛攻菲島美軍</p>
+<p>華盛頓四日路透社電陸軍部昨日宣布、菲列賓方面、日軍曾於上星期一夜、分乘大批駁船、由軍艦掩護、兩次企圖在呂宋島八打雁半島西海岸登陸、但未及到岸、即被我夜飛驅逐機數架所發覺、日軍迫近海岸時、海岸防軍亦即以大砲機關槍迎擊日軍向我左翼攻勢、業已緩和、我軍並曾向之反攻、二十四小時以來、日軍飛機活動亦見緩和、此外、我軍軍官披亞斯中將曾於作戰時受有輕傷、</p>
+<p>澳載客機被射擊落</p>
+<p>墨爾本四日哈瓦斯社電此間官方頃宣佈、水上巨型飛機「關達斯號、於上月三十日自達爾文港飛出、飛至蒂摩島首府古邦城上空、被日機擊落、前傳乘客十三人均已喪生、茲巳查明不確、業已救起旅客三名及駕駛員二名、</p>
+<p>墨爾缽三日哈瓦期社電澳洲聯邦航空部、頃發表自開戰以來最長之死亡名單、在太平洋上空作戰死傷之飛行員共九十二人、</p>
+<p>雙方空軍互相活動</p>
+<p>巴達維亞四日路透社電荷印方面日機、大舉襲重要海軍根據地　水及馬瓏與瑪第昂兩地飛機塲、安汶則仍有激戰、互有勝負、荷屬婆羅洲東岸之峇厘巴扳附近、戰事亦在賡續中、據荷印軍總司令部今日午後發表之公報、昨日轟炸爪哇數城與飛機塲之日轟炸機共七十或八十架、由戰鬥機衛護、其襲擊之主要地為泗水、瑪瓏與瑪第昂各處均有荷印戰鬥機起飛截擊、日機在泗水××××××××荷方損害甚重、惟詳情尙未確知、荷艦亦在數地遭空襲、</p>
+<p>華盛頓二日電美國陸軍部公報稱、美國飛行堡壘轟炸馬來亞半島吉隆坡及康潭等地、因天氣不佳、轟炸結果不悉、所有飛機均安返防地、飛行堡壘又前往襲擊峇厘巴板港與大隊日機發生激戰、</p>
+<h3>保加利亞山崩</h3>
+<p>保加利亞京城三日哈瓦斯社電斯達拉白拉里那公路、本日發生山崩、適有滑雪車五十輛經過、致釀成慘劇，死亡四人、又因大雪、及附近狼羣肆擾、故救護工作極感困難、</p>
+<h3>東綫激戰　蘇聯國防委員會　任命空軍副司令</h3>
+<p>柏林四日哈瓦斯社電官方今晨宣布、昨日東綫戰事甚為猛烈、</p>
+<p>倫教三日合衆電　德、蘇戰塲上、雖德軍抵抗力逐漸加强、但蘇軍在列寗格勒·莫斯科及卡科夫戰塲上繼續猛攻、此外蘇軍並加緊莫斯科西北之塞夫區攻勢、其威脅已及於莫斯科以西戰塲之德軍之全部陣地、在卡科夫一帶、蘇軍滑雪部隊攻該地以東之德軍陣綫、仍繼在續該方以南向西推進、</p>
+<p>莫斯科四日電蘇聯國防委員會決議任命空軍中將諾維克夫為空軍第一副司令、空軍中將彼得羅夫為第二副司令、</p>
+<p>土京四日海通社電　莫四科電訊稱、蘇聯國防會議新增委員兩人、一為國際貿易人民委員長料揚、又一為曾　要職之伏資奈與斯基、</p>
+<h3>河內昨發　空襲警報</h3>
+<p>河內四日海通社電　此間今日下午三時二十分、突發空襲警報、賡續十五分鐘之久、</p>
+<h3>蘇在烏拉爾　訓練新軍　工廠撤亞洲中部</h3>
+<p>莫斯科四日電蘇聯撤退各工廠、現均在亞洲中部恢復工作、同時在西伯利亞及烏拉爾積極訓練新軍、此項新兵均為二十至二十二歲之强壯靑年、莫洛托夫州則有七千女子代替男子在工廠中工作、</p>
+<h3>香港英軍　死傷人數估計</h3>
+<p>渥太華四日路透社電加拿大國防部長拉爾斯頓稱、香港駐軍實力總數約為一萬二千人、據英國陸軍部所獲報吿、估計守軍死傷約為總數三分之一、</p>
+<h3>太平洋方面　協約國三軍　將統一指揮　海軍總司令或先任命</h3>
+<p>華盛頓三日哈瓦斯社電此間海、陸軍主管人員談稱、太平洋戰爭之新發展、以及「近日太平洋方面之迭次開闢新戰塲」、益使現在太平洋作戰之協約國海、陸、空三軍、有加以統一指揮之必要、關於此事、英、美兩國軍界人士聞已在考慮中、自經紐西蘭自治領與澳洲聯邦一再要求之結果、大抵其第一步辦法、當為任命太平洋協約國海軍總司令，俾得首先統一海軍指揮、査赫德上將現僅為西南太平洋協約國海軍總司令、尼米茲將軍則為夏威夷要塞司令、目下太平洋戰爭旣為一大規模之海戰、自以統一指揮宜、</p>
+<p>瑞典京城四日海通社電　昨接華盛頓情報稱、太平洋協約國最高軍事會議之地點、聞將定在華盛頓、英相邱吉爾原欲使之設立於倫敦、卒因紐西蘭、荷印、重慶之反對、遂未獲如願</p>
+<p>荷印副總督促配合需要</p>
+<p>華盛電荷印副總督范穆克·在全國新聞協會發表演說稱、聯合國家在太平洋之作戰策略及目標、有彼此配合之急切需要、又稱吾人需要聯合一致之指揮部及目標、日軍苟突破亞·澳兩洲間之防綫、則日軍即可進攻中東前綫之背、欲免乎此、則太平洋上所需要之部隊與物資、必須儘速運往、荷印需耍飛機·高射砲·潛艇及其他小艇、美政府現充分認淸局勢之嚴重、范穆克又評論戰鬥艦之重要性、渠認為戰鬥艦在目前戰事中無何重要、因目前作戰之海面狹小、戰鬥殊受阻碍云、荷蘭外長克利芬斯在同一地點發表演說、據稱、英國亦深悉局勢之嚴重、即在援助之途徑上感到問題云、</p>
+<p>康白拉三日哈瓦斯社電澳洲聯邦外長談稱、政府決定嚴厲監督北昆士蘭境內外國移民之活動、甚或實行淸鄉、亦屬可能、綠當局近已接獲報吿、謂北昆士蘭之義大利移民、凡遵照法令將其新式槍械呈繳警察當局者、僅佔百分之二十、而義籍移民中、十分之九均對聯邦政府懷有貳心、軍警方面雖施行蘭邦敦士雜爾城居民、定今日舉行民衆大會、討論迅速組織「民團」問題、俾一方準備應付被侵、一方監視境內義籍移民、</p>
+<p>雪梨三日哈瓦斯社電澳洲聯邦礦業專家頃在此間舉行會議、當即決定倘日軍攻入澳洲之危機益逼近、則澳洲所有　產、均須加以破壞云、</p>
+<h3>輝縣秩序恢復</h3>
+<p>洛陽三日電　一月三十日輝縣有激戰、至三十一日蟯、秩序恢復、</p>
+<h3>救濟華僑款項　分配辦法</h3>
+<p>重慶以日電太平洋戰事爆發後、中央對於海外僑胞及在內地僑屬僑生之生活、甚為眷念、振濟委員會除與有關機關妥籌振濟事宜外、代委員長許世英復親赴閩粤桂三省指示救濟、並代表慰問、記者頃就振款分配情形、往詢振委會主管處處長孫亞夫、據談關於救濟僑胞振款、前經行政院指撥專款、本會目前先按一千萬元之數分配如下、　國外振濟費三百萬元、計振馬來亞八十萬元、荷印八十萬元、緬甸五十萬元、菲律賓二十萬元、北婆羅洲二十萬元、餘五十萬元作為準備金、　國內振濟費五百萬元、計夸三百萬元、閩一百萬元、滇五十萬元、桂二十萬元、餘三十萬元作準備金、　敎育振濟費二百萬元、分作學生曁海外內移文化人振濟費用、並以一部份創辦學校、至海外各地巳由我領事館會商當地有關機構、組織僑胞救濟委員會、並准就地募款辦理、又粤閩滇桂四省亦經分別組織緊急救僑委員會、振濟委員會另已飭昆明難民總站在臘戍組設辦事處、辦理僑民招待救濟接運事宜、並經商由紅十字會撥車載運僑胞返國、</p>
+<h3>華僑匯款　由財部收轉</h3>
+<p>重慶四日電　華盛頓華僑捐默國幣三萬元、加拿大安省駐都城華僑捐國幣十萬元、保地磨華僑捐二萬元、並電呈蔣委員長轉匯湘北、蔣委員長已將各該匯款交財政部收轉、</p>
+<h3>贛北粵東　均有戰事</h3>
+<p>重慶四日電贛江東岸綫廣福墟以南、板胡村西、梗萬附近贛江西岸方面在錦河南岸南順嶺等地、二有戰事、東江方面惠陽西北龍潭山附近惠陽西掛榜山鋼湖東鴨子步拗仔頭近有戰事、</p>
+<h3>英大使寇爾　離渝赴蘇　館務由艾倫代</h3>
+<p>重慶四日電　英大使寇爾爵士業於四日下午啟程赴蘇履新、館務在新任大使到任以前、暫由秘書艾倫代理、</p>
+<h3>葉楚倉電唁　韓國鈞家屬</h3>
+<p>重慶四日電　葉委員楚傖電唁韓國鈞家屬云、韓紫石先生家屬禮鑒、閱報載悉紫老棄養、曷勝愴愕、紫老邦家碩望、鄕國典型、於毫耋之遐齡、著天地之正氣、方冀靈光永駐、　欬重親、俄頃人天、停雲朔斷、撫今追往、感歎彌深、尙期順變節哀、勉承光志、敬電奉唁、順候禮安、葉楚傖、支印、</p>
+<h3>農民節紀念會　業已開幕</h3>
+<p>重慶四日電行政院去年公佈定二月五日為農民節、第一屆農民節紀念大會三日在巴縣新店子開幕、計舉行三日、第一日耕牛比賽、參加者農家耕牛百餘頭、由農林部主管長官評判、選定最優良耕牛十頭、第二日農業展覽、第三日（即五日舉行紀念大會、沈部長鴻烈將蒞會致訓、並發給耕牛比賽優勝農民獎品、</p>
+<h3>埃及國王主張　組織混合內閣　召各黨領袖垂詢竣事斯東任境英軍司令</h3>
+<p>開羅四日哈瓦斯社電國王法魯克召見各黨領袖、垂詢組織新內閣事宜、已於今日竣事、據聞法魯克主張羅致各黨人物、組織混合內閣、</p>
+<p>開羅三日哈瓦斯社電胡森內閣辭職後、國王法魯克頃授命哈里組織新閣、哈里接奉大命、巳立即開始與各黨接洽、</p>
+<p>開羅三日哈瓦斯社電國王法魯克本日接見英大使藍浦森有所接洽、談話內容、與埃及現行閣潮有關、據此間消息靈通人士所知、埃及內閣此次辭職、不僅由於對法絕交問題、全國糧食恐慌、亦為主要原因、衆議院最近一次開會時、各方對於政府措置農事不當、嚴加指責、若干議員以埃及如此豐饒之國家竟受飢饉、不勝驚駭、去年所貯小麥、至本月杪即將消耗一空、而新麥須至本年四月登塲、情勢如此危急、政府竟一籌莫展、因此要求胡森總理設法自英國輸入大批小麥、否則即當引咎辭職云、</p>
+<p>倫敦三日哈瓦斯社電　路透社開羅消息稱、埃及內閣之宣布辭職、實因總理決定對法絕交所致、査內閣決定對法絕交時、國王法魯克適不在京中、迨國王返京、即要求外交部長辭職、胡森總理表示與外長見解從同、亦提出辭呈、當由國王予以接受、英政界人士以胡森對於英埃盟約全文一向忠實履行、此番竟掛冠而去、深為扼腕云</p>
+<p>倫敦三日哈瓦斯社電政府頃任命英國駐埃及軍事代表團領袖斯東少將為埃及英軍總司令、</p>
+<p>戈林訪義目的有關北非戰略</p>
+<p>瑞典京城四日海通社電　倫敦電訊、德國戈林上將訪問羅馬一事，曾引起倫牧人士種種推測、倫敦政界人士相信、戈林訪義必與由心國在北非之戰略有關、倫敦人士預料、德義聯軍或有突入埃及之可能云、</p>
+<p>羅馬四日哈瓦斯社電德航空部長戈林上將、現巳展期歸國、並曾於今日會見墨索里尼首相、且與義大利參謀總長加伐勒洛將軍討論戰略甚久、</p>
+<p>開羅四日哈瓦斯社電中東項軍總司令部今日宣布、印度軍一師、已自　即前面陣地撤退與里比亞英軍主力取得聯絡</p>
+<h3>秘魯洪水為災　四百人殞命</h3>
+<p>阿根廷京城四日海通社電據此間息、烏魯培巴區之議員昨在秘魯議會中稱、秘魯南部烏魯培巴區洪水淹沒鄉村、因此有四百人殞命、該村之居民一千五百人成為無家可歸、造成水患之吐里奧麥育河之水位、仍在高漲中、</p>
+<h3>英與阿比西尼亞　簽訂政治協定　允予薩拉西以經濟援助並附軍事公約駐兵該國</h3>
+<p>倫敦三日哈瓦斯社電英政府曾於上月三十一日、在阿比西尼亞京城與該國訂立政治協定、並附以軍事公約、規定英軍得駐防該國、並設法撤退義大利俘虜、該約有效期間定為二年、英政府允以貸款給予阿皇薩拉西、惟最多以一百萬鎊為限、如條約有效期間繼續延長、則英國得於第三年中、再度貸款五十萬鎊、第四年二十五萬鎊、英國並得派遣軍事代表團前往阿國、負責改編其陸軍、大約即以奪獲之義軍配備授予阿軍、此外、英國法官當參加阿國一切司法審判、阿政府並當頌布命令、廢除奴力制度云、</p>
+<h2>Page 3</h2>
+<h3>工部局再添辦事處　簽發回鄉證件　山海關路及麥根路兩處</h3>
+<p>工部局情報處公吿云、本局定於二月五日上午、增設新辦事處三所、辦理回鄕通行證暨旅費半價券之簽發事宜、各該新辦事處之地址擇定如下、　馬白路二十五號（近戈登路）華童公學內、　山海關路四四五號育才公學內、　麥根路戈登路轉角工務處工塲內、同時本局商團操塲暨商團辦事處內、亦簽發通行證曁半價券、此外本局並設置流動隊、準備分赴各工廠與工塲（有二十名以上之工人離滬者）簽發證件、有工廠多家業經工業社會處發給通行證申請書、此項申請書倘經塡就、應以電話通知該處（電話一五三四九號轉十九號分機）、任何廠家欲得申請書者、可以電話向該處索取、或往任何簽證辦事處領取、</p>
+<h3>環球體文兩小學　尙有免費餘額　今日續布中學組名單</h3>
+<p>本報讀者助學金免費學額申請、巳於昨日截止、茲査卡德路一九一號寰球小學及寗波路石路東三六三衖體文小學、尙有餘額、凡家境淸寒、學行優良之初高小學生、均可繼續申請、此項餘額、因距開學期近、擬申請者應即日來館索表塡具、或先來信附證件、然後再補手續、惟申請僅以上述二校為限、如為其他學校、登記處拒收、請各注意、昨日收到之捐款計為唐艾氏一百元、三畏堂殷五十元、李珠四十元、共計一百九十元、前存五萬六千零三十七元三角七分、共結五萬六千二百二十七元三角七分、謹向捐款諸君致謝、</p>
+<h3>限制提存辦法　各行莊允通融辦理　撥款單儘量支撥十足通用　旨在調劑金融助各業發展</h3>
+<p>銀錢業會員各行莊、自遵照聯合會頒佈之銀行錢莊營業暫行辦法辦理後、整個金融已趨穩定、銀根寬裕、今為調劑金融扶助各業發展起見、對各公司工廠行號支付款項、特別予以通融辦理、雖規定十二月八日以前之活期存款、按戶每三天支付五百元、惟如係確實正當用途、得由各戶直接與各行莊洽商、不予限制、各戶所出支票准予通融收現、行莊撥款單已十足通用市上、深得各持券人之信仰、且各業支付撥款單儘量支撥、聞俟過各業總結賬期後、以前之營業暫行辦法即可撤消、關於各行莊營業時問、暫為上午十時至下午一時、惟依照工部局新時刻計算、</p>
+<h3>工部局　售麵粉　每袋五十元</h3>
+<p>工部局頃發布吿略稱、自本月五日起、凡經本局暨法租界公董局收買之各種麵粉、當以每袋（電四十九磅）國幣五十元之批價出售、至於麵粉之零售價格、以及粉製物品之售價、常於本星期五另行公佈之、</p>
+<h3>戶口調查　進行順利　借用郵工協助</h3>
+<p>英文大美晚報云、租界當局舉行之戶口調查、今（四日）晨仍在順利進行、公共租界內業已發出調査表格約三十萬份、而從明日（五日）至星期五、復將發出同數之表格、西區方面則範圍殊小、迄今僅以表格約千份、分發該區外籍居民、進行亦頗滿意、該區調查事宜、當可於二月二十日前結束、兩租界之戶口調査、則於二月十日左右、即可　事、</p>
+<p>關於法租界調査戶口事、除出動警務人員外、並由馬斯南路郵局、借用郵務員工、襄助一節、據悉是輩襄助法警務處調査戶口郵務員工、並非全屬於馬斯南路郵局、蓋自兩租界限制汽車行駛、及汽油缺乏等原因、郵政管理局運送總局與支局包封汽車五輛、亦隨之無法出動行駛、遂由局方向各局抽調信差郵工共得七十名、改以脚踏車運送是項包封、茲以法公董局向郵政管理局商借郵工襄助法租界內調査戶口工作、當經局方指派是批運送包封郵務工人擔任、並由法公董局每日供給汽油十五加侖、使五輛運愉包封汽車、仍得出動、不致影響郵務為條件、茲是批郵工、已於本月一日起、執行法租界內調查戶口工作、而法公董局亦每日以汽油送給總局、以供運輸包封輛出動工作、</p>
+<h3>工業原料　催辦登記</h3>
+<p>工部局公吿云、査關於設在公共租界內一切廠家及工塲、凡雇用工人三十名以上而欲在本年內營業者、應將其每月需用原料數量向本局登記一事、業經通吿辦理在案、登記表式可向本局商團操塲內索取、一經塡具、應由負責人員送交本局第八〇三號辦公室核收、表內所需塡報各項、均應切實塡具、良以將來各廠之原料供給、或將視其塡報數量之是否正確而定、截至目前為止、登記表已經領去者凡六百餘份、但尙未請領者、仍屬不少、應即上緊索表塡報、勿再延遲、登記事宜、限於本月十一日下午四時辦竣、至於日商所辦以及現由日本當道統制之各廠、可母須登記、</p>
+<h3>工部局辦理　木炭登記</h3>
+<p>工部局頃發布吿略稱、凡持有一五〇公斤（或三百斤）以上之木炭存貨者、應於木月八日以前向本局報請登記、但日僑所有之存炭、已向日本當局登記者、毌須再向本局登記、登記存貨時、應將每種木炭之重量、以公斤標明、並按照其產地（如湖州·長興·嘉興·硤石·長興·寗海·杭州·）而定共種類、存貨之總簍數、以及每簍之重量、連同存貨地點、一併詳細註明、登記書式可向本局第三三三號辦公室索取、一經塡具、務即迅送該辦公室核收、不遵照木布吿來局登記之存貨、當予沒收、不另給價、</p>
+<h3>外埠匯滬匯票　限制即將撤銷滬滙淪陷區限制廿元</h3>
+<p>外埠滙上海滙款、自將限制寬放為五十元以下滙票均可兌付後、公衆已稱便利、昨據大通社記者探悉、郵政儲滙局與上海郵政管理局會計股、現正磋商撒銷限制、便利外埠滙滬滙款、不論數額多少、均可兌付、此事已商有結果、下週可望實行、至上海滙淪陷區滙款、亦已施行限制、每人最多祇能開發二十元為限、二十元以上、暫停開發、</p>
+<h3>萬國體育會　新春大塞馬　本月十六日起連賽三天　本月廿一日舉行大香賓</h3>
+<p>高國體育會將於本月十六日（星一）十七日（星二），十八日（星三）及二十一日（星六）、即農曆新正初二日·初三日·初四日及初七日、假座上海跑馬總會舉行新春大賽馬四天、前三天各自上午十一時起賽、第四天則於下午一時一刻起賽、即日起發售新春大香檳票、其辦法與上海跑馬總會春秋二季大香賓票同樣辦理、每全張十一條、計幣十元、分條每條一元、定額為三萬張、頭獎有獨得十一萬七千六百元之多、香賓大賽定於第四天即新正初七日第七次賽開獎、搖彩票前三天每天每套二十元、第四天連新春大香賓一全張在內三十元、四天合購共計九十元、一號至八百號槪可預定、聞該會為救濟赤貧起見、特定於本屆大賽凈盈所得、提出三分之一、捐交本埠各華人慈善團體、</p>
+<h3>西比利亞皮貨減價</h3>
+<p>靜安寺路一一三五號第一西比利亞皮貨商店、出淸存貨大賤賣、本已滿期、嗣以營業特盛、向隅者多、爰徇顧客要求、展期一星期、刻又已賸最後三天、期滿後決不再展期、</p>
+<h2>Page 4</h2>
+<h3>法捕房督察沈金書　傷勢轉劇亡故　定明日舉殯</h3>
+<p>法捕房正探目沈金書、任職已歷多年、去年十月十一日上午九時許、沈自家出外、赴捕房辦公、在辣斐德路菜市路口十七路無軌電車上、突被人開槍狙擊受傷、送入醫院診治、後傷勢已稍轉好、而法捕房常局以沈迭者功勳、故於事後升任為華督察、詎至前日沈之傷勢突然變劇、竟至不治身死、屍巳由家屬棺殮、並定於明日舉殯、屆時法捕房將派全班華探及中西捕等前往執紼、以誌哀榮、</p>
+<h3>兩租界行駛汽車　祇九百餘輛　下月換領新證時將再經當局選</h3>
+<p>兩租界當局為加强對汽車限制事、曾將行駛汽車數量、减至一千餘輛、並頒發許可證、由車主黏貼窗上、以資識別、其第一期許可證、於上月廿三日起停止簽發、其有效期亦規定至上月三十一日截止、二月一日起第二期新許可證開始簽發、而核准行駛車輛數目、益較上月减少、計公共租界上月內核准行駛者共八百五十四輛、此次又减三百輛、僅剩五百五十四輛、又法租界內本月份核准行駛者亦僅四百餘輛、較上月份之五百餘輛、計减百餘輛左右、故目前領得行駛許可證之汽車、兩租界共計祇九百餘輛、此第二期許可證之有效期、大致亦為一個月、至下月又將領換新證、再經租界當局之嚴格甄選、</p>
+<h3>賭博歸來遇刦</h3>
+<p>英文大美晚報云、昨（三日）夜河南路會發生賭徒遭路刦案、事緣華人某甲在南市賭博、所贏頗巨、事為一匪所見、該匪或係賭窟所雇用者、待某甲滿載而出賭窟、該匪尾之、抵河南路靜僻處、即出錫製假手槍、抵某甲之面、勒刦款項、某甲被迫出款交之、然心有不甘、匪徒逃逸時、適有警員一名經過其地、遂　警捕獲該匪、然某甲亦被拘入捕房、被控犯賭博罪、</p>
+<h3>招領迷路兒童</h3>
+<p>工部局兒童保障科招領沐路兒童、　女童趙美珍、年六歲、被歹人剝去衣服後迷路、其家住在一令同烟紙店、此女面圓平頭、　女童劉文英、年六歲、寗波人、其父從事於翻沙業、其母為奶娘、此孩身穿破黑緞棉襖褲、上罩綠綢夾襖、　女童楊美月、年十四歲、湖北人、新近來滬、住嬸母家、因購米迷路、其嬸母家住於一大東米店相對過、其父與叔皆在船上做事、失孩家屬、希於每日上午十時至江西路二〇九號工部局六一〇號寫字間接洽、</p>
+<h3>女靑年會施發寒衣</h3>
+<p>上海女靑年會月前為施發寒衣、舉行義賣、現寒衣三千件早已縫製完畢、各界紛紛申請領取、茲己將發完、但天氣尤見嚴冷、故該會又添製數百件、以應社會之需、凡貧苦老婦年逾五十、或幼兒在六歲以下者、於本週內皆可經會員介紹、往戈登路武定路大康里該會所領取、</p>
+<h3>節電聲中之佳音</h3>
+<p>本埠愛文義路一二八一號震華電器公司出品之金光老牌燈泡、製法精良、素為各界採用、現該公司為遵奉工都局節電原則、特精工製造大批二支光燈泡、以迎合市民需要、聞定價平民化、每隻祇收成本一元五角、物美價廉、全滬風行、自可預卜、欲購者請撥電話三九一○）一、當即專差送到、力金分文不取、</p>
+<h3>山東新泰郵包停收</h3>
+<p>郵政管理局包裏股頃通知、寄往山東區新泰局及其所屬羊留及　陽鎭兩代辦所之一切商品包裹及大宗小包郵件、自本月六日起、均應暫停收寄、</p>
+<p>昨日本報發報時間六點十分</p>
+<p>體育新聞</p>
+<h3>西靑籃球聯賽決賽　聯星榮贗甲組冠軍　昨一對六力克巨人</h3>
+<p>西靑籃球聯賽、甲組聯星與巨人昨晚三度會師於西靑球房、爭奪甲組冠軍、雙方各出全力、演來精彩熱烈、巨人先得三分、繼以七對一前領、聯星況着應戰、打成各八平手、史密斯偷襲、學崇破籃、上半時隨之結束、十對十不分勝負、易籃後、聯星强杜萊捷報先傳、從此聯星即一路領前、巨人終隨後、十七對十五時、學崇忽以四次犯規被罰、錫麟入替、聯星實力未損、二十對二十一、巨人僅以一分落後、至此聯星氣燄大熾、如入無人之境、突增十分、總結三十一對二十六、聯星克巨人、獲冠軍、巨人六勝三負居亞軍、</p>
+<p>昨賽結果上行勝晨友（乙）十九——十四藍白乙勝法捕（乙）三四——二四聯星勝巨人（甲）三一——二六</p>
+<h3>今晚中靑籃球　強華再戰西靑</h3>
+<p>中靑對抗籃球義賽、第二幕定於今晚七時一刻仍在八仙橋該會健身房交鋒、由强華二度戰西靑、査有次賽、强華着着佔先、不幸於最後一分鐘被西靑扳成和局、</p>
+<h3>中靑百鎊　籃球賽藍萍榮獲冠軍</h3>
+<p>今日最後二塲中靑年會少年體育部舉辦之二屆百鎊籃球賽、參加者共計八隊、全部秩序、僅餘今晚最後二塲、已無關大局、該賽藍萍隊七戰七勝、榮膺本屆冠軍、今日最後二塲秩序如下、異鄕——童星下午二時靑島——健靑二時三刻</p>
+<p>商業新聞</p>
+<h3>公債飛黃騰達　丙戎見新高價</h3>
+<p>公債　盤、昨市更費黃騰達、自戊種中　號馬公佈後、人心趨向、顯已變更、蓋遠如重慶昆明等處不論外、近省如浙之金華以及非淪陷區、皆可收取本息、是以買戶特湧、今更不啻加以保障、昨日一漲、丙戊兩種、已見暗盤新高價、人氣甚為堅昂、加以多方以銀根鬆濫、更不願放手、前途恐仍將繼續良好、丙種開盤即穿出八元為八元一角、戊種開盤即穿出六元為六元二角、巳見新高價、以買戶衆多、價更逐步趨漲、丙種見六十八元八角暗盤新紀錄、收盤為八元七角、戊種收盤為六十六元七角、亦係暗盤最高價、甲種為七十二元七角、乙種為六十九元五角、高至九元九角、收盤為九元七角、丁種為六十四元四角、亦均與以前高價相埒、計共叉漲六角至一元二角不等、成交約四十餘佢元、又聯誼分開會、對於陰歷明正初五日開做紅盤之舉、尙無具體解決、外股尙屬穩堅、紙業五元四五角、軋升三角、怡和啤酒五元二三角、開平二十九元五角、怡和紗廠略低為二十四元半、上海毛絨五元半、公共汽車九元、墾殖二十元零七角半、英楂華二十元、克羅華一元九角、蘭格志十四元六角、業廣進出十四元三角、及十五元、英聯十八元六八角、信和紗廠進出五元七角、及六元、中紡及中營均八元、亞洲航業七元八角、電車三十一元、祥秦木行二十三元、自來火八元半、加倫丹八角、橡皮十三元、英達區十二元四角、陳時進出七角半、及一元、楂華康沙進出二元半、及三元、鋼業十五元、地傍一元三角有賣戶、鄂省公債亦於十二月十日在恩施抽籤、於三十一日由湖北省銀行付還本息、茲節錄中籤號碼於下、湖北省善後公債第二十次還本、中籤號碼千元票為二〇·四〇·五·七八·八五、百元票為〇五·二六·五一·六三·九六、十元票為二四·三五·五七·七一·八六、五元票為二二·五五·五八·六九·九七·等各五支、共付本息國幣十五萬六千元、湖北省整理金融公債第十六次還本、其中籤號碼為〇一·四〇·四一·七一·九〇·等五支、共付本息國幣二十五萬二千八百元、湖北省建設公債第十四次還本、計抽中籤支號碼為一八·三一·五六·六三·八七·等五支、共付本息國幣三十九萬七千二百元、湖北省金融公債第三次還本、計抽中號碼為二八·七六·兩支、共付本息　幣三十九萬零四百元、</p>
+<h3>現金萬二千元關　出而復入</h3>
+<p>現金粭赤暗市、漲後突回、一萬二千元大關衝出後瞬即回人、乃借款消息、及廢曆年關、中資階級脫貨求現、晨初為一萬一千六百元、計低卅兀、而塲內首先成交十兩、為一萬一千八百元、成記等金號及南京幫小額收吸、叉升二百五十元、出一萬二千元關、最高一萬二千〇五十元、合發同康永力售、退至一萬一千八百元左右、最後為一萬一千七百卅元、比上日尙漲一百元、當日四百五十元高低、交易日稀、首飾金每兩仍掛一千二百五十元、紋銀十四元、黑市十元〇五角有買戶、外幣市況、英美金鎊各升十元、前者為二百九十元、後者為三百元、美金票曾高至十六元七角、最後為十六元五六角、香港票二元七角八分、大票仍須减小一角、</p>
+<h3>雨雪再途　米糧愈昂</h3>
+<p>國米昨市鋒芒俞甚、南幫早薄稻自連日雨雪阻途後、到源日少、而本街各戶納胃依然見貪、早市一度平定後、即被進戶放價抬高、薄稻自晨開二百十元、一躍而達二百十八元、早稻至二百十九元、猛漲十一二元之巨、厚粳崑山高粳開二百四十元、大市二百卅七八元、原包宿粳二百三十元、並提五元左右、僅白元到貨蟬聯、去路不暢、略為帶緊、開二百零四六七元、</p>
+<p>麩皮昨日內地鄕戶需胃甚貪、而巿上到存均稀、廠出亦少、三鑫麩皮即大至五十八元二角、叉比前價步漲七角、成交五百包、</p>
+<p>雜糧市況昨仍激昂、黃豆苞米　赤豆生仁　亦見昂俏、計開崇明沙黃一百包、價為一百二十三元、臨淮關黃豆一車、價一百三十八元、浦東杜豆五十包、價一百三十二元半、平湖赤豆五十包、價九十三兀、江北新生仁一百包、價二百三十元、嗬　白苞米二百包、價五十二元至五十二元二角、西　陳苞米一百包、價五十四元、又新苞米三百包、價五十六七元、又包送到五十九元半、又英華司一百噸、鴻升棧貨價為九十六元半至九十七元、</p>
+<h3>棉紗買戶活躍</h3>
+<p>棉紗巿况、賡續前進、此因人心良好、買戶又見活躍故也、二十支雙馬廠單初開為一千四百元、較上日疲二十五元、旋以買者逐步增加、升至一千四百七十元、最後又高至一千五百元、比上日漲七十五元、保現貨雙馬價為二千一百七十元、四二支鳳凰四千〇五十元、現貨為四千二百元、三十二支仙桃為三千六百元、二十支藍　價二千四百五十元、廠單二十支月零二千三百五十元、廠單為二千二百元至二百五十元、十六支紅奎星為一千七百元至一千七百五十元、</p>
+<h3>東棧單貨</h3>
+<p>——漸與現貨軋平——</p>
+<p>廠布　昨白貨售盤平定、無甚榮辱、惟色貨府綢及藍府綢稍見升騰、成交極少、</p>
+<p>東布　因聞日商洋行可代領移動證、手續較為便利、故棧單貨漸與現貨軋近、十二磅配頭細布廠單自八十九元五六角、開盤升至九十元零五角、較之前日又好七角半、現貨九十一元五角、漲五角、彩球陽鶴廠單升至八十七元二角半、現貨八十九元二角半、四君子　　現貨平庸、仍售三元零五六分、棧單則迴旋於二元八角九分至九角二三分、較漲每碼五六分、</p>
+<h3>馬牙棗回振</h3>
+<p>馬牙棗、前巿曾由一百五十餘元、降至一百一二十元、但邇來以到缺銷活、遂見回振、中莊貨復到一百四五十元、特高莊肉厚而個大者、則升至一百九十元矣、</p>
+<h3>金菜漲風復熾</h3>
+<p>金針菜因南京巿價步漲、而本巿銀行棧被封之貨、迄未可出、故現貨軋缺、市價一再上升、迭見高峯、現頂莊菜已開至三百五十元、又升五十元、上中貨開三百元、升四十元、</p>
+<h3>柑橘（二）</h3>
+<p>— 高劍農</p>
+<p>叫人奇怪的是晋人嵇含：他在所作南方草木狀上，對於旁的植物的體態，有時描述的非常詳盡，而獨對於「橘」的形狀，只用「橘，白華赤實，皮馨香有美味」十一字以了之：對於「柑」，也只說了「柑乃橘之屬，滋味甘美特異者也：有黃者，頳者，　者謂之壺柑」的寥寥幾句話：或者他以為柑橘是我國所固有和為人人所習見的東西，不需要浪費筆墨去刻畫它們麽？我們現在知道柑橘是屬於芸香科柑橘屬的梳物，因為它們繁殖的是那麽容易，</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>吃年夜飯與戒殺生</h3>
+<p>— 寥霂</p>
+<p>「凄風苦雨愁煞人」，在夏曆的歲暮年終度此景象，眞有佛曰「不可說」之感；然而時間不肯讓人，終於曾經輕輕地飄過，叉悄悄地一度來臨了。昨天是「立春」，我們不久就要迎接「春節」。</p>
+<p>在通常時候，一年辛苦，稍歇下來點綴點綴，謝年祭祖之下，一家團聚快快活活吃年夜飯，也是人生之一樂。數杯濁酒，幾味膾羹，在人情上講，誰也不敢說是太浪費，也自有它令節的意義。即使是表現得闊綽一些，殺一些雞鴨，煮若干魚肉，托神靈祖宗之福，也彷彿是熙熙攘攘者應有之權利。</p>
+<p>然而時至今日，令節當前，如要多分我一杯羹，不能免俗來奉行一番，我想一班平糴米者眞要大皺其眉，徒作苦笑而已，這和一些嚴肅的佛家與革命家，雖有若干的距離，然而「山梁雌雉，時哉時哉」，也是彼一時也，此一時也。</p>
+<p>有些人還歡喜硬起頭皮來奉行故事，大吃其年夜飯，不肯從事於節約運動；但度此良宵，明日如何？於是不敢太樂天的就應該打算打算良宵佳節之後也要支撑生活一下。鬼神之事，藐乎遠矣；口福之樂，祇度眼前。——這就叫人引起一種特殊的情感來。</p>
+<p>中敎道義會在提倡戒殺而救生，救物而救人，雖然或有以為是老生常談，但體味之下，今日確有其意義。「東鄰殺牛不如西鄰之淪祭」淪祭者，煮蔬菜以祭也，亦勉力之祭也。愼終追遠，自不可忘其根本，亦更要抱着「悲天憫人，物傷其類」的觀念。苦中作樂，有些難堪；節省糜費，還可做些有益於人之事。</p>
+<p>淸彭際淸除夕有感詩云：「鄰雞夜夜競先鳴，到此蕭然度五更；血染千刀流不盡，佐他杯酒話春生。」我亦有簫然之感也，悲哉！</p>
+<h3>舞臺與銀幕</h3>
+<p>華德畢勤與瓊裴納合演的「獵人記」，為轟動一時的刺激片，滬上影迷，望眼欲穿。茲悉片在香港，一俟局勢穩定，即可來滬。</p>
+<p>西蒙西蒙自「七重天」之後息影已久，今春曾應電雷華之請，與華德許士敦合演一片，名All　That　Bloney　Can　Buv，聞此片於太平洋戰事發作前巳運到滬上，不久當能付諸公映。</p>
+<p>— 多寳</p>
+<p>「地老天荒」已攝竣，十二日起在金都公映，做過新年。「亂世風光」的演員陣容，導演吳仞之已擬定夏霞石揮黃宗英端木蘭心陳璐梅邨等淸一式舞臺人。</p>
+<p>— 二靑</p>
+<h3>秋海棠</h3>
+<p>— 秦瘦鷗</p>
+<p>十七　歸宿</p>
+<p>「我……已經……很……很需要有……有一個永……永久……的歸宿……歸宿了！」秋海棠的聲音是低得像耳語一樣。「孩子……，我所……所放心不下……下……的就是……你還沒……沒有……一……一個暫時的……歸宿……。」</p>
+<p>說着，他就從枕頭下面慢慢地抽出一張照片來。</p>
+<p>「對於你……，」他用一雙毫無精神的眼珠，看定着這一張十幾年來從沒有同他離開過的照片，斷斷續續的說：「我……我也是……覺……覺得很……很對不起……的。當初……，我原……是……是為了……不願……讓……你……你看見我……我這一張……醜……臉……，又不……不願使……使你……你隨着……我……吃苦……，才硬……硬生生地……避……避開了你……你。現在……現在是……懊悔……也來不及了……。」</p>
+<p>梅寳看他說得很吃力，忙斟了半杯開水，和着那個大夫所留下的止喘藥，收住眼淚，走上去喂給他吃，一面還把他手裏所捧着的那張照片接了過去。</p>
+<p>「爸爸，歇息歇息吧！明兒咱們一定再去換請一個更好的大夫來，隨便怎樣，總要把你的病看好。」梅寳很穉氣地說。（三二五）</p>
+<h3>「聞雞起舞」</h3>
+<p>— 王秋水</p>
+<p>報載：「各娛樂塲所因提早打烊後，損失重大，特聯合向當局呈請，在節電原則下，酌將營業時間延長。」</p>
+<p>報載：「當局重申前令，娛樂塲所打烊時間，仍嚴限每晚十時前。」</p>
+<p>報載：「新發明晨餐舞，每天上午九時起。」</p>
+<p>對於上海的跳舞塲經營商人，我們不得不佩服，為了替自己營業打算，為了替大衆謀幸福，（娛樂是每個人調劑疲乏的必需品，謂之曰「大衆幸福」，想非溢譽。）不惜去碰那麼一惆大釘子。但是略為動動腦筋，便繼着午餐舞，茶舞，晚舞之後，而產生了晨餐舞，隨時隨地，欲舞則舞，於是營業收入增加，而大衆亦莫不稱便。</p>
+<p>俗言「大腹善賈」，像發明晨餐舞的商人，應該算是「善」之時者也。在生意眼和適應現環境兩個觀點上看來，晨餐舞自有其價値；因為夜市旣吿消滅，人們的睡眠必然增多，睡眠和喫飯一樣，喫飯過飽，反足傷胃，睡眠過多，也足以使頭腦昏糊，這麼一來，早起之後便可到舞場裏去跳上一兩小時「醒腦舞」，順便進早餐，兩得其所，保證一天精神健旺。跳舞一事，據說是有寓運動於娛樂的意義，但願上海仕女們都去跳舞，因跳舞可早起，因早起可增強體格，「晨餐舞」，僅在舞的程序中「聊備一格」，却另有莫大之助焉。</p>
+<p>新鐘點實行之後，九點就是八點，從茲以往，在晨光曦微中，舞侶們便須載欣載奔，誰說上海人生活頹廢和不振作哩，君不見今日之下，她或他們巳在實行「聞鷄起舞」嗎？</p>
+<h3>雪下人</h3>
+<p>— 華京</p>
+<p>前一陣孤島二次降雪，當夜馬路上凍死者　增。諺云：「江南三尺雪，人道十年豐」，現在可改為「上海一夜雪，街頭露屍增」！有許多人說：這許多凍死的人都是吃白麵，紅丸，自作自受，死有餘辜；但是其中孩屍竟佔半數以上，可見路斃者並非全係有毒癮者，請睡在溫暖的被窩做着好夢的人發發慈悲，想個辦法救救這些雪下可憐蟲！寒冷的氣候還有長時期的繼續，正不知尚有幾許雪下人在「候補」呢！</p>
+<h3>王次龍在港逝世</h3>
+<p>— 太虛</p>
+<p>今天又將報吿讀者們一烟不幸的消息，是王老五王次龍在港逝世。</p>
+<p>王次龍在銀壇上也是一位老將了。在大中華百合時代，「銀壇霸王」王元龍出足風頭的時候，次龍可以說是左右手，「美人計」「王氏四俠」都是不可炙手的作品。這十五六年間。多少影星況落了，而他們倆還是兀然不動。戰事以後，次龍是國聯公司的駐港導演，胡蝶的「蝴蝶夫人」本來是預備年底上映的，現在不但因為「八日」而停頓，而且也是永訣了！</p>
+<p>這不幸的消息是王元龍昨天有信從香港寄來的，其他留港影人的消息則並未提到。</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.02.05</h1>
+<h3>The Active Japanese Air Force: No Change in the Battle of Xin'dao (Singapore Island); British Forces Await Japanese Attack on Australia; Long Broadcast States Reinforcements are on the Way</h3>
+<p>Tokyo, 4th (Domei News Agency) - Japanese planes and artillery continued to bombard Singapore today. Japanese aircraft also intensified their attacks on British positions in central Burma. As for the Japanese ground forces, it is reported that small units are crossing the Salween River westward.</p>
+<p>Singapore, 3rd (Havas) - An official communique has been released stating that in the past twenty-four hours, Japanese aircraft have been extremely active over Singapore, repeatedly bombing military targets and causing several fires. However, casualties were very light.</p>
+<p>Tokyo, 4th (Haitong News Agency) - According to war reports from Xinshan (Johor Bahru), the gasoline depot at Seletar Fortress in Singapore, which caught fire after being hit the previous morning, was still burning yesterday. The fire was very intense.</p>
+<p>Singapore, 4th (Reuters) - Japanese aircraft continued to attack Singapore yesterday. British air defense forces actively resisted. British and American forces anxiously await a land attack. According to today's Far East British Command communique, there are no changes to report in the battle situation. British artillery shelled Japanese motorized transport units in Xinshan. Xin'dao (Singapore Island) was attacked several times by Japanese aircraft yesterday, suffering slight damage, but there was no Japanese aircraft activity over Xin'dao from last night until this morning.</p>
+<p>Bangkok, 4th (Haitong News Agency) - Australian Army Minister Ford, in a broadcast from Canberra to Australian troops in Singapore yesterday, stated that Allied reinforcements are on the way and that Japanese actions can be stopped at any time.</p>
+<p>London, 3rd (Havas) - The Daily Telegraph reported today that while the Japanese army is developing an offensive against Singapore, although we will soon be unable to use the island's airfield, it is not impossible for our planes to operate over Singapore. This is because there are other bases within the operating range of our fighter planes, presumably airfields in Sumatra or the Dutch East Indies.</p>
+<p>London, 3rd (Reuters) - Military commentators say that there is little news from the Far East today. The Japanese are apparently concentrating their forces in an attempt to attack Singapore. The preparation period will take some time, so this battle will clearly not be easy. Japanese aircraft have begun to intensify attacks on Singapore Island. The British air force bases there are very exposed and are unlikely to be useful in defense. Japanese aircraft have also bombed Surabaya, the main Dutch naval base on Java Island. This shows the extent of Japanese air operations. There are unconfirmed reports that the Japanese army has broken through the upper reaches of the Salween River. It is possible that Japan may temporarily refrain from attacking Singapore and shift its offensive to Burma, aiming to conquer the Dutch East Indies through continuous attacks. Currently, Japan is in a completely dominant position in land, sea, and air.</p>
+<p>The Situation on Singapore Island</p>
+<p>Xinshan, 4th (Domei News Agency) - The scenery of Singapore is not very clear from here, but with binoculars, all movements are clearly visible, as if one were in Singapore. The British positions are also in sight. A vessel with three smokestacks, resembling a cruiser, was found aground on the beach. There are no people around the British naval headquarters. On the highway connecting the military port to Singapore city, military trucks are busy traveling, seemingly moving supplies to Singapore city. Part of the highway near the naval base is blocked to obscure the view, so it is impossible to see the vehicles traveling. No citizens are seen on the road, presumably having fled to the countryside. The area is full of fortresses, which are disguised, but upon closer inspection, the gunports of the fortresses can be seen pointing towards Xinshan. Near the military port, there are twenty-six heavy oil tanks that were bombed by Japanese aircraft. Five of them are still burning. The extent of the damage to the naval docks can also be seen through binoculars. There are only four anti-aircraft positions in the area, all on the right side of the Causeway. Behind the anti-aircraft guns is Seletar Airfield, but there are no fighters or bombers taking off. There are quite a few transport planes taking off, perhaps retreating towards the Dutch East Indies.</p>
+<p>Bern, Switzerland, 3rd (Havas) - The "United News" recently received a dispatch from its London correspondent stating that although Singapore is surrounded, life is as peaceful as usual. The purchase of fruits and vegetables has been restricted a few days ago. The authorities have also drafted a plan to plant various vegetables in all arable land. However, the issue of drinking water is still a concern for the authorities. It is understood that the authorities have taken all necessary measures to prevent a shortage of drinking water. Although the situation is extremely serious, theaters and cinemas are still operating as usual.</p>
+<p>Wavell Encourages British Troops</p>
+<p>Singapore, 4th (Reuters) - General Wavell, Supreme Commander of the Allied Forces in Southwest Pacific, today sent a telegram to the British troops besieged in the fortress of Singapore Island, encouraging them. The telegram stated briefly, "We must buy time to wait for the reinforcements that Britain and the United States are currently sending to the Eastern battlefield. You must fight for every inch of land. Our allies, the Dutch, are determined to sacrifice and are implementing this policy throughout the Dutch East Indies. I hope you will no longer have the thought of retreat and that the defense of Singapore will be remembered like Tobruk."</p>
+<p>Stockholm, 4th (Haitong News Agency) - According to news from London, British newspapers and the public are quite concerned about the fate of Rangoon, because if Rangoon is occupied and the Burma Road is sealed off, China will have no supply route. British newspapers believe that the situation in Singapore is also extremely serious and that only a large number of fighter planes can save Singapore. This squadron must be stationed in Sumatra, because Singapore's three airfields are within range of Japanese artillery.</p>
+<h3>Gu Weijun's Speech in England on the Importance of Singapore</h3>
+<p>London, 3rd (Havas) - Gu Weijun, the Chinese Ambassador to the United Kingdom, recently delivered a speech at the Kilt Hall here, stating briefly that Singapore's position is important, so its safety not only determines who obtains endless resources, but also determines who gains a strategic advantage in the global war. If the Japanese army can occupy Singapore, the South Seas will be controlled by Japan. If that happens, it will greatly help the large-scale pincer strategy planned by the Axis powers. In other words, Germany and Japan will advance simultaneously at that time. The German army will attack eastward from the Caucasus, Iran, and Iraq, while the Japanese army will attack westward from its new positions in Malaya and the Dutch East Indies.</p>
+<h3>Sydney East Coast Conducts Air Defense Exercises</h3>
+<p>Melbourne, 3rd (Associated Press) - Australia has suspended postal flights with the British Empire. Air defense and blackout exercises are also being held in a 127-mile coastal area east of Sydney. Australian Prime Minister Curtin also stated that his recent trip to Western Australia was related to secret defense matters and that he had dispatched Percival to undertake important tasks.</p>
+<h3>Japanese Announce Occupation of Tawau Port, Borneo; Fierce Fighting Still Ongoing on Ambon Island; Japanese Aircraft Bomb Central Burma Airfield</h3>
+<p>Tokyo, 4th (Domei News Agency) - The Imperial Headquarters announced at 12:30 PM today that the Japanese army occupied Tawau Port in North Borneo on January 24th. The location is one hundred kilometers north of Tarakan.</p>
+<p>Batavia, 3rd (Havas) - Officials announced that all transportation lines between here and Ambon Island have been cut off, but the Dutch troops on the island are still fighting the Japanese army with fewer soldiers than their enemy.</p>
+<p>Rangoon, 4th (Reuters) - Officials announced last night that Japanese aircraft bombed a central Burma airfield twice yesterday, but no Japanese aircraft appeared over Rangoon yesterday. Only two air raid alarms were issued. British aircraft provided cover for the army to attack Japanese positions.</p>
+<p>Japanese Army Fiercely Attacks American Troops on Philippine Islands</p>
+<p>Washington, 4th (Reuters) - The Department of the Army announced yesterday that in the Philippines, the Japanese army attempted to land on the west coast of the Batangas Peninsula on Luzon Island twice on Monday night last week, using a large number of barges, escorted by warships. However, before reaching the shore, they were discovered by several of our night fighter planes. When the Japanese army approached the coast, the coastal defense forces immediately used artillery and machine guns to counterattack. The Japanese offensive against our left flank has been weakened, and our army has launched a counterattack against them. Japanese aircraft activity has also slowed down in the last twenty-four hours. In addition, our army officer, Lieutenant General Pierce, sustained minor injuries during the battle.</p>
+<p>Australian Passenger Plane Shot Down</p>
+<p>Melbourne, 4th (Havas) - Local officials have announced that the giant seaplane "Corinthian," flying from Darwin Port on January 30th, was shot down by Japanese aircraft over Kupang, the capital of Timor Island. Previous reports that all thirteen passengers had died have been found to be inaccurate. Three passengers and two pilots have been rescued.</p>
+<p>Melbourne, 3rd (Havas) - The Australian Commonwealth Aviation Department recently released the longest list of casualties since the start of the war. A total of ninety-two pilots have been killed or injured in combat over the Pacific.</p>
+<p>Air Forces of Both Sides are Mutually Active</p>
+<p>Batavia, 4th (Reuters) - Japanese aircraft in the Dutch East Indies launched a major attack on important naval bases in Surabaya and the airfields of Malang and Madiun. Fierce fighting is still taking place on Ambon. The battle is continuing near Balikpapan on the east coast of Dutch Borneo. According to a communique issued by the Dutch East Indies Military Headquarters this afternoon, a total of seventy or eighty Japanese bombers, escorted by fighter planes, bombed several cities and airfields in Java yesterday. The main targets of the attack were Surabaya, Malang, and Madiun. Dutch East Indies fighter planes took off to intercept them at each location. Japanese planes in Surabaya ×××××××× Dutch side suffered heavy damage, but details are not yet known. Dutch warships were also attacked by air in several locations.</p>
+<p>Washington, 2nd - A communique from the U.S. Department of the Army stated that U.S. Flying Fortresses bombed Kuala Lumpur and Kota Bharu in the Malay Peninsula. The results of the bombing are unknown due to poor weather. All aircraft returned safely to their base. Flying Fortresses also attacked Balikpapan Port and engaged a large group of Japanese aircraft in fierce combat.</p>
+<h3>Landslide in Bulgaria</h3>
+<p>Sofia, Bulgaria, 3rd (Havas) - A landslide occurred on the Stara Zagora highway today. Fifty ski cars were passing by at the time, resulting in a tragedy. Four people died. Due to heavy snow and the rampant wolf packs nearby, rescue efforts are extremely difficult.</p>
+<h3>Fierce Fighting on the Eastern Front; Soviet Defense Committee Appoints Deputy Commander of the Air Force</h3>
+<p>Berlin, 4th (Havas) - Officials announced this morning that fighting on the Eastern Front was very intense yesterday.</p>
+<p>London, 3rd (Associated Press) - On the German-Soviet battlefield, although German resistance is gradually strengthening, Soviet forces continue to attack fiercely in the Leningrad, Moscow, and Kharkov battlefields. In addition, Soviet forces have intensified their offensive in the Sevsk area northwest of Moscow, and its threat has extended to the entire position of the German army on the battlefield west of Moscow. In the Kharkov area, Soviet ski troops continue to attack the German front line east of the city and continue to advance westward south of the city.</p>
+<p>Moscow, 4th - The Soviet Defense Committee has decided to appoint Air Force Lieutenant General Novikov as the First Deputy Commander of the Air Force and Air Force Lieutenant General Petrov as the Second Deputy Commander.</p>
+<p>Ankara, 4th (Haitong News Agency) - Moscow dispatches state that the Soviet Defense Council has added two new members: Foreign Trade Commissar Lyubimov and Vyshinsky, who once held an important position.</p>
+<h3>Hanoi Issues Air Raid Alert Yesterday</h3>
+<p>Hanoi, 4th (Haitong News Agency) - An air raid alarm suddenly went off here at 3:20 PM today, lasting for fifteen minutes.</p>
+<h3>Soviets Train New Army in the Urals; Factories Evacuated to Central Asia</h3>
+<p>Moscow, 4th - Soviet factories that have been evacuated are now resuming operations in Central Asia. At the same time, a new army is being actively trained in Siberia and the Urals. These new recruits are all strong young men aged twenty to twenty-two. In the Molotov Oblast, 7,000 women are replacing men in factories.</p>
+<h3>Estimated Casualties of British Troops in Hong Kong</h3>
+<p>Ottawa, 4th (Reuters) - Canadian Minister of National Defence Ralston stated that the total strength of the garrison in Hong Kong was approximately 12,000 men. According to reports received by the British War Office, the number of casualties among the garrison is estimated to be about one-third of the total strength.</p>
+<h3>Unified Command of Allied Forces in the Pacific; Naval Commander-in-Chief May be Appointed First</h3>
+<p>Washington, 3rd (Havas) - Officials from the Army and Navy here said that the new developments in the Pacific War and the "repeated opening of new battlefields in the Pacific in recent days" have made it necessary to unify the command of the Allied naval, land, and air forces now fighting in the Pacific. Regarding this matter, British and American military officials are reportedly considering it. As a result of repeated requests from the Dominion of New Zealand and the Commonwealth of Australia, the first step will likely be to appoint a Naval Commander-in-Chief of the Allied Forces in the Pacific, so that naval command can be unified first. Admiral Helfrich is currently only the Naval Commander-in-Chief of the Allied Forces in the Southwest Pacific, and Admiral Nimitz is the Commander of the Hawaiian Fortress. Since the Pacific War is now a large-scale naval war, it is appropriate to have unified command.</p>
+<p>Stockholm, 4th (Haitong News Agency) - Yesterday, information received from Washington stated that the location of the Supreme Military Council of the Allied Forces in the Pacific will reportedly be in Washington. British Prime Minister Churchill originally wanted to establish it in London, but it did not come to fruition due to the opposition of New Zealand, the Dutch East Indies, and Chongqing.</p>
+<p>Dutch East Indies Deputy Governor Urges Coordination of Needs</p>
+<p>Washington - Dutch East Indies Deputy Governor Van Mook, in a speech to the National Press Association, stated that there is an urgent need for Allied nations to coordinate their operational strategies and objectives in the Pacific. He also stated that we need a unified command and objective. If the Japanese army breaks through the defensive line between Asia and Australia, the Japanese army can attack the rear of the Middle East front. To avoid this, the troops and supplies needed in the Pacific must be shipped as quickly as possible. The Dutch East Indies needs airplanes, anti-aircraft guns, submarines, and other small boats. The U.S. government is now fully aware of the seriousness of the situation. Van Mook also commented on the importance of battleships. He believes that battleships are not important in the current war because the sea area of the current operation is small and combat is hindered. Dutch Foreign Minister Kleffens spoke at the same location, saying that the United Kingdom is also well aware of the seriousness of the situation and feels the problem on the path to assistance.</p>
+<p>Canberra, 3rd (Havas) - The Australian Commonwealth Foreign Minister stated that the government has decided to strictly supervise the activities of foreign immigrants in northern Queensland, and even implement clearing villages is possible. The authorities have recently received reports that only 20% of Italian immigrants in northern Queensland have complied with the law and surrendered their new firearms to the police. Nine out of ten Italian immigrants harbor ulterior motives towards the Commonwealth government. Although military and police authorities are implementing measures, residents of Rambuton Shire have scheduled a public meeting today to discuss the rapid organization of "militias" to prepare for invasion and monitor Italian immigrants within the territory.</p>
+<p>Sydney, 3rd (Havas) - Australian Commonwealth mining experts recently held a meeting here and immediately decided that if the crisis of Japanese invasion of Australia becomes increasingly imminent, all Australian resources must be destroyed.</p>
+<h3>Order Restored in Huixian County</h3>
+<p>Luoyang, 3rd - There was fierce fighting in Huixian County on January 30th. By the 31st, order was restored.</p>
+<h3>Measures for the Distribution of Funds for the Relief of Overseas Chinese</h3>
+<p>Chongqing, today's dispatch - After the outbreak of the Pacific War, the central government has been very concerned about the lives of overseas Chinese and their families and students in the mainland. In addition to working with relevant agencies to properly prepare for relief matters, Xu Shiying, the acting chairman of the Relief Committee, personally went to Fujian, Guangdong, and Guangxi provinces to provide relief guidance and express condolences on behalf of the committee. This reporter inquired with Sun Yaofu, the director of the department in charge of the Relief Committee, about the distribution of relief funds. According to him, regarding the relief funds for overseas Chinese, the Executive Yuan has allocated special funds. The committee will first allocate 10 million yuan as follows: 3 million yuan for overseas relief expenses, including 800,000 yuan for Malaya, 800,000 yuan for the Dutch East Indies, 500,000 yuan for Burma, 200,000 yuan for the Philippines, 200,000 yuan for North Borneo, and the remaining 500,000 yuan will be used as a reserve fund. 5 million yuan for domestic relief expenses, including 3 million yuan for Yunnan, 1 million yuan for Fujian, 500,000 yuan for Yunnan, 200,000 yuan for Guangxi, and the remaining 300,000 yuan will be used as a reserve fund. 2 million yuan for education relief expenses, which will be used to relieve students and displaced cultural figures from overseas and within the country, and a portion will be used to establish schools. In overseas areas, our consulates have consulted with relevant local agencies to organize overseas Chinese relief committees and are allowed to raise funds locally. Emergency Overseas Chinese Relief Committees have also been organized in Guangdong, Fujian, Yunnan, and Guangxi provinces. The Relief Committee has also ordered the Kunming Refugee General Station to set up an office in Lashio to handle the reception, relief, and transportation of overseas Chinese, and has consulted with the Red Cross to allocate vehicles to transport overseas Chinese back to China.</p>
+<h3>Remittances from Overseas Chinese Collected and Transferred by the Ministry of Finance</h3>
+<p>Chongqing, 4th - Overseas Chinese in Washington donated 30,000 yuan in Mexican currency, overseas Chinese in Ontario, Canada, donated 100,000 yuan in national currency, and overseas Chinese in Panama donated 20,000 yuan, and telegraphed a request to Chairman Chiang to transfer the funds to northern Hunan. Chairman Chiang has handed over the remittances to the Ministry of Finance for collection and transfer.</p>
+<h3>Battles in Northern Jiangxi and Eastern Guangdong</h3>
+<p>Chongqing, 4th - Battles are taking place on the east bank of the Gan River south of Guangfu Market, west of Banhu Village, and near Gengwan. On the west bank of the Gan River, battles are taking place near Nanshun Ridge on the south bank of the Jin River. In the Dongjiang area, battles are taking place near Longtan Mountain northwest of Huiyang, near Guabang Mountain west of Huiyang, and near Yazi Bu'aozi Tou east of Ganghu.</p>
+<h3>British Ambassador Sir Archibald Clark Kerr Departs Chongqing for Soviet Union; Affairs Handled by Alan</h3>
+<p>Chongqing, 4th - British Ambassador Sir Archibald Clark Kerr departed on the afternoon of the 4th to take up his new post in the Soviet Union. Before the arrival of the new ambassador, the affairs of the embassy will be temporarily handled by Secretary Alan.</p>
+<h3>Ye Chucang Sends Condolences to the Family of Han Guojun</h3>
+<p>Chongqing, 4th - Member Ye Chucang sent a telegram of condolence to the family of Han Guojun, saying: "Respectful condolences to the family of Mr. Han Zishi. It was with great shock and sadness that I read in the newspaper of Mr. Zi's passing. Mr. Zi was a figure of great renown to the nation and a model for the hometown. At his advanced age, he demonstrated righteousness. It was hoped that his spirit would last forever. Sadly, fate is impermanent, and in a moment, he has departed from this world. In retrospect, my grief is immense. I hope you will accept the change and restrain your grief, and carry on his noble aspirations. I respectfully send this telegram of condolence and offer my regards. Ye Chucang."</p>
+<h3>Farmers' Day Commemoration Meeting Opens</h3>
+<p>Chongqing, 4th - The Executive Yuan announced last year that February 5th would be designated as Farmers' Day. The first Farmers' Day Commemoration Meeting opened on the 3rd in Xindianzi, Ba County, and will last for three days. On the first day, a plowing competition was held. More than 100 farmers and their plowing cattle participated. Officials from the Ministry of Agriculture and Forestry judged the cattle and selected the ten best. The second day was an agricultural exhibition. The third day (February 5th) will be the commemoration meeting. Minister Shen Honglie will attend the meeting to give instructions and award prizes to the farmers who won the plowing competition.</p>
+<h3>Egyptian King Advocates Organizing a Coalition Cabinet; Consultations with Leaders of Various Parties Concluded; Stone Appointed Commander of British Forces in Egypt</h3>
+<p>Cairo, 4th (Havas) - King Farouk concluded consultations with leaders of various parties regarding the organization of a new cabinet today. It is reported that Farouk advocates recruiting figures from various parties to organize a coalition cabinet.</p>
+<p>Cairo, 3rd (Havas) - After the Hussein cabinet resigned, King Farouk appointed Ali Maher Pasha to form a new cabinet. Maher accepted the appointment and immediately began contacting various parties.</p>
+<p>Cairo, 3rd (Havas) - King Farouk met with British Ambassador Lampson today for discussions. The content of the talks was related to the current cabinet crisis in Egypt. According to informed sources here, the Egyptian cabinet's resignation was not only due to the issue of severing relations with France, but also due to the national food crisis, which was a major reason. During the most recent meeting of the House of Representatives, various parties strongly criticized the government's improper handling of agricultural affairs. Some members were shocked that Egypt, such a fertile country, was suffering from famine. The wheat stored last year will be completely consumed by the end of this month, and the new wheat will not be harvested until April of this year. With the situation so critical, the government was at a loss, so they asked Prime Minister Hussein to find a way to import a large amount of wheat from the United Kingdom, otherwise he should resign.</p>
+<p>London, 3rd (Havas) - Reuters Cairo dispatch states that the Egyptian cabinet's announcement of its resignation was actually due to the Prime Minister's decision to sever relations with France. When the cabinet decided to sever relations with France, King Farouk was not in the capital. When the King returned to the capital, he asked the Foreign Minister to resign. Prime Minister Hussein expressed his agreement with the Foreign Minister's views and also submitted his resignation, which was accepted by the King. British political figures deeply regretted that Hussein, who had always faithfully fulfilled the entire Anglo-Egyptian Treaty, had resigned.</p>
+<p>London, 3rd (Havas) - The government has appointed Major General Stone, leader of the British Military Mission in Egypt, as Commander of the British Forces in Egypt.</p>
+<p>Goering's Visit to Italy is Related to North African Strategy</p>
+<p>Stockholm, 4th (Haitong News Agency) - London dispatches state that General Goering's visit to Rome has aroused various speculations among Londoners. London political figures believe that Goering's visit to Italy must be related to the Axis powers' strategy in North Africa. Londoners expect that the German-Italian forces may break into Egypt.</p>
+<p>Rome, 4th (Havas) - German Aviation Minister General Goering has now extended his stay in the country. He met with Prime Minister Mussolini today and discussed strategy with Italian Chief of Staff General Cavallero for a long time.</p>
+<p>Cairo, 4th (Havas) - The Middle East Command announced today that an Indian division has withdrawn from its previous front-line positions to make contact with the main force of the British army in Libya.</p>
+<h3>Flood Disaster in Peru; 400 Deaths</h3>
+<p>Buenos Aires, 4th (Haitong News Agency) - According to sources here, a member of the Urupamba district stated in the Peruvian parliament yesterday that floods in the Urupamba district in southern Peru have submerged villages, resulting in 400 deaths. 1,500 residents of the village have become homeless. The water level of the Urubamba River, which caused the floods, is still rising.</p>
+<h3>England and Abyssinia Sign Political Agreement, Granting Economic Aid to Selassie, with an Attached Military Convention Allowing Troops to be Stationed in the Country</h3>
+<p>London, 3rd (Havas) – The British government, on the 31st of last month, concluded a political agreement in the Abyssinian capital with that country, along with a military convention. This convention stipulates that British troops may be stationed in Abyssinia and that efforts will be made to repatriate Italian prisoners of war. The agreement is valid for two years. The British government has agreed to provide a loan to Emperor Selassie, but the maximum amount is limited to one million pounds. If the treaty's validity is extended, Britain may lend an additional 500,000 pounds in the third year and 250,000 pounds in the fourth. Britain will also send a military mission to Abyssinia to reorganize its army, largely by providing the Abyssinian army with captured Italian equipment. Furthermore, British judges will participate in all judicial trials in Abyssinia, and the Abyssinian government will issue a decree abolishing slavery.</p>
+<h2>Page 3</h2>
+<h3>The Municipal Council Adds More Offices for Issuing Return-to-Hometown Permits at Shanhai Pass Road and Macgregor Road</h3>
+<p>The Municipal Council's Intelligence Office announced that the Council would establish three new offices on the morning of February 5th to handle the issuance of return-to-hometown permits and half-price travel vouchers. The addresses of these new offices are as follows: No. 25 Rue Albert (near Gordon Road), inside the Chinese Children's Public School; No. 445 Shanhai Pass Road, inside the Yucai Public School; and inside the Public Works Department's workshop at the corner of Macgregor Road and Gordon Road. Concurrently, the Council's Volunteer Corps parade ground and Volunteer Corps office will also issue permits and half-price vouchers. Additionally, the Council will establish mobile teams to issue documents at various factories and workshops (where more than twenty workers are leaving Shanghai). Several factories have already been issued permit application forms by the Industrial and Social Affairs Department. Once these application forms are completed, the department should be notified by telephone (telephone number 15349, extension 19). Any factory wishing to obtain an application form can request it by telephone from the department or pick it up at any visa office.</p>
+<h3>Huanqiu and Tiwen Elementary Schools Still Have Remaining Free Spots; Middle School List to be Announced Today</h3>
+<p>Applications for the newspaper's readers' aid fund for free school places closed yesterday. Huanqiu Elementary School at 191 Carter Road and Tiwen Elementary School at 363 Lane 3 East Shili Road, Ningbo Road, still have remaining places. Elementary and high school students from poor families with good academic performance are welcome to continue applying. As the start of the school term is approaching, those wishing to apply should immediately come to the office to obtain and complete application forms, or first send a letter with supporting documents, and then complete the formalities. Applications are limited to the above two schools only. The registration office will reject applications for other schools. Please note. The donations received yesterday were: Mr. Tang Ai, 100 yuan; Sanweitang Yin, 50 yuan; Li Zhu, 40 yuan; totaling 190 yuan. With the previous balance of 56,037.37 yuan, the total is 56,227.37 yuan. We would like to thank all the donors.</p>
+<h3>Measures to Restrict Withdrawals; Banks and Firms Agree to Handle with Flexibility; Withdrawal Slips Should Be Paid in Full as Much as Possible; Aimed at Adjusting Finance to Help the Development of Various Industries</h3>
+<p>Since the member banks and firms of the Silver and Money Trade Association have complied with the temporary measures for the operation of banks and money firms promulgated by the Federation, the entire financial situation has stabilized and credit has become more readily available. Now, to adjust finance and support the development of various industries, payment of funds to companies, factories, and firms is being handled with special flexibility. Although it is stipulated that current deposits before December 8th should be paid out at a rate of 500 yuan every three days per account, if there is a genuine and proper use, each account can negotiate directly with the banks and firms without restriction. Checks issued by each account are allowed to be cashed flexibly. Bank and firm withdrawal slips are now fully accepted in the market, which is deeply trusted by all coupon holders. Furthermore, withdrawal slips are paid out as much as possible for payments to various industries. It is rumored that once the final account period for each industry has passed, the previous temporary operating measures will be abolished. The operating hours of each bank and firm are temporarily from 10:00 AM to 1:00 PM, according to the new Municipal Council time.</p>
+<h3>Municipal Council Selling Flour at 50 Yuan per Bag</h3>
+<p>The Municipal Council recently issued a notice stating that, starting from the 5th of this month, all kinds of flour purchased by the Council and the French Concession Municipal Council will be sold at a wholesale price of 50 yuan (national currency) per bag (49 pounds). The retail price of flour and the selling price of flour products will be announced separately this Friday.</p>
+<h3>Population Census Proceeding Smoothly with the Assistance of Postal Workers</h3>
+<p>The English-language "North China Daily News" reports that the population census conducted by the Concession authorities is still proceeding smoothly this morning (the 4th). Approximately 300,000 census forms have already been issued in the International Settlement, and the same number of forms will be issued again from tomorrow (the 5th) until Friday. The Western District is relatively small, and only about 1,000 forms have been distributed to foreign residents in the district, and the progress is quite satisfactory. The census in this district is expected to be completed before February 20th. The population census in the two Concessions is expected to be completed around February 10th.</p>
+<p>Regarding the census in the French Concession, in addition to deploying police officers, postal workers from the Masnan Road Post Office have been borrowed to assist. It is understood that these postal workers assisting the French police in the census are not all from the Masnan Road Post Office. Due to restrictions on automobile traffic and the shortage of gasoline in the two Concessions, the five vehicles used by the Postal Administration's main and branch offices to transport packages have also been unable to operate. As a result, the Postal Administration drew seventy messengers and postal workers from various offices to transport these packages by bicycle. Now, the French Municipal Council has requested the Postal Administration to borrow postal workers to assist in the census within the French Concession. The Postal Administration has assigned these workers who transport packages to carry out this task, and the French Municipal Council will provide 15 gallons of gasoline daily to allow the five vehicles transporting packages to continue operating without affecting postal services. These postal workers have been carrying out the census work within the French Concession since the 1st of this month, and the French Municipal Council also sends gasoline to the main office every day for the vehicles transporting packages to operate.</p>
+<h3>Urge Registration of Industrial Raw Materials</h3>
+<p>The Municipal Council issued a notice stating that all factories and workshops located in the International Settlement that employ 30 or more workers and intend to operate this year should register the quantity of raw materials they need each month with the Council. Application forms can be obtained from the Council's Volunteer Corps parade ground. Once completed, they should be submitted by the responsible person to the Council's office number 803 for verification. All items required in the form should be filled in accurately, as the future supply of raw materials to each factory may depend on the accuracy of the quantity reported. As of now, more than 600 registration forms have been collected, but many have not yet been collected. Please collect and fill in the forms as soon as possible. Do not delay any further. The registration should be completed by 4:00 PM on the 11th of this month. As for factories run by Japanese merchants and those currently controlled by the Japanese authorities, they do not need to register.</p>
+<h3>The Municipal Council Handles Registration of Charcoal</h3>
+<p>The Municipal Council recently issued a notice stating that anyone holding more than 150 kilograms (or 300 catties) of charcoal in stock should report to the Council for registration before the 8th of this month. However, charcoal owned by Japanese residents that has already been registered with the Japanese authorities does not need to be registered with the Council again. When registering the stock, the weight of each type of charcoal should be indicated in kilograms, and the types should be determined according to their place of origin (such as Huzhou, Changxing, Jiaxing, Xiashi, Ninghai, Hangzhou). The total number of baskets of stock, as well as the weight of each basket, together with the location of the stock, should be clearly indicated. Registration forms can be obtained from the Council's office number 333. Once completed, they should be sent to that office for verification as soon as possible. Stocks that are not registered with the Council in accordance with this notice will be confiscated without further compensation.</p>
+<h3>Restrictions on Outport Remittances to Shanghai Soon to be Lifted; Restrictions on Shanghai Remittances to Occupied Areas: 20 Yuan</h3>
+<p>Outport remittances to Shanghai will soon have restrictions eased to allow remittances of 50 yuan or less to be cashed. The public has said it is convenient. Yesterday, according to a Dagtong News Agency reporter, the Postal Savings and Remittances Bureau and the Accounting Division of the Shanghai Postal Administration are currently negotiating to lift the restrictions to facilitate outport remittances to Shanghai. No matter the amount, all can be cashed. This matter has been discussed and a result reached. It is expected to be implemented next week. Restrictions have also been implemented on Shanghai remittances to occupied areas, with a maximum of 20 yuan per person. Remittances over 20 yuan are temporarily suspended.</p>
+<h3>The International Recreation Club's New Year Grand Horse Race; Three Days of Races Starting from the 16th of this Month; Grand Champagne on the 21st of this Month</h3>
+<p>The International Recreation Club will hold the New Year Grand Horse Race for four days, from the 16th (Monday), 17th (Tuesday), 18th (Wednesday), and 21st (Saturday) of this month, which are the second, third, fourth, and seventh days of the Lunar New Year, at the Shanghai Race Club. The first three days of racing will start at 11:00 AM each day, and the fourth day will start at 1:15 PM. New Year Grand Champagne tickets are now on sale. The procedure is the same as the Shanghai Race Club's Spring and Autumn Grand Champagne tickets. Each full sheet has eleven strips and costs 10 yuan. Each strip costs one yuan. The fixed amount is 30,000 sheets. The first prize is as much as 117,600 yuan. The Champagne Grand Race will be drawn on the fourth day, the seventh race on the seventh day of the New Year. Each set of lottery tickets for the first three days costs 20 yuan. The fourth day, including a full sheet of New Year Grand Champagne, costs 30 yuan. The total cost for all four days is 90 yuan. Numbers 1 to 800 can be reserved. It is rumored that the club has decided to donate one-third of the net profit from this grand race to local Chinese charitable organizations to help the extremely poor.</p>
+<h3>Siberian Fur Goods Reduced in Price</h3>
+<p>The clearance sale at the First Siberian Fur Goods Store at 1135 Jing'an Temple Road was originally scheduled to end, but due to booming business and many customers who missed out, the sale has been extended for one week at the request of customers. Now, there are only three days left. It has been decided that there will be no further extension after the deadline.</p>
+<h2>Page 4</h2>
+<h3>French Concession Detective Shen Jinshu Passes Away from Worsening Injuries; Funeral Set for Tomorrow</h3>
+<p>Shen Jinshu, a detective of the French Concession police force, had been in service for many years. On the morning of October 11th last year, at approximately 9:00 AM, Shen was leaving his home to go to the police station for work. At the intersection of Route Lafayette and Rue du Marché, on a route 17 trolleybus, he was suddenly shot and wounded by someone. He was sent to the hospital for treatment, and his condition later improved slightly. The French Concession police chief promoted Shen to Chinese Inspector after the incident, recognizing his past merits. Unexpectedly, Shen's injuries suddenly worsened the day before yesterday, and he passed away. The family has had the body coffined, and the funeral is set for tomorrow. The French Concession police force will send a full contingent of Chinese detectives and Chinese and Western police officers to attend the funeral to express their condolences and respect.</p>
+<h3>Only Over 900 Cars Running in the Two Concessions; Authorities Will Re-select When Renewing Permits Next Month</h3>
+<p>In order to strengthen restrictions on automobiles, the authorities in the two Concessions have reduced the number of running cars to slightly over 1,000 and have issued permits, which car owners should affix to the windows for identification. The first phase of permits stopped being issued on the 23rd of last month, and their validity was also stipulated to end on the 31st of last month. The second phase of new permits began to be issued on February 1st, and the number of vehicles approved to run has decreased even more compared to last month. A total of 854 vehicles were approved to run in the International Settlement last month. This time, it has been reduced by another 300 vehicles, leaving only 554 vehicles. In the French Concession, only slightly over 400 vehicles have been approved to run this month, a decrease of about 100 vehicles compared to the 500 or so vehicles last month. Therefore, there are currently only over 900 cars in the two Concessions with running permits. The validity period of this second phase of permits is roughly one month as well. Next month, new permits will be renewed, and there will be another strict selection by the Concession authorities.</p>
+<h3>Robbed on the Way Back from Gambling</h3>
+<p>The English-language "North China Daily News" reports that a robbery of a gambler occurred on Henan Road last night (the 3rd). It happened that a certain Chinese man, A, was gambling in the South City, winning quite a bit. This was seen by a thief, who may have been hired by the gambling den. When A left the gambling den laden with money, the thief followed him. When they reached a quiet spot on Henan Road, the thief took out a tin fake pistol, pointed it at A's face, and demanded money. A was forced to hand over the money, but he was unwilling. When the thief was fleeing, a police officer happened to be passing by, so he was arrested by the police. However, A was also detained in the police station, accused of gambling.</p>
+<h3>Seeking Lost Children</h3>
+<p>The Municipal Council's Child Protection Section is seeking lost children: Female child Zhao Meizhen, 6 years old, lost after being stripped of her clothes by criminals. Her home is in a Yilingtong cigarette paper shop. This girl has a round face and a flat head. Female child Liu Wenying, 6 years old, from Ningbo. Her father is engaged in the sand-turning industry, and her mother is a wet nurse. This child is wearing a broken black satin padded jacket and pants, covered with a green silk lined jacket. Female child Yang Meiyue, 14 years old, from Hubei. Recently came to Shanghai and lives with her aunt. Lost while buying rice. Her aunt's house is opposite a Yidatong rice shop. Her father and uncle both work on boats. Families of the lost children can contact the Municipal Council's office 610 at 209 Jiangxi Road from 10:00 AM every day.</p>
+<h3>The YWCA Distributes Winter Clothing</h3>
+<p>The Shanghai YWCA held a charity sale last month to distribute winter clothing. The 3,000 pieces of winter clothing have long been sewn and completed. Various sectors have applied to receive them. They have now been distributed. However, the weather is still very cold, so the YWCA has added several hundred more pieces to meet the needs of society. Poor elderly women over the age of 50, or children under the age of 6, can be introduced by members and go to the YWCA at Dakang Lane, Wuding Road, Gordon Road, to receive them this week.</p>
+<h3>Good News Amidst Electricity Conservation</h3>
+<p>The Jin Guang Old Brand light bulbs produced by the Zhenhua Electrical Appliance Company at 1281 Avenue Edward VII are finely made and have always been adopted by all sectors. Now, in order to comply with the Municipal Council's electricity conservation principles, the company has specially manufactured a large number of two-candlepower light bulbs to meet the needs of citizens. It is rumored that the price is affordable, with each bulb costing only 1.50 yuan, which covers costs. The quality is good and the price is low, which is popular throughout Shanghai. This can be predicted. Those who wish to purchase, please call 391011, and a special messenger will deliver them immediately, with no extra charge.</p>
+<h3>Shandong Xintai Mail Package Suspension</h3>
+<p>The Parcel Division of the Postal Administration recently notified that all commodity parcels and large and small parcel mail sent to Xintai Bureau in Shandong District and its affiliated Yuliu and Zongyangzhen sub-agencies should be temporarily suspended from receipt starting from the 6th of this month.</p>
+<p>Yesterday's newspaper dispatch time was 6:10 PM</p>
+<p>Sports News</p>
+<h3>West Youth Basketball League Finals, Lianxing Wins the Group A Championship, Defeating Giant Yesterday with a Score of 31-26</h3>
+<p>The West Youth Basketball League, Group A Lianxing and Giant met for the third time last night at the West Youth Gym to compete for the Group A championship. Both sides gave their all, and the performance was wonderful and enthusiastic. Giant scored the first three points, followed by a seven-to-one lead. Lianxing responded with tenacity, tying the score at eight. Smith made a steal, and Xue Chong broke through the basket. The first half then ended, with a score of ten to ten, a draw. After switching sides, Lianxing's Qiang Du Lai reported the good news first. From then on, Lianxing took the lead all the way, and Giant followed. At seventeen to fifteen, Xue Chong was suddenly penalized for four fouls and was replaced by Xi Lin. Lianxing's strength was not diminished. At twenty to twenty-one, Giant was only one point behind. At this point, Lianxing's momentum was greatly increased, as if entering no man's land, suddenly increasing by ten points. In conclusion, thirty-one to twenty-six, Lianxing defeated Giant and won the championship. Giant had six wins and three losses, finishing as the runner-up.</p>
+<p>Yesterday's game results: Shangxing defeated Chenyou (Group B) 19-14; Lanbai (Group B) defeated French Concession Police (Group B) 34-24; Lianxing defeated Giant (Group A) 31-26</p>
+<h3>Tonight, in China Youth Basketball, Qianghua Plays West Youth Again</h3>
+<p>The second act of the China Youth vs. West Youth basketball charity match is scheduled to be held at 7:15 PM tonight at the same gym in Baxianqiao. Qianghua will play West Youth for the second time. In the previous match, Qianghua took the lead, but unfortunately, in the last minute, West Youth tied the score.</p>
+<h3>China Youth 100-Pound Basketball Tournament; Lan Ping Wins the Championship</h3>
+<p>The last two games today were the 2nd 100-pound basketball tournament organized by the China Youth Association's Youth Sports Department. A total of eight teams participated. The entire order is only the last two games tonight, which are no longer relevant to the overall situation. The Lan Ping team had seven wins and seven wins, winning this year's championship. The order of the last two games today is as follows: Yixiang vs. Tongxing at 2:00 PM; Qingdao vs. Jianqing at 2:30 PM</p>
+<p>Business News</p>
+<h3>Public Bonds Soar, C and E See New High Prices</h3>
+<p>The public bond market soared yesterday. Since the announcement of the E bond dividend number, people's hearts have tended towards it, and the situation has obviously changed. Not to mention distant places like Chongqing and Kunming, even nearby provinces such as Jinhua in Zhejiang and non-occupied areas can collect principal and interest. Therefore, buyers are particularly eager, and now there is more than just a guarantee. Yesterday's rise saw new high prices for both C and E bonds, and people's confidence is very strong. In addition, many parties believe that credit is loose and plentiful and are unwilling to let go. The future is likely to continue to be good. C bonds opened at 8.10 yuan, breaking through 8 yuan, and E bonds opened at 6.20 yuan, breaking through 6 yuan, seeing new high prices. With many buyers, the price gradually increased. C bonds saw a new record of 68.80 yuan in the gray market, closing at 8.70 yuan. E bonds closed at 66.70 yuan, also the highest price in the gray market. A bonds were 72.70 yuan, and B bonds were 69.50 yuan, rising to 9.90 yuan, closing at 9.70 yuan. D bonds were 64.40 yuan, all roughly equal to previous high prices. The total increase was between 0.60 yuan and 1.20 yuan. Approximately 40 million yuan was transacted. In addition, the Friendship Association meeting has not yet made a concrete decision on opening a red market on the fifth day of the Lunar New Year. External stocks were still stable and strong. Paper shares were 5.45 yuan, up 0.30 yuan. Jardine's Brewery was 5.23 yuan. Kaiping was 29.50 yuan. Jardine's Spinning Mill was slightly lower at 24.50 yuan. Shanghai Wool was 5.50 yuan. Public Bus was 9 yuan. Ken Zhi was 20.075 yuan. British Zha Hua was 20 yuan. Ke Luohua was 1.90 yuan. Langeshi was 14.60 yuan. Yeguang Jin was 14.30 yuan, 15 yuan. British United was 18.68 yuan. Sino-British Spinning Mill was 5.70 yuan, 6 yuan. China Textile and China Camp were both 8 yuan. Asia Shipping was 7.80 yuan. Tram was 31 yuan. Xiang Qin Timber was 23 yuan. Zilai Fire was 8.5 yuan. Karen Dan was 0.8 yuan. Rubber was 13 yuan. British Daqu was 12.40 yuan. Chen Shi was 0.75 yuan, 1 yuan. Zha Hua Kangsha was 2.5 yuan, 3 yuan. Steel was 15 yuan. Didi was 1.30 yuan with sellers. Hubei Provincial Bonds were also drawn in Enshi on December 10th and paid back principal and interest by the Hubei Provincial Bank on the 31st. The winning numbers are listed below. The winning numbers for the 20th redemption of the Hubei Provincial Post-Disaster Public Bond are: 20, 40, 5, 78, 85 for 1,000-yuan tickets; 05, 26, 51, 63, 96 for 100-yuan tickets; 24, 35, 57, 71, 86 for 10-yuan tickets; 22, 55, 58, 69, 97 for 5-yuan tickets; each with 5 draws, for a total payment of 156,000 yuan in principal and interest in national currency. The winning numbers for the 16th redemption of the Hubei Provincial Financial Reorganization Public Bond are: 01, 40, 41, 71, 90, each with 5 draws, for a total payment of 252,800 yuan in principal and interest in national currency. The winning numbers for the 14th redemption of the Hubei Provincial Construction Public Bond are: 18, 31, 56, 63, 87, each with 5 draws, for a total payment of 397,200 yuan in principal and interest in national currency. The winning numbers for the 3rd redemption of the Hubei Provincial Financial Public Bond are: 28, 76, each with 2 draws, for a total payment of 390,400 yuan in national currency.</p>
+<h3>Cash Breaks Through 12,000 Yuan, Then Retreats</h3>
+<p>The black market for cash first rose and then suddenly retreated. After breaking through the 12,000 yuan mark, it immediately retreated, due to loan news and the end of the lunar year, with middle-class Chinese selling goods for cash. In the early morning, it was 11,600 yuan, a low of 30 yuan. The first transaction of ten taels in the market was 11,800 yuan. Chen Ji and other gold shops and Nanjing gangs absorbed small amounts, rising another 250 yuan, breaking through the 12,000 yuan mark, with a maximum of 12,050 yuan. He Fa, Tong Kang, and Yong Li sold, retreating to around 11,800 yuan, and finally to 11,730 yuan, still up 100 yuan from the previous day. The transaction was high and low at 450 yuan on the day. The number of transactions was sparse. Jewelry gold was still listed at 1,250 yuan per tael. Silver was 14 yuan. There were buyers at 10.05 yuan on the black market. In the foreign currency market, British and American gold pounds each rose 10 yuan, the former to 290 yuan and the latter to 300 yuan. U.S. dollar notes once rose to 16.70 yuan, and finally to 16.56 yuan. Hong Kong notes were 2.78 yuan. Large notes still had to be reduced by 0.10 yuan.</p>
+<h3>Rain and Snow Return, Rice and Grain Become More Expensive</h3>
+<p>The market for national rice was even more vigorous yesterday. After the continuous rain and snow blocked the roads, the supply of early Japonica rice from the Southern gangs has become less and less, and the appetite of the households in this street is still greedy. After the market briefly stabilized in the early morning, it was raised by incoming sellers. Early Japonica rice jumped from 210 yuan in the morning to 218 yuan. Early rice rose to 219 yuan, a huge increase of 11 or 12 yuan. Thick Indica Kunshan high-quality Indica opened at 240 yuan, the general market was 237-238 yuan, and the original packed overnight Indica was 230 yuan, all raised by about 5 yuan. Only Baiyuan delivery continued, and the way out was not smooth, slightly tight, opening at 204-207 yuan.</p>
+<p>The demand for bran from inland villagers was very high yesterday, and the stock in the market was scarce, and the factory output was also low. Sanxin bran even rose to 58.20 yuan, an increase of 0.70 yuan from the previous price, with 500 bags transacted.</p>
+<p>The market for miscellaneous grains was still excited yesterday. Soybeans, corn, red beans, and peanuts were also popular and in high demand. It is estimated that 100 bags of Chongming sand soybeans opened at a price of 123 yuan. One car of soybeans from Linhuai Pass, priced at 138 yuan. 50 bags of Pudong black soybeans, priced at 132.5 yuan. 50 bags of Pinghu red beans, priced at 93 yuan. 100 bags of Jiangbei Xinsheng peanuts, priced at 230 yuan. 200 bags of dry white corn, priced at 52 yuan to 52.20 yuan. 100 bags of Xidi aged corn, priced at 54 yuan. Also, 300 bags of new corn, priced at 56-57 yuan, and delivered for 59.5 yuan. Also, 100 tons from Yinghua Company, with a Hongsheng store price of 96.5 yuan to 97 yuan.</p>
+<h3>Active Buyers of Cotton Yarn</h3>
+<p>The market for cotton yarn continued to advance, because the people's hearts were good, and buyers were active again. The initial price for 20-count Double Horse factory orders was 1,400 yuan, 25 yuan lower than the previous day. The price rose to 1,470 yuan with the gradual increase in buyers, and finally rose to 1,500 yuan, 75 yuan higher than the previous day. The preserved spot price for Double Horse was 2,170 yuan, 42-count Phoenix was 4,050 yuan, and the spot price was 4,200 yuan. 32-count Xiantao was 3,600 yuan. 20-count Blue was priced at 2,450 yuan. Factory orders for 20-count monthly were 2,350 yuan, with factory orders ranging from 2,200 yuan to 2,250 yuan. 16-count Red Kuixing ranged from 1,700 yuan to 1,750 yuan.</p>
+<h3>Dongzhan Order Goods</h3>
+<p>——Gradually Leveling with Spot Goods——</p>
+<p>The sales of white goods in the factory cloth market were stable yesterday, with no major ups and downs. Only colored goods such as fine cloth and blue fine cloth saw a slight increase, and very few transactions were made.</p>
+<p>Dongbu The Japanese merchant foreign firm can apply for a movement permit on behalf of the owner and the procedures are more convenient. Therefore, Dong Zhan order goods gradually approached spot goods. The factory orders for 12-pound matching head fine cloth rose from 89.56 yuan to 90.05 yuan, which was 0.075 yuan higher than the previous day. Spot goods were 91.5 yuan, up 0.05 yuan. The Caiqiu Yanghe factory orders rose to 87.25 yuan, and spot goods were 89.25 yuan. The Four Gentlemen's [Brand of Fabric] - spot goods were mediocre and still sold for 3.056 yuan. Zhan order goods ranged from 2.89 yuan to 2.923 yuan, an increase of 0.056 yuan per yard.</p>
+<h3>Maya Dates Rebound</h3>
+<p>The market for Maya dates, which had previously fallen from more than 150 yuan to 110-120 yuan, has rebounded due to shortages and active sales. The price of medium-grade goods has returned to 145 yuan, and the price of extra-high-grade goods, which are thick and large, has risen to 190 yuan.</p>
+<h3>Daylily Rises Again</h3>
+<p>The price of daylily has risen in Nanjing City, and the goods in this city that have been sealed by banks and stores have not yet been released. Therefore, there is a shortage of spot goods, and the market price has repeatedly risen to new highs. The price of top-grade daylily has opened to 350 yuan, an increase of 50 yuan. The price of upper-middle goods has opened to 300 yuan, an increase of 40 yuan.</p>
+<h3>Citrus Fruits (II)</h3>
+<p>— Gao Jiannong</p>
+<p>What is strange is that the Jin Dynasty scholar Ji Han, in his work "Descriptions of Plants and Trees of the South," sometimes describes the shapes of other plants in great detail. Yet, regarding the shape of the "tangerine," he uses only eleven characters: "Tangerines have white flowers, red fruit, fragrant peel, and a delicious taste." Regarding the "mandarin orange," he only says, "The mandarin orange belongs to the tangerine family. It has a particularly sweet and delicious flavor. Some are yellow, some are reddish, and those that are broad are called 'pot mandarin oranges.'" Perhaps he thought that mandarin oranges were native to our country and familiar to everyone, so there was no need to waste ink on depicting them? We now know that mandarin oranges belong to the genus Citrus of the Rutaceae family because they propagate so easily.</p>
+<h2>Page 5</h2>
+<p>Spring and Autumn</p>
+<h3>Eating New Year's Eve Dinner and Abstaining from Killing</h3>
+<p>— Liao Mu</p>
+<p>"The chilling wind and bitter rain sadden people." Experiencing this scene at the end of the lunar year truly gives one the feeling that the Buddha described as "unspeakable." Yet, time refuses to wait for people and has finally drifted by gently and quietly arrived once more. Yesterday was "Beginning of Spring," and we will soon welcome the "Spring Festival."</p>
+<p>In ordinary times, after a year of hard work, taking a short break to decorate, offering thanks at year's end, and the whole family reuniting to happily eat New Year's Eve dinner is one of life's pleasures. A few cups of unfiltered wine, a few dishes of sliced raw fish and meat, in terms of human feelings, no one would dare say it is too wasteful, and it has its own significance for the holiday. Even if one displays some extravagance, killing some chickens and ducks, and boiling some fish and meat, relying on the blessings of the spirits and ancestors, it seems to be a right that those who are bustling and lively should have.</p>
+<p>However, in this day and age, with the holiday at hand, if one wants to share more of the soup and cannot avoid following tradition, I think a group of those who buy rice at fixed prices would truly frown and only give a bitter smile. This is somewhat distant from some serious Buddhists and revolutionaries, but "the pheasant on the mountain ridge, now is the time, now is the time," that was then, and this is now.</p>
+<p>Some people still like to stubbornly adhere to tradition, eating their New Year's Eve dinner with gusto, unwilling to engage in conservation. But how will tomorrow be after this good night? Therefore, those who are not too optimistic should plan for how to support life after the good night and holiday. Matters of ghosts and spirits are distant and vague; the pleasure of the palate is only for the present. This evokes a special emotion.</p>
+<p>The Chinese Moral Improvement Society is advocating abstaining from killing to save lives, saving creatures to save people. Although some may think it is a commonplace, upon reflection, it does have meaning today. "It is better for the neighbor to the west to offer a simple sacrifice of vegetables than for the neighbor to the east to slaughter an ox." A simple sacrifice is to offer boiled vegetables. Being cautious to the end and remembering those who are far away, one must not forget the fundamentals, and one must also hold the concept of "compassion for heaven and pity for mankind, being saddened by the suffering of one's kind." Finding joy in hardship is somewhat embarrassing; saving on waste can still do something beneficial for others.</p>
+<p>Qing Dynasty scholar Peng Jiqing wrote a poem on New Year's Eve: "The neighbor's chickens crow all night, vying to be the first to announce dawn; here I pass the fifth watch in desolation; blood stains a thousand knives, flowing endlessly, while accompanying wine and talk of spring's arrival." I also have a feeling of desolation, alas!</p>
+<h3>Stage and Screen</h3>
+<p>"The Hunter's Story," co-starring Walter Pidgeon and Joan Bennett, is a sensational thriller that Shanghai film fans have been eagerly awaiting. It is now known that the film is in Hong Kong and will come to Shanghai as soon as the situation stabilizes.</p>
+<p>Simone Simon has been absent from the screen for a long time since "Seventh Heaven." This spring, she accepted an invitation from Dianlei Hua and co-starred in a film with Walter Huston called "All That Money Can Buy." It is said that this film was shipped to Shanghai before the outbreak of the Pacific War and will soon be released to the public.</p>
+<p>— Duo Bao</p>
+<p>"Forever and Ever" has been completed and will be released at the Grand Theatre on the 12th to celebrate the New Year. Director Wu Renzhi has decided on a cast of stage actors for "Glamour in Troubled Times," including Xia Xia, Shi Hui, Huang Zongying, Duanmu Lanxin, Chen Lu, and Mei Cun.</p>
+<p>— Er Qing</p>
+<h3>Begonia</h3>
+<p>— Qin Shouou</p>
+<p>17.  Destination</p>
+<p>"I...already...very...very much need to...have...a...permanent...destination...destination!" Begonia's voice was as low as a whisper. "Child..., what...what I can't stop worrying...worrying about...is...that you don't...don't have...a...a temporary...destination..."</p>
+<p>As he spoke, he slowly pulled a photograph from under his pillow.</p>
+<p>"To...you...," he fixed his lifeless eyes on this photograph that had never left him for more than a decade, and said haltingly, "I...I also...fee...feel very...very sorry.... In the beginning..., I...was...was because...I didn't want...want...you...to see...see my...ugly...face..., and also...didn't want...want you...you to follow...me...and suffer..., that's why I forcibly...forcibly...avoided...avoided you.... Now...now it's...too late...to regret...."</p>
+<p>Seeing that he was having difficulty speaking, Mei Bao quickly poured half a glass of boiled water, mixed it with the asthma medication left by the doctor, held back her tears, walked over to feed it to him, and at the same time took the photograph he was holding in his hand.</p>
+<p>"Dad, rest, rest! Tomorrow we will definitely go and hire a better doctor, no matter what, we must cure your illness." Mei Bao said very childishly. (325)</p>
+<h3>"Awakening and Dancing to the Rooster's Crow"</h3>
+<p>— Wang Qiushui</p>
+<p>Reportedly: "Various entertainment venues have suffered heavy losses due to early closing hours and have jointly petitioned the authorities, requesting that the business hours be appropriately extended under the principle of electricity conservation."</p>
+<p>Reportedly: "The authorities reiterated the previous order, strictly limiting the closing time of entertainment venues to before 10 p.m. every night."</p>
+<p>Reportedly: "A new invention, the breakfast dance, starts at 9 a.m. every day."</p>
+<p>We cannot help but admire the Shanghai dance hall operators. In order to plan for their own business and to seek happiness for the public (entertainment is a necessity for everyone to relieve fatigue, which can be called "public happiness," presumably this is not excessive praise), they do not hesitate to run into such a big snag. However, with a little brainstorming, they followed the luncheon dance, tea dance, and evening dance with the breakfast dance. Dancing is available anytime, anywhere, thus increasing business income and providing convenience for the public.</p>
+<p>As the saying goes, "A big belly is good for business." The businessman who invented the breakfast dance should be considered "good" at adapting to the times. From the perspectives of business acumen and adapting to the current environment, the breakfast dance has its own value. Since the night market has disappeared, people's sleep will inevitably increase. Sleep is like eating; overeating is harmful to the stomach, and excessive sleep can also cause the brain to become muddled. In this way, after getting up early, one can go to the dance hall to dance for an hour or two to "wake up the brain" and have breakfast at the same time, achieving both goals and ensuring a day of vigor. It is said that dancing has the meaning of combining exercise with entertainment. It is hoped that the ladies of Shanghai will go dancing, because dancing can lead to getting up early, and getting up early can strengthen the body. The "breakfast dance" is only a "token gesture" in the dance program, but it provides great help.</p>
+<p>After the implementation of the new time, 9 o'clock is 8 o'clock. From now on, in the faint morning light, dance partners must run eagerly. Who says that Shanghai people's lives are decadent and uninspired? Do you not see that today, she or they have already started practicing "awakening and dancing to the rooster's crow"?</p>
+<h3>People Under the Snow</h3>
+<p>— Hua Jing</p>
+<p>During the last two snowfalls on the isolated island, the number of people who froze to death on the streets that night increased sharply. There is a saying: "Three feet of snow in Jiangnan means ten years of abundance." Now it can be changed to "One night of snow in Shanghai, the number of corpses on the streets increases!" Many people say: These many people who froze to death are all addicted to white powder and red pills, they brought it on themselves and deserve to die. However, child corpses account for more than half of them, indicating that those who died on the road were not all drug addicts. Please, those who are sleeping in warm beds and dreaming good dreams, have mercy and think of a way to save these pitiful worms under the snow! The cold weather will continue for a long time, and who knows how many people under the snow are still "waiting in line"!</p>
+<h3>Wang Cilong Passed Away in Hong Kong</h3>
+<p>— Tai Xu</p>
+<p>Today, I must report another unfortunate news to the readers: Wang Laowu Wang Cilong has passed away in Hong Kong.</p>
+<p>Wang Cilong was also a veteran on the silver screen. In the era of Da Zhonghua Baihe, when "Silver Screen Overlord" Wang Yuanlong was in the limelight, Cilong could be said to be his right-hand man. "Beauty Trap" and "Four Heroes of the Wang Family" were all highly sought-after works. In these fifteen or sixteen years, many movie stars have declined, but the two of them remained unmoved. After the war, Cilong was the resident director of the Guolian Film Company. Hu Die's "Madame Butterfly" was originally scheduled to be released at the end of the year, but now it has not only been suspended due to "August 8th," but it is also a permanent farewell!</p>
+<p>This unfortunate news was sent by Wang Yuanlong in a letter from Hong Kong yesterday. News of other film people staying in Hong Kong was not mentioned.</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.02.04.html", "next": "1942.02.06.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

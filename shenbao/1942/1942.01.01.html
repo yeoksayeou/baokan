@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.01.01 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 352 - 4924355</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h2>Page 3</h2>
+<h3>馬來亞漫天烽火新加坡定布戒嚴怡保南戰事進行中</h3>
+<p>新加坡三十日哈瓦斯社電　路　社頃發消息稱、新加城自本月起、業已宣布緊急狀態、半官方面並發表文吿稱、凡有從事刦掠間諜或危害公安行爲者、均將交付軍事法庭　　、預料軍事當局不久即將實行脊禁、各項交通亦將大為减少云、</p>
+<p>東京三十一日同盟社電　日本大本營宜稱、太平洋戰爭爆發以來、馬來亞怡保區日軍繼續推進、距新加坡僅四百公里、總計日軍巳據有新哥拉·柯特巴魯·維多利亞山崗·樓榔嶼·及怡保等處云、</p>
+<p>馬來某地三十一電　馬來日軍向西海岸戰綫推進、驅逐澳洲軍於怡保市南方××河流域之低濕地帶、加以包圍、自三十一日晨以來施行猛攻、</p>
+<p>東京三十一日海通社電　日機咋日飛過馬來南部、散發傳單、勸吿當地之人民弗作無謂之抵抗、業已投降之印度兵、日軍並未解除其武裝、令之巡哨後方、</p>
+<h3>菲島戰况日自南北兩路圖包圍馬尼剌</h3>
+<p>盤谷三十日海通社電　據麥克沃塞將軍之司令部於今午宜稱、「各處戰况沉寂」云、</p>
+<p>倫敦三十一日哈瓦斯社電路透社馬尼刺訊美國遠東軍總司令部－昨發表戰報、內稱、「日軍利用大批坦克與鐵甲軍向前推進、美軍已被迫後退」、大批美軍業已放棄保衛××××、至連日自南路進襲馬尼刺之日軍兩縱隊、顯擬在×××××（距馬尼剌五十公里）會合、査×××××與馬尼刺間之直綫距離雖僅五十公里、但中間尙隔一廣廿五公里長四十公里之××××、路透社記者以為日軍殆擬自西南越過×××、以攻入×××××、此外觀於日本空軍活動之略見减少、一般人相信日方似欲在發動新攻勢之前、使作戰部隊略得休息、並等待生力部隊與汽油接濟云</p>
+<p>馬尼剌三十日哈瓦斯社電據前綫最後消息上週在呂宋島甫部登陸之日軍、業已到達××××××××××××××汝××××兩處、日軍現正準備使其各部隊間獲得聯絡、以便繼積推進云、</p>
+<p>盤谷三十一日海通社電據馬尼刺最近所發之官報稱、日軍現正同時自北面與南面推進、日本轟炸機已能控制各交通要道、日軍推進並利用大量坦克車與鐵甲車、美軍防綫現正在後撤中、另悉、今日十時十五分有砲聲、自南而傳至馬尼刺、由此可知該處正在激戰中、</p>
+<p>東京三十一日海通社電　日本大本營海軍部發言人咋稱、日軍作戰之目的、為「亞洲人之亞洲」、其意亦為「菲列濱之人菲列濱一破毀馬尼剌並非日軍所欲爲者云、</p>
+<p>葡京三十一日同盟社電　美國遠東軍總司令麥克沃塞將軍今日聲稱、美菲軍對於日機轟炸馬尼刺、應取報復行動、惟此菲業已顯令報復之謂、而僅係表示其個人之希望云、</p>
+<h3>邱吉爾演說未來戰爭趨勢可分爲三個主要階段</h3>
+<p>哇太華三十日路透電　（重慶一衆環集、歡迎邱吉爾首相之蒞轉播）今日加拿大國會門前羣一臨、首相於下午六時五十六分抵達國會、一時歡聲雷動、加總理金氏及下院議長立於議會人口歡迎邱氏、會塲無隙地、參加人數約二千人左右、議員中多人係由數千里外前來者、邱氏於議員鼓掌聲中發表演說、</p>
+<p>哇太華三十日哈瓦斯社電英首相邱吉爾本日在加拿大聯邦上下兩院發表演說、力言將來戰爭大抵將分三個主要階段其、言有曰、「第一階段乃在統一作戰之努力、在此期間最須注意者、即為艱苦作戰、吾人必須集中全力、俾在海空兩方面均能獲得優勢、至弟二階段之主要工作、端在調整努力、吾人行見協約國起草一般計劃、俾為共同利益而盡量使用其所有力量、第三階段可謂自由時期、受人役使之各國人民均將恢復自由、並將被征服之領土重行組織、加拿大聯邦在現行戰爭之中甚為努力、英國人民深為感荷、加拿大軍隊之英勇、在杳港一役中業已表達無遺、其與英軍駢肩作戰之戰蹟、將與上次大戰維美一役先後媲美、須知我英國至一九四三年即可擁有全世界最優秀之飛行員、此次余前來華府與羅斯福總統進行談話、其目的乃在使協約國作戰獲得統一指揮、吾人對於任何妥協辦法、永不能接受、要之、瞻望前途、仍極黑暗、戰爭至何時始能結束、此際亦難預言固矣、但將來如何、悉視協約國如何努力及戰爭如何演變而定、則為不移之論云、</p>
+<h3>艾登離蘇前函斯達林增進兩國合作對談話表滿意</h3>
+<p>倫敦哈瓦斯社電　路透社頃發出消息稱、艾登外相於離蘇返國之前、曾致函蘇聯人民委員會主席斯達林、略謂、此次前來貴國訪問、與閣下討論戰爭及和平問題、深為愉快、並相信此次談話非常重要、必能促進兩國共同努力、特請閣下向貴國人民代為致意云、同時又致函蘇聯外交人民委員長莫洛托夫稱、此次前來貴國、承閣下款待、母任感荷、余相信　次談話、必能加强英蘇兩國間之合作云、</p>
+<p>倫敦三十日哈瓦斯社電　頃悉上下兩院擬要求外相艾登就其此次前往莫斯科談判經過、提出詳細報吿、若干方面並望兩院召集秘密會議、此外政界人士對於外相艾登咋日與美駐英大使韋南特會晤一舉極為重視、</p>
+<h3>蘇聯工人代表在英程序</h3>
+<p>瑞典京城卅一日海通社電與美外相艾登返英時偕來之蘇聯工人聯合會代表、與英國工人聯合會主席雪德林商定蘇聯工人代表在英勾留時之程序、蘇聯之工人代表將參加會議二十二次、其中四次渠等將發表演說、渠等並將參覜英國飛機廠、坦克車廠、及飛機塲多處、</p>
+<p>里斯本卅一日海通社電　據倫教來報吿稱、英國共產黨假座倫教史篤爾戲院舉行大會、同時因參加羣衆過於擁擠、復在其他十處擧行類似性質之大會、英共產黨領袖鮑列特發表演說、檢討蘇聯之局勢、盛讚蘇軍之成就稱、蘇聯如欲獲得最後勝利、猶有賴於龐大之生產量、今後工廠中應儘量僱用女工、渠更主張加强英國內閣、　淸政府中之慕尼黑份子、並在歐洲建立第二戰錢、</p>
+<h3>美國戰費龐大打破上次紀錄明年度預算達五百億圓</h3>
+<p>華盛頓三十專　（重慶轉播）據財部今日宣布、美政府之戰費、業已打破第一次大戰時之紀錄、十二月共用二·一二·一九七·〇〇〇元、較之第一次大戰戰費最多之一月即一九一八年十二月竟超出一三六·〇〇〇·〇〇〇元、其最大之、項即為陸費八·〇〇〇·〇〇〇元、明年財政年度之軍費預算邊五〇·〇〇〇·〇〇〇·〇〇〇元、</p>
+<p>華盛頓二十一日路透社電　（重慶轉播）自明年七月一日起在該財政度內、美國全部收入之一千萬萬元中、將有百分之五十伯爲收費、羅斯福總統招待記者、曾經表示其希望來年如此、並謂今年全國之收入中、已有百分之二十七作為戰費、</p>
+<h3>汩羅江南岸激戰正在進行中贛北高安附近亦有戰事</h3>
+<p>此間今日接重慶來電報吿稱、自長沙前綫發來之華軍戰報稱、湖南省北部泊　江南一帶、激戰仍在進行中、日軍係沿粵漢鐵路南進、祖在白水附近即為華軍所阻、同時自鐵路一帶向西　展之日軍、正在向洞庭湖東岸之營田進攻、江西省西北部之日軍正自武寗向西南推進、其用意顯在呼應湖南北部之日軍、現華軍正自高安一帶出擊迎戰、（海通社訊本埠三十一日訊）</p>
+<p>長沙　三路渡汩水南攻之日軍、其東中兩路、三十日下午仍與華相持於長樂街新市以南山地、（三十日電）</p>
+<p>常德　今晨九時有日機一架飛至華容東北之柳林洲上空偵察、另有日機一架襲磗橋、同時蘆蓆灣日軍向柳林洲猛烈砲擊、並有日小型軍艦三艘、砲艇一隻及小汽艇十五隻在六洲附近江面游弋、至九時四十分蘆蓆灣日軍一部開始向華柳林洲進攻、旋復由岳陽增來約千餘、砲八九門、於十時復分三路向華猛攻、一路由六洲攻華新河口、一路由頭洲攻華柳林洲、另一路由濠溝攻牛台、當與華軍在該地附近展開激戰、又卜時四十分有日運輸艦三艘及汽艇十餘隻、截日援兵沿江駛至旁河口附近之江面、（三十日電）</p>
+<p>瀏陽　渡汩河之日軍、二十九日續有增加、在東路長樂街方面日軍增達一萬人、中路新市方面增達五千人、西路歸義以南日軍增達二萬、二十九竟日前綫戰事極猛烈、（二十九日電）</p>
+<h3>隨陳策離港者七十二人</h3>
+<p>韶關據確切調査、在陳策將軍指揮下離港之中英人士共七十二名、除陳將車外、中國人中僅有余參議兆祺　陳將軍之秘書徐亨二人、英車官二十四員、英士兵四十五名、墜海失蹤者僅余兆祺及英兵三人、</p>
+<h3>英報記者馬德納昨晨抵渝</h3>
+<p>重慶　倫教泰晤士報駐華特派員馬德納於美日戰爭爆發之夕、乘艦離港赴菲、旅行荷印馬來緬甸各地、三十一晨由仰光乘機扺渝、（三十一日電）</p>
+<h3>行政院政務處長改叙特任</h3>
+<p>重慶　國民政府各院秘書長業經改叙特任、頃據確息、行政院政務處長亦經上週政院會議通過改叙特任、（三十一日電）</p>
+<p>新加坡的姿態</p>
+<p>舉世　目的新加坡，如今在漫天烽為之中，得到牠的面積，全島長二十七英里，　十四英里，而積共二百十七方哩。牠的北端與柔佛相　的海峽中，有很堅固的長堤一道，長四分乏三哩，其上可通行火車與汽車，是當地偉大建築之一，在一九二三年建成的。（見上圖）新加坡和柔佛的交界處，即在長堤中間，堤上有石碑，刻着J（Johore即柔佛）和S（Singapore新加坡）兩個字母。新加坡雖由總督統治，但市內的一切行政，確由市政廳主持，權力相當的大。市政廳由總督委任的主席一人和委員二十四人所組織，下分十大部。（下圖）便是新加坡市政廳的外觀。</p>
+<h3>經濟部物資局卽將成立</h3>
+<p>重慶　新任經濟部物資局長何浩若·古十一晨語中央社記者、責任艱鉅、本人惟有全力以赴、並稱該局在籌備組織中、短期內即可成立（三十一日電）、</p>
+<p>組織規程</p>
+<p>重慶　政院卅日通過經濟部物資局組織規程、原文如下、第一條、經濟部為管理日用必需品之供求及價格起見、設立物資局、第二條、物資局之職掌如左、一、關於餐導及改進物資供求事項、二、關於物資登記及用途分配事項、三、關於物資調查及統計事項、四、關於物價平衡及制止暴漲事項、五、關於市塲管理及防止操縱事項、六、關於物資經營者不正當行爲之取締事項、七、關於物資之供應及儲運事項、第三條、物資局設左列各處、一、總務處、二、督導處、三、管修處、四、財務處、第四條、物資局統轄左列各局處、一、農本局、二、平價購銷處、三、燃料管理處、第五條、物資局設局長一人、承經濟部長之命綜理局務、副局長二人、輔助局長處理局務、第六條、物資局設主任秘書一人、秘書二人至四人、承局長之命、綜核文稿、辦理機要文件及其他交辦事項、第七條、物　局設處長四人、承局長之命、分掌各處事務、第八條、物資局設科長十六人至二十人、科員七十人至九十人、承長官之命、辦理各項事務、第九條、物資局設視察十二人至二十人、專員十六人至二十人、承長官之命、執行職務、第十條、物資局長特派、副局長主任秘書處長簡派、秘書科長簡派、視察專員薦派或委派、科員委派、第十一條、物資局設會計主任一人、辦理歲計會計事項、共辦事處所稱會計室、會計主任及佐理人員、依照會計人員任用之規程辦理、第十二條、物資局得聘用顧問及專門委員、第十三條、物資局得酌用雇員、第十四條、物資局因執行業務之需要、經經濟部之核准、得設置各種委員會，並酌派專員駐外辦公、其詳細辦法另定之、第十五條、物資局辦事細則由物資局擬訂、呈請經濟部核定之、第十六條、本規程自公布日起施行、（三十日電）</p>
+<h3>贛積蓄工作順利完成</h3>
+<p>吉安　贛三十年度節約儲蓄總額二千萬元、巳順利完成、三十一年儲額增加為四千萬元、節儲分會正積極推行中、（三十一日軍）</p>
+<h3>紐西蘭決心捍衛疆土紐首相之表示</h3>
+<p>盤谷卅一日海通社電　此間接得報吿稱、紐西蘭首相本日吿知紐西蘭人民、吾人直接感受襲擊之威脅、乃紐西蘭有史以來之第一遭、遇有捍衛領域之需要時、吾人決無畏葸不前者、易言之、吾人願與在海外作戰之同胞共甘苦云、</p>
+<h3>葡派兵增防蒂摩爾島安哥拉總督辭職</h3>
+<p>哈瓦斯社三十日柏林電　本日據德意志通訊社接葡京電訊、「傑奧比羅」號輪船載有葡國兵士一千一百名、自葡屬東非羅倫索馬貴斯港開往遠東葡騷蒂摩爾島、並有航空母艦「柴爾槗一號隨行護送、</p>
+<p>里斯本三十一日海通社電葡萄牙官方公報宣稱、葡屬安哥拉總督孟諾博士業巳解職、渠之解職係由於自願云、</p>
+<h3>英法境內發生撞車慘劇</h3>
+<p>巴黎三十日哈瓦勘電　法國北部海茲勃魯克附近、發生撞車慘劇死五十人、傷數人、</p>
+<p>瑞典京城三十日海通社電倫敦咋夜半報吿稱、蘭闢廈郡愛格爾斯地方附近、昨晨　生火車互撞事、死者至少有十一人、傷奢有百人左右、火車頭之一、先將另一車頭撞拆為二、然後滾下山坡、客車均被震毀、旅客均被壓車身下、旅客大參係工人云、</p>
+<h3>日海軍封鎖夏威夷美潛艇</h3>
+<p>華盛頓三十日哈瓦斯社電此閒官塲方面相信、日本艦隊現在××××海面、</p>
+<p>東京三十一海通社電　日本大本營海軍發言人昨夜宣稱、日本海軍已開始將夏威夷之美國潛艇加以封銷、十二月二十八日日本海軍飛機在呂宋島一帶海面巡邏時、曾　沉敵驅逐艦一艘及潛水艇兩艘、並以炸彈擊傷商輪二十六艘、其中七艘業已沉沒、日機僅損失兩架、其中一架係以飛機載炸彈向目標猛撞而與之俱毀、另一架則告失踪、又關於夏威夷海戰時、日海軍之損失、除業已宜佈之特種潛艇兩艘外、尙有普通潛艇一艘亦吿失踪云、</p>
+<h2>Page 4</h2>
+<h3>甘地向國民大會辭去主席一職渠不放棄消極抵抗主義致與其他委員意見相左傳尼赫魯將繼任國民大會主席</h3>
+<p>印度巴爾陀里卅一日哈瓦斯社電　國民大會執行委員會、於昨日在此間開會、主席甘地、曾在事前致函大會、聲明印度自由一日不能取得、渠所倡導之消極抵抗運動、亦即不合作主義、即一日不願中止、此項主張、旣與大多數代表之意見相左、渠惟有自動辭職、以退避賢路、此函經提出宜讀後、執行委員會即通過決議案一件、准許甘地辭職、並贊成協助英國作戰、其大要係謂、「英國對印度所採取之現行政策、雖無變更、但本會認為世界大局所加諸印度之影響、此際實不能不　　顧及、因此印度國民大會、對於這受優略、以及正為自由而戰之各民族、當然寄以同情、、但有一點仍須聲明者、即必須有一獨立自由之印度、始能以國家的立塲、策劃國防、並為各民治國之偉大目的效力、以渡過戰爭時期之種種難關」云、按甘地致國民大會函內、首稱大會前於去年六月十六日在孟買開會時、公推本人為主席、余當時以為大會此項決議之命意、乃在表示拒不參加任何戰爭、並反對一切暴力行動、今日始知余之解釋、實與大會大多數代表之意見相左、但本人決定繼續推行不合作運動、以期在同志贊助之下、終於貫澈反戰主張、並取得言論自由云、</p>
+<p>瑞典京城三十一日海通社電據昨日此聞所得　　里息比甘地已　印度國會　　袖之職、渠之辭職係與國會黨其他主要人員會議後之結果、甘地辭職後、並令其信徒撤消實行渠之非戰及不服從之政策、因太平洋戰事爆發後、甘地曾要求國會黨恢復自由運動、消息　通方面稱、著名之反英領袖尼赫魯、將繼任為印度國會黨之領袖云、</p>
+<h3>蘇雪地進軍向德猛攻中路德空軍炸蘇駐軍地</h3>
+<p>柏林三十一日海通社電　昨日此間宣稱、蘇軍乘東綫大雪紛飛之際、於星期一發動數次之進攻、蘇軍以馬曳雪　為助、向德義防綫進犯、但被激烈之砲火所擊退、在東綫南部之某處、德軍冒嚴寒之氣候、將蘇軍一團擊退、並予以重創、該團之殘餘部隊倉皇逸去、遺屍四百具、更有大批夕榴彈砲、機關搶及馬曳　　、遺落戰塲上、此外尙有多人被俘、</p>
+<p>芬蘭京城三十日哈瓦　電戰報稱、加勒利地峽兩側、本日發生砲戰塞維爾區、敵軍斥堠隊企圖渡河、被我擊退、中路敵軍放棄哨站八所、抑損士兵一百二十七名、中北兩路敵軍返攻未逞、</p>
+<p>柏林三十日哈瓦斯電　德意志通訊社頃發出消息稱、前日　國空軍、甚為活躍、曾擊落蘇聯飛機十四架、其中七架在空戰中擊落、三架被高射砲擊洛、其餘在機塲炸毀、此外英國飛機在英吉利海峽法國沿岸上空、被我驅逐機及高射砲擊落九架云、</p>
+<p>柏林三十日哈瓦　電　德意志通訊社頃發出消息稱、德國空軍昨日飛往東綫中路、轟炸蘇聯駐軍地點、紅軍損失綦重、各地曾起火延燒、步兵及騎兵數隊、均被炸彈及體關檢所驅散云、</p>
+<h3>美國會　新年休會三日</h3>
+<p>華盛頓卅一日哈瓦斯社電頃悉美國國會本屆會期、將於一月二日結束、而於五日續開、</p>
+<h2>Page 5</h2>
+<h2>Page 6</h2>
+<h3>工部局昨規定煤價　保持重要工業燃料</h3>
+<p>印度煤自今日起禁售　煤商如違令從嚴懲處</p>
+<p>兩租界煤斤統制委員會爲欲明瞭本市各煤公司·行號銷售煤斤狀况起見、特諭令煤業同業公會辦理同業銷煤及用戶登記、該會目於日前開始辦理以來、各同業前往索表填報者頗絡繹於途、截至昨日下午五時止、巳達四白五十戶以上、凡各煤商一律限於本月三日前報到、俾便彙轉兩租界當局備查、否則即作自棄論、</p>
+<p>十一個月到煤總額</p>
+<p>至於一九四一年（一月至十一月）洋煤總運滬量達九九一·一二九〇公噸、價值一〇·二四一·〇五二關金、折合法幣達二七·七二二·五二八元、其中以越南佔首位、計三七一·三二六公噸、價值五·八三四·〇八三關金、台灣第二、計二六三·五二七公噸、價值一·二二一·一五七關金、日本第三、計一六七·二二四公噸、價值六三五·〇〇一關金、英屬印度第四、計八〇·〇三三公噸、價值一·四二二·六〇一關金、朝鮮第五、計七七·〇〇一公噸、價值四〇二·五六〇關金、又復出口一·一〇〇公噸、價值九三四八關金、</p>
+<p>煤斤限價今起實行</p>
+<p>工部局規定自今日起、凡在公共租界內出售煤斤、其最高出棧價格、不得超過下開定價（運費在外）　開　軟大塊煤每噸國幣三百六十元、　開　軟煤屑每噸國幣三百六十元、　鴻基大塊煤每噸國幣六百元、　鴻基小塊煤每噸國幣六百元、超過定價或無理由拒售者照下開辦法分別或合併處罰之、甲·不給以搬運煤斤或煤球之許可證、乙·存煤當予沒收、丙·不准再有新貨之供給、再俟新貨運到、煤斤限價將予核减、至印度等處之煤斤、自今日起禁售、一律保留、備作重要工業等之用、</p>
+<h3>報關行商號今起　重行註冊</h3>
+<p>為期一月</p>
+<p>江海關定於今日起、開始辦理報關行商號註冊、凡各報關行商號無論新舊、均須於是日起至三十一日止、向該關總務課註冊處辦理註冊手續、茲探錄其各項手續如下、　報關行、各報關行應將舊有營業執照呈關換領新照、同時附繳換照費法幣二元、如係報關同業公會會員、須由該公會代領、　商號、各商號應另具呈請書、向該關重行註冊、惟無須再行簽證、其空白呈請書可向該註冊虎索取、　海關駐郵局包裹處戰關行、所有海關駐郵局包裹處報關行、均應將舊有營業執照呈關換領新照、同時附繳換照費法幣二元、凡各報關行無論新舊、如欲停止營業、必須於三個月後、始可領取保證金、至於各報關行及商號如於三十一年二月一日以後、仍未按照前項規定手續重行註冊、即作未註冊論、必俟完全從新註冊後、所有報單始可接受、至更換經理遷移地址及停止營業等項事件、亦須向該關總務課註冊處報明、</p>
+<h3>食油及食糖　已取消統制</h3>
+<p>工部局頃發布告略稱、茲經日本當道知照、由其負責保證公共租界及界外區域內食油與食糖之源源供給、並充分分配、因此照日本當道之請、將關於食油之本局第五六三九號。第五六四零號。及第五六七零號布告、與關於食糖之第五六八三號布告、一併取消、但關於乳油·人造乳油·及獸脂各項、本局仍當續予統制、」</p>
+<h3>米店售米時間　每週停售兩天　粉限價改為每市斤一元</h3>
+<p>工部局規定自月一日起、凡設在公共租界內之米店、其售米時間、規定自上午八時起全下午四時止、逢星期三及星期日應停止出售、該局所設各售米所之售米時間、亦照上開同樣辦法辦理、今日元旦、局設售米處三所亦均休假、</p>
+<p>昨撥洋米約二萬包</p>
+<p>工部局米糧麵粉兩辦事處、昨日因屬國歴年終、新年有假期關係、故簽出搬運證數量、較平日爲鉅、以供門售零耀、前日簽出搬運許可證、指定羅斯福堆棧提取之洋米、各米號巳於咋日開始提取、工部局米　辦事處昨日繼續簽發搬運證、指定由中國　茂泰　羅斯福棧三處提取之米、其總數近二萬包、蓋因新年假期關係數量較平日簽發者爲鉅、</p>
+<p>麵粉昨發六千餘包</p>
+<p>工部局麵粉辦事處、咋日簽發搬運許可證、指定由福新二廠福新七廠臬豐廠三處提取之麵粉數量、總計達五六千包、亦較平日爲鉅、上項米糧及麵粉搬運證、指定棧廠提取之米麵、如不及於昨日提完、則須延至一月三日、可以搬取、其餅饅平粉、前發一千五百袋、由法租界寗興街一三三號協和祥米店爲會鹹平粉領取處、後因當局限制搬運、致有三部份不及領購之麵粉、由該會派張關壽向法當局要求准予整袋搬運、現巳獲許可、故該會特於於昨日通知、促憑會員證於本月二日、前往廣西路二〇二號領取搬運證通行、</p>
+<p>零售麵粉限價微增</p>
+<p>據工部局布告關於麵粉之限價與零售數量、自一月一日起、實施下開各項辦法、　批發商人出售坎拿大麵粉、每袋重四十九磅、取價不得超過國幣三十六元、又出售美國麵粉（不論何種商標與名稱）以及本街麵粉、取價不得超過國幣三十八元、零售商人出售坎拿大麵粉（售與小工業用戶）每袋不得超過國幣三十八元　又出售美國麵粉以及本街麵粉、不得超過國幣四十元、　茲因零售麵粉之開支較增、零售商人零售坎拿大麵粉之限價、　得提增至每市斤國幣九角四分（或每磅八角五分）、出售美國麵粉及本街麵粉之限價、得提增至每市斤國幣一元（或每磅九角）、統以五市斤（或九五磅）爲限、每次每人不得超過五市斥）或五五磅）之辦法、仍繼續有效、　限制麵粉移運之辦法、仍繼續有效、凡設立公共租界以及滬西界外區域內經本局之協助而獲得麵粉之店肆、應一體遵守、</p>
+<h3>貧苦美菲僑民　發供膳券</h3>
+<p>美僑聯合會主辦</p>
+<p>上海美僑聯合會宣布從星期六起、該會將以膳食供給貧苦之美僑與菲僑、凡已向廣東路五十一號該會申請者、將於星期五接獲膳券與領膳辦法之通知、尚未申請者、於昨日（三十一日）午後與星期五前往申請、元旦日美僑聯合會休息一天、</p>
+<h3>付給工部局款項　盡量用現鈔</h3>
+<p>工部局頃發佈告略稱、凡現在與將來應付本局之賬款、務希盡量以現鈔或現款支蔡繳付、倘兩者均有不便、則在另有通告以前、付款人開具其存有款項銀行之支票、亦可接受、至於應付宏恩醫院及公濟醫院之賬款、亦照同樣辦法辦理、</p>
+<h3>工部局考慮　罐頭食品登記　最近期內不致實行</h3>
+<p>聞公共租界工部局、刻正考慮步法租界公董局之後、頒令登記逾一個月需用之一切進口罐頭食品、惟在短期內尚不擬取此行動、官方人士聲稱、是項計畫、困難孔多、而在公共租界進行、較法租界尤多困難、關於華字報紙所傳工部局將動員華籍學生二千人、調查公共租界戶口、以期更完善的統制上海之民食與日用品一說、據工部局人員聲稱、局方雖會有此計劃、但未決定、</p>
+<h3>糖類及化妝品　臨時特稅稅率</h3>
+<p>江海關昨發布告略謂、自三——一年一月一日起、國內製造力國外輸入糖類、　紅糖、　桔糖（即國產紅糖晶粒或餅塊）、　白糖、　冰糖　方糖塊糖、　糖精、　其他糖類、微臨時特稅稅率暫定值百征十二、叉化妝品第一類牙膏·牙粉·牙漿·牙水·化妝香皂·剃　皂·爽身粉·瀾膚蜜·潤膚霜膏·（雪花膏等類）·花露水·第　類香水·香粉·脣膏·頭水·髮油·髮臘·髮膠·髮漿·指甲油·臨時特稅稅率、分別定爲從價百分之十二及從價百分之七十、</p>
+<h3>除夕物品價格</h3>
+<p>工部局洋米三市升　四·一〇港元（市石）二三五·〇〇麵粉（包）四〇·〇〇靑菜（市斤）·一六七黃豆芽（市斤）·三五〇鮮猪肉（市斤）三·九〇〇鮮魚（市斤）一·五九〇豆油（市斤）三·一六八醬油（市斤）·五八八煤球（担）二〇·〇〇〇細布（市尺）一·〇四六</p>
+<h3>申報讀者助學金　捐款報告</h3>
+<p>本報讀者助學金、於三十年十二月二十九日止收到之捐款如下、王爵榮一百元、沈君十元、報壁君十元、秋簌（稿酬）三元五角、盧景蔚（稿酬）三元、楓君（稿酬）一元、共計一百二十七元五角、前存四萬九千三百十三元三角二分、總結四萬九千四百四十元零八角二分。</p>
+<h3>簽付公用事業　支票辦法</h3>
+<p>工部局頃發布告略稱、查關於用戶因享受上海電話公司·上海電力公司·上海自來水公司·及上海自來火公司·服務而支票付款一事、前經本局布告第五七〇九號公布在案、茲查上項規定、業經修改、即如以美商·比商英商、與荷商·各銀行、以及中央·中國·交通·中國農民·等四家中國銀行之支票付款、僅以依照各該公用事業公司發與各用戶通知書所載辦理者應予接受、</p>
+<h3>法租界開車執照　限三個月更換</h3>
+<p>茲悉法公董局通告、凡駕駛汽車者、無論其爲車主或汽車夫、應於每年一月一日至三月卅一日之間、將其開車執照、向薛華立路廿八號車務處更換之、</p>
+<h3>仁濟善堂年節停診</h3>
+<p>本埠雲南路仁濟善堂施診給藥、爲數十年來經常善舉、聞悉該堂三十年份全年施診、在十三萬餘號給發藥帖、亦有十三萬餘劑之多、嘉惠貧病、實非淺鮮、茲值年節、照例停診、準於三十一年一月五日照常開診、</p>
+<h3>局債展期還本</h3>
+<p>工部局頃發布告略稱、茲因目前情形關係、本局所發一九四〇年六厘、公債之一部份還本應予展緩至另有通告之日爲止、其年底到期債息、以橫濱正金銀行支票給付之、</p>
+<h3>各種車輛　執照費新率</h3>
+<p>腳踏車</p>
+<p>工部局定自一月十五日至月十四日止、在各捕房及發照處簽發脚踏車執照、照費經修改爲每半年廿四元（執照牌照一元不在其內）、自二月十六日以後、將僅由本局總辦公處·蚊口捕房·茂海路臨時發照處·以及戈登路發照處發給、</p>
+<p>塌虎車</p>
+<p>截至三月冊一日上一季之場虎車執照、以及截至六月卅日止半年度之送貨三輪車或拖車執照、自一月五日起、在戈登路五五七號發照處發給、送貨三輪車或拖車（載重至多准五百磅）之常年檢諗、將在西摩路八〇八號人力車檢騐處舉行、此項車輛之執照、應先呈騐檢騐證書後、方准簽發、再自一月一日起、以上各項車輛之執照費率、經修改如下、　用人力推拖之塌虎車（執照牌費除外）、（甲）裝置鐵皮輪者、第一類載重至多五百磅者每季廿四元、第二類載重至多一千磅者每季六十六元、第三類載重二·二四〇磅者每季一四四元、載重二·二四一磅以上者另定、（乙）裝置汽胎輪者、第四類載重至多七五〇磅者每季十三元五角、第五類載重至多一，五〇〇磅者每季卅六元、第六類載重至多一·八〇〇磅者每季四十五元、第七類載重至多二·二四〇磅者每季五十四元、第八類載重至多三千磅者每季七十二元、載重三·〇〇一磅以上者另定、　送貨三輪車或拖車、每半年六十元、</p>
+<p>人力車</p>
+<p>自用人力車執照、自一月五日起、在戈登路五五七號發照處發給、執照費率經修改爲每半年一二〇元、現有之執照倘欲轉期、至遲應於一月廿七日向上述發照處申請、雙座脚踏車夕執照費、改爲每半年六十元、又小軍之執照費、由每月二元增至四元、</p>
+<h3>家庭日用品指南出版</h3>
+<p>家庭日用指南民國三十一年日歴、業已出版、內容豐當、裝訂美麗、除有農歴通書、朔望兩弦表、節氣太陽出入表、陰歷年齡改算整歲表外、並載婚喪禮節、親友稱呼、各姓郡望錄、全年食譜及衛生常識等日用文宇、定價每冊一元、特價一元、四馬路二七七號博文書店及各報攤均有出售、頗得家庭之歡迎、</p>
+<h3>藍十字刊十二月號</h3>
+<p>本埠跑馬廳路口三五〇號上海護蓄會所發行之「藍十字刋」、第五券第四號一九四一年十二月期、頃已出版、內容有蘇溫培所作之「中國之洋狗」一篇、頗見精彩、插圖亦有多幅、此我並有該會之工作報告等、材料甚爲豐富、</p>
+<h3>盜刦併誌</h3>
+<p>昨晚八時許、直隸路一一六號、侵入四匪、兩人持有手槍、當一被刦去一千元、</p>
+<p>檳榔路西摩路、於昨晚八時三十分左右、有路刦匪四名、一人持有手槍、截住一男一女、當塲剝去大衣兩件、及皮夾內現鈔四十五元、</p>
+<p>大通路一三八弄、有匪徒三名、一人持有手槍、攔刦一男一女、當塲刦去大衣二件、經事主呼援街捕到來拘獲二匪、</p>
+<h2>Page 7</h2>
+<h3>法租界公共汽車　今起减少停車站</h3>
+<p>法商電車公司前日發通吿稱、自今日（一月一日）起、法租界內電車無軌電車及公共汽車之停軍站將予减少、計有軌電車停車站减少七處、無軌電車停車站减少九處、公共汽車停車站减少三處、茲將所减車站之詳細地點錄後、</p>
+<p>有軌電車</p>
+<p>有軌電車之停軍站、行將撤銷者、有法大馬路天王堂街口·法大馬路吉祥街口·法大馬路鄭家木橋街口·霞飛路維爾蒙路口·霞飛路馬浪路口·霞飛路馬斯南路口·霞飛路白賽仲路口·等七處、另有霞飛路潘興路及霞飛路汶林路口兩站、則將合併、而於兩站間設一新站、</p>
+<p>無軌電車</p>
+<p>法租界之二十四路無軌電軍停軍站、行將撤銷者有亞爾培路巨籟達路口·亞爾培路亨利路口·亞爾培路環龍路口·與辣斐德路茄勒路口、等四處、十七十八路無軌電軍停車站、行將撤銷者、有白爾路茄勒路口·菜市路勞神父路口·菜市路杜神父路口·康悌路貝勒路口·與金神父路賈西義路口等五處、</p>
+<p>公共汽車</p>
+<p>公共汽車之停車站、即將撤銷者、有拉都路雷米路口、亞爾培路環龍路口·與八仙橋（即凱自兩路麥高包祿路口）等三處、另有福煦路白爾部路口及福煦路馬浪路口兩站、則將合併、而於福煦路薩坡賽路口設一新站、而公共汽車之進廠時問、亦酌予提早、改爲每晚八時、</p>
+<h3>新普育堂　呼籲捐款</h3>
+<p>南市新資育堂爲著名天主敎慈善機關、歷史悠久、設備完善、內分育嬰堂、孤兒院、養老院、殘廢院等、收容敎養之孤兒老弱數近千人、茲以國外經濟奧援斷絕、本埠固定捐款减少、兼以百物飛漲、給養所需、爲數甚鉅、巳收容者又不忍加以遣散、萬不得以、向社會然心人士吁籲、願本人溺己溺、胞與爲懷之旨、熱烈捐輸、無論食品、衣物·現款、皆所感戴、收捐物處、天主堂街天主堂，收捐款處三馬路綢業銀行，外灘華比銀行、四馬路華美藥房　雲南路濟華堂藥房、當給正式收據爲憑、並於每二日內登載本報微信、</p>
+<h3>冒名敲詐　被捕判處徒刑</h3>
+<p>寓居天潼路六百五十七弄二十八號洞庭山婦人周朱氏、其家中存有鉛字原料値價頗鉅、爲匪徒垂涎、前日上午十一時、突來本地人倪水富·方福慶·無錫人沈能全·及在逃之名陳炳全者四人、向氏稱、係奉日司令部</p>
+<p>到來調查</p>
+<p>汝家有違禁品藏儲、不問情由、方沈兩匪遂入氏之臥房、翻箱倒篋、大肆搜查、並逼氏開啓銀洋箱、氏向若輩懇求無效、謂須出款六千元了事、否則將鉛字原料悉數車往司令部充公、氏無法、遂邀鄰居甬人袁文旦到家調解、</p>
+<p>虛與委蛇</p>
+<p>一面電話報吿該管匯司捕房、派中西探馳往拘拿、陳炳全機警逃逸、其餘倪方沈三名、一併逮捕、連同甬人袁文旦（恐有串同嫌疑）帶入捕房、昨晨解送法院、捕房律師厲志山依刑法三百一三十四條第三項敲詐罪提起公訴、謂被吿乘機向婦人</p>
+<p>藉端敲詐</p>
+<p>這種行爲、對於此非常時期、洵屬可惡、請爲嚴辦、結果當庭判決沈龍全處徒刑一年四月、倪水富方福慶各處一年、分別示儆，袁文旦無罪開釋、</p>
+<h3>大通銀行職員舞弊　交保避不到案</h3>
+<p>南京路九十號大通銀行職員本地人李養和、因有偽造文書、私簽支票四張致使該行蒙受損害七萬四千八百元之嫌、被報吿該管捕房、派探至憶定盤路寓所、將其拘獲、解送第一特院、依刑法三一七條偽造文書等罪提起公訴、由馮庭長批諭被吿交保候訊在案、該案昨由馮庭長開庭續審、被吿未到、庭論改期通知其保人指傳、</p>
+<h3>劇盜出獄後　再度犯案落網</h3>
+<p>劇盜崇明人唐阿金、在公共租界犯案、辦過三次、近從監獄中釋出、但渠怙惡不悛、前日下午一時十五分、糾黨在逃一人持械至乍浦路武昌路附近、搶刦販賣牛肉之丹陽人朱光字身畔法幣五十元逃逸、案發、由虹口捕房中西探拘獲、贓洋由同黨取去、帶入捕房、昨晨解送法院、捕房律師厲志山聲請覊押、奉諭改期再核、</p>
+<h3>婦人失足跌死</h3>
+<p>住居法租界小東門大街第十七弄廿五號門牌之浦東婦人趙阿寶、今年廿三歲、於廿八日下午五時、至四樓晒台上收取衣服、不愼失足、跌至樓下、傷及頭部腹部、當由家人送至醫院醫治、奈因傷重不及醫治身死、旋將尸身舁入同仁輔元堂、昨由伊夫趙和尙到塲收殮、</p>
+<h3>婦人服毒殞命</h3>
+<p>皖婦李王氏、年五十　歲、家住巨籟達路小浜灣弄第十八號門牌、於前日十時、因與伊夫李國平發生口角、以致氣憤、背人呑服鴉片烟自殺、當經伊夫發覺、立送醫院醫治、因毒過深、不及施救身死、後由其夫棺殮、</p>
+<h3>男子貧困自殺</h3>
+<p>長安人周振洪、年廿九歲、住居康悌路大康里五號門牌、近因受經濟壓迫，於前日至白爾路二四四弄二號門牌武陵公寓、開四號房間、於夜深時呑服藥水自殺、後由茶房發覺、報吿捕房、車送醫院、醫治無效身死、旋將尸身車入同仁輔元堂、經伊弟周振發到塲收殮、</p>
+<h3>姚家珪升總捕頭</h3>
+<p>成都路捕房華正捕頭姚家珪於今日起升任總捕頭調老閘捕房辦公、</p>
+<h3>方俊傑律師　執行會計業務</h3>
+<p>律師方俊傑、執行律務、巳逾十稔、深得社會人士信仰、鑒於會計與法律互相牽涉之處甚爲粉繁、爲適應社會需求、並經各界人士敦促、領到證書、加入會計師公會、執行業務、其事務所仍設於白爾路十八弄十九號、電話八五三五〇、</p>
+<p>招領女手錶　啓者、本月二十八日下午二時半左右、於靜安寺車站九路公共汽車內拾得女式長方形手錶一只、當即交該車售票員第四百二十一號、希失主見報後、速往該公司認領爲盼、申報館執事先生台鑒、鄭培生謹上、</p>
+<p>昨日本報發報時間六點十分</p>
+<p>體育新聞</p>
+<h3>元旦杯小小足球賽　今日在光夏揭幕　盃賽二塲外另有表演節目</h3>
+<p>王瑞龍發起之元旦盃小小足球聯賽、邀請怡光·猛獅·瑞堂·獅聲等四勁旅參加逐鹿、定今日下午一時半、在慕爾鳴路光夏中學球塲揭幕、計有盃賽二傷、另增表演賽一塲、將由王瑞龍親蒞行開球禮、並請韓蘭根殷秀岑剪綵、首塲爲獅聲初戰瑞堂、前者乃二屆光夏盃甲組總亞軍、擁有鐵門鄭通裕及名鋒宋偉忠廖世儀等、實力充沛、瑞堂乃後起中之俊俊者、戰績彪炳、麾下勇將獨多、如張邦綸·胡漢文·林典華·曹琴芳·張昭鵬輩、俱屬上駟之材、陣容堅挺、與獅聲當有一番緊張劇烈之鬥爭、第一塲表演賽影星遇瑞龍、影星隊迭次在貧兒敎養院演出、屢博好評、參加明星有張慧冲·劉瓊·王引·韓蘭根及岳楓等、而瑞龍乃光夏中學隊原班人馬、由王瑞龍予以改組、業巳表演多次、球藝水準頗高、今日與影星隊、可稱旗鼓相當、未上鹿死誰手、末塲盃賽怡光與猛獅對壘、恰光新膺光夏盃甲組總冠軍、擁有全滬第一流好手韓龍海·趙永芳及沈錦達·陶廷富等、氣燄正盛、猛獅亦屬小球界之鐵軍、且部下名將蕭子文等均參加戴麟經所手倡之足球訓練班、球藝有一日千里之勢、益以何家統等助陣、更覺如虎添翼、兩雄乍遇、當有一塲浴血大戰也、門票五角·一元、茲將秩序及陣容錄下、</p>
+<p>猛獅—瑞堂（盃）一時半</p>
+<p>影星—瑞龍（表）二時半</p>
+<p>怡光—猛獅（盃）三時半</p>
+<p>獅聲</p>
+<p>鄭通裕</p>
+<p>周永芳　葉貽珩</p>
+<p>唐國雄</p>
+<p>章九淸　廖世儀　甘智義　井偉忠</p>
+<p>瑞堂</p>
+<p>張邦倫　顧彪</p>
+<p>孫漢興　陳焯光　胡漢文</p>
+<p>林典華</p>
+<p>宣盛華　曹琴芳　葉貽挺　張昭鵬</p>
+<p>影星</p>
+<p>岳楓</p>
+<p>劉瓊　陳焯光　張慧冲</p>
+<p>周晨　黃紹芬</p>
+<p>許仲餘　唐根祿　錢祖滋　韓蘭根</p>
+<p>瑞龍</p>
+<p>奚留福</p>
+<p>張鳳岡　許希聖</p>
+<p>陳金泉　鄭麟祥</p>
+<p>李賢訓　顧一龍　王定球　張才德　張錢吉</p>
+<p>怡光</p>
+<p>陶自鳴</p>
+<p>陶廷富　李廣順　李光華</p>
+<p>沈錦遠</p>
+<p>王新福　韓龍海　趙永芳　林紹鈞</p>
+<p>猛獅</p>
+<p>李作民</p>
+<p>潘鴻海　何家統　龐紀文</p>
+<p>唐佐文</p>
+<p>唐根福　蕭子文　錢祖滋　潘新</p>
+<h3>大中校足球賽　六大學今會師</h3>
+<p>震旦大中校小型足球賽、今日爲點綴元旦起見、特排定比賽六塲、於下午一時起舉行，今晨十時尙有友誼賽一塲、係金科校友對童軍隊、亦在震旦球塲舉行、秩序如下、</p>
+<p>雷士德麥倫初乙下午一時西塲</p>
+<p>震旦文斯大學下午二時西塲</p>
+<p>東亞—大同大學三時一西塲</p>
+<p>新亞約靑初甲下午一時東塲</p>
+<p>浦江法政大學下午二時東塲</p>
+<p>大同—浦東高乙三時一東傷</p>
+<h3>新年小球友誼賽　南行約戰申光</h3>
+<p>南京商業儲蓄銀行上海分行小型足球隊、由丁山桂領導、自成立以來、屢次出征、成續斐然、該行定元月三日上午九時應申光隊之邀、作友誼賽於通樂球塲、四日上午九時則在原處與交通銀行隊交綏、預料均將有精彩演出、該隊歡迎友隊約賽通訊處九江路八十號該行方明康、</p>
+<p>南行隊</p>
+<p>劉永慶　王樵勤</p>
+<p>張挺勇　顧旭舟　周燁鼎</p>
+<p>陳玉濤　方明康　沈家</p>
+<p>趙慶城　周國華　陳順利　盛允賢　田永福</p>
+<p>申光隊</p>
+<p>馮蟾初</p>
+<p>顏振飛　單亞廬　應浩然</p>
+<p>張保康</p>
+<p>李冬林　閻冬生　諸榮春　張允恭</p>
+<h3>黃源燾陳天爵等　發起組乒乓會</h3>
+<p>熱心乒乓運動之黃原　·陳天爵·鐘經奇·陸　俊·　惠貞·沈士倫等　發起舉辦大規模乒乓會、商得上聯會陳霖笙徐多·盧仲球及俞斌祺丁度等之贊助、正在覓定會所及球室、並將於日內召開首次籌備會議、商討一切進行事宜云、</p>
+<h3>歲朝球賽　瑞記欣逢老爺</h3>
+<p>一九四二年歲朝球壇第一聲日將爲今日上午十時、在光夏球塲二塲瑞記對老爺之友賽、瑞記爲王瑞記郵運公司之職員、組織、在王瑞龍氏領導之下、一切均呈蓬勃朝氣、球壇亦興所俱進、老爺爲裁判法官斯組織、瑞記陣容如次、</p>
+<p>王洪珍</p>
+<p>張慶洪　甘振興</p>
+<p>沈笑亭</p>
+<p>湯永祥　盧友亭　浦志剛　朱金滎　徐良</p>
+<p>領隊：朱洪生</p>
+<p>新聞</p>
+<h3>洋米岑寂　國米略有添辦</h3>
+<p>小絞洋米因執貨者意在提高價盤、致出樣與交易兩見沉寂、惟國米爲年假停市前添辦、買買更見加濃、市面亦復由疲轉站、當早晨承前日疲風、各米售價會見再度拉小三四元、繼以消多供少、市價立即回振、結果與前市無大出入、惟中次零販者甚多、略見抑低、售開崑山大市高粳二百二十元、南幫晚稻二百零八元至二百零四五元、又早稻二百零五六元、杜尖降開一百九十元、金壇高白元二百二十元至二百十八元、　元雖比前盤較低近十元、然比前日進戶還價二百十元、則巳較昂矣、全日各米成交不下四百多包、而新到祇二百二十多包、惟沿途小販兜售、則仍有點綴云、</p>
+<p>小麥因貨主堅持扳守高價、致難接近、惟零星送廠者亦有點綴、麩皮迎日有內地鄉莊及本街各戶實銷問津、市面逐步起色、本麩雖經停車無貨、而日廠與客麩仍有趕到供應、昨有浦東鄕戶辦裝、市氣尤見活潑、蘭花麩巳自五十三元半開至五十四元、最高五十四元半、三金鐘麩正式售開五十六元半、全日成交不下一千五百包、價則又比前日較昂一元、</p>
+<p>雜糧交易、昨頗稀少、良以歲暮聲中、同業皆無一意進出、故市勢平淡乏勁、行情悉少變動、統市售開大連豆油二十桶、價爲二百八十元、大有廠淸油二百担、價爲二百四十八元、崇明沙赤一百餘包、價九十元至九十二元、蕪湖苞米三百包、價五十一元至五十二元、荷蘭黃苞米四百包、價五十元〇五角至五十一元四角、西貢新苞米五百包、西棧價爲五十二元半至五十三元、東棧五十一元、甡記豆餅五百片、價十八元、又　雜糧市塲新年休假三天、</p>
+<h3>現金交易仍繁　價巳連升五天</h3>
+<p>昨雖値大除夕、現金烚赤暗市交易做開甚忙、市勢穩中不脫堅勢、仍盤於一萬三千元大關邊、某方售某號來套進、各方人心帶堅、自晨初即做高五十元、每條（十兩）爲一萬二千九百元、證券號與某金號買進、散戶跟買、當見抬出一萬三千元外、達一萬三千一百元、現金號及某某兩金號吐出、更有因現貨實貨吐出求現者、價頓步降六百元、遜至一萬二千五百元、十點半後漸提上、某戶及金號員進、拉上四百五十元、十一點半以一萬二千九百五十元、爲最後價、乃恐不及現交也、比前日價再軋升一百元、查巳連升五天、共漲三千四百五十元、後聞一萬三千元有成交、當日有六百元高低、做開七八百兩、銀樓飾金每兩兌出價、大新同行均仍掛一千三百五十元未更、（收進减二百元）、紋銀明掛十六元、黑市十一元半低五角、</p>
+<p>昨日餐幣市况、美金票始做十八元二角、繼而步退至十七元九角、最後十八元、尙有買戶、香港票高至三元西角、軍用票三元六角七分、</p>
+<h3>棉紗日有進展　日紗更為堅挺　棉花已有問訊</h3>
+<p>棉紗情况、賡續良好、買賣益形發展、此因黃金趨勢安定、所以人心鞏固、至於日紗情形、更爲挺俏、因銷路不弱故也二十支變馬廠單開盤甚穩、即　步前進、直穿出二千元大關外、爲二千零三十五元、但收盤以後二千零四五十元有買進、二十支雙馬現貨價爲二千一百二十元、二十支天女「地板現貨」價爲二千三百八十元、廠單價爲二千一百五十元、二十支雙地球廠單一千八百元至一千八百八十元、二十支蓝鳳廠單價爲二千四百三十元至二千四百五十元、二十支月琴二千二百二十元至一千二百六十元、四二支藍鳳綫價爲三千八百五十元至三千九百五十元、十六支紅奎星一千七百元至一千七百五十元、十支紅雙馬廠單價爲一千四百元、十支童子軍廠單價爲一千四百元、目前紗市、日見進展矣、</p>
+<p>棉花市况、益覺轉機　廠方巳有問訊之意漸有採辦之可能也</p>
+<h3>棉布售盤續昂</h3>
+<p>廠布　昨市續堅、同業心思向昂、搜羅現貨甚力、惟成交轉稀、乃因貨主扳持之故、結果各布售盤升每疋一元半至三元不等、富貴大鵬細布八十四元、花蝶粗布一百〇二元、十一磅三兎粗布七十一元、九磅五福組布六十一元半、士林布一百四五十元、藍布一百十元左右、本街成交一百餘件、</p>
+<p>東布　昨以本街交易活躍、市盤繼續上升、十　磅龍頭細布廠單午收爲八十六元、較前日又漲一元五角、中檔各脾尢見俏俐、彩球飛魚激漲每疋三元五角、做開八十三元五角、陽鶴細布八十三元、喇叭八十一元、四君子士朴布飛升至一百五十七元五角、喜鶴士林一百五十六元、均有成交、四君子嗶嘰新單每碼三元〇五分、老單二元九角六分、</p>
+<h3>公債了結為多</h3>
+<p>公債傷外交易、今日爲最後一日、交易仍有不少、成交大都仍爲各同業了結交易、因銀行收解時局並未放寬、故塲外公債交易至十時後即寂然無聲、甲種由六十元至零六七角、丙種五十五元二三角至七八角、乙種五十六元七角、丁種五十二元五角、戊種五十四元三角、成交亦有十餘萬元、紅盤是否開市、尙無正式公吿、</p>
+<p>昨衆業公所外股、略見硬化、會德暨有喊七十元者、怡和紗廠二十六七元、墾植二十一元半至二十二元、亞洲　船廠八元二角、中紡九元、紙業六元一二角、蘭格　志橡　皮二十元始有售出者、餘未聞市價云</p>
+<h3>煤球供應恢復原狀</h3>
+<p>零售有加車力一元者　煤球市况、近週各廠先後開工、拆盤仍售三百七十四元、供求相等、已恢復原狀、惟汽車限制、同業間巳停止送貨、致汽車限制、同業間巳停止送貨、致塌車奇貨可居、索價甚昂、視路之遠近、每噸由十五至三十元不等，　送到店家成本巳達三百九十餘元、且尙須除去球屑狼藉、故少　門莊店、每担售出、有另加車力一元者、甚望該　廠方、能體念斯情、酌减廠盤、以利推銷</p>
+<h3>香烟需銷暢達</h3>
+<p>香烟貨稀銷暢、貿價飛黃臘達、各牌一致續漲百餘元之巨、做開計大英牌三千九百五十元至四千元、老刀牌三千七百五十元、品海牌三千三百八十元至三千四百元、五華牌　千八百四十元、小仙女　　千九百五十元、金鼠牌中箱一千四百七十元、美麗牌中箱二千〇念元、五十枝大三砲每萬一千四百念元、念枝大南未二百枝裝價為四十七元、</p>
+<p>日用品火柴燭皂、廠方乏貨供銷、貨主扳俏尤甚、行情均呈堅挺、計鳳凰脾火柴一千五百十元、美麗牌一千五百八十元、白祥茂皂七十一元、黃祥茂皂五十七元、固本皂七十八元帆、船洋燭五十三元、</p>
+<h2>Page 8</h2>
+<h2>Page 9</h2>
+<p>春秋</p>
+<h3>蛇馬談話</h3>
+<p>— 小曼</p>
+<p>蛇先生仔細地把一年任上的擋案點檢淸楚，端端正正的　與走馬上任的馬先生。馬先生翻開一看，各種物價在這一年內無不上漲，囤戶均利市三倍，蛇先生也滿載而歸，不覺眼熱，向蛇先生莞爾曰：「儂倒着實有眼竄頭勢！」蛇曰：「馬兄，儂是跑馬廳內的熱　，奔騰之速，不見得會讓兄弟專美於前吧。」馬始而喜，繼又蹙額曰：「此一時彼一時也，老兄年底這筆爛汚賬，叫弟如何收拾？兄弟生不逢時，早不早，晚不晚，偏偏在這個孤島最不景氣的時候接任，各種日用品都有了限制，那裏去撈油水？」蛇代為謀曰：「孤島近來汽油缺乏，貴行馬車又當走運，目前馬匹正感無貨，出千元尙無購處，老兄正不妨操縱一下。」馬頓足曰：「快休提馬車，提起此事，實在令人可恨，背後拖着重負，走不快，跳不高，那裏能像老兄一年來的竄頭勢呢！」蛇曰：「這也祇能怪你命運不佳。不過我做了一年，怨聲載道，人民恨我刺骨，因為我竄得太快，一般人都給我丟在後面，所以你再也不能跑得快了；你要再像我那樣竄，俗語說：「狗急跳牆」，那時後患正不堪設想呢！」</p>
+<h3>元旦獻辭</h3>
+<p>— 寥霂</p>
+<p>今天是元旦日。</p>
+<p>新歲伊始，萬象更新，人們在世事變幻，歷盡滄桑中，又在生命史上開始了新的一頁。舊的過去，讓它過去罷；新的到來，懷着十分的欣喜迎接。歷史是前進的，決不倒退；人呢，也跟着時代前進。</p>
+<p>我要向站在時代之前端者祝賀！喜從何來？竟有萬千之喜和幸福。這些，非要獻給為時代而努的勇敢者不可，他們不斷的爆力着生命之火，使生命無窮。在路上雖有荊棘，絆右，陷阱，躊躇，彷徨，但他們終會盡力去披割，斬開，投向幸福之路。</p>
+<p>宇宙無窮，渺滄海之一粟，生命雖似有限，却要在時間上成長，額上永遠不覺絲毫之皺紋，眉間却始終洋溢着靑春之氣。——孟子所謂平旦之氣。這鐘靈秀氣可使天地澄淸，萬物向榮，人的生命那裏會與草木同朽呢？</p>
+<p>我們要使每個人偉大，可興日月爭光。</p>
+<p>易曰：「元者，善之長也。」又曰：「君子體仁，足以長人。」當茲新歲元旦之光臨，謹以此祝賀。</p>
+<h3>有飯大家吃</h3>
+<p>— 揚子江意　樂艸央製</p>
+<p>顧蘭君黃河合演「蕩婦」　大上海開映</p>
+<h3>秋海棠</h3>
+<p>— 秦瘦鷗</p>
+<p>十六　靑春之火</p>
+<p>「最好是讓我回去瞧瞧爸爸和哥哥，心裏也許會暢快起來。」有一次，她凑袁　藩曲意向她溫存的時候，提出了這一個請求來。</p>
+<p>可是老袁畢竟不是個小孩子，怎麽肯放她走呢？他知道湘綺一離開他就會去找秋海棠，所謂探望父親和哥哥，祇是一個推托而巳。</p>
+<p>「慢慢再商量吧！有機會咱們一塊兒去。」他這樣很乖巧的回答。</p>
+<p>湘綺也就知道沒有希望了。她想除掉袁　藩能够死得比她早幾年以外，她這一生中間，休說不能再見到秋海棠父女，便是要探問到他們的下落，也不可能了。而老袁的身子是那樣的壯健啊？簡直像永遠不會死的樣子！</p>
+<p>但命運所給她安排下的遭遇，倒還並不像她自己所懸想到的那樣的慘痛；過了三年幾個月，全中國突然發生了一番空前的劇變，固然有許多舊軍閥在被逐下野以後，照例很安閒地逃進租界去做寓公的，然而袁寶藩的運氣却特別的低，他部下有好幾師兵竟凑這一個政變中間叛亂起來，就在承德附近，跟他的親信部隊打了三天仗，竟把他自己的老命和紹文的性命一起送掉了。　（一一九三）</p>
+<h3>元旦試筆</h3>
+<p>— 董志</p>
+<p>除夕一過，又是新年，一轉瞬間，陽春蒞臨，這正是勉勵人們要從刻苦修養中來造成個人前途幸福的象徵。當三十一年元旦的今日，謹以「人生修養」四字為獻歲中貢于讀者之前的禮物，可是人生修養的禮品，名目之多，勝于各大公司照耀眼簾的百貨，而「人生修養」，裝璜旣不考究，難免為顧客所忽略，筆者惟有掬此誠意，獻其一言，　求讀者之敎正。</p>
+<p>今日的上海，生活程度如此高漲，各業都感到一般人購買力的低落，但是也有人坐擁鉅資；不事生產，要使大家的生活，能够平定，就必須公衆能够盡力協助。因此我想起劉向曾經說過：「有憂則恐愼敬事，敬事則必有善功，受爾則驕奢，驕奢則禍至。」正是痛切吿訴人們應如何的勤儉。孔子云：「奢則不孫，儉則固，與其不孫也寗固。」我想凡是境况較好的人，也應時時切念的。</p>
+<p>元旦試筆，僅言修養，諸葛亮云：「靜以修身，儉以養德，非澹泊無以明志，非寗靜無以致遠。」以此名言，作為本文結論。</p>
+<h2>Page 10</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.01.01</h1>
+<h3>Malayan War Rages, Singapore Imposes Martial Law, Ipoh's Southern Battle Underway</h3>
+<p>Singapore, 30th (Havas News Agency) - Reuters reports that Singapore has declared a state of emergency since this month. A semi-official statement announced that anyone engaged in robbery, espionage, or acts endangering public safety will be handed over to military tribunals. It is expected that military authorities will soon implement a curfew, and various forms of transportation will be greatly reduced.</p>
+<p>Tokyo, 31st (Domei News Agency) - The Japanese Imperial Headquarters announced that since the outbreak of the Pacific War, Japanese forces in the Ipoh area of Malaya have continued to advance, only 400 kilometers from Singapore. In total, Japanese forces have occupied Singora, Kota Bharu, Victoria Hill, Pulau Pangkor, and Ipoh, among other places.</p>
+<p>Malaya, 31st - Japanese forces in Malaya are advancing on the western coastal front, driving Australian troops into the low-lying wetlands of the ×× river basin south of Ipoh and surrounding them. A fierce attack has been launched since the morning of the 31st.</p>
+<p>Tokyo, 31st (Kaito News Agency) - Japanese aircraft flew over southern Malaya yesterday, scattering leaflets, advising the local people not to resist pointlessly. Indian soldiers who have already surrendered have not been disarmed by the Japanese army and are instead ordered to patrol the rear.</p>
+<h3>Philippine Battle Situation: Japanese Attempt to Encircle Manila from North and South</h3>
+<p>Bangkok, 30th (Kaito News Agency) - General MacArthur's headquarters announced this afternoon that "the battle situation everywhere is quiet."</p>
+<p>London, 31st (Havas News Agency, Reuters, Manila) - The U.S. Far East Command Headquarters issued a war report yesterday stating, "Japanese forces are advancing with a large number of tanks and armored vehicles. U.S. forces have been forced to retreat." A large number of U.S. troops have abandoned the defense of ××××. The two Japanese columns advancing on Manila from the south in recent days appear to be planning to converge at ××××× (50 kilometers from Manila). Although the direct distance between ××××× and Manila is only 50 kilometers, there is still a ×××× spanning 25 kilometers in width and 40 kilometers in length in between. Reuters reporters believe that the Japanese army intends to cross the ××× from the southwest to attack ×××××. Furthermore, observing the slight decrease in Japanese air force activity, it is generally believed that the Japanese side seems to want to allow the combat troops to rest slightly and wait for fresh troops and gasoline supplies before launching a new offensive.</p>
+<p>Manila, 30th (Havas News Agency) - According to the latest frontline news, the Japanese forces that landed in northern Luzon last week have already reached ×××××××××××××× and ××××. The Japanese army is now preparing to establish contact between its various units in order to continue its advance.</p>
+<p>Bangkok, 31st (Kaito News Agency) - According to the latest official reports from Manila, Japanese forces are currently advancing simultaneously from the north and south. Japanese bombers have been able to control all major transportation routes. The Japanese army is advancing with a large number of tanks and armored vehicles. The U.S. defense line is currently retreating. It is also learned that at 10:15 AM today, the sound of artillery fire was heard from the south to Manila, indicating that fierce fighting is taking place there.</p>
+<p>Tokyo, 31st (Kaito News Agency) - A spokesman for the Japanese Imperial Headquarters Navy Department stated yesterday that the purpose of the Japanese military operations is "Asia for Asians," which also means "the Philippines for Filipinos." Destroying Manila is not what the Japanese army wants.</p>
+<p>Lisbon, 31st (Domei News Agency) - U.S. Far East Commander General MacArthur declared today that the U.S. and Filipino forces should take retaliatory action against the Japanese air raids on Manila. However, this seems to have already been labeled as retaliation and merely expresses his personal hope.</p>
+<h3>Churchill's Speech: Future War Trends Can Be Divided into Three Main Stages</h3>
+<p>Ottawa, 30th (Reuters) - (Chongqing Broadcast - A crowd gathered to welcome Prime Minister Churchill's arrival). A crowd gathered in front of the Canadian Parliament today. The Prime Minister arrived at the Parliament at 6:56 PM, and a thunderous cheer erupted. Canadian Prime Minister King and the Speaker of the House welcomed Churchill at the entrance of the parliament. The venue was packed, with approximately 2,000 people in attendance. Many members of parliament came from thousands of miles away. Churchill delivered a speech amidst applause from the members of parliament.</p>
+<p>Ottawa, 30th (Havas News Agency) - British Prime Minister Churchill delivered a speech in the Canadian Federal House of Commons and Senate today, strongly asserting that the future war will generally be divided into three main stages. He said, "The first stage is the effort to unify operations. During this period, the most important thing to pay attention to is arduous combat. We must concentrate all our efforts to gain an advantage in both the sea and air. The main task of the second stage is to adjust efforts. We will see the Allied nations draft a general plan to use all their strength as much as possible for common interests. The third stage can be called the era of freedom. The people of all countries who have been enslaved will regain their freedom, and the conquered territories will be reorganized. The Canadian Federation has made great efforts in the current war. The British people are deeply grateful. The bravery of the Canadian army has been fully demonstrated in the battle of Hong Kong. Their combat record alongside the British army will be comparable to the Vimy Ridge battle in the last war. It must be known that by 1943, Britain will have the best pilots in the world. My purpose in coming to Washington this time to talk with President Roosevelt is to unify the command of the Allied operations. We can never accept any compromise. In short, looking to the future, it is still extremely dark. It is difficult to predict when the war will end at this moment. However, how it will be in the future depends on how hard the Allied nations work and how the war evolves, which is an irrefutable argument.</p>
+<h3>Eden Sends Letter to Stalin Before Leaving the Soviet Union, Expressing Satisfaction with Talks on Enhancing Cooperation Between the Two Countries</h3>
+<p>London (Havas News Agency) - Reuters recently issued a message stating that before Foreign Secretary Eden left the Soviet Union to return home, he sent a letter to Stalin, Chairman of the Council of People's Commissars of the Soviet Union, saying, "I am very pleased to have visited your country this time and to have discussed war and peace issues with you. I believe that this conversation is very important and will definitely promote the joint efforts of the two countries. I would like to ask you to convey my regards to your people." At the same time, he also sent a letter to Soviet Foreign Minister Molotov, saying, "I am very grateful for your hospitality during my visit to your country. I believe that this conversation will definitely strengthen the cooperation between Britain and the Soviet Union."</p>
+<p>London, 30th (Havas News Agency) - It has recently been learned that the House of Commons and the House of Lords intend to request Foreign Secretary Eden to submit a detailed report on his visit to Moscow for negotiations. Some parties also hope that the two houses will convene a closed-door meeting. In addition, political figures attach great importance to Foreign Secretary Eden's meeting with U.S. Ambassador to Britain Winant yesterday.</p>
+<h3>Program for Soviet Workers' Representatives in England</h3>
+<p>Stockholm, 31st (Kaito News Agency) - The representatives of the Soviet Workers' Union who came with U.S. Foreign Minister Eden when he returned to England, together with the Chairman of the British Workers' Union, Shedlin, agreed on the program for the Soviet workers' representatives during their stay in England. The Soviet workers' representatives will participate in 22 meetings, during which they will give speeches four times. They will also visit British aircraft factories, tank factories, and multiple airfields.</p>
+<p>Lisbon, 31st (Kaito News Agency) - According to a report from London, the British Communist Party held a conference at the London Stoll Theatre. At the same time, because the participating crowd was too crowded, similar conferences were held in ten other locations. British Communist Party leader Pollitt delivered a speech, reviewing the situation in the Soviet Union and praising the achievements of the Soviet army, saying that if the Soviet Union wants to achieve final victory, it still depends on a huge production volume. In the future, female workers should be employed as much as possible in factories. He also advocated strengthening the British cabinet, purging the Munich elements in the government, and establishing a second battle line in Europe.</p>
+<h3>Huge U.S. War Expenses Break Previous Records, Next Year's Budget Reaches 50 Billion Yuan</h3>
+<p>Washington, 30th (Special Dispatch, Chongqing Broadcast) - According to the Ministry of Finance's announcement today, the U.S. government's war expenses have broken the records of World War I. A total of 2,121,970,000 yuan was spent in December, exceeding the highest monthly war expenses of World War I, which was December 1918, by 136,000,000 yuan. The largest item is army expenses, at 8,000,000 yuan. The military budget for the next fiscal year is estimated at 50,000,000,000 yuan.</p>
+<p>Washington, 21st (Reuters, Chongqing Broadcast) - From July 1st next year, within that fiscal year, 50% of the ten trillion yuan of total U.S. revenue will be used for war expenses. President Roosevelt told reporters that he hopes to do so next year and said that 27% of the nation's revenue this year has already been used for war expenses.</p>
+<h3>Fierce Battles Underway on the South Bank of the Miluo River, Fighting Also Occurring Near Gao'an in Northern Jiangxi</h3>
+<p>This office received a telegram from Chongqing today reporting that, according to war reports from the Changsha front, fierce fighting is still underway in the area of the southern bank of the Po River in northern Hunan Province. Japanese forces are advancing south along the Yuehan Railway, and were blocked by the Chinese army near Baishui. At the same time, Japanese forces advancing westward from the railway area are attacking Yingtian on the eastern shore of Dongting Lake. Japanese forces in northwestern Jiangxi Province are advancing southwest from Wuning, with the obvious intention of echoing the Japanese forces in northern Hunan Province. Currently, the Chinese army is launching an offensive from the Gao'an area to meet the enemy. (Kaito News Agency Report, This Station, 31st)</p>
+<p>Changsha - The eastern and central routes of the Japanese army that crossed the Po River from three routes and attacked southward were still in a stalemate with the Chinese army in the mountainous area south of Changle Street Xinshi on the afternoon of the 30th. (30th Dispatch)</p>
+<p>Changde - At 9:00 AM this morning, a Japanese aircraft flew to Liulinzhou, northeast of Huarong, to conduct reconnaissance. Another Japanese aircraft attacked Zuanqiao. At the same time, the Japanese army in Luzhawan launched a fierce artillery bombardment of Liulinzhou, and there were three small Japanese warships, one gunboat, and fifteen small steamships cruising the river surface near Liuzhou. At 9:40 AM, a portion of the Japanese army in Luzhawan began to attack Hualiu Linzhou. Soon, reinforcements of about a thousand troops and eight or nine artillery pieces arrived from Yueyang. At 10:00 AM, they launched a fierce offensive against China in three routes: one route attacked Xinhua River Estuary from Liuzhou, one route attacked Hualiu Linzhou from Touzhou, and another route attacked Niutai from Haogou. Fierce fighting broke out with the Chinese army in the vicinity. Also, at 10:40 AM, three Japanese transport ships and more than ten steamships carrying Japanese reinforcements sailed along the river to the river surface near Panghekou. (30th Dispatch)</p>
+<p>Liuyang - The number of Japanese troops crossing the Po River continued to increase on the 29th. The number of Japanese troops on the eastern route in the Changle Street area reached 10,000, the number of Japanese troops in the central route in the Xinshi area reached 5,000, and the number of Japanese troops south of Guiyi on the western route reached 20,000. The frontline battles were extremely fierce on the 29th. (29th Dispatch)</p>
+<h3>Seventy-Two People Departed Hong Kong with Chan Chak</h3>
+<p>Shaoguan - According to reliable investigations, a total of seventy-two Chinese and British individuals departed Hong Kong under the command of General Chan Chak. In addition to General Chan, the Chinese contingent included only Councilor Yu Zhaoqi and General Chan's secretary, Xu Heng. There were twenty-four British officers and forty-five British soldiers. Only Yu Zhaoqi and three British soldiers went missing at sea.</p>
+<h3>British Newspaper Reporter Madena Arrived in Chongqing Yesterday Morning</h3>
+<p>Chongqing - Madena, the special correspondent in China for the London Times, left Hong Kong by ship for the Philippines on the eve of the outbreak of the US-Japanese War, traveled to the Dutch East Indies, Malaya, and Burma, and arrived in Chongqing by plane from Yangon on the morning of the 31st. (31st Dispatch)</p>
+<h3>Chief of the Executive Yuan's Political Affairs Department Reappointed to Special Rank</h3>
+<p>Chongqing - The Secretaries-General of the various departments of the National Government have been reappointed to special ranks. According to reliable sources, the Executive Yuan's Chief of Political Affairs has also been reappointed to a special rank, as approved by the Executive Yuan meeting last week. (31st Dispatch)</p>
+<p>Singapore's Stance</p>
+<p>The eyes of the world are on Singapore, now in the midst of a raging war. Its area is 27 miles long and 14 miles wide, with a total area of 217 square miles. Its northern end faces Johor across the strait, with a very strong causeway, three-quarters of a mile long, on which trains and cars can pass. It is one of the great buildings in the area, built in 1923. (See above picture). The border between Singapore and Johor is in the middle of the causeway, with a stone tablet on the causeway, engraved with the letters J (Johore, i.e. Johor) and S (Singapore). Although Singapore is governed by the Governor, all administrative matters within the city are indeed presided over by the City Hall, which has considerable power. The City Hall is organized by one chairman and twenty-four commissioners appointed by the Governor, and is divided into ten departments. (Below picture) is the exterior view of the Singapore City Hall.</p>
+<h3>The Ministry of Economic Affairs' Bureau of Materials is About to Be Established</h3>
+<p>Chongqing - The newly appointed Director of the Bureau of Materials of the Ministry of Economic Affairs, He Haoruo, spoke to the Central News Agency reporter on the morning of the eleventh, saying that the responsibility is arduous and that he will do his best. He also said that the bureau is in the process of preparation and organization and will be established in the short term. (31st Dispatch)</p>
+<p>Organizational Regulations</p>
+<p>Chongqing - The Executive Yuan passed the organizational regulations of the Bureau of Materials of the Ministry of Economic Affairs on the 30th. The original text is as follows: Article 1: The Ministry of Economic Affairs shall establish a Bureau of Materials for the purpose of managing the supply and demand and prices of daily necessities. Article 2: The Bureau of Materials shall have the following functions: 1. Matters relating to the guidance and improvement of the supply and demand of materials. 2. Matters relating to the registration and allocation of uses of materials. 3. Matters relating to the investigation and statistics of materials. 4. Matters relating to price balance and prevention of price hikes. 5. Matters relating to market management and prevention of manipulation. 6. Matters relating to the prohibition of improper conduct by material operators. 7. Matters relating to the supply, storage, and transportation of materials. Article 3: The Bureau of Materials shall establish the following offices: 1. General Affairs Office, 2. Supervision Office, 3. Management and Repair Office, 4. Finance Office. Article 4: The Bureau of Materials shall have jurisdiction over the following bureaus and offices: 1. Agricultural Capital Bureau, 2. Fair Price Purchase and Sales Office, 3. Fuel Management Office. Article 5: The Bureau of Materials shall have one Director, who shall manage the affairs of the Bureau under the orders of the Minister of Economic Affairs, and two Deputy Directors, who shall assist the Director in handling the affairs of the Bureau. Article 6: The Bureau of Materials shall have one Chief Secretary, and two to four Secretaries, who shall review manuscripts, handle confidential documents, and other assigned matters under the orders of the Director. Article 7: The Bureau of Materials shall have four Office Directors, who shall be in charge of the affairs of each office under the orders of the Director. Article 8: The Bureau of Materials shall have sixteen to twenty Section Chiefs, and seventy to ninety Section Members, who shall handle various matters under the orders of the superiors. Article 9: The Bureau of Materials shall have twelve to twenty Inspectors, and sixteen to twenty Specialists, who shall perform their duties under the orders of the superiors. Article 10: The Director of the Bureau of Materials shall be specially appointed, the Deputy Directors, Chief Secretary, and Office Directors shall be simply appointed, the Secretaries and Section Chiefs shall be simply appointed, the Inspectors and Specialists shall be recommended or appointed, and the Section Members shall be appointed. Article 11: The Bureau of Materials shall have one Chief Accountant, who shall handle the affairs of the annual budget and accounting, and the office where the office is located shall be called the Accounting Office, and the Chief Accountant and assisting personnel shall be handled in accordance with the regulations for the appointment of accounting personnel. Article 12: The Bureau of Materials may hire consultants and specialists. Article 13: The Bureau of Materials may employ employees at its discretion. Article 14: The Bureau of Materials may establish various committees as needed to carry out its business, with the approval of the Ministry of Economic Affairs, and may dispatch specialists to work abroad. The detailed measures shall be determined separately. Article 15: The detailed rules for the Bureau of Materials shall be drafted by the Bureau of Materials and submitted to the Ministry of Economic Affairs for approval. Article 16: These regulations shall be implemented from the date of promulgation. (30th Dispatch)</p>
+<h3>Jiangxi's Savings Work Successfully Completed</h3>
+<p>Ji'an - The total amount of savings and savings in Jiangxi in the 30th year was 20 million yuan, which has been successfully completed. The amount of savings in the 31st year has been increased to 40 million yuan, and the Savings Promotion Association is actively promoting it. (31st Army)</p>
+<h3>New Zealand Resolves to Defend Its Territory: New Zealand Prime Minister's Statement</h3>
+<p>Bangkok, 31st (Kaito News Agency) - Reports received here state that the Prime Minister of New Zealand informed the people of New Zealand today that we are directly threatened by attack, which is the first time in New Zealand's history. When there is a need to defend our territory, we will never be daunted. In other words, we are willing to share the hardships with our compatriots fighting overseas.</p>
+<h3>Portugal Sends Troops to Increase Defense of Timor Island, Governor-General of Angola Resigns</h3>
+<p>Havas News Agency, Berlin, 30th - According to a dispatch from Lisbon received by the German News Agency today, the ship "João Belo" carrying 1,100 Portuguese soldiers sailed from the port of Lourenço Marques in Portuguese East Africa to Portuguese Timor in the Far East, accompanied by the aircraft carrier "Chao de Lajes I".</p>
+<p>Lisbon, 31st (Kaito News Agency) - The Portuguese official gazette announced that Dr. Mendes, Governor-General of Portuguese Angola, has been dismissed from his post. His dismissal was said to be voluntary.</p>
+<h3>Tragic Car Accidents Occur in England and France</h3>
+<p>Paris, 30th (Havas News Agency) - A tragic car accident occurred near Hazebrouck in northern France, killing fifty people and injuring several others.</p>
+<p>Stockholm, 30th (Kaito News Agency) - A late-night report from London last night stated that a train collision occurred near Eaglesham in Lanarkshire yesterday morning, killing at least eleven people and injuring around one hundred. One of the locomotives first split another locomotive into two before rolling down a hillside. The passenger cars were all destroyed, and the passengers were trapped under the wreckage. The majority of the passengers were said to be workers.</p>
+<h3>Japanese Navy Blockades Hawaiian Waters, U.S. Submarines</h3>
+<p>Washington, 30th (Havas News Agency) - It is believed in official circles here that the Japanese fleet is now in the ×××× waters.</p>
+<p>Tokyo, 31st (Kaito News Agency) - A spokesman for the Japanese Imperial Headquarters Navy announced last night that the Japanese Navy has begun to blockade American submarines in Hawaiian waters. On December 28, Japanese naval aircraft patrolling the waters around Luzon sank an enemy destroyer and two submarines, and damaged twenty-six merchant ships with bombs, seven of which have already sunk. The Japanese aircraft lost only two aircraft, one of which crashed into the target with a bomb and was destroyed with it, and the other was lost. Regarding the Japanese Navy's losses during the Hawaiian naval battle, in addition to the two special submarines that have already been announced, one ordinary submarine is also missing.</p>
+<h2>Page 4</h2>
+<h3>Gandhi Resigns as Chairman of the National Congress Due to Disagreement with Other Committee Members on Abandoning Passive Resistance; Rumors Suggest Nehru Will Succeed as Chairman of the National Congress</h3>
+<p>Bardoli, India, 31st (Havas News Agency) - The Executive Committee of the National Congress met here yesterday. Chairman Gandhi had previously sent a letter to the Congress stating that as long as India's freedom is not achieved, the passive resistance movement (i.e., non-cooperation) that he advocated will not be suspended for a single day. Since this position is contrary to the opinions of most representatives, he has no choice but to resign automatically to make way for a more capable person. After the letter was presented and read out, the Executive Committee immediately passed a resolution approving Gandhi's resignation and supporting the assistance of Britain in the war. The main points are that "Although the current policy adopted by Britain towards India has not changed, this committee believes that the impact of the world situation on India at this moment cannot but be taken into account. Therefore, the Indian National Congress naturally sympathizes with those who are oppressed and those nations that are fighting for freedom. However, one point must still be stated, that only an independent and free India can plan its national defense from a national standpoint and serve the great cause of all democratic countries to overcome the various difficulties of the war period." According to Gandhi's letter to the National Congress, he first stated that when the Congress convened in Bombay on June 16 last year, he was publicly elected as the chairman. He thought at the time that the meaning of this resolution of the Congress was to express its refusal to participate in any war and to oppose all violent actions. Today, he realizes that his interpretation is contrary to the opinions of most representatives of the Congress. However, he has decided to continue to promote the non-cooperation movement, hoping to eventually implement anti-war advocacy and obtain freedom of speech with the support of comrades.</p>
+<p>Stockholm, 31st (Kaito News Agency) - According to reports received here yesterday, Gandhi has resigned as the leader of the Indian Parliament. His resignation was the result of a meeting with other key members of the Congressional Party. After Gandhi's resignation, he ordered his followers to withdraw the implementation of his policies of non-war and disobedience. Because after the outbreak of the Pacific War, Gandhi requested the Congressional Party to restore the freedom movement, sources in the communication field stated that Nehru, a well-known anti-British leader, will succeed as the leader of the Indian Congressional Party.</p>
+<h3>Soviet Snow Offensive: Heavy Assault on German Mid-Section, German Air Force Bombards Soviet Garrison</h3>
+<p>Berlin, 31st (Kaito News Agency) - Yesterday, it was announced here that the Soviet army launched several offensives on Monday, taking advantage of the heavy snowfall on the Eastern Front. The Soviet army used horse-drawn sleds to assist in the advance towards the German-Italian defense line, but was repelled by intense artillery fire. In a certain area of the southern Eastern Front, German troops braved the severe cold weather to repel a Soviet regiment and inflict heavy casualties. The remnants of the regiment fled in panic, leaving behind four hundred bodies, as well as a large number of grenades, machine guns, and horse-drawn sleds, which were left on the battlefield. In addition, many people were captured.</p>
+<p>Helsinki, 30th (Havas News Agency) - War reports stated that artillery battles occurred on both sides of the Karelian Isthmus today. In the Seville area, enemy reconnaissance teams attempted to cross the river but were repelled by our forces. In the central sector, enemy forces abandoned eight outposts, losing one hundred and twenty-seven soldiers. The enemy's counterattacks in the central and northern sectors were unsuccessful.</p>
+<p>Berlin, 30th (Havas News Agency) - The German News Agency recently issued a message stating that the German Air Force was very active the day before yesterday, shooting down fourteen Soviet aircraft, including seven shot down in aerial combat, three shot down by anti-aircraft guns, and the rest destroyed at the airport. In addition, nine British aircraft were shot down by our fighter planes and anti-aircraft guns over the English Channel and the French coast.</p>
+<p>Berlin, 30th (Havas News Agency) - The German News Agency recently issued a message stating that the German Air Force flew to the central section of the Eastern Front yesterday, bombing Soviet troop positions. The Red Army suffered heavy losses. Fires broke out and spread in various places. Several infantry and cavalry units were dispersed by bombs and machine gun fire.</p>
+<h3>U.S. Congress Takes Three-Day New Year Recess</h3>
+<p>Washington, 31st (Havas News Agency) - It has been learned that this session of the U.S. Congress will end on January 2 and will reconvene on the 5th.</p>
+<h2>Page 5</h2>
+<h2>Page 6</h2>
+<h3>Public Works Department Yesterday Stipulated Coal Prices to Maintain Important Industrial Fuel</h3>
+<p>Indian Coal Banned from Sale Starting Today; Coal Merchants Violating the Order Will Be Severely Punished</p>
+<p>The Coal Weight Control Committee of the two settlements, in order to understand the sales of coal weight by various coal companies and firms in the city, specially ordered the Coal Industry Association to handle the registration of coal sales and users among the industry. Since the association started handling this matter a few days ago, the number of businesses coming to obtain and fill out forms has been endless. As of 5 p.m. yesterday, more than 450 businesses had been reached. All coal merchants are required to report by the 3rd of this month so that they can be compiled and forwarded to the authorities of the two settlements for reference, otherwise, it will be regarded as self-abandonment.</p>
+<p>Total Coal Volume Arriving in Eleven Months</p>
+<p>As for the total amount of foreign coal shipped to Shanghai from January to November 1941, it reached 991,129.0 metric tons, with a value of 10,241,052 customs gold units, equivalent to 27,722,528 yuan in legal tender. Among them, Vietnam ranked first, accounting for 371,326 metric tons, worth 5,834,083 customs gold units. Taiwan ranked second, accounting for 263,527 metric tons, worth 1,221,157 customs gold units. Japan ranked third, accounting for 167,224 metric tons, worth 635,001 customs gold units. British India ranked fourth, accounting for 80,033 metric tons, worth 1,422,601 customs gold units. Korea ranked fifth, accounting for 77,001 metric tons, worth 402,560 customs gold units. Re-exports amounted to 1,100 metric tons, worth 9,348 customs gold units.</p>
+<p>Coal Weight Price Limit to be Implemented Starting Today</p>
+<p>The Public Works Department stipulates that starting today, for the sale of coal weight within the Public Concession, the highest ex-warehouse price shall not exceed the following fixed prices (excluding transportation costs): Opening Soft large lump coal: 360 yuan per ton in national currency; Opening Soft coal dust: 360 yuan per ton in national currency; Hongji large lump coal: 600 yuan per ton in national currency; Hongji small lump coal: 600 yuan per ton in national currency. Those who exceed the fixed price or refuse to sell without reason will be punished separately or jointly according to the following methods: A. No permit will be given for transporting coal weight or coal balls; B. The stored coal will be confiscated; C. No new supply will be allowed. When new goods arrive, the price limit for coal weight will be reduced accordingly. As for coal weight from India and other places, it will be banned from sale starting today and will be reserved for important industrial uses.</p>
+<h3>Customs Brokers and Firms to Re-Register Starting Today</h3>
+<p>For a Period of One Month</p>
+<p>The Jianghai Customs has decided to start handling the registration of customs brokers and firms starting today. All customs brokers and firms, whether new or old, must go to the registration office of the General Affairs Department of the Customs to complete the registration procedures from today to the 31st. The various procedures are extracted as follows: Customs Brokers: Each customs broker should submit the old business license to the Customs for a new license, and at the same time pay a license renewal fee of 2 yuan in legal tender. If it is a member of the Customs Brokers Association, it must be collected by the association on behalf of the member. Firms: Each firm should submit a separate application to the Customs for re-registration, but no further visa is required. Blank application forms can be obtained from the registration office. Customs Broker at the Customs Post Office Parcel Office: All customs brokers at the Customs Post Office Parcel Office should submit the old business license to the Customs for a new license, and at the same time pay a license renewal fee of 2 yuan in legal tender. All customs brokers, whether new or old, must wait three months before they can receive the security deposit if they want to cease business operations. As for customs brokers and firms who still fail to re-register in accordance with the aforementioned regulations after February 1, 1942, they will be regarded as unregistered. All customs declarations will only be accepted after complete re-registration. Changes in managers, relocation of addresses, and cessation of business operations must also be reported to the registration office of the General Affairs Department of the Customs.</p>
+<h3>Edible Oil and Sugar Have Been Deregulated</h3>
+<p>The Public Works Department recently issued a notice stating that, having been notified by the Japanese authorities, they are responsible for guaranteeing the continuous supply and sufficient distribution of edible oil and sugar within the Public Concession and areas outside the concession. Therefore, at the request of the Japanese authorities, this Bureau's Notices No. 5639, No. 5640, and No. 5670 regarding edible oil, and Notice No. 5683 regarding sugar, are hereby cancelled. However, this Bureau will continue to control milk oil, artificial milk oil, and animal fat.</p>
+<h3>Rice Shops' Rice Selling Hours: Two Days of No Sales Per Week; Flour Price Limit Changed to One Yuan Per Market Catty</h3>
+<p>The Public Works Department stipulates that starting on the 1st of the month, the rice selling hours for rice shops located in the Public Concession are set from 8:00 a.m. to 4:00 p.m., and sales should be stopped on Wednesdays and Sundays. The rice selling hours of the rice selling points set up by the Bureau will also be handled in the same way as above. Today is New Year's Day, and the three rice selling points set up by the Bureau are also closed.</p>
+<p>Yesterday, Approximately 20,000 Bags of Foreign Rice Were Allocated</p>
+<p>The Rice &amp; Flour Office of the Public Works Department issued a larger number of transportation permits yesterday than usual, due to the end of the lunar year and the New Year holiday, for door-to-door retail sales. The foreign rice extracted from the Roosevelt Warehouse, as specified in the transportation permits issued the day before, has already been extracted by various rice shops yesterday. The Rice Office of the Public Works Department continued to issue transportation permits yesterday, specifying rice to be extracted from China, Mao Tai, and Roosevelt Warehouses, totaling nearly 20,000 bags. This is because the quantity issued is larger than usual due to the New Year holiday.</p>
+<p>More Than 6,000 Bags of Flour Were Issued Yesterday</p>
+<p>The Flour Office of the Public Works Department issued transportation permits yesterday, specifying a total of 5,000 to 6,000 bags of flour to be extracted from the Fuxin No. 2 Factory, Fuxin No. 7 Factory, and Nie Feng Factory, which is also more than usual. If the rice and flour specified in the above-mentioned rice and flour transportation permits cannot be extracted yesterday, they must be postponed until January 3rd to be extracted. The association initially issued 1,500 bags of flatbread flour, with Xiehexing Rice Shop at No. 133 Ningxing Street, French Concession, as the place to collect the associated flatbread flour. Later, due to restrictions on transportation by the authorities, part of the flour could not be purchased. The association sent Zhang Guanshou to the French authorities to request permission to transport the bags whole. Permission has now been granted, so the association specially notified yesterday to prompt members to go to No. 202 Guangxi Road on the 2nd of this month with their membership cards to collect transportation permits.</p>
+<p>Retail Flour Price Limit Slightly Increased</p>
+<p>According to the notice issued by the Public Works Department regarding the price limit and retail quantity of flour, the following measures will be implemented from January 1st: Wholesale merchants are not allowed to charge more than 36 yuan in national currency per bag of Canadian flour, weighing 49 pounds per bag. They are also not allowed to charge more than 38 yuan in national currency for American flour (regardless of brand and name) and local flour. Retail merchants are not allowed to charge more than 38 yuan in national currency per bag of Canadian flour (sold to small industrial users). They are also not allowed to charge more than 40 yuan in national currency for American flour and local flour. Because the expenses of retail flour have increased, the price limit for retail merchants to sell Canadian flour can be increased to 94 cents per market catty (or 85 cents per pound). The price limit for selling American flour and local flour can be increased to one yuan per market catty (or 90 cents per pound). The method of limiting each person to no more than five market catties (or five pounds) per purchase will continue to be effective. The method of restricting the movement of flour will also continue to be effective. All stores that have obtained flour with the assistance of this Bureau within the Public Concession and the areas outside the concession in Shanghai West should abide by it.</p>
+<h3>Meal Tickets Issued to Poor American and Filipino Residents</h3>
+<p>Organized by the American Association</p>
+<p>The American Association of Shanghai announced that starting on Saturday, the association will provide meals to poor American and Filipino residents. Those who have already applied to the association at No. 51 Guangdong Road will receive a notice of meal tickets and meal collection methods on Friday. Those who have not yet applied should go to apply yesterday (December 31) afternoon and on Friday. The American Association is closed on New Year's Day.</p>
+<h3>Payments to the Public Works Department Should Be Made in Cash as Much as Possible</h3>
+<p>The Public Works Department recently issued a notice stating that, for all accounts payable to the Bureau now and in the future, it is hoped that payment will be made in cash or cash checks as much as possible. If both are inconvenient, the payer may issue a check from the bank where the funds are deposited, until further notice. As for the accounts payable to Hong'en Hospital and Public Charity Hospital, the same method will be followed.</p>
+<h3>Public Works Department Considers Registration of Canned Foods; Not Likely to Be Implemented in the Near Future</h3>
+<p>It is heard that the Public Works Department of the Public Concession is currently considering following the example of the French Concession Public Works Bureau by issuing an order to register all imported canned foods that need to be used for more than one month. However, it is not planned to take this action in the short term. Official sources claim that there are many difficulties in this plan, and it is even more difficult to implement in the Public Concession than in the French Concession. Regarding the rumors in the Chinese newspapers that the Public Works Department will mobilize 2,000 Chinese students to investigate the population of the Public Concession in order to better control the people's food and daily necessities in Shanghai, Public Works Department personnel claimed that the Bureau may have such a plan, but it has not been decided.</p>
+<h3>Temporary Special Tax Rates for Sugar and Cosmetics</h3>
+<p>The Jianghai Customs issued a notice yesterday stating that, starting from January 1, 1942, the temporary special tax rates for domestically manufactured and imported sugars, including brown sugar, orange sugar (i.e., domestic brown sugar granules or cakes), white sugar, rock sugar, cube sugar, refined sugar, saccharin, and other sugars, will be temporarily set at 12% of the value. For cosmetics, the temporary special tax rates will be set at 12% and 70% of the value, respectively, for the following categories: Category 1: toothpaste, tooth powder, tooth paste, mouthwash, cosmetic soap, shaving soap, body powder, skin lotion, skin cream (such as cold cream), and eau de cologne; Category 2: perfume, face powder, lipstick, hair tonic, hair oil, hair wax, hair gel, hair paste, and nail polish.</p>
+<h3>Prices of New Year's Eve Items</h3>
+<p>Foreign rice (per market dou): HK$4.10 (per market stone): $235.00; Flour (per bag): $40.00; Vegetables (per market catty): $0.167; Soybean sprouts (per market catty): $0.350; Fresh pork (per market catty): $3.900; Fresh fish (per market catty): $1.590; Soybean oil (per market catty): $3.168; Soy sauce (per market catty): $0.588; Coal briquettes (per dan): $20.000; Fine cloth (per market foot): $1.046.</p>
+<h3>Report on Donations to the Shen Bao Reader Scholarship Fund</h3>
+<p>The donations received by the Shen Bao Reader Scholarship Fund as of December 29, 1941, are as follows: Wang Juerong, 100 yuan; Mr. Shen, 10 yuan; Baobi, 10 yuan; Qiu Su (manuscript fee), 3.50 yuan; Lu Jingwei (manuscript fee), 3 yuan; Feng (manuscript fee), 1 yuan; totaling 127.50 yuan. The previous balance was 49,313.32 yuan, bringing the total to 49,440.82 yuan.</p>
+<h3>Procedures for Signing Utility Checks</h3>
+<p>The Public Works Department recently issued a notice stating that, regarding the matter of users paying for the services of Shanghai Telephone Company, Shanghai Electric Power Company, Shanghai Waterworks Company, and Shanghai Gas Company with checks, the Bureau's Notice No. 5709 was previously announced. It has now been found that the above-mentioned regulations have been revised, that is, payment by checks from American, Belgian, British, Dutch, and the four Chinese banks, Central Bank of China, Bank of China, Bank of Communications, and Agricultural Bank of China, should only be accepted in accordance with the instructions in the notices issued to users by each utility company.</p>
+<h3>French Concession Driving Licenses Must Be Renewed Within Three Months</h3>
+<p>It has been learned that the French Municipal Council has issued a notice stating that all drivers, whether they are car owners or chauffeurs, should renew their driving licenses at the Vehicle Affairs Office at No. 28 Xuehuali Road between January 1 and March 31 each year.</p>
+<h3>Renji Shantang Holiday Closure</h3>
+<p>The Renji Shantang on Yunnan Road in this city has been providing medical consultations and medicines for decades as a regular charitable act. It is heard that the hall provided more than 130,000 consultation numbers and issued more than 130,000 doses of medicine throughout the year 1941, greatly benefiting the poor and sick. As the holiday season approaches, the hall will be closed as usual. Normal consultations are scheduled to resume on January 5, 1942.</p>
+<h3>Municipal Bonds Postponed</h3>
+<p>The Public Works Department recently issued a notice stating that, due to the current situation, the redemption of part of the principal of the 6% bonds issued by the Bureau in 1940 should be postponed until further notice. The year-end interest will be paid by Yokohama Specie Bank check.</p>
+<h3>New Rates for Various Vehicle License Fees</h3>
+<p>Bicycles</p>
+<p>The Public Works Department has decided to issue bicycle licenses at various police stations and license offices from January 15 to February 14. The license fee has been revised to 24 yuan per half year (excluding the license plate fee of one yuan). After February 16, licenses will only be issued by the Bureau's General Office, Wenkou Police Station, Maohai Road Temporary License Office, and Gordon Road License Office.</p>
+<p>Handcarts</p>
+<p>Licenses for handcarts for the previous quarter ending March 31 and for half-year delivery tricycles or trailers ending June 30 will be issued at the License Office at No. 557 Gordon Road starting January 5. The annual inspection of delivery tricycles or trailers (with a maximum load of 500 pounds) will be held at the rickshaw inspection office at No. 808 Seymour Road. The license for this vehicle shall only be issued after the inspection certificate is presented. From January 1, the license fee rates for the above vehicles have been revised as follows: Handcarts pushed or pulled by manpower (excluding license plate fees): (A) Fitted with sheet metal wheels: Category 1: Maximum load of 500 pounds, 24 yuan per quarter; Category 2: Maximum load of 1,000 pounds, 66 yuan per quarter; Category 3: Load of 2,240 pounds, 144 yuan per quarter; Load of 2,241 pounds or more to be determined separately. (B) Fitted with pneumatic tires: Category 4: Maximum load of 750 pounds, 13.50 yuan per quarter; Category 5: Maximum load of 1,500 pounds, 36 yuan per quarter; Category 6: Maximum load of 1,800 pounds, 45 yuan per quarter; Category 7: Maximum load of 2,240 pounds, 54 yuan per quarter; Category 8: Maximum load of 3,000 pounds, 72 yuan per quarter; Load of 3,001 pounds or more to be determined separately. Delivery tricycles or trailers: 60 yuan per half year.</p>
+<p>Rickshaws</p>
+<p>Private rickshaw licenses will be issued at the License Office at No. 557 Gordon Road starting January 5. The license fee rate has been revised to 120 yuan per half year. If an existing license is to be transferred, an application should be made to the above-mentioned license office by January 27 at the latest. The license fee for tandem bicycles has been changed to 60 yuan per half year. Also, the license fee for small soldiers has been increased from 2 yuan to 4 yuan per month.</p>
+<h3>Publication of "Guide to Household Daily Necessities"</h3>
+<p>The "Guide to Household Daily Necessities" for 1942 has been published. The content is rich and the binding is beautiful. In addition to the lunar calendar, tables of new moon and full moon, and tables of solar terms, sunrise and sunset times, and conversion of lunar year ages to full years, it also contains daily texts such as wedding and funeral etiquette, titles of relatives and friends, records of surnames and origins, year-round recipes, and health tips. The price is one yuan per copy, and a special price is one yuan. It is available at the Bowen Bookstore at No. 277 Sima Road and at various newsstands. It is quite popular with families.</p>
+<h3>Publication of "Blue Cross Journal" December Issue</h3>
+<p>The "Blue Cross Journal," Volume 5, Issue 4, December 1941, published by the Shanghai Animal Protection Association at No. 350 Racecourse Road, this city, has recently been published. The content includes an excellent article by Su Wenpei entitled "Foreign Dogs in China." There are also many illustrations. There is also a report on the association's work, with very rich materials.</p>
+<h3>Robberies and Notations</h3>
+<p>At around 8:00 p.m. last night, four bandits broke into No. 116 Zhili Road. Two of them were carrying pistols. They robbed the victim of 1,000 yuan.</p>
+<p>At around 8:30 p.m. last night, on the intersection of Binlang Road and Seymour Road, four highway robbers, one of whom was carrying a pistol, intercepted a man and a woman. They stripped them of two coats on the spot and 45 yuan in cash from their wallets.</p>
+<p>At No. 138 Datong Road, three bandits, one of whom was carrying a pistol, robbed a man and a woman, stealing two coats on the spot. After the victims called for help, street patrolmen arrived and arrested two of the bandits.</p>
+<h2>Page 7</h2>
+<h3>French Concession Buses to Reduce Stops Starting Today</h3>
+<p>The French Tram Company issued a notice the day before yesterday stating that, starting today (January 1), the number of stops for trams, trolleybuses, and buses in the French Concession will be reduced. There will be seven fewer stops for trams, nine fewer stops for trolleybuses, and three fewer stops for buses. The detailed locations of the stations being reduced are listed below.</p>
+<p>Trams</p>
+<p>The tram stops that will be eliminated are: the intersection of Fada Road and Tianwangtang Street, the intersection of Fada Road and Jixiang Street, the intersection of Fada Road and Zhengjiamuqiao Street, the intersection of Xialei Road and Weilimeng Road, the intersection of Xialei Road and Malang Road, the intersection of Xialei Road and Masinan Road, and the intersection of Xialei Road and Baisai Zhong Road, a total of seven locations. In addition, the two stops at the intersection of Xialei Road and Panxing Road and the intersection of Xialei Road and Wenlin Road will be merged, and a new stop will be set up between the two stops.</p>
+<p>Trolleybuses</p>
+<p>The trolleybus stops on Route 24 in the French Concession that will be eliminated are: the intersection of Aerbei Road and Julai Da Road, the intersection of Aerbei Road and Henly Road, the intersection of Aerbei Road and Huanlong Road, and the intersection of Lafayide Road and Qiele Road, a total of four locations. The trolleybus stops on Routes 17 and 18 that will be eliminated are: the intersection of Baier Road and Qiele Road, the intersection of Caishi Road and Father Laoshen Road, the intersection of Caishi Road and Father Du Shen Road, the intersection of Kangdi Road and Beile Road, and the intersection of Jin Shenfu Road and Jaxi Yi Road, a total of five locations.</p>
+<p>Buses</p>
+<p>The bus stops that will be eliminated are: the intersection of Ladu Road and Leimi Road, the intersection of Aerbei Road and Huanlong Road, and Baxianqiao (i.e., the intersection of Kaizi and both Mai Gaobao Lu Roads), a total of three locations. In addition, the two stops at the intersection of Fuxu Road and Baier Bu Road and the intersection of Fuxu Road and Malang Road will be merged, and a new stop will be set up at the intersection of Fuxu Road and Saposai Road. The time for buses to enter the depot will also be advanced slightly to 8:00 p.m. every night.</p>
+<h3>New Puyutang Appeals for Donations</h3>
+<p>The Xinzi Yutang in Nanshi is a well-known Catholic charity organization with a long history and complete facilities. It is divided into a nursery, an orphanage, a nursing home, and a disabled home, and houses and educates nearly a thousand orphans, the elderly, and the weak. Now that economic assistance from abroad has been cut off, fixed donations in this city have decreased, and prices have soared, the cost of living is very high. It is impossible to dismiss those who have already been accommodated. As a last resort, an appeal is made to benevolent people in the community, hoping that they will adopt the principle of treating others' children as their own and embracing all people, and make enthusiastic donations, whether in the form of food, clothing, or cash. All donations will be gratefully received. Donations will be received at the Catholic Church on Catholic Church Street, and donations will be received at the Silk Industry Bank on Sanma Road, the Banque Belge Pour L'Etranger on the Bund, the Huamei Pharmacy on Sima Road, and the Jihuatang Pharmacy on Yunnan Road. Official receipts will be given as proof, and the information will be published on this newspaper's WeChat every two days.</p>
+<h3>Impersonating and Extorting: Arrested and Sentenced to Imprisonment</h3>
+<p>Zhou Zhu, a woman from Dongting Mountain residing at No. 28, Lane 657, Tiantong Road, had a large quantity of lead type materials stored in her home, which was coveted by bandits. At 11:00 a.m. the day before yesterday, four people suddenly came to her, claiming to be from the Japanese Headquarters to investigate. They were local residents Ni Shuifu, Fang Fuqing, Wuxi resident Shen Nengquan, and Chen Bingquan, who is still at large.</p>
+<p>Claiming that there were prohibited items stored in her home, Fang and Shen forcibly entered Ms. Zhou's bedroom and searched through boxes and chests without asking for any reason. They also forced her to open the silver dollar box. Ms. Zhou begged them in vain, saying that she had to pay 6,000 yuan to settle the matter, otherwise all the lead type materials would be taken to the headquarters and confiscated. Ms. Zhou had no choice but to invite her neighbor, Yuan Wendan from Ningbo, to her home to mediate.</p>
+<p>Feigning Compliance</p>
+<p>While reporting the incident by phone to the relevant Huisi Police Station, who dispatched Chinese and Western detectives to arrest them, Chen Bingquan was alert and escaped, while the remaining three people, Ni, Fang, and Shen, were arrested, along with Yuan Wendan from Ningbo (suspected of colluding with them), and taken to the police station. Yesterday morning, they were escorted to the court, where the police station's lawyer, Li Zhishan, filed a public prosecution on charges of extortion under Article 3134, Paragraph 3 of the Criminal Code, stating that the defendants took advantage of the situation to extort money from the woman.</p>
+<p>Pretending to Extort</p>
+<p>Such behavior is abhorrent in this extraordinary period, and asked that they be severely punished. As a result, the court sentenced Shen Longquan to one year and four months in prison, and Ni Shuifu and Fang Fuqing to one year each, as a warning. Yuan Wendan was acquitted.</p>
+<h3>Datong Bank Employee Embezzlement: Released on Bail but Failed to Appear in Court</h3>
+<p>Li Yanghe, a local resident and employee of Datong Bank at No. 90 Nanjing Road, was reported to the relevant police station for allegedly forging documents and privately signing four checks, causing the bank to suffer a loss of 74,800 yuan. Detectives were dispatched to his residence in Yidingpan Road, where he was arrested and escorted to the First Special Court, where he was publicly prosecuted on charges of forgery under Article 317 of the Criminal Code. Judge Feng approved the defendant's release on bail pending trial. The case was scheduled to continue yesterday by Judge Feng, but the defendant did not appear. The court adjourned the hearing and notified his bailor to appear.</p>
+<h3>Notorious Thief Rearrested After Release from Prison</h3>
+<p>Tang A'jin, a notorious thief from Chongming, had committed crimes in the Public Concession three times. He was recently released from prison, but he refused to mend his ways. At 1:15 p.m. the day before yesterday, he ganged up with one other person who is still at large and went to the vicinity of Zhaopu Road and Wuchang Road, where they robbed Zhu Guangzi, a beef seller from Danyang, of 50 yuan in legal tender. After the incident, Chinese and Western detectives from the Hongkou Police Station arrested him. The stolen money was taken away by his accomplice. He was taken to the police station and escorted to the court yesterday morning, where the police station's lawyer, Li Zhishan, requested that he be detained. The request was approved for further review at a later date.</p>
+<h3>Woman Falls to Her Death</h3>
+<p>Zhao A'bao, a woman from Pudong residing at No. 25, Lane 17, Xiaodongmen Street, French Concession, who was 23 years old this year, went to the fourth-floor sun deck to collect clothes at 5:00 p.m. on the 28th. She accidentally lost her footing and fell downstairs, injuring her head and abdomen. Her family immediately sent her to the hospital for treatment, but she died due to her serious injuries. Her body was then transported to the Tongren Fuyuanchuntang. Yesterday, her husband, Zhao Heshang, arrived at the scene to collect the body.</p>
+<h3>Woman Dies by Suicide</h3>
+<p>Li Wang, a woman from Anhui, 50 years old, who lived at No. 18, Xiaobangwan Lane, Julai Da Road, swallowed opium in anger at 10:00 a.m. the day before yesterday after arguing with her husband, Li Guoping. Her husband discovered her and immediately sent her to the hospital for treatment, but she died because of the deep poison. Her husband then had her coffined.</p>
+<h3>Man Commits Suicide Due to Poverty</h3>
+<p>Zhou Zhenhong, a man from Chang'an, 29 years old, who lived at No. 5, Dakang Lane, Kangdi Road, committed suicide by drinking medicine in Room 4 of Wuling Apartment at No. 244, Baier Road, late at night the day before yesterday due to economic hardship. The tea boy discovered him and reported it to the police station, who sent him to the hospital. He died despite treatment. His body was then transported to Tongren Fuyuanchuntang, where his younger brother, Zhou Zhenfa, arrived at the scene to collect the body.</p>
+<h3>Yao Jia Gui Promoted to Chief Detective</h3>
+<p>Yao Jia Gui, Chief Chinese Detective of Chengdu Road Police Station, will be promoted to Chief Detective and transferred to the Laoza Police Station to work starting today.</p>
+<h3>Lawyer Fang Junjie Performs Accounting Services</h3>
+<p>Lawyer Fang Junjie has been practicing law for over ten years and has gained the trust of people in society. In view of the many connections between accounting and law, and to meet the needs of society, and at the urging of people from all walks of life, he obtained a certificate, joined the Certified Public Accountants Association, and began performing accounting services. His office is still located at No. 19, Lane 18, Baier Road, telephone 85350.</p>
+<p>Lost Women's Watch. I picked up a women's rectangular watch on the No. 9 bus at the Jing'an Temple station at about 2:30 p.m. on the 28th of this month. I immediately handed it over to the conductor of the car, No. 421. It is hoped that the owner will see the report and go to the company to claim it as soon as possible. Sincerely, Zheng Peisheng.</p>
+<p>Yesterday's Newspaper Was Released at 6:10 PM</p>
+<p>Sports News</p>
+<h3>New Year's Cup Little Football Tournament Kicks Off Today at Guangxia; In Addition to Two Cup Matches, There Will Be Performance Programs</h3>
+<p>The New Year's Cup Little Football League, initiated by Wang Ruilong, invites four strong teams—Yiguang, Menghshi, Ruitang, and Shisheng—to compete for the title. It is scheduled to kick off today at 1:30 PM at the Guangxia Middle School football field on Muir Road. There will be two cup matches, with an additional performance match. Wang Ruilong will personally attend the opening ceremony and kick the first ball, with Han Langen and Yin Xiucen cutting the ribbon. The first match will be Shisheng versus Ruitang. The former was the runner-up in the Guangxia Cup's Group A for two consecutive years, boasting the "Iron Gate" Zheng Tongyu and famous forwards Song Weizhong and Liao Shiyi, possessing ample strength. Ruitang is a rising star, with an outstanding record and many brave generals under its command, such as Zhang Banglun, Hu Hanwen, Lin Dianhua, Cao Qinfang, and Zhang Zhaopeng, all top-tier players with a solid lineup, promising an intense and fierce battle with Shisheng. The first performance match will be Movie Stars versus Ruilong. The Movie Stars team has performed multiple times at the impoverished children's education center, earning high praise. Participating stars include Zhang Huichong, Liu Qiong, Wang Yin, Han Langen, and Yue Feng. Ruilong is the original Guangxia Middle School team, reorganized by Wang Ruilong, and has performed many times, demonstrating a high level of skill. Today's match with the Movie Stars team is considered evenly matched, making the outcome uncertain. The final cup match is Yiguang versus Menghshi. Yiguang has just won the Guangxia Cup's Group A championship, boasting top-notch players in Shanghai, such as Han Longhai, Zhao Yongfang, Shen Jinda, and Tao Tingfu, with high morale. Menghshi is also a formidable force in the small football world, and its players, including the famous general Xiao Ziwen, have participated in the football training classes initiated by Dai Linjing, resulting in rapid improvement in their skills, further enhanced by the support of He Jiatong and others, making them even stronger. The encounter between these two powerhouses promises a bloody battle. Tickets are priced at 5 jiao and 1 yuan. The schedule and lineups are listed below:</p>
+<p>Menghshi – Ruitang (Cup) 1:30 PM</p>
+<p>Movie Stars – Ruilong (Exhibition) 2:30 PM</p>
+<p>Yiguang – Menghshi (Cup) 3:30 PM</p>
+<p>Shisheng</p>
+<p>Zheng Tongyu</p>
+<p>Zhou Yongfang Ye Yiheng</p>
+<p>Tang Guoxiong</p>
+<p>Zhang Jiuqing Liao Shiyi Gan Zhiyi Jing Weizhong</p>
+<p>Ruitang</p>
+<p>Zhang Banglun Gu Biao</p>
+<p>Sun Hanxing Chen Zhuoguang Hu Hanwen</p>
+<p>Lin Dianhua</p>
+<p>Xuan Shenghua Cao Qinfang Ye Yiting Zhang Zhaopeng</p>
+<p>Movie Stars</p>
+<p>Yue Feng</p>
+<p>Liu Qiong Chen Zhuoguang Zhang Huichong</p>
+<p>Zhou Chen Huang Shaofen</p>
+<p>Xu Zhongyu Tang Genlu Qian Zuzi Han Langen</p>
+<p>Ruilong</p>
+<p>Xi Liufu</p>
+<p>Zhang Fenggang Xu Xisheng</p>
+<p>Chen Jinquan Zheng Linxiang</p>
+<p>Li Xianxun Gu Yilong Wang Dingqiu Zhang Caide Zhang Qianji</p>
+<p>Yiguang</p>
+<p>Tao Ziming</p>
+<p>Tao Tingfu Li Guangshun Li Guanghua</p>
+<p>Shen Jin Yuan</p>
+<p>Wang Xinfu Han Longhai Zhao Yongfang Lin Shaojun</p>
+<p>Menghshi</p>
+<p>Li Zuomin</p>
+<p>Pan Honghai He Jiatong Pang Jiwen</p>
+<p>Tang Zuowen</p>
+<p>Tang Genfu Xiao Ziwen Qian Zuzi Pan Xin</p>
+<h3>University and Middle School Football Tournament Six Universities Meet Today</h3>
+<p>The Aurora University and Middle School Mini Football Tournament, scheduled to decorate New Year's Day, will feature six games starting at 1:00 PM this afternoon. There is also a friendly match this morning at 10:00 AM between the Jin Ke Alumni and the Boy Scout Team, also held at the Aurora University field. The schedule is as follows:</p>
+<p>Lester McLaren Junior B 1:00 PM West Field</p>
+<p>Aurora Vince University 2:00 PM West Field</p>
+<p>East Asia – Datong University 3:01 PM West Field</p>
+<p>New Asia Yueqing Junior A 1:00 PM East Field</p>
+<p>Pujiang Law and Political University 2:00 PM East Field</p>
+<p>Datong – Pudong High Junior B 3:01 PM East Field</p>
+<h3>New Year's Little League Friendly Match Nanxing Agrees to Play Shenguang</h3>
+<p>The Nanjing Commercial Savings Bank Shanghai Branch Mini Football Team, led by Ding Shangui, has participated in numerous matches since its establishment, achieving remarkable results. The bank is scheduled to play a friendly match against the Shenguang team at Tongle Field at 9:00 AM on January 3rd. On the morning of the 4th, they will play against the Bank of Communications team at the same location. Exciting performances are expected. The team welcomes friendlies. Contact Fang Mingkang at the bank's communication address, 80 Jiujiang Road.</p>
+<p>Nanxing Team</p>
+<p>Liu Yongqing Wang Qiaqin</p>
+<p>Zhang Tingyong Gu Xuzhou Zhou YedIng</p>
+<p>Chen Yutao Fang Mingkang Shen Jia</p>
+<p>Zhao Qingcheng Zhou Guohua Chen Shunli Sheng Yunxian Tian Yongfu</p>
+<p>Shenguang Team</p>
+<p>Feng Chanchu</p>
+<p>Yan Zhenfei Shan Yalu Ying Haoran</p>
+<p>Zhang Baokang</p>
+<p>Li Donglin Yan Dongsheng Zhu Rongchun Zhang Yungong</p>
+<h3>Huang Yuantao, Chen Tianjue, and Others Initiate Table Tennis Association</h3>
+<p>Huang Yuan, Chen Tianjue, Zhong Jingqi, Lu Jun, Hui Zhen, Shen Shilun, and others, enthusiastic about table tennis, have initiated the establishment of a large-scale table tennis association. They have obtained the support of Chen Linsheng, Xu Duo, Lu Zhongqiu, Yu Binqi, Ding Du, and others from the Shanghai United Association. They are currently seeking a venue and table tennis room and will convene the first preparatory meeting in the coming days to discuss all relevant matters.</p>
+<h3>New Year's Day Match Ruiji Happily Meets Laoye</h3>
+<p>The first match of the 1942 New Year's Day football season will be a friendly match between Ruiji and Laoye at Guangxia Field at 10:00 AM this morning. Ruiji is composed of employees from Wang Ruiji Postal Transportation Company. Under the leadership of Mr. Wang Ruilong, everything is thriving, and the football scene is also flourishing. Laoye is an organization of referee judges. The Ruiji lineup is as follows:</p>
+<p>Wang Hongzhen</p>
+<p>Zhang Qinghong Gan Zhenxing</p>
+<p>Shen Xiaoting</p>
+<p>Tang Yongxiang Lu Youting Pu Zhigang Zhu Jinrong Xu Liang</p>
+<p>Team Leader: Zhu Hongsheng</p>
+<p>News</p>
+<h3>Foreign Rice Quiet, Domestic Rice Slightly More Replenished</h3>
+<p>Small ground foreign rice saw quiet trading due to holders' intention to raise prices, leading to both sample showings and transactions being sluggish. However, domestic rice saw more replenishment before the Lunar New Year holiday, with purchases becoming more concentrated. The market also recovered from weakness. In the morning, following the previous day's weakness, the prices of various rice types saw another small decrease of 3-4 yuan. Subsequently, with more demand than supply, market prices immediately rebounded, ultimately not differing much from the previous market. However, there were many secondary retailers, causing a slight suppression. Kunshan Superior Japonica was sold at 220 yuan, Southern Late Rice at 208-204.5 yuan, Early Rice at 205-206 yuan, and Du Jian dropped to 190 yuan. Jintan High White Yuan was priced at 220-218 yuan, which, although nearly 10 yuan lower than the previous price, was still higher than the 210 yuan offered for entry the previous day. Total transactions for various rice types throughout the day exceeded 400 bags, while new arrivals were only over 220 bags. However, peddlers along the way still added some decoration.</p>
+<p>Wheat was difficult to approach due to owners insisting on maintaining high prices, with only scattered deliveries to factories. Bran saw inquiries from both inland villages and local households, with the market gradually improving. Although local bran experienced a halt in transportation due to no goods, daily factory and customer bran still arrived to supply. Yesterday, households from Pudong were packing, making the market atmosphere particularly lively. Orchid Bran had already opened from 53.5 yuan to 54 yuan, reaching a maximum of 54.5 yuan. Three Gold Bell Bran officially opened at 56.5 yuan. Total transactions for the day did not fall below 1,500 bags, and prices were again 1 yuan higher than the previous day.</p>
+<p>Grain trading was quite sparse yesterday, as peers were not particularly interested in entering and exiting the market due to the end of the year. Therefore, the market was bland and lacked momentum, with little change in prices. The overall market saw 20 barrels of Dalian soybean oil sold at 280 yuan, 200 dan of Dayou Factory Pure Oil at 248 yuan, over 100 bags of Chongming Red Sand at 90-92 yuan, 300 bags of Wuhu Corn at 51-52 yuan, 400 bags of Dutch Yellow Corn at 50.5-51.4 yuan, and 500 bags of Saigon New Corn at 52.5-53 yuan at the West Wharf and 51 yuan at the East Wharf. 500 pieces of Shengji Bean Cake were priced at 18 yuan. Also, the grain market will be closed for three days for the New Year holiday.</p>
+<h3>Cash Transactions Still Busy, Prices Have Risen for Five Consecutive Days</h3>
+<p>Although yesterday was New Year's Eve, the cash cooked red and dark market transactions were very busy. The market remained stable and firm, hovering around the 13,000 yuan mark. A certain party sold a certain number to advance funds, and various parties were optimistic. From the early morning, the price rose by 50 yuan, reaching 12,900 yuan per tael (ten liang). Securities firms and a certain gold shop bought in, and retail investors followed suit, immediately pushing the price above 13,000 yuan, reaching 13,100 yuan. Cash shops and two certain gold shops sold off, and some sold actual goods for cash, causing the price to drop sharply by 600 yuan, falling to 12,500 yuan. After 10:30, it gradually recovered. A certain household and gold shop staff entered, pulling it up by 450 yuan, with the final price at 12,950 yuan at 11:30, fearing it would not be delivered on time. This was 100 yuan higher than the previous day, marking a five-day consecutive rise, totaling 3,450 yuan. Later, it was heard that transactions occurred at 13,000 yuan. There was a 600 yuan difference during the day, with 700-800 taels traded. The exchange price for gold jewelry at major stores such as Daxin remained unchanged at 1,350 yuan per liang (200 yuan discount for buybacks). Sterling silver was nominally listed at 16 yuan, while the black market was 11.5 yuan, 5 jiao lower.</p>
+<p>Yesterday's Meal Ticket Market Conditions: US dollar tickets started at 18.2 yuan, then retreated to 17.9 yuan, and finally 18 yuan, with buyers still present. Hong Kong tickets rose to 3 yuan and 5 jiao. Military tickets were 3 yuan, 6 jiao, and 7 fen.</p>
+<h3>Cotton Yarn Makes Daily Progress, Japanese Yarn Even Firmer, Cotton Has Been Inquired About</h3>
+<p>Cotton yarn conditions continue to be good, with increasingly developed buying and selling. This is due to the stable trend of gold, so people's hearts are consolidated. As for the situation of Japanese yarn, it is even more bullish, because sales are not weak. Twenty-count Bianma Factory single opening prices are very stable, and they gradually move forward, breaking out of the 2,000 yuan mark to 2,035 yuan, but after closing, 2,040-2,050 yuan was offered for buying. The spot price of twenty-count Shuangma is 2,120 yuan. The "floor spot" price of twenty-count Tiannv is 2,380 yuan, and the factory price is 2,150 yuan. The twenty-count Shuangdiqiu factory price is 1,800-1,880 yuan, the twenty-count Lanfeng factory price is 2,430-2,450 yuan, the twenty-count Yueqin is 2,220-1,260 yuan, the forty-two count Lanfeng thread price is 3,850-3,950 yuan, sixteen-count Hongkuixing is 1,700-1,750 yuan, the ten-count Hongshuangma factory price is 1,400 yuan, and the ten-count Tongzijun factory price is 1,400 yuan. Currently, the yarn market is making daily progress.</p>
+<p>The cotton market is showing increasingly better signs. Factories have begun to inquire, making purchasing possible.</p>
+<h3>Cotton Cloth Selling Prices Continue to Rise</h3>
+<p>Factory Cloth: Yesterday's market continued to be firm, with peers trending upward and actively searching for spot goods, but transactions became scarcer due to holders maintaining high prices. As a result, the selling prices of various cloths rose by 1.5-3 yuan per bolt. Fugui Dapeng fine cloth was 84 yuan, Huadie coarse cloth was 102 yuan, eleven-pound Three Rabbit coarse cloth was 71 yuan, nine-pound Wufu coarse cloth was 61.5 yuan, Shilin cloth was 145 yuan, and blue cloth was around 110 yuan. Over 100 pieces were traded in the local market.</p>
+<p>East Cloth: Yesterday, trading was active in the local market, and market prices continued to rise. The factory price for ten-pound Longtou fine cloth closed at noon at 86 yuan, another 1.5 yuan increase from the previous day. Mid-range varieties were particularly popular. Caiqiu Feiyu surged by 3.5 yuan per bolt, trading at 83.5 yuan. Yanghe fine cloth was 83 yuan, Laba was 81 yuan, and Sijunzi Shipu cloth soared to 157.5 yuan, with Xique Shilin at 156 yuan, all with transactions. Sijunzi Serge new orders were 3.05 yuan per yard, and old orders were 2.96 yuan.</p>
+<h3>Government Bonds Mostly Closed Out</h3>
+<p>Government bond off-market trading was on its last day today. There was still a lot of trading. Most transactions were still the closing of transactions by various peers, as the bank's collection and liquidation situation was not relaxed. Therefore, government bond off-market trading was silent after 10:00. Grade A was from 60 yuan to 0.67 yuan. Grade C was 55.23 yuan to 0.78 yuan, Grade B was 56.7 yuan, Grade D was 52.5 yuan, and Grade E was 54.3 yuan. Transactions also amounted to more than 100,000 yuan. There is no formal announcement yet as to whether the red market will open.</p>
+<p>Yesterday, outside shares of the Public Industry Association were slightly firmer. Jardine Matheson was bid at 70 yuan, Ewo Cotton Mill at 26-27 yuan, Planting at 21.5-22 yuan, Asia Dock at 8.2 yuan, China Textile at 9 yuan, Paper Industry at 6.12 yuan, and Lange Rubber was only sold when it reached 20 yuan. No other market prices were heard.</p>
+<h3>Coal Ball Supply Restored to Original State</h3>
+<p>Retailers Adding 1 Yuan to Cartage: The coal ball market situation has seen various factories resume production one after another in recent weeks. Wholesale prices are still sold at 374 yuan, with supply and demand equal. It has returned to its original state. However, due to automobile restrictions, peers have stopped delivering goods, causing collapsing vehicles to be highly sought after, with very high prices. Depending on the distance, each ton ranges from 15 to 30 yuan. The cost of delivery to the store has reached over 390 yuan, and after removing the scattered coal dust, some stores add 1 yuan to the cartage per dan, hoping that the factory can understand this situation and appropriately reduce wholesale prices to facilitate sales.</p>
+<h3>Cigarettes Sell Well and Smoothly</h3>
+<p>Cigarettes are scarce and sell smoothly. Trade prices are soaring, with various brands rising by over 100 yuan across the board, trading as follows: Great Britain brand at 3,950-4,000 yuan, Old Knife brand at 3,750 yuan, Pinhai brand at 3,380-3,400 yuan, Wuhua brand at 1,840 yuan, Little Fairy at 1,950 yuan, Golden Rat brand medium box at 1,470 yuan, Beauty brand medium box at 2,020 yuan, fifty-branch Great Three Cannon at 11,420 yuan per 10,000, and the price for a box of 200 Great South bullets is 47 yuan.</p>
+<p>Daily necessities such as matches, candles, and soap are in short supply from the factories, with holders holding on tightly, causing prices to be firm across the board, as follows: Phoenix brand matches at 1,510 yuan, Beauty brand at 1,580 yuan, Bai Xiangmao soap at 71 yuan, Huang Xiangmao soap at 57 yuan, Gu Ben soap at 78 yuan, and sailing ship foreign candles at 53 yuan.</p>
+<h2>Page 8</h2>
+<h2>Page 9</h2>
+<p>Spring and Autumn</p>
+<h3>Snake and Horse Conversation</h3>
+<p>— Xiaoman</p>
+<p>Mr. Snake carefully checked the files for his year in office and neatly handed them over to Mr. Horse, who was taking office. Mr. Horse opened it and saw that all prices had risen during the year, and hoarders had tripled their profits. Mr. Snake was also richly rewarded, making him envious. He smiled at Mr. Snake and said, "You really have an eye for opportunity!" Mr. Snake said, "Brother Horse, you are a hotshot in the racetrack, and your speed is not necessarily less than mine." Mr. Horse was initially pleased, but then frowned and said, "This is one thing at one time and another at another. How can I clean up the mess you left at the end of the year? I was born at the wrong time, neither early nor late, but just when this isolated island is most depressed. There are restrictions on all kinds of daily necessities, so where can I make a profit?" Mr. Snake suggested, "There is a lack of gasoline on the island recently, and your horse-drawn carriages should be in demand. Currently, horses are also in short supply, and there is no place to buy them even for a thousand yuan. You might as well manipulate it." Mr. Horse stamped his foot and said, "Don't mention horse-drawn carriages. It's really hateful to mention this matter. Dragging a heavy burden behind me, I can't run fast or jump high. How can I be as successful as you have been this year!" Mr. Snake said, "This can only be blamed on your bad luck. However, after working for a year, I have been criticized a lot, and the people hate me to the bone because I窜 ran too fast, and most people have been left behind. So you can't run fast anymore; if you run like I did, as the saying goes, 'a cornered dog will jump over a wall,' then the consequences will be unimaginable!"</p>
+<h3>New Year's Message</h3>
+<p>— Liao Mu</p>
+<p>Today is New Year's Day.</p>
+<p>The beginning of a new year, everything is new. Amidst the changing world and the vicissitudes of life, people begin a new chapter in their life history. Let the old pass; greet the new with great joy. History is advancing, never retreating; and people are also moving forward with the times.</p>
+<p>I want to congratulate those who stand at the forefront of the times! Where does the joy come from? There is endless joy and happiness. These must be dedicated to the brave who strive for the times, constantly igniting the fire of life, making life infinite. Although there are thorns, stumbling blocks, and pitfalls on the road, hesitation, and wandering, they will eventually do their best to overcome them and head towards the road to happiness.</p>
+<p>The universe is infinite, like a drop in the ocean; although life seems finite, it must grow in time, never feeling a single wrinkle on the forehead, but always exuding the spirit of youth between the eyebrows – what Mencius called the spirit of dawn. This aura can purify the heavens and the earth, and make all things thrive. How can human life decay with vegetation?</p>
+<p>We want to make everyone great, comparable to the sun and the moon.</p>
+<p>The Book of Changes says: "The first is the head of goodness." It also says: "The superior man embodies benevolence, which is sufficient to lead others." On the occasion of the new year, I offer this as a congratulation.</p>
+<h3>Everyone Eats Together</h3>
+<p>— Yangtzekong Intended Music Made by Le Cao Yang</p>
+<p>Gu Lan Jun and Huang He Co-star in "The Fallen Woman" Now Showing in Greater Shanghai</p>
+<h3>Begonia</h3>
+<p>— Qin Shouou</p>
+<p>Sixteen Youthful Fire</p>
+<p>"It would be best if I could go back and see my father and brother, which might make me feel better." Once, when Yuan Baofan tried to be affectionate with her, she made this request.</p>
+<p>But Lao Yuan was not a child after all, so how could he let her go? He knew that once Xiangqi left him, she would go to find Begonia, and that visiting her father and brother was just an excuse.</p>
+<p>"Let's discuss it slowly! We'll go together when we have the chance." He answered cleverly.</p>
+<p>Xiangqi also knew that there was no hope. She thought that unless Yuan Baofan died a few years earlier than her, in her life, not to mention seeing Qiu Haitang and her daughter again, it would not even be possible to inquire about their whereabouts. And Lao Yuan's body was so strong? It was as if he would never die!</p>
+<p>But the encounters that fate had arranged for her were not as painful as she had imagined; after three years and a few months, a sudden and unprecedented upheaval occurred throughout China. Although many old warlords, after being ousted and retiring, habitually fled peacefully into the concessions to become rentiers, Yuan Baofan's luck was particularly low. Several divisions of his troops rebelled in the midst of this coup, and fought his confidant troops near Chengde for three days, sending his own life and Shaowen's life together. (1193)</p>
+<h3>New Year's Try Writing</h3>
+<p>— Dong Zhi</p>
+<p>Once New Year's Eve is over, it is another new year. In the blink of an eye, the warm spring is approaching. This is precisely a symbol of encouraging people to create a happy personal future through hard work and self-cultivation. On this New Year's Day of the 31st year, I respectfully offer the four words "Life Self-Cultivation" as a New Year's gift to readers. However, the gifts of life self-cultivation are so numerous that they surpass the department stores that illuminate the eyes of major companies, and "Life Self-Cultivation" is not well-decorated, so it is inevitably overlooked by customers. The author can only offer this sincerity and dedicate a word, seeking the correction of readers.</p>
+<p>In today's Shanghai, the cost of living is so high, and all industries feel the decline in general purchasing power, but there are also people who possess huge sums of money; not engaged in production, to make everyone's life able to be stable, the public must be able to assist as much as possible. Therefore, I remembered that Liu Xiang once said: "If there is worry, then there is fear, caution, and respect for things; if there is respect for things, then there must be good deeds; if you receive them, then there is pride and extravagance, and if there is pride and extravagance, then disaster will come." This is a painful warning to people on how to be diligent and thrifty. Confucius said: "Extravagance is not filial, thrift is solid, and it is better to be solid than not filial." I think that those who are in a better situation should also always be mindful.</p>
+<p>Trying writing on New Year's Day, I only talk about self-cultivation. Zhuge Liang said: "Quietness to cultivate oneself, thrift to nourish virtue, without indifference there is no way to clarify ambition, without tranquility there is no way to achieve distance." Take this famous saying as the conclusion of this article.</p>
+<h2>Page 10</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": null, "next": "1942.01.05.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

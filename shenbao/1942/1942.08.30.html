@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.08.30 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 448 - 4924587</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>高加索山區激戰　德稱突破蘇陣地　斯逹林格勒入口處　坦克大戰繼續進行</h3>
+<p>德國元首行營二十九日海通社電　據德軍司令部宜稱、德軍在高加索山區、突破敵軍陣地、並殲滅敵軍殘部、斯達林格勒方面、德軍繼續推進、敵軍反攻數次、均被擊退、</p>
+<p>柏林二十九日海通社電　德軍在高加索作戰之秘密、今日一部份業已公開、柏林負責方面今日透露、德軍及其聯軍在數百公里長之高加索戰綫最艱難部份突破敵軍堅强之陣地多處、其地名雖未發表、但並不否認德軍之勝利具有軍事上之重要性、蘇軍在斯達林格勒區以坦克車發動反攻、以圖解除德軍之壓力未逞後、德德軍對斯達林格勒之攻勢續有進展、東綫某點德軍毀蘇軍坦克車十九輛、卡勒加西南及爾齊夫之激戰中、蘇軍雖以大量之戰鬥機及坦克車協助進攻、卒爲德軍所擊敗、蘇軍坦克車一百十一輛在該處被毀、爾齊夫附近蘇軍之進攻、亦被德軍猛烈之砲火所擊退、</p>
+<p>拍林二十九日海通社電　據德軍負責人士稱、德軍及同盟國軍隊在高加索山區、佔領敵軍堅守之陣地、敵軍在卡勒加東南、由飛機協助進攻、巳被擊退、蘇軍損失戰車一百十一輛、東綫各處戰况劇烈、蘇軍於昨日及前日損失坦克車二百四十一輛、</p>
+<p>莫斯科二十九日同盟社電　斯達林格勒之入口處、現有坦克車大戰、德機械化軍逾一百廿隊密集攻擊、以圖衝破蘇軍防務、德方大隊手提機關槍軍、已在某地突破蘇軍陣綫、另有德方機關槍軍一股、於星期四夜張傘降落於某重要軍事工業目的地附近、該處德軍係布克上將統率、刻正迫近斯達林格勒四週之第一道堅强堡壘地帶、蘇軍之反攻、更强而有力且益頻繫、尤以北區爲烈、多被義軍所阻、若干區域中發生戰事地、距斯達林格勒僅約二十哩、當今問題、須視蘇軍司令丁莫生柯上將能否及時調到更多之人力與物力、斯達林格勒西南之科台爾尼柯伏前綫、並無新消息傳來、惟聞德空軍對開往該區增援之蘇軍、大施攻擊、至於高加索前綫兩側、及西側之克拉斯諾達迤南及東側之普洛克拉那亞區、戰事正在深谷中進行、故須利用新戰略、德軍坦克車與步兵不得不列成緊密之縱隊以行軍、易遭側面攻擊與中伏、蘇方斯篤莫維克式轟炸機則從高空轟炸德軍縱隊、</p>
+<p>莫斯科二十九日同盟社電　蘇聯情報局之午夜公報述及高加索之期達林格勒前綫及莫期科前綫之爾齊夫四週、續有激戰、據該公報稱、八月二十八日、蘇軍在爾齊夫（克菜斯卡亞東南）郊外、斯達林格勒（科台爾尼柯夫東北）之西北、及普洛克賴那亞至莫慈度克區暨克拉斯諾達之南與德軍交戰、前綫他區並無重大變化，</p>
+<p>烏克蘭邊境二十九日哈瓦斯社電　據中立國軍事專家之意、蘇聯軍隊在高加索及斯達林城方面之抵抗力、二十四小時以來、雖已加强、但對於全盤戰擊、不致有多大影響、德軍機械化部隊已於本月二十五日開到伏爾加河、北距斯達林城不過二十五英里、該城西南方面、德軍攻勢正加緊進迫、並巳於本月二十六日佔領柴加地方、該軍折而北上、昨距伏爾加河約十五英里、因之德軍對於斯達林城半圓形防錢之攻勢、已日見有效、</p>
+<p>柏林二十九日海通社電　德軍總司令部宣稱、德空軍於星期四繼續猛轟斯達林格勒城中重要軍火廠、數家爲炸彈所毀、碼頭設備中彈起火、五十公里外獲可望見火光、是夜德轟炸機與莫斯科南賽布科夫飛機塲塲之東南路發生大火及爆炸十起、機庫大部被毀、</p>
+<p>烏克蘭邊境某城二十八日哈瓦斯社電　德方消息、斯達林城區仍在激戰中、丁莫生柯將軍現處於微妙地位、無論在他區採取何種行動、均巳失之太晚、恐無法解除該城四周紅軍所受德軍之壓迫、此在斯達林城西北加夏林區、德國亦已在紅軍陣地、開一裂口、現正加以擴大、德羅聯軍先頭部隊、現距斯達林城中心僅二十五英里、據半官方面消息、德軍已佔領斯達林城西北之亞勃基諾洛伏城、查該城亦爲蘇聯交通中心之一、柯台爾尼哥伏斯達林城鐵路、即在該城與台爾倍蒂加拉汗公路相交叉、至於高加索方面、德軍於過去二十四小時中、賡續向利推進、五大山隘均在德軍手中、嗣後德軍向高加索邦南部移動、似不致邊遇任何嚴　困難、惟紅軍在黑海沿岸堅決抵抗、扼守亞那巴港附近之陣地、屹然未動、此外、塔曼半島德羅聯軍賡續前進、並未遭遇任何抵抗、可見紅軍主力業已撤退、此在亞克泰尼沙夫斯克城之西、德羅聯軍巳於今晨進抵塔曼灣之盡頭處矣、</p>
+<h3>中路紅軍　反攻進展　柏林官方則稱　蘇軍力量已衰</h3>
+<p>柏林二十九日海通社電　此間官方昨日宣稱、蘇聯楚哥夫將軍在東綫中路之攻勢、現巳失却突破德軍陣綫之力量、蘇軍雖或能發動局部進攻、但已無多大力量、</p>
+<p>安加拉二十九日海通社電　昨接莫斯科消息、蘇權威方面表示、蘇軍在中路所從事之解救反攻、未能使南洛局勢轉好、昨午蘇軍戰報稱、斯達林格勒及高加索戰事激烈、並首次提及克羅斯尼迤西軍略要城莫慈度克之名、莫斯科消息靈通人士指陳、德軍南路可出動遠較蘇方爲多之軍隊及戰具、蘇軍未能力守全綫各點、亦未能集中與德方相當之兵力、</p>
+<p>柏林二十八日哈瓦期社電　　德國統帥部發表、最近兩星期來、蘇軍在爾齊夫一帶發動反攻、損失重大、雖微有進展、但無眞實價値可言、德軍在爾齊夫附近及萊丁以北與敵軍決戰以寡敵衆、備嘗艱苦、蘇軍雖佔領某某村鎭、但並無軍要價値、且巳被德軍砲兵完全摧毀、而紅軍則損折一萬人、坦克車數千輛、本月二十六日我空軍曾擊落蘇聯飛機十六架、並擊毀其坦克車九輛、大砲十三門、夜間並轟炸加里寗至莫斯科之鐵路綫、此外、遠如薩拉多夫及高爾基之工廠、亦均被炸、</p>
+<h3>蘇機夜襲芬京　分批轟炸歷數小時　傅德卽將攻列寗城</h3>
+<p>芬京二十九日同盟社電　蘇聯轟炸機於昨日午夜甫過、對芬京施本週內之第二次襲擊、蘇機係分數批來襲、歷數小時、投下高度爆裂彈與燒夷彈、引起數處火災、據芬軍司令部公報、蘇機約六十五架、分數批進襲、芬方陸上防務發出熾烈火網、將多數進襲之飛機擊散、惟有若干架仍穿過火網、飛抵市空、擲落水雷與燒夷彈、死者五人、傷約二十人、數處着火、屋宇數幢受損、</p>
+<p>芬京二十九日海通社電　昨夜芬軍戰報宣稱、加勒里地峽吾軍砲兵轟擊敵方之鐵路及供應站、頗著成效、奧納期地峽無重要戰訊足資報告、敵軍在東綫南段進犯波文特薩區、被吾俘獲一百餘人、斯達林運河西北敵軍由重砲與塹壕砲爲掩護、利用黑暗、進犯吾軍陣地、結果被吾擊退、遺棄死屍甚夥、敵軍後復施放烟慕彈進犯、亦未獲逞、東綿北段僅有斥堠戰及砲戰、拉多加湖有敵運輸艦一艘、裝運燃料至列寗城、被吾以魚雷擊中、</p>
+<p>柏林二十九日海通社電　大民觀察報戰地記者帕森道發預料、德軍即將向列寗格勒作大規模之反攻、敵軍之失敗、將與目前在南路所遭遇者相同、</p>
+<h3>在第三戰區作戰日軍　調整防禦陣地</h3>
+<p>南京二十九日同盟社電　在華日軍報道部今日午後六時宣布，日軍自五月中旬起在第三戰區作戰、旣已達其擊破該區守軍及軍事設備之目的、乃從八月十九日起調整防禦陣地、並重行編集軍隊、以準備下一階段之攻勢、對抗之守軍現已顯露荏弱之徵象、日軍因乃迅速圓滿進行其目前之任務、同時據披露、日軍之重行編集與防禦陣地之改組如次、從錢塘江畔西進之日軍、其最先部隊於八月十九日夜間從上僥與廣豐區開始移動、於八月二十三日晚集中衢州後、現正向東而行、最後之部隊昨已經過龍游與湯溪陷溫州與瑞安之日軍、於八月十四日從溫州至麗水集中、目下則與攻佔松陽之部隊、自星期四起會集於預定地點、從南昌前進之日軍、於八月十九日從　溪餘江與東鄉區開始移動、從臨川出發之日軍、亦已經過進賢、此等軍隊、現智已抵預定陣地、</p>
+<p>華南日軍　返歸原防</p>
+<p>廣州二十九日同盟社電　此間官方今日午後二時宣布、華南日軍、自六月初起與華中第三戰區戰事相呼應、而對余漢謀將軍所部軍隊積極交戰、已完成其目的、奉令於八月二十六日全部返歸原陣地、據華南日軍報道部長今日聲稱、日軍乃調返重行調整其陣地、俾獲得更有利之軍事上地位、以備將來行動、按日軍前在浙贛兩省大舉進攻時、華南日軍、亦在粵省同時展開攻勢、</p>
+<h3>龍田丸抵東非</h3>
+<p>洛倫索馬貴斯二十九日同盟社電　從東亞搭龍田丸輪抵此之英國前駐日大使克萊琪爵士、及其他外交官、在提呈正式報告之前、對於日本或他處之情况、均不置評、惟克萊琪對於葡萄牙·瑞士與阿根廷政府予以合作、布置協約國與日本僑民之交換、則表示感荷、龍田丸之搭客、有來自日滿·華南·越南與泰國之外交人員之商人及敎士、習菲島之領署人員、從菲島撤退諸人中、有該地特戈爾派領袖伐白爾及特戈爾駐菲代表維爾波凱、</p>
+<h3>日機昨襲　逹爾文港</h3>
+<p>里斯本二十八日同盟社電　據墨爾缽消息、澳洲麥克沃塞將軍司令部今日公報稱、澳洲北部達爾文港、昨日復遭日機襲擊、</p>
+<h3>甘地子昨開釋</h3>
+<p>里斯本二十九日同盟社電　據新德里消息、印度敎時報編輯台伐達斯（甘地之子）前於八月十三日被依據印度防衛條規而拘捕、茲因證據不足、已於今日圖釋、同時之印度敎時報發行人等亦巳釋出、</p>
+<p>仰光二十九日海通社電　此間昨夜獲悉、甘地及其信徒現被拘禁在浦那地方之阿茄汗宮內、每晨可見甘地在宮內之花園中散步、與其同伴談話、甘地每日耗於祈禱·讀書及紡織之時間甚多、</p>
+<h3>坎特公爵舉殯</h3>
+<p>倫敦廿九日哈瓦斯社電　英王亡弟坎特公爵遺體、今日在溫沙宮聖喬治敎堂舉行殯禮、喬治六世、伊麗沙皇后、挪威希臘及南斯拉夫三國國王、及荷蘭女王、均參加典禮、坎特公爵夫人、悲慟　恒、幾至仆地、</p>
+<p>里斯本二十九日同盟社電　據倫敦消息、近赴冰島墮機罹難之英王幼弟坎特公爵、今日卜葬於溫莎區之聖喬治敎堂、靈柩由英空軍士官六員抬至敎堂、高級將校執紼者頗多、坎特公爵夫人由英后與太后伴入敎堂、垂頭痛哭、一慟欲絕、</p>
+<h3>巴城建設狀況</h3>
+<p>巴達維亞二十九日同盟社電　爪哇島自日軍佔領以後、已逾半載、東印度最大都市之巴達維亞、復興狀况更有飛躍進展、全市無論外表實際、均不愧爲南方共榮圈中之重要都市、日軍政部敎育部、鑒於住民學習日語興趣之濃厚、爲使其能得正確之指導起見、乃設立日語講習會、聽講學員、紛至沓來、成績頗爲良好、目下已爲第二期、有二百名小學敎師參加學習、巴達維亞廣播雷台、並於市內各處廣塲樹蔭、以及近郊村莊中、分裝收音機、以便市民收聽、市當局業失業者、設法安插於近郊農塲、從事生產事業、至市內交通、殆已完全恢復、其通至泗水·三實壟·萬隆等島內各主要都市之火車、均滿載乘客、定時往來、貨物運輸、亦極爲圓滑、同時海上交通之更爲繁盛、港內帆檣林立、船隻出入不絕、日軍佔領後六個月來、在當地住民之協力下、新巴達維亞復興建設之迅速、實堪驚人、</p>
+<h3>阿爾巴尼亞　猛烈地震　義相撥百萬里拉　充災區救濟費</h3>
+<p>阿爾巴尼亞首府二十八日哈瓦斯社電　阿爾巴尼亞全境昨發生猛烈地震、貝斯柯雅城幾全部被毀、附近村鎮　處亦損失極重、京城及共他各地、同時均有地震、義首相墨索里尼獲悉後、已致電該國當局慰問、並撥款一百萬里拉（義幣）、作爲災區救濟經費、</p>
+<p>羅馬二十九日哈瓦斯社電　阿爾巴爾亞北部地震結果、遇難者已有四十三人、受傷者一百十人、無家可歸者一千二百人、</p>
+<h3>埃及中南路　英軍進攻　德機炸亞力山大</h3>
+<p>羅馬二十九日海通社電今午義軍戰報稱、埃及戰綫中路敵軍汽車隊進攻未逞、汽車多輛起火損毀、敵軍在南路以坦克車進攻亦遭擊敗、坦克車一輛及俘虜數人落入吾軍之手、英國空軍企圖轟炸吾軍前哨陣地時、被吾軍高射砲隊擊落飛機三架、另有敵機兩架在空戰中被德國驅逐機所擊落、軸心國飛機賡續空襲馬爾太　耍塞、噴火式飛機一架被毀於空戰之中、在地中海駛行之護航隊遭英機之襲擊、護衛軍艦擊中英機三架、墮落海中、敵機昨在西西蘭各處投彈及開槍、人民並無死傷、</p>
+<p>柏林二十九日海通社電　據德軍負責人士稱、德機於昨夜襲擊亞歷山大港以南之英軍飛機塲多處、奧戈斯飛機塲數處起火、阿弗里德飛機場之飛機庫及兵營、亦中彈起火、狄克海拉飛機塲內之飛機、被炸毀甚多、高射砲位及房屋一所、亦被擊中、</p>
+<p>羅馬二十九日海通社電　法西斯蒂報昨日發表、運抵埃及供德義軍所用大批火車機頭及貨車之照片、車上均滿載義軍及供應品、　該報指稱、援軍及給養品、已運抵埃及前綫、</p>
+<h3>烏拉圭尼加拉瓜　與巴西軍事合作　軍事根據地交巴西支配</h3>
+<p>阿根廷京城二十八日同盟社電　烏拉圭與尼加拉瓜兩國、已將一切根據地交巴西支配、此舉表示雙方在軍事上密切合作、同時、據巴西京城來訊、巴西境內德僑已有二百名被迫在巴希亞與巴京間之公路上工作、巴西內長告新聞記者稱、「德人已遮斷吾人之海道、故吾人使其開闢吾人之陸上道路」、</p>
+<p>阿根廷京城二十九日海通社電　據此間接獲未經證實之消息、及加拉瓜政府、已允巴西利用尼加拉瓜之海港及飛機塲、</p>
+<p>阿根廷京城二十八日哈瓦斯電　衆議院急進黨議員、即前任反阿根廷運動調查委員會主席泰波逹、本日向衆院提出建議、主張凡與德國國社黨有關之團體、尤其是德國在阿根廷境內所設之文化與社會福利團體、應一律予以解散、</p>
+<p>倫敦二十八日哈瓦斯電　據巴西京城消息、該國當局業已徴用德國醫院、改爲巴西空軍療養院、</p>
+<p>里約熱內盧二十八日哈瓦斯社電　巴希亞省德國國社黨領袖索拉、頃以佈置問諜網罪名、被巴西當局逮捕、</p>
+<h3>美空軍司令抵渝　籌商另建空軍</h3>
+<p>南京二十八日同盟社電　據今日可靠消息、新任駐華美空軍司令近從印度抵渝後、重慶航空委員會已與英美空軍代表迭次會議、俾另建空軍、軍事委員會於八月二十四日飭令桂林分委會主席李濟琛將軍、與第九戰區總司令薛岳將軍立即修理被炸壞之機塲、且限於匝月內在廣西與湖南建空軍新根據地八處、軍慶政界盛傳重慶外長宋子文、軍事使節熊式輝、將與美當局已商妥加派飛機赴渝、</p>
+<h3>阿根廷討論與軸心　絕交問題</h3>
+<p>阿根廷京城廿九日海通社電　阿根廷衆議院外交委員會昨作二小時之討論後、決定延會、關於反對派動議與軸心國斷絕外交關係之提案尚未有具體之決定、陸軍部長及海軍部長擁護外交部長之態度、主張阿根廷在目前世界戰事中維持中立、該委員會定下星期二再開會議後、將於星期五向衆院提出下列二項決議、　建議與軸心國斷絕關係、　授權政府得自由決定外交問題、此間政界方面認阿根廷之中立政策不致有所改變、因政府在參議院中佔有大多數議席、　阿根廷京城廿九日哈瓦斯社電　政府當局鑒於國際局勢嚴重、今日向國會提出法案、主張撥款四萬五千萬披索、充實阿根廷空防、外交部長基那蘇、並與陸軍部長湯那齊將軍、及海軍部長芬加蒂海軍少將、討論國防問題甚久、</p>
+<h2>Page 3</h2>
+<h3>法北狄埃浦戰役　德英軍損失發表　柏林宣布死傷人數</h3>
+<p>柏林二十九日海通社電　據德軍公報稱、英軍企圖在狄埃浦登陸時之損失爲陣亡六百人、俘虜二千一百九十五人、包括加拿大步兵第六旅旅長沙特漢上校二名、參謀軍官十三名及其他軍官一百十二名、敵軍物質之損失、包括坦克車及業甲車二十九輛、大批輕重步兵武器及其他各種戰具、此外敵軍在登陸時及船隻沉沒時泅斃之人數、尤超出俘虜之數、敵車屍體仍續有被海水衝至海岸者、英國空軍在狄埃浦一役中損失飛機一百二十七架、德軍大砲及飛機擊沉敵驅逐艦四艘·魚雷艇二艘·快艇一艘　運輸船七艘及大批登陸小艇·並重創英巡洋艦四艘·驅逐艦四艘·運輸船五艘·小軍艦二艘及登陸小艇多艘•德方之損失如下、陸軍陣亡一百五十九人、受傷一百八十七人、失踪十四人、海軍陣亡及失踪七十八人、受傷五十三人、空軍包括高射砲隊及信號兵陣亡及失踪一百零四人、受傷五十八人、德軍之總損失爲五百九十一人、此外　方損失飛機三十五架及潛艇驅逐艦一艘·大砲六尊受創、該公報之結語稱、法國人民之態度甚爲正確、渠等不願死傷協助德軍作戰、如撲滅火災、看護傷兵、並以飲食供給德軍、德國元首爲獎勵此項態度起見、巳下令釋放狄埃浦區域之法國戰俘、</p>
+<p>德軍總司令部文告</p>
+<p>柏林二十九日海通社電　德軍總司令部爲駁斥英方所稱協約軍於八月十九日在狄埃浦之登陸僅爲局部性突擊行動之說起見、對於今日發表文告、引證事實、說明協約軍該次登陸嘗試、實爲侵入大陸之一種大規模軍事行動、文告中所根據之事實、除前此業戶發表者外、尚有首次披露該役中被俘英軍參謀身畔所搜獲、「作戰命令」之內容、足以證明此次敵軍之登陸、間不僅爲一種局部性之突擊行動而已、據該作戰命令所載、進攻之目標、乃爲位於內地距狄　浦約七公里之阿格拉巴達伊城、該令全文共有一百二十一頁之多、英方目標在佔領距離巴黎最近之適宜法國海港二處、以爲繼續進展之根據地、傳得克服索末河與塞納河間德軍之防務、進而佔領阿培維勒及勒哈佛兩地、此外該作戰命令更詳細指示在狄埃浦附近之海濱、擇其最適宜之處、建立俘虜營、以收容德方戰俘、法國平民如已達或未曾超過兵役年齡、而願加入特戈爾軍者、可撤往英國、更可注意者、該令更嚴禁協約國兵士不得就地刦掠、蓋德國駐軍紀律嚴明、法國人民、自將以同樣標準判別協約國軍士、德軍總司令部之文告又披露協約軍在狄埃浦登陸之際、出動轟炸機一百餘架、中有四引擎巨型者多架、並有戰鬥機至少千架爲之保護、是役也、除駐於距海略遠之內地之德空軍出動助戰外、其他德軍雖亦嘗趕至交戰地點、但事實上並無增援之必要、至八月十九日下午、狄埃浦區德軍司令已能電知司令部、謂其部下已將登陸敬軍擊退、德軍總司令部爲證明倫敦所稱協約軍撤退時秩序井然之說爲不確起見、特將德國　台所截獲英登陸部隊運輸艦、與英境內司令部當時交換之電文發表、其文有謂、「上午十一時四十分全綫局勢危急、參謀船隻被襲」、「下午一時二十一分、所需援軍尚未抵達、」「下午三時十分、參戰各部隊悉、速各就環境設法脫險」、至晚六時四十一分、敗逃之英運輸艦又電曰、「飛機速來助」、至晚十時四十分、又有急電拍出、僅曰、「船漸沉速來助」、</p>
+<h3>德方公布　擊沉英船名單</h3>
+<p>柏林二十九日海通社電　德軍當局昨續公布、本年七月一日以來被擊沉英船之名單如下、勒斯邊號二三七〇噸、加林哥號二〇四七噸、贛州號二〇〇一噸、恩基號二五〇〇噸、包和號二五一七噸、蘇州號二六〇四噸、聖帕推克號一九二三噸、托朗多市號二四八六噸、惠萊號一一九六噸、蕪湖號二九三八噸、威格莢號一八五九噸、阿勒格羅夫號一九七四噸、</p>
+<p>華盛頓二十八日哈瓦斯電　頃據海軍部宣布、挪威貨船一艘、於本年七月杪、在大西洋美國沿岸、被潛水艇擊沉、所有獲救船員、均已行抵友邦港口、</p>
+<p>里斯本二十九日海通社電　此間昨夜獲悉、華盛頓昨日宣稱、八月初旬有英商船一艘在美國大西洋沿岸遭德潛水艇擊沉、獲救船員、已在美國東岸某港登陸、</p>
+<p>瑞典京城廿九日海通社電　倫敦彎訊、英國海軍部昨日宣布沉失渔舟二艘、「曼諾」號與「拉特斯」號、詳悄未悉、</p>
+<h3>伍特華德著文　論英進攻時期　柏林頒防空新條例</h3>
+<p>瑞士京城二十八日哈瓦斯社電　美國海軍退伍軍人伍特華德少將、會在阿根廷「評論報」發表一文、略謂、英國或將於九十月間進攻法屬西非洲達加爾港、葡屬綠角　島亞索爾羣島暨西屬加那利羣島、緣自巴西參戰之後、南大西洋之軍略地位、已爲之改觀、綠角　島、實爲南美洲海岸與非洲海岸之聯繫所在、自當使之失去效用、並防止敵人他日在亞索爾羣島說立根據地、至於登陸之方式、可先集中轟炸港口及島上軍事設備、然後派軍登陸、即無困難矣、德國政界人士評論此文、僅謂、伍特華德之議論、足以表示英國有擴大戰爭至中立地帶之意向、惟因其不能認爲官方聲明、故德國對此暫不採取任何決定、</p>
+<p>瑞士京城二十八日哈瓦斯社電　柏林訊、柏林警察總監本日頒布新防空條例、規定今後遇有敵機迫近柏林上空時、倘機數不多、不致迺遇嚴重襲擊、則當以汽笛爲號、在此種塲合、僅實施有限制的防範、公共交通及工商機關仍可照常工作、按近東時有少數敵機、飛越柏林上空、以言轟炸、固嫌不足、但　擾亂居民日常生活、則綽乎有餘、故當局不得不採上項措置、</p>
+<p>大批英機轟炸德國</p>
+<p>柏林二十九日哈瓦斯社電　據軍界消息　英機二百三十架至二百五十架、咋夜轟炸德國南部及西南部、被擊落三十六架、</p>
+<p>柏林二十八日哈瓦斯社電　德國軍界人士頃談稱、英機轟炸德國重要工業中心加塞爾、聲勢並不如倫敦所傳之甚、英機被擊落者佔全數三分之一、查當時時月光皎潔、敵機在天空無所隱蔽、易爲我高射砲所瞄準、其損失率之大、自在意料之中、</p>
+<p>柏林廿九日哈瓦斯社電　柏林電台今晨宣布、英機昨夜襲擊德國西部及西南部、房屋略有損失、據最初報告、被擊落三十二架、</p>
+<p>巴黎二十八日哈瓦斯社電　法國淪陷區火車一列、駛至特南城附近時、突遭英國飛機一架用機關槍加以掃射、機匠兩名急中生智、立即撥動煞車、使火車停駛、全車放客得告無恙、但此二機匠、竟以身殉、</p>
+<p>拉巴特廿九日哈瓦期社電　英機一架、今日飛越勞蒂港、即被法國巡邏機擊落、</p>
+<h3>德機襲英</h3>
+<p>倫敦廿九日哈瓦斯社電　航空部今晨宣布、敵方轟炸機數架、昨夜襲擊英國東北及東部、損失小大、敵機被擊落兩架、</p>
+<p>瑞典京城廿九日海通社電倫敦電訊、德國機羣昨晨會至不列　托爾投彈轟炸、死傷及損失情形不明、</p>
+<h3>智利阿根廷　將開辦郵航綫</h3>
+<p>智利京城二十八日哈瓦期社電　頃據官方宜佈、自智利北部安多法加斯泰城至阿根廷北部薩爾泰被、將開辦郵航綫、定於下月六日開始通航、將由貝尼拉航空公司、主持其事、</p>
+<h3>外機飛越瑞士</h3>
+<p>熊城二十九日海通　電　瑞士通訊社息、瑞士城市三處包括巴斯拉及沮利希昨晚有空襲警報、因有國籍不明之外國飛被於今晨二時至三時間飛越瑞士北方邊界、</p>
+<h3>國際電影展覽會　在維也納開幕</h3>
+<p>羅馬二十九日海　社電　第十屆國際電影展覽會、定八月三十日在維也納開慕、會中將　映義國軍事影片「三雛鷹」及德國影片「大皇帝」、克羅特本年度亦以敎育片二部參加該會</p>
+<p>里斯本二十九日海通社電葡萄牙將參加三十日在威尼斯舉行之國際雷影競賽會、葡萄牙選二片參加、一爲關於葡萄牙漁村情形之影片、一爲關於里斯本百年紀念博覽會之影片、該片製片人巴洛斯與里培洛今巳以葡萄牙代表名義飛往義大利、</p>
+<h3>疑似霍亂症　續有發現</h3>
+<p>英文大美晚報云、據記者探悉、兩租界衛牛處於昨日共接獲十九起疑似霍亂案之報告、且其中一人已死、在此十九起中、計公共租界發現十一起（死一人）、法租界八起、昨日施行防疫注射人數、共計六九〇八名、其中法租界佔五四五九人、共同租界一四四九人、</p>
+<p>父據英文泰晤士報云、昨日法租界受防疫注射者、人數仍少、僅有五七一〇人、向各衛生注射隊申請注射、截至現時、該區域內注射總數已達一百四十萬、據衛生處方向指稱、注射人數减退之原因、實由法租界居民、於本年七月開始第二次防疫運動以來、多已施行二次注射之故、回溯注射運動、於起初進行甚緩直至本月初、兩租界始有每日三萬至四萬各受注射之成績、且向華界公衆衛生處、申請注射者亦頗多、在過去二星期中霍亂案之發現、每日多寡不定、兩租界共計十七起、於星期四日則接獲二起之報告、患者均係華人、並未發現外僑染疫、</p>
+<h2>Page 4</h2>
+<h3>統制物價辦法　業已洽商就緒　最近期內即將頒佈</h3>
+<p>英文泰晤士報云、昨雖未經官方之證實、但衆信各有關當局、對於統制物價之辦法、業已商妥就緒、其商定之基本規則、亦將於最近期內頒佈、以前雖由南京上海當局公共租界工部局與法公董局、於本年初春頒佈各別統制物價辦法、但均未採取合作之行動、</p>
+<p>統制範圍擴展外埠</p>
+<p>對於一般商店之超越限價、一經查悉、均施以罰款、及定期停業之處分、但此種辦法、預期可於華中各地亦隨之實行、且爲使一般商店服從命令起見、所定罰則、當更趨嚴厲、幾經商談結果、執行個別限價辦法、預期當可成爲事實、華中之主管經濟機關、對於施行限價辦法、亦已準備時機成熟、因當局對於統制物價、已有應付之基礎、此基礎即中央儲備銀行鈔券、其與日軍票之比値已臻固定、</p>
+<p>著重日常用品價格</p>
+<p>衆信統制辦法、將着重於日常用品價格之維持、至於新訂條例對於其他物價究將作如何之限制、則不得而知、但無需多言、使各地物價統一、終將獲得更大之效果、對於統制物價、將先着手於零售或批發之限制、爲現時爭執之基本問題、零售價須藉立法而規定、而批發價　則尚需賴　供給量及其他重　要之頒佈、新訂辦法將先於　零售店及百貨店實行、　一般市民、均希望首先能對食物　施行限制、蓋彼等以爲食米、較之其他用品、究屬更爲緊要、</p>
+<h3>中交兩行　昨推定董事長　馮耿光與唐壽民</h3>
+<p>中國交通兩行定於九月一日起、與本埠各支行辦事歲同時宣告復業、茲悉兩行董事及監察人於昨（二十九）日下午二時、分別召集首次董事會議、結果交通銀行董事會推選唐壽民·陶俊人·盧寵之·爲常務董事、並推唐壽民爲董事長、中國銀行董事會推選馮耿光·吳震修·沈諒昭·爲常務董事、並推馮耿光爲董事長、</p>
+<h3>出口旅客　須備大便證</h3>
+<p>今夏本市當局防疫綦嚴、入秋以來、天氣凉爽、疫癘大减、惟痢疾症爲秋季之流行性、難免發生、故當局非常注意、尤以出口輪船乘客更爲嚴厲、海關港口檢疫處已宣佈、爲防止痢疾流行性計、對赴寗波、及長江下游天生港·任家港·崇明島各港之旅客、必須大便證始可購船票、該項大便證僅五天有效、驗便在天通菴路同仁會醫院及同仁會時疫研究所、騐便領證、</p>
+<h3>西服店主　串同綁架　要犯均已落綁</h3>
+<p>霞飛路彙利西服店、與葛羅路美益水雷公司、兩店小主、同於上年春間被綁、匪首領郎德培郎德源弟兄、糾同沙美卿等、綁至內地藏匿、致函兩家屬勒索、由事主出資贖歸、現由法捕房探目沈聯芳·探員穆洪祺·夏國祥等、偵悉該兩案之綫索、係由甬人孫繼泰（二十六歲現住麥高包祿路九十三弄過街樓上）、向在彙利西服店充紅幫成衣匠、因被店主王祖佑將其停歇懷恨、商得霞飛路二九一號南洋西服店主忻元濤、二十六歲）同意、轉託郎氏弟兄等糾黨綁架、得資後孫忻二人各分數千元化用、并同往南市賭窟輸盡、爰由該探等於前日上午、按址馳往、將孫繼泰·忻元濤兩犯拘獲、帶入捕房、供認串綁不諱、着收押、補緝同黨婦案偵查法辦、</p>
+<h3>夫婦一子　同歸於盡　饑餓綫上之慘局</h3>
+<p>天津人吳國順、現年二十九歲、在法捕房充當五一一號華捕、於二個月前、因犯故被斥革、迄今賦閒無事、寓居打浦橋金神父路新新里二三七號、近受　濟困迫、處於山窮水盡之秋、無法謀生、於二十七日下午七時、偕其妻吳韓氏（與吳同庚）、懷抱生甫二個月之男孩、同至愛多亞路東自來火街口三七九號朱順興小客棧　開十五號房間、借宿一宵、因處於無法可想、竟生短見、乃韓氏亦願同歸於盡、夫婦二人即於當夜雙雙服毒、并將毒喂食小孩、一同自殺、至次日上午十時、由茶房發覺、吳夫婦三人俱已奄奄一息、即報告法捕房、車送廣慈醫院、不及將屍車送騐屍所、昨日傳到其父貴山（六十五歲），無力領屍棺殮、遂由善堂給棺殮埋、是亦目今生活壓迫下之犧牲者、亦云慘矣、</p>
+<h3>請派米糧及許可證　嚴禁饋贈禮物　如經查出永不再行派給米糧</h3>
+<p>通告請派給米糧及領米糧搬運許可證之申請人、爲通告事、茲聞有人在申請派給米糧或請領米糧搬運許可證時、爲欲獲得核准起見、常有託人居間說項、甚至有財物餽送本處、以及本局其他各處職員等　、茲特警告此後凡欲請派給米糧或請領米糧搬運許可證、徜經託人居間說項、當概予駁斥、任何人等如以財物餽送本處或本局其他各處辦畢人員、一經查明、不諭其如何託辭或用意所在、即永不再行派給米糧、並當依法控究、再本處或本局其他各處之事務人員、對於派給米糧或發給米糧搬運許可證、均無從上下其手、應否准如所請、完全由管理當局依照本局所訂章程而決定、所收申請書、一概恪遵定章、迅速處理、倘有申訴、應函致管理當局、當立即注意、特此通告、西曆一九四二年八月十五日、上海工部局米糧辦事處、法租界當局昨發布告云、爲通告事、凡由法當局領得分派食米麵粉或共他糧食之各企業各機關或商店、均應有完善之會計對於此點、不能令當局滿意之機關、將不復以食糧派與之、　各週知、</p>
+<h3>收音機登記　法租界展期</h3>
+<p>爲便利未及如期辦理登記手續之人起見、法租界無綫電收音機登記、展期至一九四二年九月十日截止、</p>
+<h3>各界雜訊</h3>
+<p>聯業汽車公司本市自汽油告乏、出差汽車絕跡以來、市面繁榮、以及急病生產等頓生問題、本埠商界巨子徐鐵珊袁履登馬少荃等、有鑒於斯、發起組織聯業汽車公司、集資四百萬元、聘致專門技帥、改良汽車發動機、與市上流行者絕不相回、故決無中途停馳之弊、除營出租業務外、並買賣汽車、修理汽車、代客改造木炭汽油兩用汽車等、聞已籌備就緒、不日正式開慕、</p>
+<p>紹興同鄕宴樓宏茂　紹興樓宏茂氏、辦事精煉、有功桑梓、近因公蒞滬、紹興旅滬同鄉會爲表示感謝及景仰起見、特於昨日（二十八日）下午七時在該會會所設宴爲樓君洗塵、紹興旅滬人十均應邀參加、出席者計有吳蓉卿·程志良·周長圓·劉志方·等一百餘人、由樓君報告紹興近況、</p>
+<p>久大服裝廠　素負盛名之久大服裝廠、係實業巨子陳仲猷君創設、迄已六載、信譽卓著、現擴充資本、改組為股份有限公司、所定股額聞將額滿、籌備處設泗涇路三十六號新泰大樓</p>
+<p>鴻霞大衣半價　靜安寺路七三五魷鴻霞時裝公司、自半價發售一九四二便準樣子大衣以來、每日門廳如市、購者僉以廉美絕倫、深表滿意、刻已售去半數以上、最後機會、購宜從速、</p>
+<p>「潔而精」銷行甚廣　大有公司經理大明化工社出品潔而精洗衣素、不及一旬、銷路頗廣、現已委托各大公司各藥房寄售、聞潔而精嚴洗棉毛絲麻、旣不變色澤　又不傷纖維、每瓶祗售八元、可洗衣八十件、</p>
+<h2>Page 5</h2>
+<h3>本報讀者助學捐款　全部涓滴歸公　一切消費概由本館供給　決不在捐款中動用分文　大學助學名單今日公佈</h3>
+<p>申報讀者助學金大學組審核工作業已竣事、約　後須經複查者、亦於昨日分頭　問完畢、除尚有若干名因學校尚未決定、待通知並補繳入學證件再予老　外、茲准予助學者、共計一百九十名、至於撥付助金標準、已詳昨日本報、獲助名單、今日起陸績發表、付款則於明　星期一開始、希各注意、</p>
+<p>人數統計</p>
+<p>此次大學組核准各生所屬學校、統計如下、大同大學三十七人、滬江書院二十七人、復旦大學二十六人、大夏大學二十五人、約翰大學十七人、同德醫學院十七人、震旦大學八人（包括女子文理學院及法文特別班）、南通學院七人、東南醫學院四人、國學專修學院三人、光華大學二人、（即勤學文學社及勤學經濟社各一人）、德國醫學院二人、比較法學院二人（即前東吳大學）明信會計大學專修科三人、（其中補習班一人、誤列大學組）、中法大學藥專二人、法商學院二人、格　理商學社（即前之江大學）、上海專專、上海土木工程補習班（即前之江大學、新中國醫學院、仁濟高級護　學校、上海美專各一人、南洋大學已恢復交通大學、申請諸生　取消、以其學費僅十元也、</p>
+<p>昨收捐款</p>
+<p>姚母奠　周志俊四百元、　長　二百元、　志輔二百元、　志厚二百元、吳敬安四十元、朱湄筠四十元、李升伯四十元、劉聘之念元、馬壽華念元、陳華庚念元、陸高誼念元、張德與十元、張德華十元、吳澤舟十元、共計儸券一千二百三十元、</p>
+<p>（按、姚母奠儀廿二日五百八十元、廿三日七百五十元、廿四日三千一百三十五元、廿五日五千零二十五元、廿六日一千元正、廿七日二千五百六十元、廿八日二千四百七十元、昨廿九日一千二百三十元、總計　鈔　萬六千七百五十元、）</p>
+<p>又昨日收到之助學金、計殷志英小姐三百元、光大南鋒社友會四十四元四角、梁廣愛十元、共計儲券三百五十四元四角、以上兩共計儲券一千五百八十四元四角、昨存二十萬四千二百九十二元七角二分、總終共存二十萬五千八白七十七元一角二分、</p>
+<p>涓滴歸公</p>
+<p>本報讀者助學運動、承　會人七熱烈贊助、慷慨捐　至深感謝、具見各界熱忱敎育，救　淸寒、　育英才之至誠、更以年來社會各界、致提偶節約運動、以糜　移充有用之途、或救濟貧寒孤苦、或　惠清寒學子、　　社會良好風尚、　堪倡導與欽佩、故過去讀者輒節省婚喪費用、捐贈助學、如丁編　氏六伏　九壽儀、移充善及敎育之需、姚母奠儀撥　救濟失學兒實基金、此其犖犖大者而巳、本報舉辦助學工作所有讀者捐款、決不動用分文、除按日在報端公佈外、撥付助金、由本報簽發具有學校校名之抬頭支票　中　銀行兌付、全部賬目、絲毫無誤、即如助學工作上必需之紙張印刷以及其他一切消費支出、爲數亦殊不貲、概由本館供給、決不在讀者助學捐款中動用分文、此可絕對爲讀者保證者、至於助學工作、全由本館同人義務服務、以讀者付託之重、敢不審愼辦理、遇有疑問、不惮煩瑣、力求澈底明瞭、以求心之所安也、</p>
+<h3>申報讀者助學金　核准名單　大學組</h3>
+<p>體育新聞</p>
+<h3>香港足球健將八人　李天生等昨晨抵滬　許文奎曹秋亭等不日可到</h3>
+<p>香港足球健將李天生·李袭臣·劉顯漢·卓石金·宋靈聖·柳英權·金家標等一行八人、由蔡聲淼率領、於昨晨十時、搭安與　自港抵滬、現暫下榻揚子飯店、尚有二批李德祺·曹秋亭·許文奎·李碩友·等方人、不日亦可由徐英率領到此、聞此次港將到此、係應本市聯誼體育會之邀請、最初擬邀李惠堂、奈李早已遠走內地、自李入生等抵此後、上海球壇將有一番新熱鬧</p>
+<h3>實業盃籃球今閉幕　華南同仁決賽</h3>
+<p>業組V隊南華爭覇實業盃籃球賽、定今日下午二時三十分在南陽路實業中學球塲舉行閉慕賽門票二元、實組華南同仁決奪冠軍、業組V隊南華爭覇、華南始終保持不敗、今日如勝、錦標在握、同仁如獲勝利、成冰隊華南同仁三鼎足之勢、否則退居季軍、兩隊會在上屆西靑聯賽中華南不幸負於同仁、致屈居亞軍、華南年來埋頭苦練、狹路重逢自有番惡戰、業組V隊對南華雙力、均六戰六勝、預料戰局精彩必多、今日秩序如下、</p>
+<p>阜豐－維他富（業組）一時三十分、　聯－新業（業組）三時十分、V隊－南華（業決）三時五十分、同仁－華甫（　決）四時三十分、</p>
+<p>商業新聞</p>
+<h3>增加棧租關係　龍頭細布廠單暴落　每疋續跌四元五角之鉅　桃花女士林亦小三元許</h3>
+<p>廠布　昨市以東疋下降、人心虛軟、桃花女士林每疋跌達三元左右、蓋晨開做二五八元四五角、午收降至二五六元二角半、而其他色布則尚平穩、如木蘭漂布仍售一六〇元、秦良玉一五〇元、琴美人元布一三四元、美人魚元斜一三七元、三羊嗶嘰廠單五元九角半、白貨粗細布約跌每疋一元、十六磅地球粗布一七八元、飛鴻一七六元、九磅新字一〇八元、八磅振中一〇六元、十二磅地球細布一五九元、富貴一五〇元、大鵬）四九元、且成交極少、</p>
+<p>東布　交易淸而市勢疲、龍頭細布　單更以催出及增加棧租、　落尤鉅、晨開喊一七三元、步降至一六丸元半、計跌四元半、銀行單龍頭一五六元、彩球一六一元、飛魚一五八元半、陽鶴一五七元、喇叭一五六元、差跌每疋一元餘、四君子嗶嘰於七元二角八九分起、小至一角七八分、午收爲七元二角、亦軋小九分、</p>
+<h3>公債方在　醞釀期中</h3>
+<p>昨統　公債、市况起伏狹小、槃旋如故、大戶進出稀少、散戶亦少　著　買、是以交易仍淸、檯面僅了結交易、聊以點綴、市價上落、仍槃旋於二三角之間、由此可見多空觀望僵持之態、觀　趨勢、似在醞釀期中、以待水來之變化各債升降結果除甲種好一角外、其他均無軒　成交約一百萬元左右、茲列表於後、</p>
+<h3>股交易　頗不寂寞　大中華火柴進戶旺</h3>
+<p>昨華商股票市况、雖値週未交易、猶不寂寞、市呈先跌筏回之勢、終多軋小、　大中華火柴仍在　　中、　一百九十　元半、升二元半、恐尚難　得、南洋烟公司買戶亦殷、升至七十元關口、　進三元、文化業獨商務霄館無賣戶、躍起五元、中華交少市呆世界低元八角、百貨業永安有　勢遺留、微升五角、新新與中國內衣挫小一元至五角、走勢甚穩、新藥業人呆平狀態、中法獨小一元半、餘少變動、公用業華商　氣削低　角、閘北水　爲收吸者扶住、餘皆平庸、各方人心暫形呆定、茲分記各股市價表於後、</p>
+<h3>飾金進出稀少</h3>
+<p>昨銀樓業大新同行首飾金門市每兩兌出價、均仍掛二千一百五十元（收進减三百元左右、同業互做稀少、市價亦平晨爲一千八百八十五元、計高五元、後升爲一千八百九十元、又降至一千八百八十元、正午一千八百八十五元、比上日略升五元、僅十元差　、首飾紋銀每兩仍掛十六元、同行互做價爲十元零七八角、</p>
+<h3>軍票拆息不動</h3>
+<p>昨日軍票超呆定、同業互做價爲五元五角五分七厘、銀號與小錢莊門市售出五元五角六分收進五元五角五分、均與上日價同、</p>
+<p>錢業公會拆息一角二分未更、新劃頭與現鈔平掉、</p>
+<h3>豆價貨主扳俏</h3>
+<p>豆類貨主喊價昨頗高昂、本街店戶僅點綴天津赤豆五十包、價爲一百六十四元至一百六十五元、市時帶挺、餘乏做　、山芋于到少銷佳、市呈秀色、昨　江北山芋干七十包、價爲一百十二元、又南市交貨者一百十元零五角、</p>
+<p>豆餅存貨不多、執貨者不肯賤脫昨由鄕莊幫問津甡記豆餅四月份吉田棧單一千片、價爲六十一元、比前見升一元云、</p>
+<h3>廊房子見新</h3>
+<p>黑瓜子見新後、來源仍乏、以價格難和所致、茲首批廊房子巳到數十包、貨品尚佳、片大色烏、身份亦乾、開五百三十五元</p>
+<h3>蘭竹枝已開出　合成本亦殊微薄</h3>
+<p>蘭竹枝此次見新、到貨較多、故市價不易討好、昨號貨已開出一千數百箱、行號槃相差在四五十元之間、因行方做進後、尚須加以揀剔破壳、小粒及微霉者、故標準揀蘭竹定盤售四百三十元、按諸成本、亦僅薄利云、</p>
+<h3>呢羢零售　限價公布</h3>
+<p>（甲）六至七盎司羽紗呢等、一百四十九元、七至八盎司嗶嘰等、一百六十三元、八至九盎司嗶嘰素花呢等一百八十二元、九至十一盎司嗶嘰等、每碼售二百〇一元至二百二十元、十一至十三盎司嗶嘰華達呢海林棒等、二百四十元至二百五十九元、十三至十四盎司直貢呢海林捧摩嗶嘰等二百七十八元、十四至十八盎司如馬褲呢雙面呢駝絲巾等、二百九十七元起至三百五十四元止、以上係素色細毛綫國外輸入者所織成（乙）七至八盎司羽紗呢花呢、每碼售一百六十八元、九至十八盎司花呢類、分價九種、最高限沽三百六十五元、最低二百〇六元、以上係雜色細毛綫原料輸入者所織成、（丙）八盎司至十五盎司、女色呢類、由一百五十二元起至二百五十四元止、計高下分六檔、是七盎司至二十二盎司、大衣呢類由二百七十八元起至三百十六元止、計高下分級五檔，以上係羊毛綫或編結毛綫、其指輸入紡成者、（丁）十二至至十四盎司女色呢、一百四十元至一百五十元、十四至十七盎司女色大衣呢等一百六十元至一百八十元、十七至二十、盎司男色大衣呢、一百九十元至二百三十元、以上係攙或不攙羊毛之廢毛所織成品、（戊）八至十一盎司女色花呢女色呢等、八十八元至一百十八元、十八至二十二盎司大衣呢等、一百三十三元至一百八十四元、以上係中國羊毛織成者、（己）廢毛及棉花或其他纖　混合質中　原料織成品、十四至十八盎司女色大衣呢等、頭號每碼九十六元、二號六十七元、三號四十八元、量重者售五十四元至一百〇八元、十八至二十二盎司、下檔大衣呢制服呢等、頭號百二十元到一百三十二元、一號八十五元至九十四元、一號八十至六十六元、（庚）輸入之純羊呢羢最高零售限價、最優等花呢六百元、特等開司米大衣呢一千元、上等身骨大衣呢七百五十元、中等身骨大衣呢四百五十元、下等身骨大衣呢二百五十元、</p>
+<h2>Page 6</h2>
+<p>家庭</p>
+<h3>反躬目省</h3>
+<p>— 華</p>
+<p>在家庭裏最容易聽到的談話是「張家的太太現在眞是福氣因爲她的丈夫已經成爲富翁了。」「你爲什麽老是守着你的本行，不去想法謀謀發展」？「我嫁了你這許多年，始終沒有享過一點福。」</p>
+<p>對於這些談話的最好的解決辦法是「反躬自省。」因爲每一個人的遭遇環境志趣，慾望，努力，都是不同的別人能够得意，這是他的際遇不同或者他曾經用了許多苦功，而說不定他還有他的難言的痛苦，徒然地去羨慕別人，有什麽用處呢？</p>
+<p>反轉來說，每一個人應該反躬自省我會努力到怎樣程度我目前的環境，有那幾點是別人所不及的我的志趣是什麽，我的計劃是怎樣，經過這一次的反省，就不再會無端地去羨慕別人了。</p>
+<p>夫婦間的志趣，應該相同，所以丈夫有什麼計劃不妨和妻子談談妻子聽了，不應該抱消極的態度，甚至去取笑丈夫　計劃。如果有不當的地方，不妨發表意見，如果同意就可以給予丈夫一切可能的協助，使計劃早日實現因爲這種同心的協助是由現在和將來中間很重要的一環。</p>
+<h3>遊戲與兒童</h3>
+<p>— 丁志道</p>
+<p>在兒童的成長中，豐富的營養是必需的。蛋白質，脂肪澱粉維他命以及鈣，燐鐵等鑛物質，是構成人體的要素，缺少了一樣，就會產生疾病或阻碍兒童的成長。很多的父母對於營養方面往往非常注意，但對於孩子除需要食物的營養而外還需要適當的遊戲這一點却大都被忽略了。</p>
+<p>兒童是好動的因此他們不啻視遊戲爲其第二生命。在成人的眼光中看來遊戲不過是調劑精神的工具。但在兒童方面除調劑身心而外還籍此可以發展感官的機能，鍛鍊强健的筋骨，助長智力，觀察想像，創造等能力的發展。在近代的敎育上，利用它灌輸各種知識訓練團體生活以及培養良好的德性。所以遊戲的價値，除發展體格而外，又是兒童的求知入德之門。</p>
+<p>很多守舊的家長，他們把孩子看成了小成人。孩子們除了讀書寫字而外，就不許東動西弄，必須好端端的奉命唯謹的坐在那裏。試想：一個活潑好動的孩子，在這種情形之下，不但失去了活動，又失却了智力發展的機會。其結果，身心旣得不到解放，叉阻碍了固有能力的發展。</p>
+<p>在學校裏的許多一問題兒童一有許多就是從管理太嚴，缺乏遊戲的家庭巾產生出來的。這些兒童的行爲往往反常，精神亦多變態。他們有些是：思想愚鈍，呆若木鷄，有的則無意求學，心猿意馬。對工作學業都不專心，對團體的生活也不能十分適應。學校裏賢明的敎師，對這些兒童往往束手無策因爲除非家庭釐裏放棄嚴禁的政策，在每日短短數小時中，學校方面不能解除其精神上的鎖鍊，只有眼望其逐漸成爲嚴重的「問題兒童」而致難於醫治。</p>
+<p>過度或不適當的遊戲，頗能招致災害，但是適當而良好的遊戲，却是每個在成長中的孩子所不可少的。我想：每個家長都希望他們的子女活潑，聰明，伶俐。那未我告訴你一個唯一的有效辦法，那就是多多的給他們有價値的遊戲的機會。使孩子們在遊戲中去學習一切，鍛鍊强健的體格，發展優良的智力。使他們在遊戲之中，成長而爲品性優良的有用人才！</p>
+<h3>葛氏家書二十封</h3>
+<p>徐百益譯</p>
+<p>父母對於敎養子子女，往往感到棘手，尤其是在中學大學讀書的一般子女。而零用問題，更是許多父母認爲難解決的。這裏的第二封信就討論到這個問題，葛賴亨先生所說的論調或者正是一般父母所要說的話。</p>
+<p>這第二對信，是　葛賴亨先生收到了他兒子在　學校二年以後所寄的零用帳而發的。</p>
+<p>第二封　零用問題</p>
+<p>親愛的兒子：</p>
+<p>今天帳房將你上個月的零用帳給我，我看了不勝驚嘆之至。你要曉得，我雖然希望你得到很多的學問，但我並不要你將整個的學校買下來啊！當然你的費用，不會使找受到怎樣重大的損害，但對於你自己卻有害無益，除非你自己非常留意。二年以來，你的零用帳繼長增高，但是你沒有證明過這增加的理由是充足的，這眞正不是道理。</p>
+<p>對於這一屆，我以前並沒有對你說過什麽，因爲我相信你一定具有理智而知道自治的。伹是因爲我在掌理一切，你切不要以爲父親有了一些錢就可以濫用，因爲在你離開大學以後，我不會再供給你的，到了那時候，你對於用錢約束得愈快，那末和你的生產力量就接近得愈怏。</p>
+<p>一個人致富最快的方法是突然得到一筆巨額的金錢，或是由父親留下一筆遺產，但你決不會用那種方法致富，因爲除非你自己證明你可以在我的公司裏據着重要的地位，我決不會輕易信任你的。當然無論什麽人可以得到一偭起點，無論是公司裏的主人或是一個小職員，那個起點，就是最低的職位。他們可以坐在一隻送信檯旁邊，每一個星期六，我會給他八塊錢的薪俸。</p>
+<p>我不能雙手捧着現成的成功交給你，因爲這種做法，於你沒有益處，於公司却有極大的損害。</p>
+<p>我要向你說道些話，並沒有什麽別的用意，祇是要使你不誤會，因爲我雖可以給你一個起點，還得要你自己去努力的。</p>
+<p>我以爲你有相當的才幹，這一屆我很覺得欣慰；但我希望我能看見這些才幹的發揮。而且你也一定要保持天然的定理，就是先學會正當用錢的方法，然後再去賺錢，你惟有减少你的支出，增加你的積蓄，機會便你前進。一元錢的利息至多不過六分，但一個聰明的人，就會祗用六分而保存他的一塊錢，這正是你應該學習的方法。</p>
+<p>有許多靑年，以爲用錢慷慨，便是漂亮，在金錢上斤斤較量，不免近於客嗇這正是一般做父母的認爲担憂的事。然而從另一方面講起來，這種地方，適足以縣示出一個靑年的是否具有堅强的判斷力。當初我只有每星期二塊錢的薪俸，晚上睡在櫃檯下面，至今我還有很深刻的印象，這正是你所應該開始學習的呢。</p>
+<p>你的父親葛賴亨</p>
+<h3>與兒童爲友</h3>
+<p>— 莉</p>
+<p>扶育兒童的有效方法</p>
+<p>一般賢明的父母，他們所採取的育兒方法，並不是一味採取最嚴的態度的，他們最先的步驟是和兒童成為密切的朋友，這樣，孩子們見了父母，就不會有拘拘束的態度，而教育兒童，也容易入手了。這　有幾種方法，可以採取：</p>
+<p>如果能夠幫助孩子們做工作或遊嬉，儘量地去幫助他們·</p>
+<p>如果兒童有値得獎勵的地方，立刻去給予他們熱烈的鼓勵。</p>
+<p>如果兒童發表他們的意見時，應該留心地去聽。</p>
+<p>不要在親友的面前，訴說兒童的缺點，作爲你談話的資料。</p>
+<h3>西諺</h3>
+<p>— 華光</p>
+<p>「頹壞國治者，無過女學之不修。」－－亞力士多德－－</p>
+<p>「宰天下之手，猶是動搖籃之手也。」－－安諾－－</p>
+<p>「圍爐團坐，即爲磨練治才之所。」－－古列樞－－</p>
+<p>「人生早年之家庭生活，後日影響於國家者甚鉅。」－－邱而德</p>
+<p>「國與市之鉅創深痛，即家政之腐敗是也。」－－派罕司德－－</p>
+<h3>家庭投保　火險須知</h3>
+<p>— 陳君沔</p>
+<p>在這保險公司蜂起雲湧的火險的常識，給家庭」的讀者　一般人都認保險是保保太平的，略保些就算了，其實這是錯誤的。你不保險則巳要保險就得把投保物本身的價値保足，因爲保險的原理，就是在你因火災而受損失時，償還你所損失的原値，假使你不保足，萬一發生全部相失，保險公司即使照你所投保的數目賠你，你豈不是仍有損失嗎？何况賠款的時候，往往有許多限制，爲了使你更明瞭起見，現在一目舉個例來說明一下：</p>
+<p>例如你房內的傢具，照市價估値爲十萬，但你却因爲想省些保費，只保了五萬。如果一旦發售了火災，你的傢具全部焚去，保險公司當然照你們保的五萬賠你，你事實上却還損失了五萬；假使你的傢具只焚去一半，照市値估計爲損失了五萬元，你以爲你旣保了五萬元的險，現在損失了五萬元，保險公司不是應該賠你五萬元嗎？其實不然，保險公司是只賠你二萬五千元的，因爲你以價値十萬的傢具，而只投保其半數，其餘半數的責仟就由你自己負擔着，你與保險公司是互擔一半的責任，那末，你現在損失了五萬，雖然保了五萬元的險，却只能賠你二萬五千元，還有二萬五千元是只好向自己要了！在他如原保額只及原價値三分之一或四分之一，都是伊這比例賠償的，或許有人要說，那房傢具，在投保時原只値五萬而在發生火災時已漲到十萬了，保戶又不能未卜先知，那能預先投保十萬呢？那你應該在傢具　價時，就應該加保的，牠漲價不會從五萬就一步　到了十萬，牠一定是漸漸地漲起來的，你就得在每次漲價時去加保，　張保險單投保一筆物件，應依照這物件實際的價値去投保，愈能準確愈好，投保物漲價時你得加保，跌價時你可减保，總之，要使物件在發生　損時，仍能得到足以恢復原物的賠償，如果有人存着「賭博」的心，把値價十萬的東西保了二十萬，以爲一旦發生火災，豈不是還可多賺十萬嗎？其實這種人眞是「外行」，保險公司覺會受你矇蔽，發生損失時他們都有公證行出來估計損失的實際價値，十萬的損失決不會賠你二十萬的，你多保了還不是多付保費而已。</p>
+<p>有許多人保了險拿到了保險單，往往就向箱內一藏：根本看也不看，道是絕對不可的，因爲每一張保險單上，載着許多條款，保險公司給你一張火險單，他不能漫無範圍的給你統保着各種危險，他也有他的限制，這些限制，就都載在這些條款內。譬如你保普通的住宅險，保險單上就有載明不許在屋內放置五十介侖以上的火油或汽油及五箱以上的火柴（箱內襯有洋鐵裹子者除外）的條款，如果保戶違反了這　條，這保單就宣告失效，保險公司雖不會派人前來　查你屋內有否放置這些危險品，但無事則已，萬一發生火災，經調查後知道屋內會堆存過超過上述數量的火油或火柴，那你的賠款就發生問題了，而目各保險公司還特別在保單上註明注明：「該被保險人必須特別注意本保險單刋印之各項條款，凡接受此保險單者，即允受該項條約之約束」。在保險公司方面已算鄭重的向保戶聲明過了，而一般保戶呢，　爲只要保了險，出了事總可得到賠償的，也不去看什麽條文不條文，以致發生損失時，保險公司與保戶間的糾紛時有發生，雖然有些小公司在賠款方面不無欠缺之處，或有一般保險掮客的從中作祟，致保戶方面得不到十足的賠款，但一般人的缺乏保險常識，不請保險的眞理，要亦爲一最大的原因。</p>
+<h3>齒的衛生</h3>
+<p>— 知</p>
+<p>人之健康，端賴乎衛生與淸潔，諺云物必先腐而後蟲生之，旨哉是言　而國人對於齒牙的衛生，素不重視，故患蛀牙者，什之八九，良可慨也　查蛀牙之所白生，大都在咀嚼時齒縫遺留食物殘屑、經過慍度作用，乃起變化，而成膿菌及釀酸菌，是種毒菌，能破壞牙回的琺瑯質，以黔腐蝕成功。茲略述數點於次：</p>
+<p>牙齒　咀嚼食物之動　，亦助消化之　　階段，如齒牙不健全，在食物囫圇吞　殊覺無味，目消化不易，有礙胃腸，或發生其仙疾病之危。</p>
+<p>而人類口腔，藏有各種細菌，故吾人欲保持身體之健康，必須注意口腔衛生。科學潔齒，能使口腔淸潔，預防蛀牙，使細菌無法潛入，故泰西仕女對保護牙齒，異常重視，每日輒潔齒一次。</p>
+<p>蛀牙小孔，爲藏垢納汚之所，每一小孔所藏細菌，總有千萬之多，每餐咀嚼時孔內細菌與食物混和嚥入腸胃，即易發生傷寒痢疾等症，大之可以致命，小之亦枉費金錢時間，故爲防患未然起見亟宜將蛀孔穢物淸除消毒。</p>
+<p>潔齒，理髮，沐浴，爲人生衛生之三大要素，而潔齒更爲重要，能免除口臭牙汚，潔白生光，細菌小能潛入軀體，健康賴以保持。此乃人生之幸福。然潔齒須從年靑時着手預防，迨年邁歲暮，仍能保持齒牙健全，並終生無牙病之患。</p>
+<p>國人保育嬰孩，恒由大人口內咀嚼哺喂子女，如大人口內不潔，在咀嚼之間，　毒菌與食物混和，傳與小孩，而小孩抵抗力薄弱，往往罹病，甚致夭折喪命，老查工部局衛生處小孩死亡率，年有數萬，殊駭人聽聞。</p>
+<p>吾國老人因平時不知護齒，故至中年時代，齒牙浮動，牙患叢生，迨入暮境，則齒牙殘缺，有損美觀，遇稍堅食物，則難下咽，消化不良，影響健康。故吾人欲免老來痛苦，必須預早潔齒。</p>
+<p>現代的婦女，每注意髮膚上的修飾，而忽略了齒牙，若能時時潔齒，　櫻　起處，齒如編以，皓潔生光，益增嫵媚　苟齒牙不潔，　口臭迫人，使人厭惡，引爲遺憾。</p>
+<p>常人牙齒有三十餘隻之多，每隻有四面八方之　，吾人淸晨起身時，雖每日盥嗽刷牙，然不過表面淸潔而已，牙縫牙背•不能澈底淸除，若使。科學潔齒，能使多年牙垢盡凈，增進體健，獲益匪尠故齒牙衛生，亦人生，大要事。</p>
+<p>李友昌先生：「食物與養生」，可向八仙橋靑年會問詢處購買。</p>
+<p>宗家幹先生：讀者函詢沈竹初先生著周易易解　書，何處出售？新示知·</p>
+<h3>一星期家常菜單</h3>
+<p>— 華英女士</p>
+<p>丁福保先生「怎樣創造我的健康生活」一書，推薦豆類及其製品如豆腐，豆腐漿等，說是含有蛋白質甚多，魚肉價太貴，　可多吃豆類，以獲得充足之蛋白質。蛋白質是　　的體養料，足以增加我們的精力，這是犬家所知道的。當此豆類最豐富的時期，我們自該多吃一些，如刀豆，扁豆，毛豆，豇豆等，正可大吃特吃，更佐以常川買得到的豆腐，發芽豆，黃豆芽，篆豆芽等，可說是洋洋大觀，集豆之大成了。魚肉吃不起，何妨以豆爲代，以增加我們身體中的營養料呢？</p>
+<p>星期一</p>
+<p>毛豆紅燒肉</p>
+<p>白蝦燒豆腐</p>
+<p>百葉韭菜花</p>
+<p>甜醬炒扁豆</p>
+<p>星期二</p>
+<p>黃豆芽牛肉</p>
+<p>糖醋　　魚</p>
+<p>青菜炒綫粉</p>
+<p>素油豆腐湯</p>
+<p>星期三</p>
+<p>洋港炒肉絲</p>
+<p>紅燒白魚片</p>
+<p>油條炒莧菜</p>
+<p>葱花豆瓣沙</p>
+<p>星期四</p>
+<p>番茄牛肉湯</p>
+<p>葱烤小鯽魚</p>
+<p>絲瓜炒麺筋</p>
+<p>菜茶豆芽</p>
+<p>星期五</p>
+<p>菜心燜肉團</p>
+<p>煮燒豆腐</p>
+<p>清炒雞毛菜</p>
+<p>油　炒</p>
+<p>星期六</p>
+<p>咖喱炒雞丁</p>
+<p>紅燒花鯉魚</p>
+<p>紅燒素十景</p>
+<p>紫菜豆腐花</p>
+<p>星期日</p>
+<p>鴨雜湯</p>
+<p>炒冬瓜</p>
+<p>炒　菜</p>
+<p>天廚食譜（一一六）</p>
+<h3>（二一二）蓉煎餅</h3>
+<p>— 朱順麟</p>
+<p>預備…豌豆粉　麵粉　發酵粉　油糖或鹽</p>
+<p>製法…將炒熟豌豆粉（市上有售）用水調糊後放入油鍋中一炒，炒時略加白糖，使成豆沙，另以麵粉與酵粉和攏，用水調匀後做成皮子，然後以豆沙裏成餅狀，再放在油鍋內煎透卽成，喜鹹食者，以糖改鹽可也。</p>
+<h3>（二一三）棗泥餅</h3>
+<p>— 朱順麟</p>
+<p>預備…紅棗子　麪粉　糖　油　桂花醬</p>
+<p>製法…先將紅　煮燜去核，加糖與桂花醬後用油炒過待用，次將麵粉用水拌匀，復加油攪和使成油酥，然後以　泥裏成餅妝，放在爐子上烘熟，卽成且鬆又香之棗泥餅矣。</p>
+<h3>（二一四）番茄醬</h3>
+<p>— 葉鵬</p>
+<p>預備…番茄　糖　晶狀味精　家用菱粉　鹽</p>
+<p>製法…先把番茄用開水一泡，去皮搗爛，再加水少許煮之，煮至半熟，再加入適量之鹽，晶狀味精，家用菱粉，糖等攪和續煮，至熟卽可佐膳，上述三種，製法簡易而所耗極康番茄一物，富含維他命C成份，在此營養恐慌時代，極宜常食。</p>
+<p>介紹…天廚味精廠出品之「味精」，「味宗」，「天廚醬油精液」，「天廚家用菱粉」本市各　大公司，各南貨食品店均有出售。</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.08.30</h1>
+<h3>Fierce Fighting in the Caucasus Mountains: Germany Claims Breakthrough of Soviet Positions; Tank Battles Continue at the Entrance to Stalingrad</h3>
+<p>German Führer Headquarters, 29th, Havas News Agency: According to the German High Command, German forces in the Caucasus mountains have broken through enemy positions and annihilated the remaining enemy troops. In the Stalingrad area, German forces continue to advance. Several enemy counterattacks have been repulsed.</p>
+<p>Berlin, 29th, Havas News Agency: The secret of the German operations in the Caucasus has been partially revealed today. Responsible sources in Berlin disclosed today that German forces and their allies have broken through multiple strong enemy positions in the most difficult part of the hundreds-of-kilometers-long Caucasus front. Although the names of the locations have not been released, it is not denied that the German victory has military significance. After the Soviet forces launched a tank counterattack in the Stalingrad area in an attempt to relieve the pressure from German forces, the German offensive on Stalingrad continued to make progress. At a certain point on the Eastern Front, German forces destroyed 19 Soviet tanks. In the fierce battles southwest of Kalach and near Rzhev, although Soviet forces assisted the offensive with a large number of fighter planes and tanks, they were ultimately defeated by German forces. 111 Soviet tanks were destroyed in that area. The Soviet offensive near Rzhev was also repulsed by intense German artillery fire.</p>
+<p>Berlin, 29th, Havas News Agency: According to responsible German sources, German and allied forces have occupied enemy strongholds in the Caucasus mountains. Enemy forces, assisted by aircraft, launched an attack southeast of Kalach, but were repulsed. Soviet forces lost 111 tanks. The fighting is fierce in various locations on the Eastern Front. Soviet forces lost 241 tanks yesterday and the day before yesterday.</p>
+<p>Moscow, 29th, Allied News Agency: At the entrance to Stalingrad, there is currently a major tank battle. Over 120 German mechanized units are launching concentrated attacks in an attempt to break through Soviet defenses. Large units of German hand-held machine gun troops have broken through Soviet lines in a certain location. Another unit of German machine gun troops parachuted on Thursday night near an important military industrial target. These German forces are commanded by General Bock and are currently approaching the first line of strong fortifications around Stalingrad. Soviet counterattacks are becoming stronger, more powerful, and more frequent, especially in the northern sector, where they are mostly blocked by Italian forces. In some areas, the fighting is taking place only about 20 miles from Stalingrad. The key question now is whether Soviet General Timoshenko can deploy more manpower and resources in time. There is no new information from the Kotelnikovo front southwest of Stalingrad, but it is reported that the German air force is heavily attacking Soviet reinforcements heading to the area. As for the Caucasus front, fighting is taking place in deep valleys on both sides, south of Krasnodar on the western side and in the Prokhladny district on the eastern side, requiring new strategies. German tanks and infantry are forced to march in dense columns, making them vulnerable to flank attacks and ambushes. Soviet Sturmovik bombers are bombing German columns from the air.</p>
+<p>Moscow, 29th, Allied News Agency: The Soviet Information Bureau's midnight communiqué mentions continued fierce fighting on the Caucasus, Stalingrad, and Moscow fronts, around Rzhev. According to the communiqué, on August 28, Soviet forces engaged German forces outside Rzhev (southeast of Kleskaya), northwest of Stalingrad (northeast of Kotelnikovo), and in the Prokhladny-Mozdok and Krasnodar regions. There were no major changes in other areas of the front.</p>
+<p>Ukrainian Border, 29th, Havas News Agency: According to neutral military experts, the resistance of Soviet forces in the Caucasus and Stalingrad areas has strengthened in the past 24 hours, but this will not have a major impact on the overall battle. German mechanized units reached the Volga River on the 25th of this month, no more than 25 miles north of Stalingrad. In the southwestern part of the city, the German offensive is intensifying and advanced, and occupied the area of ​​Tsaga on the 26th of this month. The army turned north and was about 15 miles from the Volga River yesterday. As a result, the German offensive against the semi-circular defense money in Stalingrad has become increasingly effective.</p>
+<p>Berlin, 29th, Havas News Agency: The German High Command announced that the German Air Force continued to heavily bomb important munitions factories in Stalingrad on Thursday, several of which were destroyed by bombs. Dock facilities were hit and caught fire. The flames could be seen from 50 kilometers away. That night, German bombers caused ten fires and explosions in the southeast road from Moscow's Serpukhov airfield. Most of the hangars were destroyed.</p>
+<p>A Certain City on the Ukrainian Border, 28th, Havas News Agency: According to German sources, fierce fighting continues in the Stalingrad area. General Timoshenko is now in a delicate position. No matter what action he takes in other areas, it is too late to relieve the pressure from German forces on the Red Army around the city. In the Kasharinsky district northwest of Stalingrad, Germany has also opened a gap in the Red Army's positions and is now expanding it. The vanguard of the German and Romanian allied forces is now only 25 miles from the center of Stalingrad. According to semi-official sources, German forces have occupied the city of Yablochkino northwest of Stalingrad. This city is also one of the Soviet Union's transportation hubs. The Kotelnikovo-Stalingrad railway intersects the Tairbeti-Elista highway in the city. As for the Caucasus region, German forces have continued to advance toward Libya in the past 24 hours. All five major mountain passes are in German hands. Afterwards, it does not appear that German forces will encounter any serious difficulties moving south of the Caucasus region. However, the Red Army is resolutely resisting along the Black Sea coast, holding firm to its positions near the port of Anapa. In addition, the German and Romanian allied forces on the Taman Peninsula continue to advance and have not encountered any resistance, indicating that the main force of the Red Army has already withdrawn. West of the city of Akhtanizovskaya, the German and Romanian allied forces reached the end of the Taman Bay this morning.</p>
+<h3>Red Army Counteroffensive in the Central Sector Makes Progress; Berlin Officials Claim Soviet Strength Has Declined</h3>
+<p>Berlin, 29th, Havas News Agency: Officials here declared yesterday that Soviet General Chugov's offensive in the central sector of the Eastern Front has now lost the strength to break through German lines. Although Soviet forces may be able to launch local offensives, they no longer have much strength.</p>
+<p>Ankara, 29th, Havas News Agency: News received from Moscow yesterday indicates that Soviet authorities have stated that the rescue counteroffensive launched by Soviet forces in the central sector has failed to improve the situation in the southern sector. Yesterday afternoon, the Soviet war report stated that fighting was fierce in Stalingrad and the Caucasus, and for the first time mentioned the strategically important city of Mozdok west of Grozny. Well-informed sources in Moscow pointed out that German forces in the southern sector can deploy far more troops and equipment than the Soviets. The Soviet forces have been unable to defend all points of the line and have also been unable to concentrate forces comparable to those of the German side.</p>
+<p>Berlin, 28th, Havas News Agency: The German High Command announced that in the past two weeks, the Soviet counteroffensive in the Rzhev area has suffered heavy losses. Although there has been slight progress, it is of no real value. German forces fought decisively against numerically superior enemy forces near Rzhev and north of Leding, enduring great hardship. Although Soviet forces occupied certain villages and towns, they have no military value and have been completely destroyed by German artillery. The Red Army has suffered 10,000 casualties and thousands of tanks. On the 26th of this month, our air force shot down 16 Soviet planes and destroyed 9 of their tanks and 13 artillery pieces. At night, we bombed the railway line from Kalinin to Moscow. In addition, factories as far away as Saratov and Gorky were also bombed.</p>
+<h3>Soviet Planes Raid Helsinki at Night; Bombing in Waves Lasts for Hours; Finnish Forces Will Soon Attack Leningrad</h3>
+<p>Helsinki, 29th, Allied News Agency: Soviet bombers launched their second raid this week on Helsinki shortly after midnight yesterday. The Soviet planes attacked in waves over several hours, dropping high-explosive and incendiary bombs, causing several fires. According to a Finnish military headquarters communiqué, approximately 65 Soviet planes attacked in waves. Finnish land defenses unleashed a fierce barrage of fire, dispersing most of the attacking planes. However, several planes still penetrated the barrage, reaching the city and dropping mines and incendiary bombs. Five people were killed and about twenty were injured. Several fires broke out, and several buildings were damaged.</p>
+<p>Helsinki, 29th, Havas News Agency: Last night's Finnish war report stated that our artillery in the Karelian Isthmus shelled enemy railways and supply stations with considerable effect. There are no significant war reports to report from the Olonets Isthmus. In the southern sector of the Eastern Front, enemy forces attacked the Poventsa district, and we captured over 100 prisoners. Northwest of the Stalin Canal, enemy forces, under the cover of heavy artillery and trench mortars, attacked our positions in the darkness, but were repulsed, leaving behind many dead bodies. The enemy then launched an attack with smoke bombs, but was also unsuccessful. There were only skirmishes and artillery battles in the northern sector of Eastern Finland. One enemy transport ship on Lake Ladoga, carrying fuel to Leningrad, was hit by our torpedoes.</p>
+<p>Berlin, 29th, Havas News Agency: The "Dainin Observation Post" field reporter Parson Dow predicted that German forces will soon launch a large-scale counteroffensive against Leningrad. The enemy's failure will be the same as what they are currently encountering in the southern sector.</p>
+<h3>Japanese Troops Operating in the Third War Area Adjust Defensive Positions</h3>
+<p>Nanjing, 29th, Allied News Agency: The Japanese Army Press Department in China announced at 6:00 PM today that the Japanese Army, which has been operating in the Third War Area since mid-May, has achieved its objective of destroying the defending forces and military equipment in the area, and has adjusted its defensive positions and reorganized its troops since August 19 in preparation for the next phase of the offensive. The defending forces now show signs of weakness, and the Japanese Army is therefore rapidly and satisfactorily carrying out its current task. It was also disclosed that the reorganization of the Japanese Army and the restructuring of defensive positions are as follows: The Japanese Army advancing west from the Qiantang River, its vanguard began to move from Shangrao and Guangfeng districts on the night of August 19, concentrated in Quzhou on the evening of August 23, and is now heading east. The last unit passed through Longyou and Tangxi yesterday. The Japanese Army that captured Wenzhou and Ruian concentrated from Wenzhou to Lishui on August 14, and is currently converging with the troops that captured Songyang at a predetermined location since Thursday. The Japanese Army advancing from Nanchang began to move from Yujiang and Dongxiang districts on August 19. The Japanese Army departing from Linchuan has also passed through Jinxian. These troops have now reached their predetermined positions.</p>
+<p>Japanese Troops in South China Return to Original Defenses</p>
+<p>Guangzhou, 29th, Allied News Agency: Officials here announced at 2:00 PM today that the Japanese Army in South China, responding to the operations of the Third War Area in Central China since the beginning of June, has completed its objectives by actively engaging the troops under General Yu Hanmou, and has been ordered to return to all of its original positions on August 26. According to the head of the Japanese Army Press Department in South China today, the Japanese Army has been redeployed to reorganize its positions in order to obtain a more favorable military position in preparation for future operations. It is reported that when the Japanese Army launched a major offensive in Zhejiang and Jiangxi provinces, the Japanese Army in South China also launched an offensive in Guangdong province at the same time.</p>
+<h3>Tatsuta Maru Arrives in East Africa</h3>
+<p>Lourenço Marques, 29th, Allied News Agency: Sir Robert Craigie, the former British Ambassador to Japan, and other diplomats, who arrived here from East Asia aboard the Tatsuta Maru, declined to comment on the situation in Japan or elsewhere before submitting a formal report. However, Craigie expressed his appreciation to the governments of Portugal, Switzerland, and Argentina for their cooperation in arranging the exchange of Allied and Japanese nationals. The passengers on the Tatsuta Maru included diplomatic personnel, merchants, and missionaries from Japan, Manchuria, South China, Vietnam, and Thailand. Personnel from the Philippine Consulate and others evacuated from the Philippines included B. Valpar, the leader of the Tagore faction in the area, and Virpolque, the Tagore representative in the Philippines.</p>
+<h3>Japanese Planes Attack Darwin Harbor Yesterday</h3>
+<p>Lisbon, 28th, Allied News Agency: According to a report from Melbourne, General McWhorter's headquarters in Australia announced today that Darwin Harbor in northern Australia was attacked by Japanese planes again yesterday.</p>
+<h3>Gandhi's Son Released Yesterday</h3>
+<p>Lisbon, 29th, Allied News Agency: According to news from New Delhi, Devdas Gandhi (Gandhi's son), the editor of the Hindu Times, who was arrested on August 13 under the Indian Defense Regulations, was released today due to insufficient evidence. At the same time, the publishers of the Hindu Times and others have also been released.</p>
+<p>Rangoon, 29th, Havas News Agency: It was learned here last night that Gandhi and his followers are currently detained in the Aga Khan Palace in Pune. Every morning, Gandhi can be seen walking in the palace garden and talking with his companions. Gandhi spends much of his time each day in prayer, reading, and weaving.</p>
+<h3>Funeral of the Duke of Kent</h3>
+<p>London, 29th, Havas News Agency: The remains of the Duke of Kent, the late brother of the British King, were interred today at St. George's Chapel in Windsor Castle. George VI, Queen Elizabeth, the Kings of Norway, Greece, and Yugoslavia, and the Queen of the Netherlands all attended the ceremony. The Duchess of Kent was inconsolable and nearly collapsed.</p>
+<p>Lisbon, 29th, Allied News Agency: According to news from London, the Duke of Kent, the younger brother of the British King, who recently died in a plane crash in Iceland, was buried today at St. George's Chapel in Windsor. The coffin was carried to the chapel by six non-commissioned officers of the British Air Force. Many senior officers served as pallbearers. The Duchess of Kent was escorted into the chapel by the Queen and the Queen Mother, and cried with her head bowed, appearing grief-stricken beyond words.</p>
+<h3>Conditions of Batavia's Reconstruction</h3>
+<p>Batavia, 29th, Allied News Agency: It has been more than half a year since the Japanese army occupied Java Island. The reconstruction of Batavia, the largest city in the East Indies, has made rapid progress. Both in appearance and in reality, the whole city is worthy of being an important city in the Southern Co-Prosperity Sphere. The Education Department of the Japanese military government, in view of the residents' keen interest in learning Japanese, established Japanese language learning sessions in order to provide them with accurate guidance. The students who came to listen were very enthusiastic and the results were quite good. It is currently the second phase, and 200 elementary school teachers are participating in the study. The Batavia Broadcasting Station has also installed radios in various public squares, under the shade of trees, and in suburban villages so that citizens can listen to the broadcast. The municipal authorities arrange for the unemployed to work in nearby farms and engage in production. As for urban transportation, it has almost completely recovered. The trains to Surabaya, Semarang, Bandung, and other major cities on the island are full of passengers and travel on time. The transportation of goods is also extremely smooth. At the same time, maritime traffic is even more prosperous. The port is full of masts, and ships come and go constantly. In the six months since the Japanese army occupied the area, with the cooperation of local residents, the rapid reconstruction of the new Batavia has been truly astonishing.</p>
+<h3>Fierce Earthquake in Albania; Italian Prime Minister Allocates Millions of Lire for Disaster Relief</h3>
+<p>Albanian Capital, 28th, Havas News Agency: A violent earthquake struck Albania yesterday. The city of Peshkopi was almost completely destroyed, and the surrounding villages also suffered heavy losses. Earthquakes were also felt in the capital and other places at the same time. After learning of the disaster, Italian Prime Minister Mussolini sent a telegram to the Albanian authorities expressing his condolences and allocating one million lire (Italian currency) for disaster relief.</p>
+<p>Rome, 29th, Havas News Agency: As a result of the earthquake in northern Albania, there have been 43 deaths, 110 injuries, and 1,200 people left homeless.</p>
+<h3>British Forces Attack in the Central and Southern Sectors of Egypt; German Planes Bomb Alexandria</h3>
+<p>Rome, 29th, Havas News Agency: This afternoon's Italian war report stated that an enemy motorcade attack in the central sector of the Egyptian front was unsuccessful. Many vehicles caught fire and were destroyed. An enemy tank attack in the southern sector was also repulsed. One tank and several prisoners fell into our hands. When British air force attempted to bomb our military outposts, three planes were shot down by our anti-aircraft artillery. Another two enemy planes were shot down in aerial combat by German fighters. Axis aircraft continued to bomb Malta. One Spitfire was destroyed in aerial combat. Convoys sailing in the Mediterranean were attacked by British aircraft. Guard ships hit three British planes, which fell into the sea. Enemy aircraft dropped bombs and fired guns in various parts of Sicily yesterday. There were no casualties among the population.</p>
+<p>Berlin, 29th, Havas News Agency: According to responsible German sources, German planes attacked several British airfields south of Alexandria last night. Several airfields at Argos caught fire. Hangars and barracks at the El Amiriya airfield also caught fire after being hit. Many planes at the Dekheila airfield were destroyed. Anti-aircraft positions and a building were also hit.</p>
+<p>Rome, 29th, Havas News Agency: The Fascist newspaper published yesterday photos of a large number of train locomotives and freight cars delivered to Egypt for use by German and Italian forces. The cars were all full of Italian troops and supplies. The newspaper pointed out that reinforcements and supplies have been delivered to the Egyptian front.</p>
+<h3>Uruguay and Nicaragua Cooperate Militarily with Brazil; Military Bases Placed Under Brazilian Control</h3>
+<p>Argentine Capital, 28th, Allied News Agency: Uruguay and Nicaragua have placed all their bases under Brazilian control. This move demonstrates close military cooperation between the two sides. At the same time, according to news from the Brazilian capital, 200 German immigrants in Brazil have been forced to work on the highway between Bahia and Rio de Janeiro. The Brazilian Minister of the Interior told reporters, "The Germans have cut off our sea routes, so we are making them open up our land routes."</p>
+<p>Argentine Capital, 29th, Havas News Agency: According to unconfirmed reports received here, the Nicaraguan government has agreed to allow Brazil to use Nicaraguan seaports and airfields.</p>
+<p>Argentine Capital, 28th, Havas News Agency: Congressman Te Podda, a member of the Radical Party and former chairman of the committee investigating anti-Argentine activities, today proposed to the House of Representatives that all groups related to the German Nazi Party, especially German cultural and social welfare groups operating in Argentina, should be dissolved.</p>
+<p>London, 28th, Havas News Agency: According to news from the Brazilian capital, the Brazilian authorities have requisitioned a German hospital and converted it into a Brazilian Air Force sanatorium.</p>
+<p>Rio de Janeiro, 28th, Havas News Agency: Sola, the leader of the German Nazi Party in the state of Bahia, was recently arrested by Brazilian authorities on charges of setting up a spy network.</p>
+<h3>US Air Force Commander Arrives in Chongqing to Plan Further Air Force Construction</h3>
+<p>Nanjing, 28th, Allied News Agency: According to reliable sources today, after the newly appointed commander of the US Air Force in China recently arrived in Chongqing from India, the Chongqing Aeronautical Affairs Commission has held repeated meetings with representatives of the British and American Air Forces to plan the construction of another air force. On August 24, the Military Affairs Commission ordered General Li Jishen, chairman of the Guilin Branch, and General Xue Yue, commander-in-chief of the Ninth War Area, to immediately repair the bombed airfields and to build eight new air force bases in Guangxi and Hunan within a month. Military and political circles in Chongqing are widely rumored that Chinese Foreign Minister Soong Tzu-wen and military envoy Xiong Shihui have reached an agreement with the US authorities to send additional planes to Chongqing.</p>
+<h3>Argentina Discusses Severing Relations with Axis Powers</h3>
+<p>Argentine Capital, 29th, Havas News Agency: After two hours of discussion, the Argentine House of Representatives Foreign Affairs Committee decided to postpone the meeting. No concrete decision has been made regarding the opposition's motion to sever diplomatic relations with the Axis powers. The Minister of the Army and the Minister of the Navy supported the attitude of the Minister of Foreign Affairs, advocating that Argentina maintain neutrality in the current world war. The committee is scheduled to meet again next Tuesday and will submit the following two resolutions to the House of Representatives on Friday:</p>
+<p>Suggest severing relations with the Axis powers.</p>
+<p>Authorize the government to freely decide on foreign policy matters. Political circles here believe that Argentina's neutrality policy will not be changed because the government has a majority of seats in the Senate.</p>
+<p>Argentine Capital, 29th, Havas News Agency: In view of the serious international situation, the government today submitted a bill to Congress proposing an appropriation of 450 million pesos to strengthen Argentina's air defenses. Foreign Minister Quijano also discussed national defense issues at length with Minister of the Army General Tonazzi and Minister of the Navy Rear Admiral Fincati.</p>
+<h2>Page 3</h2>
+<h3>Battle of Dieppe, Northern France: Publication of German and British Losses; Berlin Announces Casualties</h3>
+<p>Berlin, 29th (Haitong News Agency) – According to a German military communiqué, the British losses during the attempted landing at Dieppe amounted to 600 killed, 2,195 captured, including Lieutenant Colonel Chattham, commander of the 6th Canadian Infantry Brigade, 13 staff officers, and 112 other officers. The loss of enemy materiel included 29 tanks and armored vehicles, a large number of light and heavy infantry weapons, and various other war equipment. Furthermore, the number of enemy troops who drowned while landing and when ships sank far exceeded the number of prisoners. Enemy corpses continue to be washed ashore by the sea. The British Air Force lost 127 aircraft in the Battle of Dieppe. German artillery and aircraft sank 4 enemy destroyers, 2 torpedo boats, 1 speedboat, 7 transport ships, and a large number of landing craft. They also severely damaged 4 British cruisers, 4 destroyers, 5 transport ships, 2 small warships, and numerous landing craft. German losses were as follows: Army: 159 killed, 187 wounded, 14 missing. Navy: 78 killed and missing, 53 wounded. Air Force (including anti-aircraft artillery units and signal corps): 104 killed and missing, 58 wounded. The total German loss was 591 men. In addition, 35 aircraft and one submarine destroyer were lost, and 6 artillery pieces were damaged. The communiqué concluded by stating that the attitude of the French people was very correct, as they were unwilling to be killed or injured assisting the German forces in combat, extinguishing fires, caring for the wounded, and providing food to the German troops. To reward this attitude, the German Führer has ordered the release of French prisoners of war from the Dieppe area.</p>
+<p>German High Command Statement</p>
+<p>Berlin, 29th (Haitong News Agency) – The German High Command, in order to refute the British claim that the Allied landing at Dieppe on August 19th was merely a localized raid, today issued a statement, citing facts to explain that the Allied landing attempt was, in fact, a large-scale military operation to invade the continent. The facts cited in the statement, in addition to those previously published, also include the contents of the "Operational Orders" found on the person of a captured British staff officer, which prove that the enemy landing was not merely a localized raid. According to the operational orders, the objective of the attack was the town of Arques-la-Bataille, located approximately seven kilometers inland from Dieppe. The full text of the order is 121 pages long. The British objective was to occupy two suitable French seaports closest to Paris, as a base for continued advancement. It was hoped to overcome the German defenses between the Somme and Seine rivers, and then occupy Abbeville and Le Havre. Furthermore, the operational orders detailed the selection of the most suitable locations on the beaches near Dieppe for the establishment of prisoner-of-war camps to hold German prisoners. French civilians who had reached or had not exceeded military service age and who wished to join the Free French forces could be evacuated to Britain. Furthermore, it is noteworthy that the order strictly prohibited Allied soldiers from looting on the spot, as German troops were disciplined and the French people would judge Allied soldiers by the same standard. The German High Command statement also revealed that the Allies deployed more than 100 bombers during the Dieppe landing, many of which were large, four-engine aircraft, protected by at least 1,000 fighter aircraft. Apart from the German air force stationed inland a short distance from the coast, which was deployed to assist in the battle, there was no need for reinforcements. By the afternoon of August 19th, the German commander in the Dieppe area was able to telegraph headquarters that his forces had repelled the landing forces. To prove that the London claim that the Allied withdrawal was orderly was incorrect, the German authorities released the telegraphic exchanges intercepted between the British landing force transport ships and the headquarters in Britain at the time. The text stated, "11:40 AM, the situation is critical along the entire front, staff ships are under attack." "1:21 PM, the requested reinforcements have not yet arrived." "3:10 PM, all participating units, quickly find ways to escape according to the circumstances." By 6:41 PM, the fleeing British transport ships telegraphed again, "Send aircraft assistance immediately." At 10:40 PM, another urgent telegram was sent, which only stated, "Ship sinking, send assistance quickly."</p>
+<h3>German Authorities Announce List of Sunk British Ships</h3>
+<p>Berlin, 29th (Haitong News Agency) – The German authorities yesterday continued to announce the list of British ships sunk since July 1st of this year: SS Lossiemouth, 2,370 tons; SS Galingale, 2,047 tons; SS Ganzhou, 2,001 tons; SS Enkemi, 2,500 tons; SS Baohe, 2,517 tons; SS Suzhou, 2,604 tons; SS St. Patrick, 1,923 tons; SS Toronto City, 2,486 tons; SS Wheale, 1,196 tons; SS Wuhu, 2,938 tons; SS Wigg莢, 1,859 tons; SS Allegro Grove, 1,974 tons.</p>
+<p>Washington, 28th (Havas News Agency) – The Department of the Navy has announced that a Norwegian freighter was sunk by a submarine off the American coast in the Atlantic in late July of this year. All rescued crew members have arrived at an Allied port.</p>
+<p>Lisbon, 29th (Haitong News Agency) – It was learned here last night that Washington announced yesterday that a British merchant ship was sunk by a German submarine off the American Atlantic coast in early August. The rescued crew members have landed at a port on the American East Coast.</p>
+<p>Stockholm, Sweden, 29th (Haitong News Agency) – London reports that the British Admiralty announced yesterday the loss of two fishing boats, the "Manno" and "Latters." Details are unknown.</p>
+<h3>Major General Woodworth Writes on Timing of British Offensive; Berlin Issues New Air Defense Regulations</h3>
+<p>Bern, Switzerland, 28th (Havas News Agency) – Retired U.S. Navy Major General Woodworth published an article in the Argentine newspaper "La Prensa," stating that Britain might launch an offensive in French West Africa’s Dakar, Portuguese Cape Verde Islands, Azores Islands, and Spanish Canary Islands during September and October. Since Brazil's entry into the war, the strategic position of the South Atlantic has changed. The Cape Verde Islands are the link between the South American and African coasts and should be rendered ineffective and prevent the enemy from establishing a base in the Azores Islands in the future. As for the method of landing, the ports and military facilities on the islands can be bombed first, and then troops can be landed without difficulty. German political figures commented on this article, stating only that Woodworth's arguments are sufficient to indicate Britain's intention to expand the war to neutral zones. However, because it cannot be regarded as an official statement, Germany will not take any decisions on this matter for the time being.</p>
+<p>Bern, Switzerland, 28th (Havas News Agency) – Berlin reports that the Berlin Police Commissioner today issued new air defense regulations, stipulating that in the future, when enemy aircraft approach Berlin's airspace, if there are not many aircraft and they are unlikely to launch a serious attack, sirens will be used as a signal. In this case, only limited precautions will be implemented, and public transportation and industrial and commercial institutions can continue to operate as usual. Recently, small numbers of enemy aircraft have frequently flown over Berlin, which, while insufficient for bombing, is more than enough to disrupt the daily lives of residents. Therefore, the authorities have had to adopt the above measures.</p>
+<p>Large Numbers of British Aircraft Bomb Germany</p>
+<p>Berlin, 29th (Havas News Agency) – According to military sources, 230 to 250 British aircraft bombed southern and southwestern Germany last night. 36 were shot down.</p>
+<p>Berlin, 28th (Havas News Agency) – German military personnel recently stated that the British bombing of Kassel, an important German industrial center, was not as significant as London claimed. A third of the British aircraft were shot down. At that time, the moonlight was bright, and the enemy aircraft had nowhere to hide in the sky, making them easy targets for our anti-aircraft artillery. The high rate of loss was expected.</p>
+<p>Berlin, 29th (Havas News Agency) – Berlin Radio announced this morning that British aircraft attacked western and southwestern Germany last night. There was slight damage to buildings. According to initial reports, 32 aircraft were shot down.</p>
+<p>Paris, 28th (Havas News Agency) – A train in occupied France was strafed by a British aircraft near the town of Ternant. Two machinists, using their quick wit, immediately applied the brakes, stopping the train and ensuring the safety of all passengers. However, these two machinists died in the line of duty.</p>
+<p>Rabat, 29th (Havas News Agency) – A British aircraft was shot down today by a French patrol aircraft over the port of Laoti.</p>
+<h3>German Aircraft Attack Britain</h3>
+<p>London, 29th (Havas News Agency) – The Air Ministry announced this morning that several enemy bombers attacked northeastern and eastern Britain last night. There was minor damage. Two enemy aircraft were shot down.</p>
+<p>Stockholm, Sweden, 29th (Haitong News Agency) – London reports that German aircraft groups bombed Bristol yesterday morning. The extent of casualties and damage is unknown.</p>
+<h3>Chile and Argentina to Open Postal Air Route</h3>
+<p>Santiago, Chile, 28th (Havas News Agency) – According to official announcements, a postal air route will be opened from Antofagasta in northern Chile to Salta in northern Argentina, scheduled to begin service on the 6th of next month. It will be operated by Panagra.</p>
+<h3>Foreign Aircraft Fly Over Switzerland</h3>
+<p>Bern, 29th (Haitong News Agency) – The Swiss News Agency reports that air raid alarms were sounded in three Swiss cities, including Basel and Zurich, last night because foreign aircraft of unidentified nationality flew over the northern border of Switzerland between 2:00 AM and 3:00 AM this morning.</p>
+<h3>International Film Exhibition Opens in Vienna</h3>
+<p>Rome, 29th (Haitong News Agency) – The 10th International Film Exhibition is scheduled to open in Vienna on August 30th. The exhibition will screen the Italian military film "Three Eagles" and the German film "The Great Emperor." Croatia will also participate in the exhibition with two educational films this year.</p>
+<p>Lisbon, 29th (Haitong News Agency) – Portugal will participate in the International Film Competition in Venice on the 30th. Portugal has selected two films to participate: one is a film about the situation in Portuguese fishing villages, and the other is a film about the Lisbon Centennial Exposition. The producers of the films, Barros and Ribeiro, have flown to Italy as representatives of Portugal.</p>
+<h3>Suspected Cholera Cases Continue to be Discovered</h3>
+<p>According to the English-language 大美晚报 (Great American Evening News), reporters have learned that the health departments of the two concessions received a total of 19 reports of suspected cholera cases yesterday, and one person has died. Of these 19 cases, 11 were discovered in the International Settlement (one death) and 8 in the French Concession. The total number of people who received vaccinations yesterday was 6,908, of which 5,459 were in the French Concession and 1,449 in the International Settlement.</p>
+<p>According to the English-language 泰晤士报 (Times), the number of people vaccinated in the French Concession yesterday was still low, with only 5,710 people. According to applications to the various health vaccination teams, the total number of vaccinations in the area has reached 1.4 million. According to the Health Department, the reason for the decline in the number of vaccinations is that residents of the French Concession have mostly received their second vaccinations since the second anti-epidemic campaign began in July of this year. Looking back at the vaccination campaign, it proceeded very slowly at first until the beginning of this month, when the two concessions began to achieve a result of 30,000 to 40,000 vaccinations per day, and many applications for vaccinations were also received from the public health department in the Chinese areas. In the past two weeks, the discovery of cholera cases has varied daily, with a total of 17 cases in the two concessions. On Thursday, two reports were received. All patients are Chinese, and no foreigners have been found to be infected.</p>
+<h2>Page 4</h2>
+<h3>Price Control Measures Have Been Negotiated and Finalized; Will Be Promulgated in the Near Future</h3>
+<p>According to the English-language 泰晤士报 (Times), although not officially confirmed yesterday, it is widely believed that the relevant authorities have negotiated and finalized price control measures, and the agreed-upon basic rules will be promulgated in the near future. Previously, although the Nanjing and Shanghai authorities, the Shanghai Municipal Council of the International Settlement, and the French Municipal Council issued separate price control measures in early spring, no cooperative action was taken.</p>
+<p>Price Control Scope Expanded to Other Ports</p>
+<p>Shops that exceed the price limits are fined and suspended from business for a specified period of time. However, it is expected that this approach will also be implemented in various parts of Central China. And in order to make general shops obey orders, the penalties will be more severe. After several discussions, the implementation of individual price limit measures is expected to become a reality. The competent economic authorities in Central China have also prepared for the time when the implementation of price limit measures matures, because the authorities have a basis for controlling prices. This basis is the Central Reserve Bank banknotes, and its ratio to Japanese military scrip has been fixed.</p>
+<p>Emphasis on Prices of Daily Necessities</p>
+<p>It is widely believed that the control measures will focus on maintaining the prices of daily necessities. As for how the newly established regulations will restrict other prices, it is unknown. But needless to say, unifying prices across regions will ultimately achieve greater results. Whether to start with retail or wholesale restrictions for price controls is the basic issue currently in dispute. Retail prices must be regulated by legislation, while wholesale prices still depend on supply and other important promulgations. The newly established measures will first be implemented in retail stores and department stores. The general public hopes that restrictions can be implemented on food first, because they believe that rice is more important than other supplies.</p>
+<h3>Chairmen of Bank of China and Bank of Communications Elected Yesterday; Feng Gengguang and Tang Shoumin</h3>
+<p>The Bank of China and Bank of Communications are scheduled to resume business on September 1st, with their branches in this city also declaring their resumption of business at the same time. It is learned that the directors and supervisors of the two banks convened their first board meetings at 2:00 PM yesterday (29th), respectively. As a result, the board of directors of the Bank of Communications elected Tang Shoumin, Tao Junren, and Lu Chongzhi as managing directors, and Tang Shoumin as chairman. The board of directors of the Bank of China elected Feng Gengguang, Wu Zhenxiu, and Shen Liangzhao as managing directors, and Feng Gengguang as chairman.</p>
+<h3>Passengers Departing Must Have Stool Test Certificates</h3>
+<p>This summer, the city authorities have been very strict about epidemic prevention. Since autumn, the weather has been cool, and epidemics have greatly decreased. However, dysentery is an autumn epidemic and is inevitable, so the authorities are paying close attention, especially to passengers on outgoing ships. The Customs Port Quarantine Office has announced that in order to prevent the spread of dysentery, passengers traveling to Ningbo and the ports of Tiangang, Renjiagang, and Chongming Island in the lower reaches of the Yangtze River must have a stool test certificate before they can purchase a ticket. This stool test certificate is only valid for five days. Stool tests can be done at the Tongrenhui Hospital and the Tongrenhui Institute of Epidemic Diseases on Tientong’an Road. After the stool test, you can receive the certificate.</p>
+<h3>Suit Store Owner Conspires in Kidnapping; Key Criminals Have Been Arrested</h3>
+<p>The owners of the Huilixi Suit Store on Avenue Joffre and the Meiyi Water and Electricity Company on Rue Grolier were both kidnapped in the spring of last year. The gang leader, Lang Depei and his brother Lang Deyuan, colluded with Sha Meiqing and others and kidnapped them to the interior for hiding, sending letters to the families to demand ransom. The victims were redeemed by their families. Detectives Shen Lianfang, Mu Hongqi, Xia Guoxiang and others from the French Concession police learned that the clues in the two cases were provided by Sun Jitai (26 years old, currently living above the street in Lane 93, Rue Route Pottier), a tailor at the Huilixi Suit Store who held a grudge against the store owner, Wang Zuyou, for firing him. He conspired with Xin Yuantao, the owner of the Nanyang Suit Store at 291 Avenue Joffre (26 years old), who agreed to entrust the Lang brothers and others to carry out the kidnapping. After obtaining the money, Sun and Xin each took several thousand yuan to spend and lost it all at gambling dens in Nanshi. The detectives went to the addresses on the morning of the day before yesterday and arrested Sun Jitai and Xin Yuantao. They confessed to conspiracy and kidnapping and were taken into custody. The police will investigate the case and arrest the accomplices according to the law.</p>
+<h3>Husband, Wife, and Son Die Together; A Tragic Scene on the Starvation Line</h3>
+<p>Wu Guoshun, a 29-year-old man from Tianjin, was a Chinese policeman No. 511 in the French Concession. He was dismissed from his post two months ago for committing a crime. He has been unemployed ever since and lives at 237 Xinxin Lane, Rue Cardinal Mercier, Dapu Bridge. Recently, he has been in dire straits due to economic hardship and has no way to make a living. At 7:00 PM on the 27th, he and his wife, Wu Han (of the same age as Wu), took their two-month-old son to Room 15 of the Zhushunxing Inn at 379 Dong Zilaihuo Street, Avenue Edward VII, to spend the night. Because he saw no way out, he decided to commit suicide. His wife, Han, also wanted to die with him. The couple took poison that night and fed the poison to their child, killing themselves together. At 10:00 AM the next morning, the waiter discovered that Wu and his family were all dying and reported it to the French police. They were taken to the Guangci Hospital by car, but it was too late. The bodies were sent to the morgue. Yesterday, his father, Guishan (65 years old), arrived, but he could not afford to claim the body for burial, so the charity hall provided a coffin for burial. This is also a victim of the current life pressure, and it is truly tragic.</p>
+<h3>Please Allocate Rice and Permits; Strictly Prohibit Gifts; If Discovered, Rice Will Never Be Allocated Again</h3>
+<p>Notice to applicants for rice allocation and rice transportation permits: It has come to our attention that some people often ask others to intercede or even offer money to this office and other offices of this bureau in order to obtain approval when applying for rice allocation or rice transportation permits. We hereby warn that in the future, all applications for rice allocation or rice transportation permits will be rejected if anyone asks others to intercede. If anyone offers money to this office or other offices of this bureau, no matter what their excuses or intentions may be, rice will never be allocated to them again, and they will be prosecuted according to law. Furthermore, the administrative staff of this office or other offices of this bureau cannot interfere with the allocation of rice or the issuance of rice transportation permits. Whether or not the application is approved is entirely determined by the management authorities in accordance with the regulations of this bureau. All applications received will be processed quickly in accordance with the regulations. If there are any complaints, they should be sent to the management authorities, who will pay immediate attention to them. This is hereby notified. August 15, 1942. Shanghai Municipal Council Rice Office. The French Concession authorities issued a notice yesterday stating that all enterprises, institutions, or shops that receive food rations, flour, or other food from the French authorities must have sound accounting practices. If the authorities are not satisfied with this point, food rations will no longer be allocated to the institution. All are hereby notified.</p>
+<h3>Radio Registration Extended in French Concession</h3>
+<p>For the convenience of those who have not yet completed the registration procedures on time, the registration of wireless radios in the French Concession has been extended to September 10, 1942.</p>
+<h3>Miscellaneous News from All Walks of Life</h3>
+<p>Lianye Automobile Company Since the shortage of gasoline in the city, the disappearance of cars for business trips has caused problems such as the prosperity of the market and emergencies such as sudden illnesses and childbirth. In view of this, prominent business figures in this city, such as Xu Tieshan, Yuan Ludeng, and Ma Shaoquan, have initiated the organization of the Lianye Automobile Company, raised 4 million yuan, and hired specialized technicians to improve the car's engine. It is completely different from those popular on the market, so there is no risk of stopping halfway. In addition to operating a rental business, it also buys and sells cars, repairs cars, and converts cars to use both wood charcoal and gasoline. It is said that preparations have been completed, and it will officially open soon.</p>
+<p>Shaoxing Fellow Townsman Banquet, Lou Hongmao Mr. Lou Hongmao of Shaoxing is skilled and contributes to his hometown. He recently came to Shanghai on official business. The Shaoxing Shanghai Fellow Townsmen Association specially held a banquet at the association's headquarters at 7:00 PM yesterday (28th) to welcome Mr. Lou, to express their gratitude and admiration. More than 100 people from Shaoxing in Shanghai were invited to participate, including Wu Rongqing, Cheng Zhiliang, Zhou Changyuan, and Liu Zhifang. Mr. Lou reported on the recent situation in Shaoxing.</p>
+<p>Jiuda Clothing Factory The well-known Jiuda Clothing Factory was founded by the industrial magnate Mr. Chen Zhongyou. It has been six years since its founding and has an outstanding reputation. It is now expanding its capital and reorganized into a limited company. It is said that the fixed quota will be filled. The preparatory office is located at 36 Xintai Building, Sijing Road.</p>
+<p>Hongxia Overcoats Half Price Hongxia Fashion Company at 735 Jing’an Temple Road has been selling 1942 standard style overcoats at half price. The door is packed daily, and buyers are very satisfied with the low price and excellent quality. More than half have already been sold. This is the last chance, so buy soon.</p>
+<p>“Jie Er Jing” is Widely Sold The “Jie Er Jing” Laundry Detergent, produced by the Daming Chemical Company and managed by the Da You Company, has been widely sold in less than a week. It has now been entrusted to major companies and pharmacies for consignment sales. It is said that “Jie Er Jing” can be used to wash cotton, wool, silk, and linen, and it does not change the color or damage the fibers. Each bottle sells for only eight yuan and can wash eighty pieces of clothing.</p>
+<h2>Page 5</h2>
+<h3>Donation from Newspaper Readers for Student Aid: Every Penny Goes to Public Service; All Expenses are Covered by This Newspaper; Not a Single Cent will be Used from the Donations; University Student Aid Recipient List Released Today</h3>
+<p>The review process for the Shen Bao reader student aid for university students has been completed. Those requiring further review were questioned separately yesterday. Aside from a few whose schools haven't finalized decisions, and awaiting notification and submission of enrollment documents, a total of one hundred and ninety students have been approved for aid. The aid disbursement standards were detailed in yesterday's paper. The list of recipients will be published progressively starting today, and payments will begin next Monday. Please take note.</p>
+<p>Statistics on Number of Students</p>
+<p>The breakdown of approved students by university is as follows: Datong University 37, Shanghai College 27, Fudan University 26, Great China University 25, St. John's University 17, Tongde Medical College 17, Aurora University 8 (including the Women's College of Arts and Sciences and the French Language Special Program), Nantong College 7, Southeast Medical College 4, National Academy of Chinese Studies 3, Guanghua University 2 (one each from the Diligent Learning Literature Society and the Diligent Learning Economics Society), German Medical College 2, Comparative Law School 2 (formerly Soochow University), Mingxin Accounting University Special Program 3 (including one from a preparatory class, mistakenly listed in the university group), Sino-French University Pharmacy Special Program 2, School of Law and Commerce 2, Kellogg Commercial Society (formerly Zhejiang University), Shanghai Vocational College, Shanghai Civil Engineering Preparatory Class (formerly Zhejiang University), New China Medical College, Renji Advanced Nursing School, and Shanghai Art College each with one student. Students from Nanyang University, which has reverted to Jiaotong University, have had their applications cancelled as their tuition is only ten yuan.</p>
+<p>Donations Received Yesterday</p>
+<p>Funeral offering for Yao's mother Zhou Zhijun 400 yuan, Leader Zhang 200 yuan, Zhifu 200 yuan, Zhihou 200 yuan, Wu Jing'an 40 yuan, Zhu Meiyun 40 yuan, Li Shengbo 40 yuan, Liu Pinzhi 10 yuan, Ma Shouhua 10 yuan, Chen Huageng 10 yuan, Lu Gaoyi 10 yuan, Zhang De yu 10 yuan, Zhang Dehua 10 yuan, Wu Zezhou 10 yuan, totaling 1230 yuan in government-issued paper currency.</p>
+<p>(Note: Yao's mother's funeral offerings: 580 yuan on the 22nd, 750 yuan on the 23rd, 3135 yuan on the 24th, 5025 yuan on the 25th, 1000 yuan on the 26th, 2560 yuan on the 27th, 2470 yuan on the 28th, and 1230 yuan yesterday the 29th, totaling 16,750 yuan in government-issued currency.)</p>
+<p>In addition, the student aid money received yesterday includes Miss Yin Zhiying 300 yuan, Guangda Nanfeng Society members 44 yuan and 40 cents, Liang Guang'ai 10 yuan, totaling 354 yuan and 40 cents in savings certificates. Combined with the previous balance of 204,292 yuan, 7 jiao, and 2 fen, the total savings is now 205,877 yuan, 1 jiao, and 2 fen.</p>
+<p>Every Penny Goes to Public Service</p>
+<p>The Shen Bao's reader-supported student aid movement has received enthusiastic support and generous donations from people from all walks of life, for which we express our deepest gratitude. This demonstrates the genuine sincerity of all sectors of society in valuing education, rescuing the impoverished, and nurturing talent. In recent years, all sectors of society have been advocating for a frugal living movement, diverting extravagant spending to useful purposes, either to aid the poor and orphaned or to benefit impoverished students. This is a commendable and admirable trend in society. Therefore, in the past, readers have often saved on wedding and funeral expenses and donated to student aid, such as the Ding Bian family using funds originally intended for Mrs. Ding's sixtieth birthday and ninetieth birthday celebrations for education, and Yao's mother's funeral offerings being used to establish a fund to help children out of school. These are just a few prominent examples. All donations received from readers for the student aid work organized by this newspaper will not be used for any other purpose. In addition to daily announcements in the newspaper, aid disbursements will be made by this newspaper issuing checks payable to the school, which can be cashed at the Central Bank. All accounts will be meticulously managed without any errors. Even the paper, printing, and other expenses necessary for the student aid work, which are considerable, will be covered by this newspaper. Not a single cent will be used from the reader's student aid donations. This is an absolute guarantee to our readers. As for the student aid work itself, it is all done on a voluntary basis by the staff of this newspaper. Given the trust placed in us by our readers, we dare not be negligent. We will handle everything with utmost care, and when encountering any doubts, we will not hesitate to go through tedious procedures to ensure a thorough understanding, in order to put our minds at ease.</p>
+<h3>Shen Bao Reader Student Aid Recipient List - University Group</h3>
+<p>Sports News</p>
+<h3>Eight Hong Kong Football Stars, Including Li Tiansheng, Arrived in Shanghai Yesterday Morning; Xu Wenkui, Cao Qiuting, and Others to Arrive Soon</h3>
+<p>Eight Hong Kong football stars, including Li Tiansheng, Li Xichen, Liu Xianhan, Zhuo Shijin, Song Lingsheng, Liu Yingquan, and Jin Jiabiao, led by Cai Shengmiao, arrived in Shanghai yesterday morning at 10:00 AM on a ship from Hong Kong. They are currently staying at the Yangtze Hotel. Two more groups, including Li Deqi, Cao Qiuting, Xu Wenkui, and Li Shuoyou, are expected to arrive soon, led by Xu Ying. It is reported that the Hong Kong team's visit is at the invitation of the Shanghai Liaison Sports Association. The initial plan was to invite Li Huitang, but he had already gone to the mainland. Since Li Ruisheng and others have arrived here, the Shanghai football scene will have a new excitement.</p>
+<h3>Industrial Cup Basketball Tournament Closes Today; South China and Tongren Compete in Final</h3>
+<p>The Industrial Cup basketball tournament's industry group V team South China championship game will be held today at 2:30 PM at the Industry Middle School on Nanyang Road. Tickets are two yuan. In the industry group, South China and Tongren will compete for the championship. South China has remained undefeated. If they win today, they will secure the title. If Tongren wins, it will form a three-way tie between Tongren and South China. Otherwise, they will finish in third place. In the previous West Youth League, South China unfortunately lost to Tongren, resulting in a second-place finish. South China has been training hard in recent years, and there will be a fierce battle when they meet again. The industry group V team and South China have both won all six of their games, and the competition is expected to be very exciting. Today's schedule is as follows:</p>
+<p>Fufeng - Vita Rich (Industry Group) 1:30 PM, Union - Xinyi (Industry Group) 3:10 PM, V Team - South China (Championship Final) 3:50 PM, Tongren - Huafu (Final) 4:30 PM.</p>
+<p>Business News</p>
+<h3>Due to Increased Warehouse Rent, Leading Fine Cloth Factory Suffers Sharp Decline, Continuing to Fall by a Significant Four Yuan and Fifty Cents per Bolt; Peach Blossom Lady Lin Also Down Three Yuan</h3>
+<p>Yesterday, the factory cloth market saw a decline in the price of bolts, leading to nervousness. Peach Blossom Lady Lin fell by about three yuan per bolt, opening at 258 yuan and 45 cents in the morning and closing at 256 yuan and 25 cents in the afternoon. Other colored cloths remained stable, with Magnolia bleached cloth still selling for 160 yuan, Qin Liangyu for 150 yuan, Qin Meiren plain cloth for 134 yuan, and Meiren Yu twill for 137 yuan. Three Sheep serge factory price was 5 yuan and 95 cents. White goods and coarse and fine cloths fell by about one yuan per bolt. 16-pound Earth coarse cloth was 178 yuan, Flying Hong 176 yuan, 9-pound New Character 108 yuan, 8-pound Zhenzhong 106 yuan, 12-pound Earth fine cloth 159 yuan, Fugui 150 yuan, and Dapeng 149 yuan, with very few transactions.</p>
+<p>Eastern Cloth transactions were sluggish, and the market was weak. The leading fine cloth factory price fell significantly due to expedited sales and increased warehouse rent. Opening at 173 yuan in the morning, it gradually decreased to 168 yuan and 50 cents, a drop of four yuan and 50 cents. Bank brands such as Leading 156 yuan, Color Ball 161 yuan, Flying Fish 158 yuan and 50 cents, and Yang Crane 157 yuan, Laba 156 yuan, fell by over one yuan per bolt. Four Gentlemen serge opened at 7 yuan 28 cents and 29 fen, decreasing slightly to 17 or 18 fen, and closing at 7 yuan 20 cents in the afternoon, a small drop of 9 fen.</p>
+<h3>Government Bonds Are in the Incubation Period</h3>
+<p>Yesterday, the government bond market fluctuated narrowly and remained stable. Large investors rarely entered or exited, and retail investors also bought sparingly, resulting in low trading volume. The market mainly settled transactions and offered mere embellishments. Price fluctuations hovered between two and three jiao, indicating a stalemate between bullish and bearish views. The trend seems to be in an incubation period, awaiting developments. Except for a slight increase of one jiao for Type A bonds, there were no significant changes in the price of other bonds. The transaction volume was approximately one million yuan. The following is a table of prices:</p>
+<h3>Stock Market Activity is Quite Lively; Great China Match Company Attracts Strong Buying Interest</h3>
+<p>Yesterday, the Chinese stock market, despite being a weekend trading day, was quite lively. The market initially fell but then rebounded, with most stocks closing slightly higher. Great China Match Company continued its strong performance, reaching 190 yuan and 50 cents, an increase of 2 yuan and 50 cents, and may be difficult to obtain. Nanyang Brothers Tobacco Company also attracted strong buying interest, rising to the 70 yuan mark, an increase of 3 yuan. In the cultural sector, the Commercial Press, without sellers, jumped 5 yuan. China traded less, with a dull market. World was low at 1 yuan and 8 jiao. In the department store sector, Wing On had some remaining upward momentum, rising slightly by 5 jiao. Sincere and China Underwear fell slightly by 1 yuan to 5 jiao, maintaining a stable trend. The pharmaceutical sector remained in a dull and flat state, with Sino-French falling slightly by 1 yuan and 5 jiao, with minor changes in other stocks. In the public utilities sector, China Gas weakened slightly by 1 jiao. Zhabei Water was supported by buyers. Everything else was mediocre. Investor sentiment remained temporarily stable. A table of stock prices is provided below.</p>
+<h3>Limited Trading in Jewelry</h3>
+<p>Yesterday, the major jewelry stores on Daxin Road all quoted an asking price of 2,150 yuan per tael of jewelry gold (purchase prices were reduced by about 300 yuan), with limited trading among peers. The market price was also flat, starting at 1,885 yuan in the morning, an increase of 5 yuan, then rising to 1,890 yuan, before falling again to 1,880 yuan, and finally settling at 1,885 yuan at noon, a slight increase of 5 yuan compared to the previous day, with only a difference of 10 yuan. Jewelry silver was still quoted at 16 yuan per tael, with a price of 10 yuan and 78 jiao among peers.</p>
+<h3>Military Scrip Interest Rate Unchanged</h3>
+<p>Yesterday, military scrip remained stable, with a price of 5 yuan, 5 jiao, 5 fen, and 7 li among peers. Banks and small money shops sold at 5 yuan, 5 jiao, and 6 fen and bought at 5 yuan, 5 jiao, and 5 fen, the same as the previous day.</p>
+<p>The interest rate set by the Money Dealers Association remained unchanged at 1 jiao and 2 fen. Newly issued scrip was exchanged at par with cash.</p>
+<h3>Soybean Prices Increase Due to Sellers' Firm Stance</h3>
+<p>Yesterday, soybean sellers quoted high prices. Shops on the street only traded a token amount of 50 bags of Tianjin red beans, priced at 164 yuan to 165 yuan. The market was slightly firm. There was little other trading. Sweet potatoes had few arrivals but sold well, with a positive market. Yesterday, 70 bags of sweet potato dried from Jiangbei were priced at 112 yuan, and those delivered in the Southern City were priced at 110 yuan and 5 jiao.</p>
+<p>Soybean cake inventory was low. Holders were unwilling to sell cheaply. Yesterday, a buyer from the countryside inquired about 1,000 pieces of Shenshengji soybean cake for April delivery from the Yoshida warehouse, priced at 61 yuan, an increase of 1 yuan compared to previous prices.</p>
+<h3>New Seeds of Cucumis melo var. agrestis Naudin (Langfang Variety) Arrive</h3>
+<p>After the new black melon seeds arrived, the source remained scarce, as the price negotiation was difficult. The first batch of Langfang seeds, consisting of dozens of bags, has arrived. The goods are of good quality, with large seeds and dark color, and they are dry. The opening price is 535 yuan.</p>
+<h3>Ramie Branches (Lan Zhu Zhi) Have Been Released; Costs Are Very Low</h3>
+<p>With the arrival of a large quantity of new ramie branches (lan zhu zhi), market prices are not easily favorable. Yesterday, several thousand boxes of goods were released, with prices differing between merchants by 40 to 50 yuan. Because merchants need to sort through the goods after purchasing, removing broken shells, small grains, and slightly moldy ones, the standard sorted ramie branches are priced at 430 yuan, which only leaves a small profit after accounting for costs.</p>
+<h3>Retail Price Limits for Wool Fabrics Announced</h3>
+<p>(A) 6-7 ounce feather yarn wool, etc.: 149 yuan per yard; 7-8 ounce serge, etc.: 163 yuan per yard; 8-9 ounce serge, plain wool, etc.: 182 yuan per yard; 9-11 ounce serge, etc.: 201 yuan to 220 yuan per yard; 11-13 ounce serge, broadcloth, hair lining, etc.: 240 yuan to 259 yuan per yard; 13-14 ounce straight tribute wool, hair lining, Moroccan serge, etc.: 278 yuan; 14-18 ounce riding breeches wool, double-faced wool, camel silk scarves, etc.: starting from 297 yuan up to 354 yuan. The above are plain-colored, fine wool, imported and woven.</p>
+<p>(B) 7-8 ounce feather yarn wool, patterned wool: 168 yuan per yard; 9-18 ounce patterned wool: nine different price levels, with the highest limited price at 365 yuan and the lowest at 206 yuan. The above are mixed-color, fine wool, imported raw materials and woven.</p>
+<p>(C) 8 ounce to 15 ounce, women's wool: ranging from 152 yuan to 254 yuan, six price levels from high to low; 7 ounce to 22 ounce, overcoat wool: ranging from 278 yuan to 316 yuan, five price levels from high to low. The above are woven from wool yarn or knitted wool yarn, which refers to imported yarn spun into fabric.</p>
+<p>(D) 12-14 ounce women's wool: 140 yuan to 150 yuan; 14-17 ounce women's overcoat wool, etc.: 160 yuan to 180 yuan; 17-20 ounce men's overcoat wool: 190 yuan to 230 yuan. The above are woven from waste wool mixed with or without wool.</p>
+<p>(E) 8-11 ounce women's patterned wool, women's wool, etc.: 88 yuan to 118 yuan; 18-22 ounce overcoat wool, etc.: 133 yuan to 184 yuan. The above are woven from Chinese wool.</p>
+<p>(F) Waste wool and cotton or other fiber mixed raw materials woven products: 14-18 ounce women's overcoat wool, etc.: First-class 96 yuan per yard, second-class 67 yuan, third-class 48 yuan, heavy weight ones sold for 54 yuan to 108 yuan; 18-22 ounce, lower-grade overcoat wool, uniform wool, etc.: First-class 120 yuan to 132 yuan, second-class 85 yuan to 94 yuan, third-class 80 yuan to 66 yuan.</p>
+<p>(G) Maximum retail price limits for imported pure wool fabrics: top-grade patterned wool 600 yuan, special-grade cashmere overcoat wool 1,000 yuan, superior-grade body overcoat wool 750 yuan, medium-grade body overcoat wool 450 yuan, lower-grade body overcoat wool 250 yuan.</p>
+<h2>Page 6</h2>
+<p>Family</p>
+<h3>Introspection</h3>
+<p>— Hua</p>
+<p>The easiest conversations to hear within the family are like, "Mrs. Zhang is so lucky because her husband has become a wealthy man." "Why do you always stick to your profession? Why don't you think about developing?" "I've been married to you for so many years and haven't enjoyed a single moment of happiness."</p>
+<p>The best solution to these conversations is "introspection." Because everyone's experiences, circumstances, interests, desires, and efforts are different. Others may succeed because their opportunities are different, or because they've put in a lot of hard work. Maybe they also have unspeakable pain. What's the point of simply envying others?</p>
+<p>Conversely, everyone should introspect. To what extent have I tried? What aspects of my current environment are better than others? What are my interests, and what are my plans? After this introspection, one will no longer envy others for no reason.</p>
+<p>The interests of a couple should be the same. Therefore, a husband should discuss his plans with his wife. The wife should not adopt a negative attitude or even laugh at her husband's plans. If there are inappropriate aspects, she can express her opinions. If she agrees, she can give her husband all possible assistance so that the plan can be realized as soon as possible. Because this kind of heartfelt assistance is a very important link between the present and the future.</p>
+<h3>Games and Children</h3>
+<p>— Ding Zhidao</p>
+<p>In the growth of children, rich nutrition is essential. Proteins, fats, starches, vitamins, and minerals such as calcium, phosphorus, and iron are the building blocks of the human body. Lacking any of these can lead to disease or hinder the child's growth. Many parents often pay great attention to nutrition. However, they often overlook the fact that children, in addition to needing nutrition from food, also need appropriate games.</p>
+<p>Children are active, and they regard games as their second life. In the eyes of adults, games are merely tools for regulating the spirit. But for children, in addition to regulating their body and mind, games can also develop the functions of the senses, strengthen their muscles and bones, promote intelligence, and cultivate their abilities to observe, imagine, and create. In modern education, games are used to instill various knowledge, train them in group living, and cultivate good virtues. Therefore, the value of games, in addition to developing the physique, is also a gateway for children to acquire knowledge and morality.</p>
+<p>Many conservative parents treat their children as small adults. Besides reading and writing, children are not allowed to move around and must sit there obediently and respectfully. Imagine: a lively and active child, under these circumstances, not only loses the opportunity to move but also loses the opportunity for intellectual development. As a result, both the body and mind are not liberated, and the development of inherent abilities is hindered.</p>
+<p>Many "problem children" in schools come from families that are too strictly managed and lack games. The behavior of these children is often abnormal, and their minds are often distorted. Some of them are dull and listless, while others have no intention of studying and are restless. They are not focused on their work and studies and cannot fully adapt to group life. Wise teachers in schools are often at a loss for these children. Because unless the family abandons its strict policies, the school cannot release their mental chains in just a few hours each day, and can only watch them gradually become serious "problem children" who are difficult to treat.</p>
+<p>Excessive or inappropriate games can easily lead to disasters, but appropriate and good games are indispensable for every growing child. I think every parent hopes their children are lively, smart, and clever. Then I will tell you the only effective method, which is to give them more opportunities for valuable games. Let the children learn everything in games, strengthen their physique, and develop their intelligence. Let them grow up in games and become useful talents with excellent character!</p>
+<h3>Twenty Letters from the Grant Family</h3>
+<p>Translated by Xu Baiyi</p>
+<p>Parents often find it difficult to educate their children, especially those who are studying in middle school or university. And the issue of pocket money is even more difficult for many parents to resolve. The second letter here discusses this issue, and Mr. Grant's argument may be what many parents want to say.</p>
+<p>This second letter was sent after Mr. Grant received his son's pocket money account two years after he was at school.</p>
+<p>Second Letter: The Pocket Money Problem</p>
+<p>Dear Son:</p>
+<p>Today, the accounting office gave me your pocket money account for last month, and I was amazed. You must know that although I hope you will acquire a lot of knowledge, I don't want you to buy the entire school! Of course, your expenses won't cause me any significant harm, but they are harmful to yourself unless you pay close attention. For two years, your pocket money account has been increasing, but you have not demonstrated that there is a sufficient reason for this increase, which is truly unreasonable.</p>
+<p>For this term, I haven't said anything to you before because I believe you have reason and know how to govern yourself. But because I am in charge of everything, don't think that your father can use the money however he wants, because I will not continue to provide for you after you leave university. By then, the quicker you restrict your spending, the closer you will get to your earning power.</p>
+<p>The fastest way for a person to get rich is to suddenly receive a large sum of money or inherit a fortune from their father, but you will never get rich that way because unless you prove yourself capable of holding an important position in my company, I will not easily trust you. Of course, anyone can get a starting point, whether it is the owner of the company or a small employee, and that starting point is the lowest position. They can sit next to a mail station, and every Saturday I will give him a salary of eight dollars.</p>
+<p>I can't hand you ready-made success with both hands, because that is not good for you and is extremely damaging to the company.</p>
+<p>I want to say these things to you for no other reason than to prevent you from misunderstanding, because although I can give you a starting point, you still have to work hard yourself.</p>
+<p>I think you have considerable talent, and I am very pleased this term. But I hope I can see these talents being developed. And you must also uphold the natural principle of learning how to use money properly before earning it. Only by reducing your expenses and increasing your savings will opportunities come your way. The interest on one dollar is at most six cents, but a smart person will only use six cents and save his one dollar. This is what you should be learning.</p>
+<p>Many young people think that it is beautiful to spend money generously, and it is inevitable to be stingy to haggle over money. This is exactly what most parents worry about. However, from another perspective, this is exactly where a young person's ability to judge strongly is displayed. When I only had a salary of two dollars a week and slept under the counter at night, I still have a deep impression, and this is exactly what you should start learning.</p>
+<p>Your father, Grant</p>
+<h3>Be Friends with Children</h3>
+<p>— Li</p>
+<p>Effective methods for raising children</p>
+<p>Wise parents generally do not adopt the strictest attitude when raising their children. Their first step is to become close friends with their children. In this way, children will not be restrained when they see their parents, and it will be easier to educate them. Here are some methods that can be adopted:</p>
+<p>If you can help children with their work or games, help them as much as possible.</p>
+<p>If children have something worth rewarding, immediately give them enthusiastic encouragement.</p>
+<p>When children express their opinions, listen carefully.</p>
+<p>Do not talk about children's shortcomings in front of relatives and friends as material for your conversation.</p>
+<h3>Western Proverbs</h3>
+<p>— Huaguang</p>
+<p>"Those who ruin the government are none other than the uncultivated female students." -- Aristotle</p>
+<p>"The hand that rocks the cradle is the hand that rules the world." -- Ann Taylor</p>
+<p>"Sitting around the stove as a family is a place to hone governing talents." -- Cardinal de Retz</p>
+<p>"The early family life of a person has a great impact on the country in the future." -- Childe</p>
+<p>"The great trauma and deep pain of the country and the city are the corruption of the family." -- Pahnsede</p>
+<h3>Family Insurance - Fire Insurance Must-Knows</h3>
+<p>— Chen Junmian</p>
+<p>In this era of burgeoning insurance companies, some fire insurance knowledge for the readers of "Family": Generally, people believe that insurance is for ensuring peace of mind, so they insure just a little. Actually, this is a mistake. If you're not going to insure at all, then that's one thing. But if you are, you must insure the full value of the insured item. This is because the principle of insurance is to compensate you for the original value of your loss in the event of a fire. If you don't insure fully, and a total loss occurs, even if the insurance company compensates you according to the amount you insured, wouldn't you still have a loss? Moreover, there are often many restrictions when it comes to compensation. To make things clearer for you, I will now give an example to illustrate:</p>
+<p>For example, the market value of the furniture in your house is estimated to be 100,000, but because you want to save on insurance premiums, you only insure it for 50,000. If a fire breaks out and all your furniture is burned, the insurance company will, of course, compensate you for the 50,000 that you insured. But in reality, you still lost 50,000. Suppose only half of your furniture is burned, and the market value is estimated to be a loss of 50,000. You might think that since you insured for 50,000 and now lost 50,000, the insurance company should compensate you 50,000, right? Actually, that's not the case. The insurance company will only compensate you 25,000 because you only insured half of the value of your furniture, which is worth 100,000. You are responsible for the other half. You and the insurance company share half the responsibility. So, now that you've lost 50,000, even though you insured for 50,000, you can only be compensated 25,000. You can only ask yourself for the remaining 25,000! In other cases, if the original insured amount is only one-third or one-quarter of the original value, the compensation is also proportional to that ratio. Perhaps someone will say, "That furniture was only worth 50,000 when I insured it, but it has risen to 100,000 at the time of the fire. The policyholder couldn't have known in advance, so how could they have insured it for 100,000 in advance?" Then you should have increased the insurance when the furniture's price increased. It wouldn't have jumped from 50,000 to 100,000 in one step; it would have gradually increased. You should have increased the insurance each time it went up. When issuing an insurance policy for an item, you should insure it according to the actual value of the item. The more accurate, the better. When the insured item's price increases, you should increase the insurance. When it decreases, you can reduce the insurance. In short, you must ensure that when the item is damaged, you can still get enough compensation to restore the original item. If someone has a "gambling" mentality and insures something worth 100,000 for 200,000, thinking that they can earn an extra 100,000 in the event of a fire, then this person is truly an "amateur." The insurance company won't be fooled by you. In the event of a loss, they will have a public appraisal firm come out to estimate the actual value of the loss. They will never compensate you 200,000 for a loss of 100,000. Insuring for more is just paying more premiums.</p>
+<p>Many people insure, receive the insurance policy, and then hide it in a box without even looking at it. This is absolutely not allowed because every insurance policy contains many clauses. When an insurance company gives you a fire insurance policy, they cannot indiscriminately insure you against all kinds of risks. They also have their restrictions. These restrictions are all stated in these clauses. For example, if you insure ordinary residential insurance, the insurance policy will state that you are not allowed to place more than 50 gallons of kerosene or gasoline or more than five boxes of matches (except for boxes lined with tinplate) in the house. If the policyholder violates this clause, the policy will be declared invalid. The insurance company will not send someone to check whether you have placed these dangerous goods in your house, but if nothing happens, that's fine. However, if a fire breaks out and it is discovered after investigation that more than the above-mentioned quantity of kerosene or matches were stored in the house, then there will be a problem with your compensation. Furthermore, each insurance company specifically notes on the policy: "The insured must pay special attention to the various clauses printed on this insurance policy. Anyone who accepts this insurance policy agrees to be bound by the terms of the agreement." The insurance company has solemnly declared this to the policyholder. But the general policyholder thinks that as long as they have insurance, they can always get compensation if something happens, and they don't bother to look at the clauses. As a result, disputes between insurance companies and policyholders often occur. Although some small companies may have shortcomings in terms of compensation, or some insurance brokers may be causing trouble, resulting in policyholders not receiving full compensation, the general lack of insurance knowledge and not understanding the true principles of insurance is also a major reason.</p>
+<h3>Dental Hygiene</h3>
+<p>— Zhi</p>
+<p>Human health depends on hygiene and cleanliness. As the saying goes, "Things must first rot before worms grow in them." These are wise words. However, our people have always not valued dental hygiene, so eight or nine out of ten people suffer from tooth decay, which is really lamentable. It is found that tooth decay is mostly caused by food debris left in the gaps between teeth during chewing. After temperature action, it changes and becomes pus bacteria and acid-producing bacteria. This kind of poisonous bacteria can destroy the enamel of the gums and successfully corrode them. Here are a few points:</p>
+<p>Teeth are the movement of chewing food and also help the stage of digestion. If teeth are not healthy, swallowing food whole will be tasteless, and digestion will be difficult, which will hinder the stomach and intestines or cause the danger of other diseases.</p>
+<p>And the human oral cavity contains various bacteria, so if we want to maintain our body health, we must pay attention to oral hygiene. Scientific teeth cleaning can make the oral cavity clean, prevent tooth decay, and prevent bacteria from sneaking in. Therefore, Western ladies attach great importance to protecting their teeth, and clean their teeth once a day.</p>
+<p>Small cavities in teeth are places to hide dirt and accept dirt. Each small hole contains tens of millions of bacteria. Each time you chew, the bacteria in the hole mix with food and swallow into the stomach and intestines, which can easily cause typhoid fever, dysentery and other symptoms. If it is big, it can be fatal, and if it is small, it will waste money and time, so in order to prevent problems before they happen, it is necessary to clean up and disinfect the dirt in the cavities.</p>
+<p>Teeth cleaning, hair cutting, and bathing are the three major elements of human health, and teeth cleaning is even more important, which can eliminate bad breath and tooth stains, make teeth clean and shiny, and prevent bacteria from sneaking into the body, so health can be maintained. This is the happiness of life. However, teeth cleaning must start from a young age to prevent it. When you are old, you can still maintain healthy teeth and have no tooth problems for the rest of your life.</p>
+<p>When our people nurture infants, they always chew and feed their children from the mouths of adults. If the mouths of adults are not clean, the poisonous bacteria will mix with food and pass it on to the children, and the children have weak resistance and often get sick, and even die prematurely. Laocha Engineering Bureau's Health Department's child mortality rate is tens of thousands per year, which is shocking to hear.</p>
+<p>The elderly in our country do not know how to protect their teeth at ordinary times, so in middle age, their teeth are floating and various tooth problems occur. When they enter their twilight years, their teeth are incomplete, which damages their appearance. If they encounter slightly hard food, it is difficult to swallow and digest, which affects their health. Therefore, if we want to avoid old age suffering, we must clean our teeth early.</p>
+<p>Modern women often pay attention to the decoration of their hair and skin, but ignore their teeth. If they can clean their teeth at all times, when they smile, their teeth will be like braids, clean and shiny, which will increase their charm. If their teeth are not clean, the bad breath will be offensive, making people disgusted and regrettable.</p>
+<p>Normal people have more than thirty teeth, each with four sides and eight directions. When we get up in the morning, even if we gargle and brush our teeth every day, it is only superficial cleaning. The gaps between the teeth and the back of the teeth cannot be completely cleaned. If we clean our teeth scientifically, we can clean up the dirt on our teeth for many years, improve our health, and get a lot of benefits. Therefore, dental hygiene is also a major event in life.</p>
+<p>Mr. Li Youchang: "Food and Health", can be purchased from the Eight Immortals Bridge YMCA Inquiry Office.</p>
+<p>Mr. Zong Jiagan: Reader inquired about where to sell Mr. Shen Zhuchu's book Zhouyi Yijie. Please let us know.</p>
+<h3>A Week's Home-Style Menu</h3>
+<p>— Ms. Hua Ying</p>
+<p>Mr. Ding Fubao's book "How to Create My Healthy Life" recommends beans and their products such as tofu, soy milk, etc., saying that they contain a lot of protein. Fish and meat are too expensive, so you can eat more beans to get enough protein. Protein is the body's nutrients, enough to increase our energy, which is known to everyone. During this richest period of beans, we should eat more of them, such as broad beans, lentils, edamame, cowpeas, etc., which can be eaten in large quantities, and supplemented with tofu, sprouted beans, soybean sprouts, and jade bean sprouts, which can be said to be a grand view, a great collection of beans. If you can't afford fish and meat, why not replace them with beans to increase the nutrients in our body?</p>
+<p>Monday</p>
+<p>Edamame Braised Pork</p>
+<p>White Shrimp Braised Tofu</p>
+<p>Bean Curd Sheets with Garlic Chives</p>
+<p>Sweet Sauce Fried Lentils</p>
+<p>Tuesday</p>
+<p>Soybean Sprouts with Beef</p>
+<p>Sweet and Sour Grass Carp</p>
+<p>Vegetable Fried Rice Noodles</p>
+<p>Vegetarian Oil Tofu Soup</p>
+<p>Wednesday</p>
+<p>Yang Port Fried Pork</p>
+<p>Braised White Fish Fillets</p>
+<p>Fried Dough Sticks with Amaranth</p>
+<p>Scallion Bean Paste</p>
+<p>Thursday</p>
+<p>Tomato Beef Soup</p>
+<p>Scallion Grilled Small Crucian Carp</p>
+<p>Loofah Fried Gluten</p>
+<p>Vegetable Tea with Bean Sprouts</p>
+<p>Friday</p>
+<p>Napa Cabbage Stewed Meatballs</p>
+<p>Braised Tofu</p>
+<p>Stir-fried Chicken Feather Vegetable</p>
+<p>Oil Fried Noodles</p>
+<p>Saturday</p>
+<p>Curry Fried Chicken</p>
+<p>Braised Crucian Carp</p>
+<p>Braised Vegetarian Ten Delights</p>
+<p>Seaweed Tofu Flower</p>
+<p>Sunday</p>
+<p>Duck Offal Soup</p>
+<p>Fried Winter Melon</p>
+<p>Fried Chinese Cabbage</p>
+<p>Tianchu Recipes (116)</p>
+<h3>(212) Rong Pancake</h3>
+<p>— Zhu Shunlin</p>
+<p>Prepare... Pea flour, wheat flour, leavening powder, oil, sugar or salt</p>
+<p>Method... Stir-fry cooked pea flour (available in the market) with water until糊, then put it in an oil pan and stir-fry it once. Add a little sugar when stir-frying to make bean paste. Separately mix wheat flour with yeast powder and mix well with water to make the皮子. Then wrap the bean paste into a餅 shape and fry it thoroughly in an oil pan. Those who like salty food can replace sugar with salt.</p>
+<h3>(213) Jujube Paste Cake</h3>
+<p>— Zhu Shunlin</p>
+<p>Prepare... Red dates, wheat flour, sugar, oil, osmanthus sauce</p>
+<p>Method... First cook the red dates, stew them to remove the pits, add sugar and osmanthus sauce, then stir-fry with oil and set aside. Next, mix wheat flour with water, then add oil and stir to make an oily酥. Then wrap the棗泥 into a餅 shape and bake it on the stove. The result is a loose and fragrant jujube paste cake.</p>
+<h3>(214) Tomato Sauce</h3>
+<p>— Ye Peng</p>
+<p>Prepare... Tomatoes, sugar, crystalline monosodium glutamate, household water chestnut powder, salt</p>
+<p>Method... First soak the tomatoes in boiling water, peel and mash them, then add a little water and cook them. Cook until half-cooked, then add appropriate amount of salt, crystalline monosodium glutamate, household water chestnut powder, sugar, etc., stir and continue to cook until cooked. The above three types are easy to make and consume very little. Tomatoes are rich in vitamin C. In this era of nutritional panic, it is very suitable to eat them often.</p>
+<p>Introduction... Tianchu Monosodium Glutamate Factory's "Monosodium Glutamate", "Wei Zong", "Tianchu Soy Sauce Essence", "Tianchu Household Water Chestnut Powder" are available in major companies and South goods food stores in this city.</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.08.29.html", "next": "1942.08.31.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

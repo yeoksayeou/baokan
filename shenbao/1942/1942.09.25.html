@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.09.25 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 471 - 4924610</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日本三特使昨晨謁國父陵寢並閱兵及參觀學生會操</h3>
+<p>南京二十四日中央社電</p>
+<p>日本答訪使節團平沼有田永井三特使自二十二日率領全體隨員抵京後備受我國朝野之熱烈歡迎連日應中日高級長官酬酢極為忙碌平沼特使等在百忙中復於二十四日九時率領隨員全體咸御禮服暨重光大使等陪同乘車赴紫金山麓恭謁國父陵寢沿途中日憲警嚴密戒備車抵陵園後由外交部徐交際科長迎接下車到達陵墓前由參軍處典禮局蕭局長迎接並引導特使等進內陵堂行一鞠躬禮全體至香案前行三鞠躬禮平沼特使旋奉獻花圈並向國父遺像行禮致敬儀式莊嚴肅穆禮畢蕭局長引導特使等繞行陵寢一週瞻仰遺容嗣即回至原處全體鞠躬後退出陵堂小立階前憑眺遠景陵園四週蒼松碧翠古木參天歷時數十分鐘全體攝影留念平沼特使等始由蕭局長陪同前往軍官學校閱兵</p>
+<h3>舉行閱兵</h3>
+<p>南京廿四日中央社電</p>
+<p>平沼特使等一行於廿四日上午九時恭謁國父陵寢致敬畢即於十時一刻馳赴中央陸軍軍官學校車抵校門時樂聲大作特使等下車後即由該校何秘書長劉教育長等導入貴賓室稍息至十時半在大操場舉行閱兵典禮褚接待委員長蕭典禮局長等陪同特使等一行暨國府各軍政長官及友邦河邊中將松井中將野田少將原田少將寺岡少將代谷少將重光大使日高公使滿大使呂榮寰德吉總領事義使館代表等百餘人即於軍樂聲中步至大操場魚貫登臨閱兵臺後首由閱兵總指揮官鮑文樾報告受檢官員畢即分列式開始行列起處各官員精神煥發步伐齊整特使等檢閱之下頗表贊佩之意</p>
+<p>南京二十四日中央社電</p>
+<p>特使等於閱兵畢隨即在軍校操場表演新國民體操參加會操者計有全市國立市立各男女中學學生一千五百人全體學生肅立致敬後即由學生代表向平沼等三特使獻花三特使親自接受頷笑為禮隨即開始表演全部共分六段其動作柔和均勻悉走環形各學生演來無不動作靈活而柔和精神活潑而飽滿</p>
+<h3>茶會招待</h3>
+<p>南京二十四日中央社電</p>
+<p>行政院汪兼院長立法院陳院長司法院溫院長星空院梁院長考試院江院長於昨（二十四）日下午五時在北極閣聯合舉行盛大茶會執行平沼有田永井三特使暨使節團全體隨員並邀各院部會處署高級長官及友邦日本陸海軍最高當局日滿德義各國駐華使節重光葵呂榮寰司達美載良誼等作陪席間賓主杳檳祝賀互慶國運昌隆情緒熱烈盛況空前最後五院院長與平沼等三特使在涼臺上合攝紀念照迄六時餘始盡歡而散</p>
+<h3>南京中政會議</h3>
+<p>南京二十四日中央社電</p>
+<p>中央政治委員會於二十四日上午九時舉行第一一一次會議經議決通過特任任援道為海軍部部長按任氏前為軍事參議院代理院長兼代海軍部部長現則已正式眞除海軍部長</p>
+<h3>重光大使宴會席上汪兼院長答詞原文</h3>
+<p>南京廿四日中央社電</p>
+<p>日大使重光葵二十三日晚歡宴席上汪兼院長答詞如下頃聞重光大使閣下懇篤之致辭至為感謝迴憶去年六月鄙人訪問貴國　承天皇陛下之隆禮優遇感篆不忘政府諸公之關懷大計各界民眾之熱烈表示使鄙人對於兩國提攜東亞共榮之前途平添無限之勇氣此次復蒙特派大使平沼有田永井三閣下親承大命遠來答訪今晨晤見藉悉天皇陛下起居清泰至為欣慰展誦靈書辭旨殷摯在東亞建設基于道義之新秩序即以貢獻于世界平和誠東亞之榮光亦世界之德音自大東亞戰爭開始以來貴國陸海軍將士之忠勇奮發全體國民之同心戮力實能負荷此崇高偉大之使命敝國雖有同甘共苦之決心然能力薄弱深恐不能有所裨益惟有益自奮發盡其心力所能至與貴國共此艱鉅庶幾以現在之共苦博將來之同甘此鄙人所願竭誠奉告者三年以前平沼閣下在總理大臣任內鄙人曾由河內至東京獲會面之緣當時平沼閣下曾　語鄙人上次歐戰結果產生國際聯盟其中充滿功利思想以致方向舛誤糾紛迭起訓至今日傾軋之象中日兩國當反其所為本於東方道義精神以重新結合平沼閣下發此宏議時現在之歐戰尚未發生而高瞻遠矚洞見癥結洵堪敬服同時有田閣下在外務大臣任內亦得會面談及事變前一年在駐敝國大使任內原欲消弭事變於未然不圖當時敝國政府未能瞭解以致錯過深致慨歏永井閣下十二年前在天津會面談及東亞大勢中日關係深懷未雨綢繆之計今日與三閣下重聚一堂廻顧前塵感慨無量隨節諸公亦皆貴國朝端碩彥夙所傾慕今得把晤不勝愉快甚願在此數日寶貴光陰中多所承教藉資啟程蒙鄙人深信兩國邦交必因三特使此來而益加親密東亞大局亦必因此而更得美善之解決方策今晚承重光大使閣下盛意款待茲有一語可為特使閣下及隨節諸公告慰的國民政府同人二年有餘以來與此間大使館重光大使閣下以下各位總司令部畑大將閣下以下各位遇事開誠協商本於所信率直陳述絕無些徵隔閡因為彼此以東亞同志之關係共同努力故能如此願借主人之酒杯祝平沼有田永井三特使閣下重光大使閣下各位閣下健康晉祝大東亞戰爭勝利基於道義之東亞新秩序建設臻於成功</p>
+<h2>Page 3</h2>
+<h3>伏爾加河蘇艦出動斯達林城巷戰中斷垣殘壁予蘇方便利德軍進攻感異常困難</h3>
+<p>瑞典京城二十四日哈瓦斯社電</p>
+<p>蘇聯軍事當局昨日初次調動伏爾加河砲艦隊參加保衛斯達林城轟擊德羅聯軍陣地據稱敵方砲兵陣地被擊毀者共有八處同時斯達林城市區巷戰仍在猛烈進行中雙方並已開到援軍惟戰局混沌僅悉德軍又在城之南部佔領街道數條蘇聯軍隊則在城之北部收復街道數條該處守軍反攻德方謂已被擊退城內居民均已動員充實防務以資應付新攻勢德方現承認攻克斯達林城尚須相當時日且須重大犧牲</p>
+<p>柏林二十四日海通社電</p>
+<p>斯達林格勒尚在巷戰中該城之斷垣殘壁與蘇軍以莫大之便利德軍進攻異常困難但德軍於昨日在市區內仍有進展並肅清已佔領區域之蘇軍城北德軍亦擊退蘇軍之猛攻斯達林格勒之空戰亦未間斷德機於昨日擊落蘇機三十七架德機無損失德軍對格羅資尼之壓力業已增加德軍佔領維拉狄米羅夫在臺萊克及達斯柯傑後蘇軍屢次反攻均被擊退戰事正在草原及山區進行中高加索方面德軍沿通往卡斯貝克東北之奧索尼基斯之鐵路作戰蘇軍在伏朗尼慈方面以坦克車大砲及飛機協助進攻迄未獲逞東線中部德軍猛烈反攻已進抵目的地爾齊夫方面之蘇軍獲生力軍之增援後於昨日繼續猛攻蘇軍在各處均未　突破德軍陣地以前衝入德軍防線之蘇軍已被擊退爾齊夫方面平射砲隊最為活動</p>
+<p>瑞典京城二十三日哈瓦斯社電</p>
+<p>本日為德蘇戰爭第四百五十八日斯達林城區戰事已趨穏定僅有德國空軍集中轟炸緣過去數日中交戰雙方短兵相接相距不遠未能派遣飛機轟炸但昨日德國俯衝式轟炸機又復參戰襲擊該城北郊電力廠該處陣地由紅軍兩營及娘子軍一營扼守此一電力廠當被炸毀至少壓斃守軍一千名據悉德軍業已佔領該城之郵政總局但在高爾基療養院附近之軍略地帶仍由紅軍扼守原來陣地屹然未動惟時遭德國砲隊開砲轟擊而已此在高加索前線德軍續有進展聞德國鐵甲車隊已抵臺萊克河南面三十英里處且將迫近鐵路中心亦即通往格洛慈尼城與奧特約尼基特茲城兩條鐵路之會合點據軍事觀察家談稱奧城為高加索邦紅軍防務之中心並為前往克里斯多耶山隘之樞紐德軍總司令部欲自後方進攻該城惟紅軍堅決抵杭有增無減且已自巴庫調到大批生力軍增援紅軍利用地勢頗為得手故德軍處處預防以免中伏</p>
+<h3>維希官方宣布馬處府陷落英總司令浦拉特廣播在該城成立軍事管理</h3>
+<p>里斯本二十四日同盟社電</p>
+<p>維希政府頃宣布馬達加斯加島首府安坦安阿趕時髦瓦已陷落遂證實英方所傳之陷落消息同時據倫敦訊馬島英軍總司令浦拉特將軍在安坦安阿里瓦無線電臺廣播布告宣布英方在該城成立軍事管理宣讀此項布告之法譯文者係英軍某參謀軍官其要點為㈠安坦安阿里瓦城樹立軍事管轄㈡英總司令負治安之責㈢英總司令督察當地行政官員㈣指定之罪行由軍事法庭審理㈤停止地方管轄此外宵禁仍繼續施行</p>
+<p>維希二十四日哈瓦斯社電</p>
+<p>馬達加斯加島總督亞奈頃電達殖民部長報告該島首府安坦安阿里瓦已失守並謂我軍抵抗至城下因敵我眾寡懸殊無法阻其入城惟我軍抵抗之英勇將永垂青史余絕未發現官吏有怠職情事無線電及有線電報報務員均能忠於職守全埠人民遇此事變均能沉著自處</p>
+<p>里斯本二十三日同盟社電</p>
+<p>據此間接非正式消息英軍已佔領馬達加斯加島首都安坦安阿里瓦此消息尚示經維希或倫敦證實係由安坦安阿里瓦無線電臺昨晚播送音樂時忽有人聲述謂英國軍官報告英軍已於星期五下午五時佔領首府查安坦安阿里瓦離東海岸九十哩人口約七萬地勢高出海面五千呎風景極佳西部為一片肥沃田地在一八九五年九月十日為法所佔即成法國屬地</p>
+<h3>太湖二期清鄉區設保安司令部</h3>
+<p>杭州二十四日中央社電</p>
+<p>湖東南地區第二期清鄉工作瞬將開始清委會為便利指揮軍事特設立清鄉地區保安司令部令派傳式說氏兼任司令并由傳氏呈薦浙省警務處長徐念劬為副司令現已設立臨時辦公處於警務處內開始辦公茲為辦理清鄉地區軍事訓練特設立軍事訓練所並由傳氏委派張伯義為該所上校所長</p>
+<h3>蘇英美使節會晤伊朗總理英總指揮威爾遜抵報達</h3>
+<p>安加拉二十四日海通社電</p>
+<p>德黑蘭蘇聯大使及英美兩國公使昨與伊朗總理及外交部長舉行長時間之會議九朗國王並於下午接見總理德黑蘭政界方面認協約國誘致伊朗之參戰已達最高度卡伐尼政府雖不致立即公開宣戰但處於外交壓力之下已不得不作最大之讓步卡伐尼最近致函各省當局促其與佔領軍當局保持密切之合作</p>
+<p>里斯本二十四日同盟社電</p>
+<p>據伊拉克京城報告英國新任伊朗伊拉克總指揮威爾遜將軍已於昨日抵報達</p>
+<h3>美眾院通過總統提案防止通貨膨脹</h3>
+<p>華盛頓二十四日哈瓦斯社電</p>
+<p>眾議院昨夜以二百八十四票對九十六票之多數通過羅斯福總統所提通貨鼓脹防制法案該案附有農產品價格修正條例規定提高售價百分之五</p>
+<p>華盛頓二十三日哈瓦斯社電</p>
+<p>眾議院本日以一百六十三票對一百零五票之多數通過宵業委員會所提生產費用應列入農產品限價表內一案此為農民派對於政府之一大勝利此項步驟實施之後農產品售價當較政府所預料者高出百分之十至十二結果所屆國庫每年將增加支出三十萬萬至三十五萬萬美元</p>
+<h3>野村大使談話</h3>
+<p>東京二十三日中央社電</p>
+<p>日前任駐美大使野村吉三郎氏自由美返日後現正於故鄉休養中日前曾對同盟社記者稱美國如以五年計劃準備戰爭則日本必將以十年計劃以上之實力以完成大東亞戰爭目前大東亞共榮圈已為既成事實實無第三國置喙之餘地猶其提倡汎美主義排擊第三國干涉西半球之美國今日仍否認東亞民族之大同團結實屬更不合理惟余意英美及其他世界各國之理解東亞新秩序或加以承認亦僅為時間問題耳今日全亞洲各民族均已因大東亞戰爭而發現新的理想與希望從而共同協力與亞洲人之亞洲之建設</p>
+<h3>烏拉圭外長談南美各國態度</h3>
+<p>智利京城二十四日海通社電</p>
+<p>烏拉圭外交部長桂尼對新聞記者發表談話稱美洲各共和國應服從里約熱內盧汎美會議之決議智利與阿根廷雖屬非交戰國其所取之態度當如烏拉圭於一九一七年所取之態度相同此項態度已由美洲各共和國之外交部長在里約熱內盧開會時決定之矣國際聯盟之理想固為永久和平之基礎惟因各會員國之權利不等遂告失敗故美洲國家間成立聯盟亦屬不可能</p>
+<h3>美厄簽訂協定</h3>
+<p>阿根廷京城廿四日海通社電美國與厄瓜多爾昨簽訂協定厄瓜多兇美國在戰事期內建設及使用加拉普哥斯羣島之根據地</p>
+<h3>威爾基晤斯達林會談兩小時莫洛托夫亦在座</h3>
+<p>莫斯科二十四日同盟社電</p>
+<p>羅斯福總統特使威爾基昨日在克林姆宮與斯達林會談計二小時蘇聯外交委員會委員長莫洛托夫亦在座會談前威氏曾巡視莫斯科之防務</p>
+<p>莫斯科二十三日哈瓦斯社電</p>
+<p>羅斯福總統特使威爾基本日訪晤斯達林會談兩小時之久外交人民委員長莫洛托夫時亦在座</p>
+<h2>Page 4</h2>
+<h3>警務處著手清除扒手小竊暗殺梆架已不復再見清除小竊盼居民合作</h3>
+<p>上海泰晤士報云工部局某要員頃稱公共租界之一切重大罪行既已消滅警務處今乃致力清除扒手搶物及竊最自由車等輕微罪行太平洋戰爭爆發前巨犯小竊遍於上海罪案層出不窮暗殺綁架日有所聞公眾不獲安全然在今日已非昔比罪犯難逃警綱每次犯案即被捕獲身入囹圍於是其他罪犯亦</p>
+<h3>銷聲匿跡</h3>
+<p>未敢蠢動有東方的芝加哥之稱之上海遂不復見重大罪案前曾僱保鑣自衛者今亦可無慮被綁矣今日尚令滬市居民不快者厥為小竊惟目下警方所施辦法如果奏效則此種不快當不久長蓋警方現正兜捕流氓游民調查若輩之指印並加透澈盤問敬方且曾屢囑公眾報告扒手與自由車失竊等案蓋警方接報即可也清除微</p>
+<h3>迅速緝捕</h3>
+<p>小罪行公眾須予警方以協助如以扒手為例警方已知許多扒手之姓名及其活動地點警方又訂有新章程凡買賣或質當自由車均須出示身份證此法已使自由車竊案大減惟仍望公眾合作遇有被竊情事立即報告失竊地點等祥情</p>
+<h3>中秋結賬節各業穏定</h3>
+<p>昨為各業中秋結賬節經銀行聯合準備委員會暨中央儲備銀行竭力調劑同業金融安定市面後各行莊因本身基礎愈見充足對各公司工廠行號秋節到期之款予通融同時各業以前放出之客賑因市面好轉均能什九收回所以均已安渡此結賬節至於金融市場依照穏定銀根並無特殊緊張現象關於若干小錢莊及銀號改組或停業曾于投機市場經當局採取有效辦法取締後若輩投機錢莊銀號無法再施其技改組停業為應有之現象與整個金融大局無關昨日各行莊以及公民工廠行號均循例休假準今日復業關於休假期內一切票據之收解均移至今日復業時補行辦理</p>
+<h3>食米來源不斷無虞匱乏</h3>
+<p>權威方面指出本市民食局勢已由動湯而復歸安定因戶口食糧之供經迄無任何匱乏之跡象食米來源早經本埠最高當局完全編制分配事宜則由工部局食糧辦事處調度此後食米仍將不絕自華中各地產米區運滬應市且市民已慣於用雜糧麺粉等為日常補充食料故計口授糧不致不敷查兩租界自七月六日實行計口授糧以來迄至本月十九日為止共分配十一期總計整米碎米約三十九萬石合計三十一萬包其中公共租界佔二十五萬石合二十萬包法租界佔十四萬石合十一萬包本月二十一日起戶口糧改每月分配三次如每人每次給米兩升則兩租界今後食米消耗量計十四萬石合十一萬餘包</p>
+<h3>老閘捕房通告居民縝密遮蔽燈光</h3>
+<p>公共租界區域自指定燈火管區演習模範區七處後關於防空管制上一應準備正以高速度進行中老閘區警察署前日並通知該區聯保長嚴密注意舖戶之燈光通告云為嚴密燈火管制起見所有各商舖門外之電燈暨廣告燈等早經佈告一律熄滅各居戶之一切電燈再限於本月二十五日以前概須裝配黑布燈罩及設備黑布窗簾或以黑紙遮蔽之如果仍有違反管制者決予嚴懲不貸仰即轉飭遵照又老閘各聯保長通告所屬甲長及戶長云當局實施燈火管制業經三令五申本保居民依照辦法切實奉行者固屬甚多但未經遵辦意存觀望者亦復不少事關防空要務特再剴切佈告仰本保民居務於本月二十五日以前趕速購製不得再事因循致干懲處</p>
+<h3>法租界模範區演習燈火管制</h3>
+<p>英文大美晚報云據今（二十四日）晨所悉法租界定本月二十八日在呂班路辣斐德路模範區舉行燈火管制演習呂班公庽與派克公庽均在演習區內公共租界方面明（二十五日）夜將在榆林路區舉行燈火管制演習按本市大規模之燈火管制演習定於十月一日起舉行十天</p>
+<h3>法駐軍奉令調動內部人事</h3>
+<p>參謀長與軍司令互易</p>
+<p>法國駐滬防軍混合步兵隊頃奉希政府軍部命令將內部人事作重要之更調滬駐軍司令阿鐵格中校與駐華參謀本部主任茀羅侖司令互易職務前日上午在福履理路軍營舉行正式調任儀式由法駐華軍隊總司令愛賽脫上校主持並略致詞禮畢繼行閱兵式法使館領署人員亦多被邀參加檢閱</p>
+<h3>特別歸鄉證今日照常簽發</h3>
+<p>工部局特別歸鄉證辦事處昨日因秋節放假便當　一天今日即恢復辦公仍全日簽發其他分辦事處亦照常簽發凡歸鄉久居之市民均可前往申請至華人疏散會對各同鄉會等團全發給歸鄉證事宜仍繼續辦理中</p>
+<p>I&gt;</p>
+<h3>中秋節景</h3>
+<p>不問天上有沒有月亮齊月宮為小女兒們最高興之事</p>
+<h2>Page 5</h2>
+<h3>前工部局總董樊克令乘車遭受非難樊氏向法領署控法商電車公司該案定下月初由法官考賓審理</h3>
+<p>英文大美晚報云聞諸可靠方面工部局前總董樊克令近因在法租界公共汽車上使用已破之中儲券售票員加以拒絕致起爭執私人方面調解無效樊氏已向法領署法庭控訴法商電車電燈公司其理由為渠遭受不便利與精神損害故要求該公司道歉賠償精神損害惟賠償額甚微蓋渠旨在開先例也聞此案已定下月初由法官考賓審理事緣樊氏搭車以已破之一元儲券購票售票員不收樊氏力爭車乃停駛查票員請全體搭客改乘另一車僅剩樊氏一人炙後召捕將樊氏押至麥蘭捕房始經捕房認明工部局前總董當即釋出</p>
+<h3>英美僑民兩聯合會發給臂章</h3>
+<p>英文大美晚報云頃據宣布本市英美僑民兩聯合會依照日當局近頒之通告將分別從星期六及星期一起以臂章發給英美僑民此項臂章每枚三元凡年在十三歲以上之敵國僑民均須備之凡請領時咸應親赴英美僑民聯合會並出示護照或領署登記證至於其他對日交戰或斷絕外交關係各國之在滬僑民聯合會對發給臂章事尚無通告</p>
+<h3>申請學生膳食補助登記展期兩天</h3>
+<p>上海男女青年會發起之學生膳食補助運動業已於本月十七日開始申請登記數日以來人數極為擁擠其中大部均係於開學時曾得申新二報助學金或學校免費金額因獨身居滬或課程關係必需自理膳食而發生極大之困難申請日期原定昨日截止唯格於多數學生之請求準於明後二天繼續清寒學生膳食救濟需要之殷切由此可見該會絀於經濟是項救濟工作之完成全賴社會熱心人士之慷慨捐助極盼各界努力捐輸</p>
+<h3>怎樣防治瀉痢</h3>
+<p>今夏酷熱之久長為近三十年所僅見以致霍亂流行死亡相繼入秋以來涼暖失時瀉痢又復猖獗據宋大仁醫師談怎樣防治瀉痢至有見地茲摘錄如次</p>
+<p>查瀉痢一癥共分六種即腸炎性瀉痢細菌性赤痢變形蟲性赤痢消化困難性下痢蓄便性下痢補經性下痢是也</p>
+<p>治病以識病為先欲求識病非借助儀器不為功古時之治療疾病也以限於環境之束縛僅這視聽口頭之問對知其下痢之色赤者乃曰病屬血分下痢之色白者乃曰病屬氣分色現多種者乃曰五色痢時作時止者乃曰休息痢飲食不進者乃曰噤口痢孰為瀉熟為痢僅視乎臨便時之爽利與否以為斷其於病之真際固皆冥然罔覺以未有儀器之輔助有必然者矣更有所謂暴病屬熱久病屬寒之論殊不知暴與久寒與熱初無一定之界說則我人將何以信從耶病之輕淺者雖勿藥有效然於病之沉重者危險立見矣惟其不明病之真際雖至死而不司其所以然是以枉死者多且皆諉之天命醫亦不任其咎深堪浩嘆是以不得不以科學方法解決之科學方法維何亦曰分病因之種類是也</p>
+<p>六種瀉痢以後列三種瀉痢均為慢性而非傳染者與時間無關且其癥象多不甚嚴重例如體重之無甚變化腹部之不感壓痛等至於腸炎性瀉痢細菌或變形蟲性瀉痢則其初起時略現全身癥象如乏力頭暈悶脹等繼則大便漸覺疝痛遂現裹爭後重　以及黏液性血便大便次數一盡間自數次乃至數十次不等共成分不外黏液血液濃汁等此三種瀉痢之癥象往往　同不易區別而以細菌性瀉痢為最嚴重變形蟲性瀉痢易轉為慢性腸炎則有腸氣充滿復部膨滿雷鳴等癥象而無血液一般而論僅藉癥象往往不能獲得正確之診斷須將其大使加以一般之鏡檢或培養則何者為腸炎何者為細菌性下痢何者為變形蟲性瀉痢無不瞭如指掌矣</p>
+<p>痢疾為一危險之傳染病但無積極之預防法故僅可愼於飲食以為預防若知附近有痢疾發現應立即報告衛生處已患痢疾應即延醫診治而鑑別其為何種痢疾有正確之診斷後再加以合宜之治療最後須提及者則痊愈以後應檢查糞便無細菌及變形蟲之存在以斷菌類遺留體內而使痢疾不免發生也尚有疫痢一病專發生於小兒朝發夕死甚形危急病理與療法與成人各癥逈異不可不愼</p>
+<h3>各界雜訉</h3>
+<p>上海實業銀行蘇州分行本埠天津路二○八號上海實業銀行自創立以來各項事務均極發達最近該行正在籌設各地分支行茲聞蘇州分行業已籌備就緒定於本月二十五日開幕行址在觀產街二六六號經理馬蓮夫副經理張炳江襄理章獲民陳仲彝俱係一時之選</p>
+<p>萬壽山座客常滿虞洽卿路福州路哭喊恨壽山酒樓開幕伊始營業鼎盛良好該樓地點適中面臨跑馬廳空氣新鮮百粵名菜尤為出色大宴小酌並膾灸人口因座客常滿誠非偶然倖致</p>
+<p>上海工業專科學校係由中國紗廠聯合會所創辦今已開學授課校址在本埠工廠區之澳門路由申新九廠撥借巨廈為校舍因有寬大之寄宿舍故學生均可寄宿校內膳食亦由學校辦理每人每月僅酌收膳費一百元該校原設紡織染化機械三科招收初中畢業生修業年限定為五年今因鑒於增進棉產須由發展水利著手爰又添設水利工程特班並招收高中畢業生及確具同等程度者修習三年畢業已在開始招生章程備案預定於雙十節左右可以上課</p>
+<h3>中華健康雜誌出版</h3>
+<p>中華健康雜誌九十月號即第四卷第五期已於最近出版內容計有楊立義這一健康人呢史威廉之給青年讀者均係有關保持健康之切實方針他如李維榮博士之空氣流通的衛生王完白醫師之從斑疹傷寒說到白風蘭琶之肓腸炎則為衛生及醫學之常識說理明透詳盡戲劇有吳月祥護士之可怕的霍亂小品有范勒之閒話番茄趣味有病國偵探案尚有讀者的話及信箱多篇不及備載該誌零售每冊一元各報攤均有預訂全年五元地址池浜路四十一號中華醫學會</p>
+<p>昨日本發報時間六點五十分</p>
+<h3>橫山讌安岡席上倡和詩</h3>
+<p>西冷樓上偶成（安岡正篤）煙籠隄柳依稀在舟載菱歌緩緩來橫槳無詩空醉臥夜深樓上月徘徊</p>
+<p>恭和安岡先生（倪軼池）</p>
+<p>陽明文學詩溫李難得春風識面來意旨飄飄詞落落令人一讀一低徊</p>
+<p>敬呈橫山部長（張侶俠）</p>
+<p>橫秋未老鐵心堅山氣當陽位正乾彥俊名流同一室眞如洛社集羣賢</p>
+<p>喜和張侶俠先生（安岡正篤）橫秋志氣憶先賢山澤憂民細問天彥俟山來多逸趣眞心任事獨乾乾</p>
+<p>和張侶俠先生瑤韻（彭益廉）</p>
+<p>橫豪氣宇作中堅山斗高才握正乾彥德安民同視子眞傳衣缽冠前賢</p>
+<p>效侶愈益先生體（孫守素）</p>
+<p>橫雲一片海之東山影迷茫蕩漛中彥舊盈堂共談笑眞教彩筆化長虹</p>
+<p>賦呈橫山部長（瞿存樸）</p>
+<p>橫江一鶴遠相過山氣佳連海氣多彥碩叨陪共攜手眞知灼見孰能磨</p>
+<p>敬贈橫山部長（徐鐵珊）</p>
+<p>橫空厲氣化祥和山外青山秀色多彥碩英雄共一座眞誠同唱太平歌</p>
+<p>敬贈橫山部長（戴君翼）</p>
+<p>橫海樓船萬里程山光水色畫中行彥求夙具殷勤意眞使顏開盡笑聲</p>
+<p>效侶俠先生體（倪軼池）</p>
+<p>橫海東來光我華山光水色煥朝霞彥材跳動望達時勢眞使同文合一家</p>
+<p>喜贈安岡先生（彭益廉）</p>
+<p>安國行仁姓字香岡陵有慶福棉長正當人物無高下篤志詩書突葉昌</p>
+<p>喜呈安岡先生（戴君翼）</p>
+<p>席上談心愜素衷和平空氣一時濃同文同種原兄弟願祝從茲慶大同</p>
+<p>安岡先生蒞止吾國謹贈小詩一首（孫守素）</p>
+<p>先生蒞止國增光何幸從容晤一堂果爾知行能合一陽明而後又安岡</p>
+<p>敬呈安岡先生（張侶俠）</p>
+<p>由來江戶多才士三絕爭傳有竹田今日相逢承教益淵源有自勝前賢</p>
+<p>歡迎安岡先生（倪軼池）</p>
+<p>先生盛譽噪東鄰紹述陽明學養眞不但題襟今幸會溝通文化此前津</p>
+<p>敬贈安岡先生（徐鐵珊）</p>
+<p>先生滬瀆且停鞭海上名流識俊賢最是推誠同一話亞東大業共存肩</p>
+<p>贈安岡大法師指正（瞿存樸）</p>
+<p>佛家去我見無我更無爭一貫陽明旨千秋心太平</p>
+<p>喜贈安岡先生（戴子柔）</p>
+<p>安定兩蕭宏教育岡陵萬仞見精神</p>
+<p>體育新聞</p>
+<h3>中蘇慈善排球賽中華隊以興仁應戰</h3>
+<p>第一戰明晚在中青</p>
+<p>維他富化學公司主辦之中蘇排球慈善賽明晚（周六）八時在八仙橋青年會健身房舉行定名為維盃中蘇對抗賽三賽二勝為九月二十六日十月三日十月十日中華隊決以興仁隊單獨參戰門票售五元收入半數捐助女青年會主辦之托兒所其餘半數捐西僑慈善機關裁判公推梁兆安荷生義務擔任中間插曲擬邀請中蘇女子對抗五盤三勝用九人遠東規則興仁為調整陣容譚永湛坐鎭前排中央以馬燦希易候若愚增強攻勢蘇維埃素稱雄全滬名將如泊洛可飛夫勒頓等實力雄厚華人球隊在歷屆國際性之比賽始終受辱於蘇隊者番興仁以如此陣線恐有獲勝希望矣</p>
+<h3>同仁盃乒乓複賽三隊互爭季軍</h3>
+<p>同仁盃乒乓聯賽同組九隊郵務青聯各為七勝不敗奪得決賽權定於本星期六假海格路西警球室舉行奪標賽該組季軍鴻章三星雷士德甲三隊各以三分之失並列第三照章仍須兩賽以定季軍定今日下午六時仍在西警球室舉行由雷士德戰三星及鴻章今日會戰精彩可期</p>
+<h3>運動簡訊</h3>
+<p>本市中法學堂舉辦之中法盃藍球聯賽即日起開始報名不收報名費僅收保證金十元分甲乙兩組甲組以一百二十五磅以下乙組以一百十磅以下報名處在敏體尼蔭路該校陸嘉祿處</p>
+<p>前東華足球會名前鋒高保正君今日與湘北名緩卓玉英女士在四馬路大雅樓結婚</p>
+<h2>Page 6</h2>
+<p>春秋</p>
+<h3>為了救救孩子——介紹揚光義務夜校</h3>
+<p>— 袁鷹</p>
+<p>二十幾年以前魯迅先生就已大聲疾呼過救救孩子</p>
+<p>可是在二十年後的今日我們依然可以很容易很普遍地看到無數的失學的流浪兒這龐大的難以數計的數目和坐包車上學的小少爺們比起來誰都不知道相差有多少倍了</p>
+<p>這是一年不可否認的事實上海在幾年來除了增加了一半的人口以外也增加了更多的貧兒街頭巷尾垃圾桶旁隨時隨地都可以看到這一羣羣蓬頭赤腳的孩子們當然他們也同樣地是社會國家未來的主人翁更同樣地急切地需要良好的教育然而我們的社會對於他們的是遺棄斥逐是不屑的鄙視而神聖的學校裹更是決不容許這羣小瘍三們充斥其間的那兒是坐包車的小少爺們的世界</p>
+<p>這對於我們的另一羣未來主人翁是如何的冷酷啊他們的求知人呢並不減於別人他們的天才是更並非不駟庸材相反地他們中間正有著無數的希望我們不是知道愛迪生高爾基司蒂芬生以及古今中外一切的偉大人物大半都是由貧兒出身的麼</p>
+<p>然而生活的高潮緊緊地壓迫著他們他們希望讀書但他們也要吃飯在飯都不容易吃得到的今日他們所需要的不是化錢的學校</p>
+<p>而上海的義務學校卻少得可憐了這也並非上海沒有慈善人士（我們天天可以在報上看到用很大的鉛字登出來的大善士們）可是人們在為生活終日工作以後誰還有時間再做這義務教育的工作呢一句話自顧尚且不暇</p>
+<p>因此我們的學校揚光義務夜校就這樣的誕生了因為我們都還是做學生的時候沒有繁重的負擔也沒有辛苦的工作有的是晚上一部份的空時間和體力我們願意而且應該以這些力量再還給社會還給國家還給人類</p>
+<p>關於經費是由每人向親友捐募來的由於每個從的成績的美滿我們更相信正還有許許多多的熱心的同情我們的慈善人士在這更加了我們的勇氣鼓舞起我們的信心我們並不要出風頭也不需要一文的薪水我們一致的希望只是有些微貢於社會國家人類於萬一而已</p>
+<p>雖然這路是艱苦的工作也是困難的不少的親友們都和我們說過我們自己也很清楚可是為了救救孩子我們只有含辛茹苦地掮起這艱難的擔子同情會增加我們的勇氣希望更會堅定我們勝利的信心在正義底偉大的召喚裹我們將獻出一切的力量為了人類</p>
+<p>（我們的學校是設在靜安寺路海格路西聯吉里七號學雜費完全免收供給書籍開學日期是九月二十八日時間五時至七時半班次自小學一年級至六年級我們竭力願意住在附近的貧兒們在很快的時間內實現了他們讀書的希望）（酬移助學金）</p>
+<h3>嫦娥出走</h3>
+<p>— 蔭</p>
+<p>今年的月色也許要使你感到黯然的如果眞是黯然的話那在中秋的前夜地球上的烽火波動到月球時嫦娥小姐的情緒浸沉在矛盾苦悶中一面在恐戄著生活將感受許多多的變動一面則又在想藉一個機會到新的世界去活動考慮又考慮的最後終於悄悄飛出月宮無目的地任意降臨到什麼地方</p>
+<p>女人的性情到底怕煩燥的當她飛過有一陣歌舞昇平的音樂正在熱情秦彈著的一角隅——上海仿佛具有推動力地嫦娥小姐降落了</p>
+<p>在當夜嫦娥小姐的美麗的容顏婀娜的身段給一羣中秋不到就在預祝中秋節的納士們包圍了噴香的甜美的香檳酒迷戀了嫦娥小姐的眼眸子不知不覺忘記自已的尊嚴忘記自己的使命跟著瘋人一般地也滾進在輕狂的旋渦中</p>
+<p>人此月球中失去嫦娥黯然了</p>
+<p>假定有人發現今年的月色還是一模樣Ｐ那麼嫦娥正打從你身邊在微笑呢</p>
+<h3>工作</h3>
+<p>— 張月山</p>
+<p>懷勤儉交織成天才（荷茄）</p>
+<p>趕你的工作否則牠要趕你（佛蘭克林）</p>
+<p>無計劃之工作猶失指南針之航行（英諺）</p>
+<p>工作是人類痛苦的疾病的最偉大的良藥（佛蘭克林）</p>
+<p>為眾人的利益而工作即是為自己工作（亨利福特）</p>
+<p>工作有苦味之根但有甜蜜之果（英諺）</p>
+<p>人們為了工作掙扎受苦無論那是禺是智原不過為攫取自由而已（茄立麗）</p>
+<h3>每況愈下的珠玉業</h3>
+<p>— 沉靜</p>
+<p>不錯在珠玉業市場裹混飯吃的人到今日都會產生不堪回首話當年之慨的且慢以二三十年前的興旺情況作比較即就近五六年來而言也莫不掏頭嘆息今非昔比</p>
+<p>衰盛莫不有其濳在的原因珠玉業的衰落原因眾多姑述一二於後</p>
+<p>㈠貨價的高昂五六年前的貨物均已十倍十五倍或三十倍其值使中產者也打消佩戴珠鑽的念頭顧客打折頭㈡市面的不寗過去平靖時代稍有積貯即購佩飾物以充場面現在不同百業時興波瀾大家都改變念頭盡以積貯投擲於四積投機乘機獲利珠鑽不再問津矣</p>
+<p>㈢存貨的匱乏即偶有暴發戶的太太奶奶廣搜珠鑽欲一光門楣然貨物已如上海的外產影片來路早已中斷市上各貨均係次貨買者找不到恰如其意的貨物</p>
+<p>㈣也即是最主要的要輪到珠玉興盛百業已興盛於先百業稍一呆滯珠玉業立即了完全停頓所謂先溫飽後富貴</p>
+<p>在上述四點之外尚有一個更主要的致命傷就是試想珠玉鑽石既不如香煙等怕潮濕也不如毛巾布疋等怕漏水而又並不如飾金等較五六年前之市價高五六十倍同樣是商品為什麼有囤香煙囤毛巾布疋而沒有囤輕易命題的珠玉鑽石同樣是飾金為什麼購買者願取其貴而捨其較賤者一句話珠玉業根本沒有公開的劃一的正式的價格當購買者的時候往往高抬虛價至離本二三倍亦有同樣脫售時則又一往往煞窮鬼因之失去了商業上的信用而每況愈下了</p>
+<p>目前前輩先生也打破了子繼父業的觀念也知道了本業衰敗的不可挽救幼輩承襲父業已很少很少了</p>
+<p>然而這富貴行業的珠玉市場卻還是擁滿著衣衫敝舊的人羣他們喧嚷爭執無異在飢餓線上掙扎如果有暇上時代劇場去觀光觀光那種窮兇極惡的神情是夠人吃驚和傷心的</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（九）人間地獄</p>
+<p>翠珍知道他是衛雲卿女兒了把牙齒咬著下唇瞪了她一眼也不答她的話這女人退出去了外面一陣腳聲那守在房門口的人忙閃在一旁進來的正是衛少雲和他的羽黨他頭上已裹了一塊青布西裝的襟上有倘著的血跡袴腿上兩邊兩個很深的黑印這一次可不像剛才的會奴顏婢膝挺起了胸肺腑兩手往腰裹一插喝道誰叫你大刺刺坐著給我站起來翠珍道你管不著衛少雲對他的左右道把她年下來少爺來了有眼不識泰山他媽的是個什麼東西左右把翠珍拉下來衛少雲道給我跪下剛才我經你跪現在輪到你對我跪了跪翠珍道你跪是你自己願意我為什麼跪你他的羽黨裹有一個人向衛少雲歪了歪嘴衛少雲就喝道跪不跪就打衛少雲的打字剛從口腔裹吐出來翠珍只覺得有人揪了她的耳朵有人在用強按她的腿彎同時背脊上著了一下她眼花了她跪下來了衛少雲道卞翠珍你你對我跪下了有什麼事要求我的你把話說得好一些我衛少爺也許會不咎既往翠珍吐了一口唾沫卻沒吐著衛少雲的臉衛少雲的火又冒上來了說道繩子繩子那羽黨只愁衛少雲不肯吩咐吩咐了認為是給少爺報仇的機會立刻掏出粗的細的繩子把翠珍的手和腳捆縛起來（一八六）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.09.25</h1>
+<h3>Japanese Three Envoys Visited Dr. Sun Yat-sen's Mausoleum Yesterday Morning, Reviewed Troops, and Watched Student Exercises</h3>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>The Japanese return-visit mission, consisting of three special envoys, Baron Hiranuma, Mr. Arita, and Mr. Nagai, arrived in Nanjing on the 22nd with their entire entourage. They were warmly welcomed by both the government and the public in our country. They have been extremely busy with banquets from high-ranking Chinese and Japanese officials for several days. Despite their busy schedule, Special Envoy Hiranuma and his entourage, all in formal attire, accompanied by Ambassador Shigemitsu and others, took a car to the foot of Purple Mountain at 9:00 AM on the 24th to reverently visit Dr. Sun Yat-sen's Mausoleum. The Chinese and Japanese military police maintained strict security along the way. After the car arrived at the mausoleum park, they were greeted by Xu, the Chief of the Protocol Section of the Ministry of Foreign Affairs, and alighted. They were greeted by Xiao, the Director of the Bureau of Ceremonies of the Military Affairs Department, in front of the mausoleum and led inside the mausoleum hall to perform a bow. The entire group performed three bows in front of the incense table. Special Envoy Hiranuma then presented a wreath and paid respects to Dr. Sun Yat-sen's portrait. The ceremony was solemn and respectful. After the ceremony, Director Xiao led the special envoys and others around the mausoleum for a week, admiring the remains. Afterwards, they returned to the original place and the whole party bowed before leaving the mausoleum hall. They lingered on the steps, gazing at the distant scenery, surrounded by lush green pines and ancient trees for dozens of minutes. The entire group took photos for remembrance. Special Envoy Hiranuma and others were then accompanied by Director Xiao to inspect the troops at the military academy.</p>
+<h3>Military Parade Held</h3>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>Special Envoy Hiranuma and his party respectfully visited Dr. Sun Yat-sen's Mausoleum at 9:00 AM on the 24th and after paying their respects, they rushed to the Central Military Academy at 10:15 AM. As the car arrived at the school gate, music played loudly. Special Envoy Hiranuma and his party alighted and were led into the VIP room by Secretary-General He and Education Director Liu of the school to rest briefly. At 10:30 AM, a military parade was held on the large parade ground. Chairman Chu of the Reception Committee, Director Xiao of the Bureau of Ceremonies, and other military and political officials of the National Government, as well as over a hundred representatives from friendly nations, including Lieutenant General Kawabe, Lieutenant General Matsui, Major General Noda, Major General Harada, Major General Teraoka, Major General Daitani, Ambassador Shigemitsu, Minister Higaki, Ambassador Lu Ronghuan, Consul General Deji, and representatives from the Italian Embassy, proceeded to the large parade ground amidst the military music and ascended the reviewing stand in single file. First, the Parade Commander-in-Chief, Bao Wenwei, reported on the inspection officials. Then, the march-past began. The officers in the ranks were full of spirit and marched in orderly steps. The special envoys expressed their admiration after inspecting them.</p>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>After the military parade, the special envoys immediately watched a performance of new national exercises on the parade ground of the military academy. 1,500 students from national, municipal, and private middle schools in the city participated in the exercises. After all the students stood at attention and saluted, student representatives presented flowers to the three special envoys, Hiranuma and others. The three special envoys personally accepted the flowers and nodded with smiles. Then the performance began, divided into six sections. The movements were gentle and uniform, all in circular patterns. All the students performed with agile and gentle movements, full of spirit and vigor.</p>
+<h3>Tea Reception</h3>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>President Wang of the Executive Yuan, President Chen of the Legislative Yuan, President Wen of the Judicial Yuan, President Liang of the Examination Yuan, and President Jiang of the Control Yuan jointly held a grand tea party at Beijige at 5:00 PM yesterday (24th) to entertain the three special envoys, Hiranuma, Arita, and Nagai, and all members of the mission. High-ranking officials from various yuan, ministries, departments, and offices were also invited, along with friendly nation representatives, including the highest-ranking authorities of the Japanese Army and Navy, and envoys from Japan, Manchukuo, Germany, and Italy, including Shigemitsu Kui, Lu Ronghuan, Stahmer, and Zaigui. Guests and hosts exchanged toasts and congratulated each other on the prosperity of their respective nations, creating a lively and unprecedented atmosphere. Finally, the presidents of the five yuan and the three special envoys, Hiranuma and others, took a commemorative photo together on the veranda, and the party ended in joy after 6:00 PM.</p>
+<h3>Nanjing Central Political Conference</h3>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>The Central Political Committee held its 111th meeting at 9:00 AM on the 24th. After deliberation, it was resolved and approved to specially appoint Ren Yuandao as Minister of the Navy. Ren was previously the acting president of the Military Advisory Council and acting Minister of the Navy. Now he has been formally appointed as the Minister of the Navy.</p>
+<h3>Full Text of President Wang's Reply at Ambassador Shigemitsu's Banquet</h3>
+<p>Nanjing, 24th (Central News Agency)</p>
+<p>President Wang's reply at Ambassador Shigemitsu Kui's banquet on the evening of the 23rd: I am most grateful for Ambassador Shigemitsu's sincere speech. Recalling my visit to your country last June, I was deeply moved and will never forget the gracious courtesy extended by His Majesty the Emperor. The concern and grand plans of the government officials and the enthusiastic expressions of the people from all walks of life have added boundless courage to my vision of the future of cooperation between the two countries and the co-prosperity of East Asia. This time, I am honored to have the specially appointed envoys, Baron Hiranuma, Mr. Arita, and Mr. Nagai, come from afar to return the visit. I was pleased to learn this morning of His Majesty the Emperor's good health. I have read the Imperial Rescript, which is earnest and sincere. The establishment of a new order in East Asia based on righteousness is a contribution to world peace. It is the glory of East Asia and the virtue of the world. Since the beginning of the Greater East Asia War, the loyalty and bravery of your country's army and navy soldiers, and the united efforts of the entire nation, have truly borne the burden of this lofty and great mission. Although our country is determined to share joys and sorrows, our capabilities are weak, and I am deeply afraid that we will not be able to provide much assistance. We can only strive to improve ourselves and do our best to share this hardship with your country, so that we can reap the same sweetness in the future. This is what I sincerely wish to convey. Three years ago, when Baron Hiranuma was Prime Minister, I traveled from Hanoi to Tokyo and had the opportunity to meet him. At that time, Baron Hiranuma said to me that the results of the last European war produced the League of Nations, which was full of utilitarianism, leading to misdirection and repeated disputes. Until today, the phenomenon of infighting persists. China and Japan should reverse this trend and rely on the Eastern spirit of righteousness to reunite. Baron Hiranuma made this grand proposal when the current European war had not yet occurred, and his foresight and insight into the root causes are truly admirable. At the same time, I also met Mr. Arita when he was Minister of Foreign Affairs and discussed that he had wanted to eliminate the Incident before it occurred when he was Ambassador to our country a year before the Incident, but unfortunately our country's government failed to understand, resulting in regret. I met Mr. Nagai in Tianjin twelve years ago and discussed the general trend of East Asia and the relationship between China and Japan, deeply concerned about planning ahead. Today, I am reunited with the three of you, recalling the past and feeling deeply moved. The other members of the mission are also eminent figures in your country's court, whom I have long admired. I am delighted to meet you today and hope to learn much from you during these precious few days, so as to enlighten my journey. I deeply believe that the friendship between our two countries will be further strengthened because of the arrival of these three special envoys, and the overall situation in East Asia will be better and more effectively resolved because of this. Tonight, I am honored to receive the generous hospitality of Ambassador Shigemitsu. I have a word to offer to comfort the special envoys and the members of the mission. For more than two years, the colleagues of the National Government and the staff of this embassy, including Ambassador Shigemitsu, and the commanders-in-chief, including General Hata, have been consulting with each other frankly and honestly, based on our beliefs and speaking directly, without any estrangement. Because we are working together as comrades in East Asia, we can do this. I would like to take this opportunity to raise the host's glass and wish Baron Hiranuma, Mr. Arita, and Mr. Nagai, and all of you, good health, and to wish the victory of the Greater East Asia War and the success of the construction of a new order in East Asia based on righteousness.</p>
+<h2>Page 3</h2>
+<h3>Soviet Ships Mobilized on the Volga River, Street Fighting in Stalingrad, Ruins Provide Convenience to the Soviets, German Advance Feels Unusually Difficult</h3>
+<p>Stockholm, Sweden, 24th (Havas)</p>
+<p>Soviet military authorities yesterday mobilized the Volga River gunboat flotilla for the first time to participate in the defense of Stalingrad, bombarding German-Romanian positions. It is claimed that eight enemy artillery positions were destroyed. At the same time, intense street fighting continues in the Stalingrad city area, with both sides deploying reinforcements. However, the battle situation is chaotic. All that is known is that German forces have occupied several more streets in the south of the city, while Soviet forces have recaptured several streets in the north. The defending forces in that area launched a counterattack, reportedly repelling the Germans. City residents have been mobilized to strengthen defenses to cope with new offensives. The German side now admits that attacking Stalingrad will require considerable time and significant sacrifices.</p>
+<p>Berlin, 24th (Haitong News Agency)</p>
+<p>Street fighting continues in Stalingrad. The ruins of the city provide great convenience to the Soviet forces, making the German advance extremely difficult. However, German forces made further progress in the city area yesterday and cleared out the Soviet forces in the occupied areas. In the north of the city, German forces also repelled a strong Soviet attack. Air battles over Stalingrad have been incessant. German aircraft shot down 37 Soviet aircraft yesterday without any losses. German pressure on Grozny has increased. After occupying Vila Dimirov, Taileke, and Daskojie, the German forces repelled repeated Soviet counterattacks. Fighting is taking place in the plains and mountainous areas. On the Caucasus front, German forces are operating along the railway leading to Kasbek northeast of Osonikis. Soviet forces in the Voronezh area have launched attacks with tanks, artillery, and aircraft but have not succeeded. On the central sector of the Eastern Front, German forces launched a fierce counterattack and reached their destination. Soviet forces in the area of Rzhev, after receiving reinforcements, continued their attacks yesterday. Soviet forces have failed to break through the German lines in any area. The Soviet forces that had penetrated the German lines were repelled. Flat-trajectory artillery units are most active in the Rzhev area.</p>
+<p>Stockholm, Sweden, 23rd (Havas)</p>
+<p>Today marks the 458th day of the German-Soviet war. The fighting in the Stalingrad city area has stabilized, with only concentrated bombing by the German Air Force. In the past few days, the opposing sides were engaged in close combat, making it impossible to deploy aircraft for bombing. However, German dive bombers resumed their attacks yesterday, striking a power plant in the northern suburbs of the city. Two battalions of the Red Army and one battalion of female soldiers were defending the position. The power plant was destroyed, reportedly killing at least 1,000 defenders. It is reported that German forces have occupied the city's General Post Office, but the Red Army continues to hold its original position in the strategic area near the Gorky Sanatorium, unshaken, though it is constantly subjected to artillery bombardment by German forces. On the Caucasus front, German forces continue to make progress. It is reported that German armored units have reached 30 miles south of the Terek River and are approaching the railway center, which is the junction of the railways leading to Grozny and Ordzhonikidze. Military observers say that Ordzhonikidze is the center of the Red Army's defenses in the Caucasus region and the key to accessing the passes of Mount Christoye. The German General Staff wants to attack the city from the rear, but the Red Army is resolutely resisting, with no signs of weakening. A large number of reinforcements have been transferred from Baku to reinforce the Red Army. The Red Army is utilizing the terrain to its advantage, so the German forces are taking precautions everywhere to avoid falling into ambushes.</p>
+<h3>Vichy Government Officially Announces Fall of Madagascar Capital, British Commander-in-Chief Platt Broadcasts Establishment of Military Administration in the City</h3>
+<p>Lisbon, 24th (Allied Press)</p>
+<p>The Vichy government recently announced that Antananarivo, the capital of Madagascar, has fallen, confirming British reports of the fall. At the same time, according to reports from London, British General Platt, the commander-in-chief of British forces in Madagascar, announced on the Antananarivo radio station that the British have established military administration in the city. The French translation of the announcement was read by a British staff officer, with the main points being: (1) Military jurisdiction is established in the city of Antananarivo; (2) The British Commander-in-Chief is responsible for maintaining order; (3) The British Commander-in-Chief supervises local administrative officials; (4) Designated crimes will be tried by military courts; (5) Local jurisdiction is suspended. In addition, the curfew remains in effect.</p>
+<p>Vichy, 24th (Havas)</p>
+<p>Governor-General Anet of Madagascar recently telegraphed the Colonial Minister reporting that Antananarivo, the capital of the island, has been lost, saying that our troops resisted to the city limits, but were unable to prevent the enemy from entering the city due to the disparity in numbers. The bravery of our troops will be forever etched in history. I have found no evidence of dereliction of duty by officials. Radio and telegraph operators were able to remain loyal to their duties. The people of the city were able to remain calm in the face of this event.</p>
+<p>Lisbon, 23rd (Allied Press)</p>
+<p>According to informal sources here, British forces have occupied Antananarivo, the capital of Madagascar. This news has not yet been confirmed by Vichy or London. The information was broadcast by the Antananarivo radio station last night during a music broadcast when a voice suddenly stated that a British officer reported that British forces had occupied the capital at 5:00 PM on Friday. Antananarivo is 90 miles from the east coast, with a population of approximately 70,000. It is located 5,000 feet above sea level and has a beautiful landscape. To the west is a fertile expanse of land. It was occupied by France on September 10, 1895, and became a French territory.</p>
+<h3>Second Phase of Clearing Countryside in Taihu Lake Region Establishes Security Command</h3>
+<p>Hangzhou, 24th (Central News Agency)</p>
+<p>The second phase of the clearing the countryside in the southeastern Taihu Lake region is about to begin. To facilitate military command, the Countryside Clearing Committee has specially established a Security Command for the Countryside Clearing Region, appointing Chuan Shi to serve concurrently as Commander. Chuan Shi has recommended Xu Nianqu, the Director of the Zhejiang Provincial Police Department, as Deputy Commander. A temporary office has been established within the Police Department to begin operations. To carry out military training in the countryside clearing region, a Military Training Institute has been established, with Chuan Shi appointing Zhang Boyi as the Colonel Director of the institute.</p>
+<h3>Soviet, British, and American Envoys Meet with Iranian Prime Minister, British Commander Wilson Arrives in Baghdad</h3>
+<p>Ankara, 24th (Haitong News Agency)</p>
+<p>The Soviet Ambassador and the British and American Ministers in Tehran held a lengthy meeting yesterday with the Iranian Prime Minister and Foreign Minister. The King of Iran also received the Prime Minister in the afternoon. Political circles in Tehran believe that the Allied powers have brought Iranian participation in the war to its highest degree. Although the Kavani government is unlikely to declare war immediately, it has had to make the greatest concessions under diplomatic pressure. Kavani recently sent letters to provincial authorities urging them to maintain close cooperation with the occupying forces.</p>
+<p>Lisbon, 24th (Allied Press)</p>
+<p>According to reports from the capital of Iraq, General Wilson, the newly appointed British commander-in-chief of Iran and Iraq, arrived in Baghdad yesterday.</p>
+<h3>U.S. House of Representatives Passes Presidential Proposal to Prevent Inflation</h3>
+<p>Washington, 24th (Havas)</p>
+<p>The House of Representatives last night passed President Roosevelt's Inflation Prevention Act by a vote of 284 to 96. The bill includes an amendment on agricultural product prices, stipulating a 5% increase in selling prices.</p>
+<p>Washington, 23rd (Havas)</p>
+<p>The House of Representatives today passed a bill proposed by the Agriculture Committee by a vote of 163 to 105, stipulating that production costs should be included in the price ceiling for agricultural products. This is a major victory for the farmers' faction over the government. After the implementation of this measure, the selling price of agricultural products will be 10% to 12% higher than the government expected. As a result, the national treasury will increase its expenditure by 300 million to 350 million U.S. dollars each year.</p>
+<h3>Ambassador Nomura Speaks</h3>
+<p>Tokyo, 23rd (Central News Agency)</p>
+<p>Former Ambassador to the United States, Mr. Kichisaburo Nomura, who recently returned to Japan from the United States, is currently resting in his hometown. He recently told a reporter from the Allied Press that if the United States prepares for war with a five-year plan, Japan will definitely complete the Greater East Asia War with a strength of more than ten years. At present, the Greater East Asia Co-Prosperity Sphere has become an established fact, and there is no room for third-country interference. The United States, which advocates Pan-Americanism and rejects third-country interference in the Western Hemisphere, still denies the great unity of the East Asian nations, which is even more unreasonable. However, I believe that the understanding of the new order in East Asia by Britain, the United States, and other countries around the world, or its recognition, is only a matter of time. Today, all the nations of Asia have discovered new ideals and hopes because of the Greater East Asia War, and are thereby cooperating in the construction of Asia for Asians.</p>
+<h3>Uruguayan Foreign Minister Speaks on the Attitude of South American Countries</h3>
+<p>Santiago, Chile, 24th (Haitong News Agency)</p>
+<p>Uruguayan Foreign Minister Guini told reporters that the American republics should abide by the resolutions of the Rio de Janeiro Pan-American Conference. Although Chile and Argentina are non-belligerent nations, their attitude should be the same as that of Uruguay in 1917. This attitude was decided by the foreign ministers of the American republics at a meeting in Rio de Janeiro. The ideal of the League of Nations was the foundation for lasting peace, but it failed because of the unequal rights of the member states. Therefore, the formation of an alliance between the American nations is also impossible.</p>
+<h3>U.S. and Ecuador Sign Agreement</h3>
+<p>Buenos Aires, Argentina, 24th (Haitong News Agency) The United States and Ecuador signed an agreement yesterday, allowing the United States to build and use bases in the Galapagos Islands during the war.</p>
+<h3>Willkie Meets with Stalin for Two Hours, Molotov Also Present</h3>
+<p>Moscow, 24th (Allied Press)</p>
+<p>Roosevelt's special envoy, Willkie, met with Stalin at the Kremlin yesterday for two hours. Soviet Foreign Minister Molotov was also present. Before the meeting, Willkie toured Moscow's defenses.</p>
+<p>Moscow, 23rd (Havas)</p>
+<p>Roosevelt's special envoy, Willkie, visited Stalin today and held talks for two hours. Foreign People's Commissar Molotov was also present.</p>
+<h2>Page 4</h2>
+<h3>Police Department Embarks on Eliminating Pickpockets, Petty Thieves, Assassinations, and Kidnappings No Longer Seen, Eliminating Petty Thieves, Hoping for Resident Cooperation</h3>
+<p>The Shanghai Times reports that a certain official of the Municipal Council recently stated that since all major crimes in the Public Concession have been eliminated, the Police Department is now dedicated to eliminating minor crimes such as pickpocketing, robbery, and theft of bicycles. Before the outbreak of the Pacific War, major criminals and petty thieves were rampant in Shanghai, with endless cases of crime, and assassinations and kidnappings occurred daily. The public was not safe, but today is different from the past. Criminals can hardly escape the police's net, and are arrested and imprisoned every time they commit a crime. Therefore, other criminals have</p>
+<h3>Disappeared</h3>
+<p>Daring not to move. Shanghai, which was known as the Chicago of the East, is no longer seeing major crimes. Those who used to hire bodyguards for self-defense can now rest assured that they will not be kidnapped. The only thing that still makes Shanghai residents unhappy today is petty theft. However, if the methods currently implemented by the police are effective, this unhappiness will not last long. The police are now rounding up vagrants and vagabonds, investigating their fingerprints, and conducting thorough interrogations. The police have also repeatedly urged the public to report cases of pickpocketing and bicycle theft, as the police can</p>
+<h3>Swiftly Arrest</h3>
+<p>Minor crimes upon receiving reports. The public must provide assistance to the police. Taking pickpockets as an example, the police already know the names of many pickpockets and their activity locations. The police have also established new regulations requiring the presentation of identification when buying, selling, or pawning bicycles. This law has greatly reduced bicycle thefts, but cooperation from the public is still hoped for. If there are any thefts, immediately report the location of the theft and other details.</p>
+<h3>Mid-Autumn Festival Settlement, All Industries Stable</h3>
+<p>Yesterday was the Mid-Autumn Festival settlement day for all industries. After the joint preparation committee of banks and the Central Reserve Bank made every effort to regulate the stability of interbank finance in the market, the banks and financial institutions provided accommodation to companies, factories, and businesses for their dues on the autumn festival, as their own foundations became more sufficient. At the same time, the old debts released by various industries were able to be recovered by nineteen percent due to the market improvements. Therefore, they have all safely passed this settlement day. As for the financial market, there are no special tensions in accordance with the stable money supply. Regarding the reorganization or closure of some small money shops and banks, after the authorities took effective measures to crack down on them in the speculative market, these speculative money shops and banks could no longer use their skills, and reorganization and closure were the appropriate phenomena, which were unrelated to the overall financial situation. Yesterday, all banks, financial institutions, and civil factories and businesses closed in accordance with regulations. The resumption of business will be today, and all bills and receipts during the holiday period will be handled today.</p>
+<h3>Continuous Food Supply, No Worry of Scarcity</h3>
+<p>Authoritative sources point out that the food situation in the city has returned to stability from turmoil, as there has been no shortage of food supply for the population. The source of food rice has long been completely organized and distributed by the highest authorities in the city, and the allocation matters are coordinated by the Food Office of the Municipal Council. In the future, food rice will continue to be shipped to Shanghai from the rice-producing areas of Central China for the market, and citizens are already accustomed to using miscellaneous grains and flour as daily supplementary food, so the rationing of food will not be insufficient. It is reported that since the implementation of rationing on July 6th, the two concessions have distributed a total of eleven installments totaling approximately 390,000 shi of whole rice and broken rice, totaling 310,000 bags, of which the Public Concession accounted for 250,000 shi or 200,000 bags, and the French Concession accounted for 140,000 shi or 110,000 bags. From the 21st of this month, the household ration will be distributed three times a month. If each person is given two liters of rice each time, the consumption of food rice in the two concessions will be 140,000 shi or more than 110,000 bags.</p>
+<h3>Old Zhabei Police Station Issues Notice to Residents to Carefully Conceal Lights</h3>
+<p>After the designation of seven model areas for air defense light control exercises in the Public Concession area, all preparations for air defense control are proceeding at a high speed. The Old Zhabei Police Station also notified the Lianbao chiefs of the district a few days ago to strictly pay attention to the lighting of shops, stating that in order to strictly control the lights, all electric lights and advertising lights outside the shops have already been announced to be extinguished. All electric lights in each household must be fitted with black cloth lampshades and black cloth curtains or covered with black paper before the 25th of this month. If there are still violations of the control, severe punishment will be imposed without leniency. Please forward the instructions to your subordinates to comply. In addition, the Lianbao chiefs of Old Zhabei notified the Jia chiefs and household heads that the authorities have issued repeated orders for the implementation of light control, and while many residents in the bao have complied with the methods, there are still some who have not complied and are waiting to see. As this matter concerns important air defense matters, we are hereby issuing a notice again, urging the residents of this bao to purchase them as soon as possible before the 25th of this month and not to delay any further, lest they incur punishment.</p>
+<h3>French Concession Model Area Conducts Light Control Exercise</h3>
+<p>According to the English-language North China Daily News this morning (24th), the French Concession will conduct a light control exercise in the Model Area of Rue Lubin and Avenue Lafayette on the 28th of this month. Both Lubin Apartments and Parc Apartments are within the exercise area. The Public Concession will conduct a light control exercise in the Yulin Road area on the night of the 25th (tomorrow). The large-scale light control exercise in the city is scheduled to be held for ten days starting from October 1st.</p>
+<h3>French Garrison Ordered to be Transferred, Internal Personnel</h3>
+<p>Chief of Staff and Military Commander Exchange Places</p>
+<p>The French garrison's mixed infantry unit in Shanghai recently received an order from the military department of the Vichy government to make important adjustments to its internal personnel. Lieutenant Colonel A. Tiget, the commander of the Shanghai garrison, and Commander Florn, the director of the staff headquarters in China, exchanged positions. A formal transfer ceremony was held at the barracks on Fuli Road on the morning of the day before yesterday. Colonel A. Ssett, the commander-in-chief of the French forces in China, presided over the ceremony and delivered a brief speech. After the ceremony, a military parade was held. Many personnel from the French embassy and consulate were also invited to participate in the inspection.</p>
+<h3>Special Return Home Certificates Issued as Usual Today</h3>
+<p>The Municipal Council's Special Return Home Certificate Office was closed yesterday for the Mid-Autumn Festival. It will resume business today and continue to issue certificates all day. The other branch offices will also issue certificates as usual. All citizens who have been living in the city for a long time can go to apply. The Hua Ren Evacuation Association is continuing to issue Return Home Certificates to various clan associations and other groups.</p>
+<p>I&gt;</p>
+<h3>Mid-Autumn Festival Scene</h3>
+<p>Regardless of whether there is a moon in the sky, the Chiyue Palace is the happiest thing for little daughters.</p>
+<h2>Page 5</h2>
+<h3>Former Chairman of the Shanghai Municipal Council, Mr. Fessenden, Encounters Trouble on a Bus; Mr. Fessenden Files a Complaint with the French Consulate Against the French Tram Company; The Case is Scheduled to be Heard by Judge Corbin Early Next Month</h3>
+<p>According to the English-language "North China Daily News," reliable sources report that Mr. Fessenden, former Chairman of the Shanghai Municipal Council, recently encountered a dispute on a public bus in the French Concession when he attempted to use a damaged Central Reserve Bank note to pay his fare, which the ticket seller refused. Private mediation proved ineffective, and Mr. Fessenden has now filed a lawsuit with the French Consular Court against the French Tram and Electric Light Company, claiming inconvenience and mental distress. He is demanding an apology and compensation for emotional damages, though the amount of compensation sought is minimal, as his intention is to set a precedent. It is reported that the case is scheduled to be heard by Judge Corbin early next month. The incident occurred when Mr. Fessenden boarded the bus and attempted to pay with a damaged one-yuan Central Reserve Bank note, which the ticket seller refused to accept. Mr. Fessenden insisted, and the bus came to a halt. The conductor asked all passengers to transfer to another bus, leaving only Mr. Fessenden behind. Subsequently, police were summoned and Mr. Fessenden was taken to the McClellan Police Station, where he was released immediately upon being identified as the former Chairman of the Shanghai Municipal Council.</p>
+<h3>British and American Community Associations Issue Armbands</h3>
+<p>According to the English-language "North China Daily News," it has been announced that the British and American Community Associations in Shanghai, in accordance with recently promulgated regulations from the Japanese authorities, will begin issuing armbands to British and American residents starting on Saturday and Sunday, respectively. The armbands will cost three yuan each and are required for all enemy nationals aged thirteen and above. All applicants should apply in person at the British and American Community Associations and present their passports or consular registration certificates. There has been no announcement yet from other foreign communities in Shanghai, whose countries are at war with Japan or have severed diplomatic relations, regarding the issuance of armbands.</p>
+<h3>Application Period for Student Meal Subsidies Extended by Two Days</h3>
+<p>The student meal subsidy campaign initiated by the Shanghai YMCA and YWCA began on the 17th of this month. Over the past few days, the number of applicants has been extremely high, with the majority having received scholarships from the Shen Bao and Xin Bao newspapers or free tuition from schools at the beginning of the semester. Due to living alone in Shanghai or scheduling constraints, they have experienced great difficulty managing their meals independently. The application deadline was originally set for yesterday, but in response to requests from many students, it has been extended for two more days. The urgent need for meal relief for impoverished students is evident, and the associations' limited financial resources mean that the completion of this relief effort depends entirely on the generous donations of caring people in society. It is sincerely hoped that all sectors of society will strive to contribute.</p>
+<h3>How to Prevent and Treat Dysentery</h3>
+<p>The prolonged heat of this summer is the most severe in nearly thirty years, leading to a cholera epidemic and successive deaths. Since the arrival of autumn, the weather has been erratic, and dysentery is once again rampant. Dr. Song Daren's insights on how to prevent and treat dysentery are particularly insightful. Excerpts are as follows:</p>
+<p>Dysentery is divided into six types: enteritis dysentery, bacterial dysentery, amoebic dysentery, digestive difficulty dysentery, constipation dysentery, and tonic deficiency dysentery.</p>
+<p>To treat a disease, one must first understand it, and to understand it, one must rely on instruments. In ancient times, the treatment of diseases was limited by the constraints of the environment. Only visual and auditory questioning was used to determine that the color of the diarrhea was red, indicating a blood disorder, or white, indicating a Qi disorder. If the color was varied, it was called five-color dysentery; if it occurred intermittently, it was called recurrent dysentery; and if food could not be ingested, it was called silent dysentery. Whether it was diarrhea or dysentery was determined solely by the smoothness of the bowel movement. The true nature of the disease remained unknown due to the lack of instrumental assistance. Furthermore, the theory that sudden illnesses are due to heat and chronic illnesses are due to cold is untenable, as there is no fixed boundary between sudden and chronic, or between cold and heat. How can we trust such theories? Mild illnesses may heal without medication, but severe illnesses pose immediate danger. Because the true nature of the disease is not understood, many die without knowing the cause, attributing it to fate, and doctors are not held accountable. This is deeply regrettable. Therefore, it is necessary to solve the problem with scientific methods, which means classifying the types of causes.</p>
+<p>Of the six types of dysentery, the latter three are chronic, non-contagious, unrelated to time, and their symptoms are not severe, such as minimal weight change and no abdominal tenderness. As for enteritis dysentery, bacterial dysentery, or amoebic dysentery, their initial onset is accompanied by systemic symptoms such as fatigue, dizziness, and bloating. Subsequently, the stool gradually becomes painful, and then there is tenesmus and mucoid bloody stools, with the number of bowel movements ranging from several to dozens of times a day. The components are nothing more than mucus, blood, and pus. The symptoms of these three types of dysentery are often similar and difficult to distinguish. Bacterial dysentery is the most serious, while amoebic dysentery easily turns into chronic enteritis, which is characterized by intestinal gas, abdominal distension, and rumbling, but without blood. Generally speaking, relying solely on symptoms often fails to obtain a correct diagnosis. It is necessary to perform a general microscopic examination or culture of the stool to clearly identify whether it is enteritis, bacterial dysentery, or amoebic dysentery.</p>
+<p>Dysentery is a dangerous infectious disease, but there is no active preventive method. Therefore, one can only be careful about diet for prevention. If dysentery is found nearby, it should be reported to the health department immediately. If one has dysentery, one should seek medical treatment immediately to identify the type of dysentery. After a correct diagnosis, appropriate treatment should be administered. Finally, it must be mentioned that after recovery, the stool should be tested to ensure that no bacteria or amoebas remain to prevent the recurrence of dysentery. There is also a type of dysentery called epidemic dysentery, which occurs exclusively in children and is rapidly fatal. The pathology and treatment differ greatly from those of adults, so caution must be exercised.</p>
+<h3>Miscellaneous News from All Sectors</h3>
+<p>The Suzhou Branch of the Shanghai Industrial Bank, located at 208 Tianjin Road in Shanghai, has been developing rapidly in all aspects since its establishment. Recently, the bank has been preparing to establish branches in various locations. It is reported that the Suzhou branch is ready and will open on the 25th of this month. The branch is located at 266 Guanchian Street. The manager is Ma Lianfu, the deputy manager is Zhang Bingjiang, and the assistant managers are Zhang Huomin and Chen Zhongyi, all of whom are prominent figures of the time.</p>
+<p>The Wanshoushan Restaurant is Always Full of Guests. The Fuzhou Road Location of the Yu Qiaqing Road Wanshoushan Restaurant is Doing Brisk Business. Since its opening, the Wanshoushan Restaurant has been enjoying a flourishing business. The restaurant is conveniently located, faces the racetrack, and has fresh air. Its Cantonese cuisine is particularly outstanding and popular for both large banquets and small gatherings. It is no accident that it is always full of guests.</p>
+<p>The Shanghai Industrial Vocational School was founded by the China Cotton Mill Association and has now begun classes. The school is located in the factory district of Shanghai on Macau Road, where the Shenxin No. 9 Mill has provided a large building as a campus. Because there are spacious dormitories, students can live on campus. Meals are also provided by the school for a modest fee of only one hundred yuan per person per month. The school originally had three departments: textile, dyeing and chemistry, and machinery, and admitted junior high school graduates for a five-year course of study. Now, in view of the need to increase cotton production by developing water conservancy, a special water conservancy engineering class has been added, and high school graduates and those with equivalent qualifications are admitted for a three-year course of study. Enrollment has already begun, and the regulations are on file. Classes are scheduled to begin around Double Ten Day.</p>
+<h3>Publication of "Chinese Health Magazine"</h3>
+<p>The September/October issue of "Chinese Health Magazine," Volume 4, Issue 5, has recently been published. The contents include Yang Liyi's "What is a Healthy Person?" and Shi William's "For Young Readers," both of which provide practical guidance on maintaining health. Other articles include Dr. Li Weirong's "Hygiene of Air Circulation" and Dr. Wang Wanbai's "From Typhus to Vitiligo." Ba Lanpa's "Appendicitis" provides clear and detailed explanations of hygiene and medical common sense. The drama section features Wu Yuexiang's "The Terrible Cholera," and the literary section includes Fan Le's "Talking About Tomatoes" and "Detective Cases in Sick Countries." There are also many letters to the editor and a mailbox section, which cannot be listed in detail. The magazine retails for one yuan per copy and is available at all newsstands. The annual subscription is five yuan. The address is 41 Chihang Road, Chinese Medical Association.</p>
+<p>Yesterday's newspaper publication time was 6:50 PM.</p>
+<h3>Harmonizing Poems at Mr. Yokoyama's Banquet at the West Lake Restaurant</h3>
+<p>"An Occasional Poem at the West Lake Restaurant" (Yasuka Masaatsu)</p>
+<p>Mist veils the willows on the dike, faintly visible.</p>
+<p>A boat carrying water chestnuts comes slowly.</p>
+<p>Without wine or poetry, I drunkenly recline,</p>
+<p>The moon lingers over the tower late into the night.</p>
+<p>"Respectfully Harmonizing with Mr. Yasuka" (Ni Yichi)</p>
+<p>The poetry of Yangming, the literature of Wen and Li, are hard to find.</p>
+<p>The spring breeze reveals your face, the meaning is ethereal, the words are distinct.</p>
+<p>Reading it once, you nod your head,</p>
+<p>A masterpiece that makes one sigh.</p>
+<p>"Respectfully Presented to Minister Yokoyama" (Zhang Luxia)</p>
+<p>Not old in the autumn, with an iron heart firm,</p>
+<p>Mountain energy faces the sun, the position is upright and firm.</p>
+<p>Talented and virtuous, gathered in the same room,</p>
+<p>Truly like a Luoshe gathering of heroes.</p>
+<p>"Delighted to Harmonize with Mr. Zhang Luxia" (Yasuka Masaatsu)</p>
+<p>Remembering the virtues of the sages of autumn,</p>
+<p>Worried about the people of the mountains and rivers, asking about their well-being.</p>
+<p>Waiting for the arrival of Mount Tai, with much leisure,</p>
+<p>Being true to your heart and dedicated to your duties, uniquely strong.</p>
+<p>"Harmonizing with Mr. Zhang Luxia's Rhymes" (Peng Yilian)</p>
+<p>With a bold spirit, you stand as a pillar,</p>
+<p>Your talent as high as mountains and the Big Dipper, firmly grasping the position.</p>
+<p>Virtuous and kind, treating the people as your own children,</p>
+<p>Truly inheriting the mantle of the sages, surpassing your predecessors.</p>
+<p>"Following Mr. Lüxia's Style" (Sun Shousu)</p>
+<p>A cloud hanging over the East Sea,</p>
+<p>Mountain shadows dim and vast in the mist.</p>
+<p>Talented guests fill the hall, chatting and laughing,</p>
+<p>Truly using colorful brushes to create a long rainbow.</p>
+<p>"Presented to Minister Yokoyama" (Qu Cunpu)</p>
+<p>A crane soaring over the Yangtze River from afar,</p>
+<p>The mountain air connects with the sea air in a beautiful way.</p>
+<p>Hoping to be able to accompany you and join hands,</p>
+<p>Truly discerning insights that can never be erased.</p>
+<p>"Respectfully Presented to Minister Yokoyama" (Xu Tieshan)</p>
+<p>Transforming fierceness into auspicious harmony,</p>
+<p>Beyond the mountains, green mountains are beautiful.</p>
+<p>Talented heroes sit together in one hall,</p>
+<p>Sincerely singing the song of peace.</p>
+<p>"Respectfully Presented to Minister Yokoyama" (Dai Junyi)</p>
+<p>Sailing thousands of miles across the sea,</p>
+<p>Mountain scenery and waterscapes in paintings.</p>
+<p>Seeking for a long time, you have shown sincere intentions,</p>
+<p>Truly making everyone smile with joy.</p>
+<p>"Following Mr. Luxia's Style" (Ni Yichi)</p>
+<p>Coming from the East Sea, illuminating China,</p>
+<p>Mountain light and water colors shining with morning glow.</p>
+<p>Talented people leaping forward, hoping to reach the times,</p>
+<p>Truly making people of the same culture unite as one family.</p>
+<p>"Delighted to Present to Mr. Yasuka" (Peng Yilian)</p>
+<p>Your name is fragrant with righteousness and benevolence,</p>
+<p>The Mount Gang has auspicious celebrations and long blessings.</p>
+<p>You are upright and just, with no superiors or inferiors,</p>
+<p>Dedicated to poetry and books, you suddenly stand out.</p>
+<p>"Delighted to Present to Mr. Yasuka" (Dai Junyi)</p>
+<p>Talking heart to heart at the banquet,</p>
+<p>The air of peace is thick.</p>
+<p>People of the same culture and the same race are brothers,</p>
+<p>Wishing you great harmony from now on.</p>
+<p>"Mr. Yasuka Visits Our Country, Respectfully Presenting a Short Poem" (Sun Shousu)</p>
+<p>Mr. Yasuka's visit has brought glory to our country,</p>
+<p>What fortune to meet you in person.</p>
+<p>Indeed, knowledge and action can be united as one,</p>
+<p>After Yangming, there is Yasuka.</p>
+<p>"Respectfully Presented to Mr. Yasuka" (Zhang Luxia)</p>
+<p>From Edo come many talented scholars,</p>
+<p>Three perfections are passed down from Taketa.</p>
+<p>Today, meeting you and receiving your guidance,</p>
+<p>The source is deep, surpassing the sages.</p>
+<p>"Welcoming Mr. Yasuka" (Ni Yichi)</p>
+<p>Mr. Yasuka's great reputation resonates in the East,</p>
+<p>Continuing the learning and cultivation of Yangming.</p>
+<p>Not only are we fortunate to meet you today,</p>
+<p>But also to communicate culture, this is the former ferry.</p>
+<p>"Respectfully Presented to Mr. Yasuka" (Xu Tieshan)</p>
+<p>Mr. Slow Your Whip in Shanghai,</p>
+<p>Famous People on the Sea Recognize Virtuous People.</p>
+<p>Most of all, we treat each other with the same heart,</p>
+<p>The great cause of East Asia is to be shared together.</p>
+<p>"Presenting to Master Yasuka for Correction" (Qu Cunpu)</p>
+<p>Buddhists abandon ego and see no ego,</p>
+<p>There is no struggle, one thread of Yangming's purpose.</p>
+<p>The heart of a thousand autumns is at peace.</p>
+<p>"Delighted to Present to Mr. Yasuka" (Dai Zirou)</p>
+<p>Stabilizing both Xiao Hong's education,</p>
+<p>The Mount Gang stands tall, revealing your spirit.</p>
+<p>Sports News</p>
+<h3>China-Soviet Charity Volleyball Match: China to Compete with Xingren Team</h3>
+<p>The First Match is Tomorrow Night at the YMCA</p>
+<p>The China-Soviet charity volleyball match, sponsored by Vita-Rich Chemical Company, will be held tomorrow night (Saturday) at 8:00 PM at the YMCA gymnasium on Eight Immortals Bridge. It is named the Vita Cup China-Soviet对抗赛 (Confrontation Match) with a best-of-three format on September 26, October 3, and October 10. The Chinese team has decided to compete with the Xingren team alone. Tickets are priced at five yuan, with half of the proceeds donated to the YMCA-sponsored nursery and the other half donated to Western charity organizations. The referee is Liang Zhaoan, and He Sheng will volunteer as referee. The intermission will feature a five-set, best-of-three match between Chinese and Soviet women, using the nine-person Far Eastern rules. Xingren has adjusted its lineup, with Tan Yongzhan in the front row center and Ma Canxi replacing Hou Ruoyu to strengthen the offense. The Soviet team is known for its strength, with famous Shanghai players such as Porokok, Freton, etc. Chinese teams have always been humiliated by Soviet teams in international competitions. With this lineup, Xingren may have a chance of winning.</p>
+<h3>Tongren Cup Table Tennis Semifinals: Three Teams Compete for Third Place</h3>
+<p>In the Tongren Cup table tennis league, the nine teams in the same group, Post Office and Qinglian, each with seven wins and no losses, have won the right to compete in the finals, which are scheduled to be held this Saturday at the Western Police Gymnasium on Haig Road. The third-place teams in the group, Hongzhang, Samsung, and Lester Jia, each with three losses, are tied for third place. According to the rules, they must play two more matches to determine the third-place team. The matches will be held this afternoon at 6:00 PM at the Western Police Gymnasium, with Lester Jia playing Samsung and Hongzhang playing a match. The matches are expected to be exciting.</p>
+<h3>Sports Briefs</h3>
+<p>The Sino-French Cup basketball league, organized by the Sino-French Academy in Shanghai, is now open for registration. There is no registration fee, only a deposit of ten yuan. There are two groups: Group A for players under 125 pounds and Group B for players under 110 pounds. The registration office is located at Lu Jialu's office at the school on Min Ti Ni Yin Road.</p>
+<p>Mr. Gao Baozheng, former forward of the Tung Wah Football Club, will marry Ms. Zhuo Yuying, a well-known figure from Xiangbei, today at the Daya House on Fourth Horse Road.</p>
+<h2>Page 6</h2>
+<p>Spring and Autumn</p>
+<h3>Saving the Children - Introducing Yang Guang Volunteer Night School</h3>
+<p>— Yuan Ying</p>
+<p>More than twenty years ago, Mr. Lu Xun had already loudly appealed to save the children.</p>
+<p>But even today, twenty years later, we can still easily and commonly see countless out-of-school and homeless children. Compared with the young masters who go to school in chauffeur-driven cars, no one knows how many times greater this huge, uncountable number is.</p>
+<p>This is an undeniable fact of the year. In addition to adding half of its population, Shanghai has also increased its number of poor children. Groups of unkempt, barefoot children can be seen everywhere in the streets and alleys, next to garbage bins. Of course, they are also the masters of the future of society and the country, and they also urgently need good education. However, our society abandons and rejects them, and disdains and despises them. The sacred schools even refuse to allow this group of little beggars to enter. That is the world of the young masters who ride in chauffeur-driven cars.</p>
+<p>How cold this is to our other future masters. Their desire for knowledge is no less than that of others, and their talents are by no means mediocre. On the contrary, there are countless hopes among them. Don't we know that most of the great figures of the past and present, both Chinese and foreign, such as Edison, Gorky, Stevenson, all came from poor backgrounds?</p>
+<p>However, the high tide of life is pressing them tightly. They want to study, but they also need to eat. In these times when it is not easy to get food, what they need is not a school that costs money.</p>
+<p>And there are too few free schools in Shanghai. It is not that there are no charitable people in Shanghai (we can see the great benefactors who are published in large fonts in the newspapers every day), but after working all day for a living, who still has time to do this volunteer education work? In a word, they are too busy taking care of themselves.</p>
+<p>Therefore, our school, Yang Guang Volunteer Night School, was born. Because we are still students, we do not have heavy burdens or hard work. What we have is some free time and energy in the evening. We are willing and should use these forces to give back to society, to give back to the country, and to give back to humanity.</p>
+<p>The funds come from donations raised by each person from friends and relatives. Because of the satisfactory performance of each donation, we are more convinced that there are still many enthusiastic charitable people who sympathize with us. This has further increased our courage and encouraged our confidence. We don't want to show off, nor do we need a penny of salary. Our unanimous hope is only to make some contribution to society, the country, and humanity, even if it is only one in ten thousand.</p>
+<p>Although this road is hard work and difficult, many friends and relatives have told us, and we ourselves are very clear. But in order to save the children, we can only bear the hardships and carry this difficult burden. Sympathy will increase our courage, and hope will strengthen our confidence in victory. In the great call of justice, we will dedicate all our strength for humanity.</p>
+<p>(Our school is located at No. 7, Xilianjili, Haig Road, Jing'an Temple Road. Tuition and fees are completely free, and books are provided. The school opening date is September 28, and the time is from 5:00 to 7:30 PM. Classes range from the first grade of elementary school to the sixth grade. We are willing to do our best to help the poor children living nearby realize their hope of studying in a short time.) (In return for the scholarship)</p>
+<h3>Chang'e's Departure</h3>
+<p>— Yin</p>
+<p>This year's moonlight may make you feel黯然(dispirited). If it is really黯然(dispirited), then on the eve of the Mid-Autumn Festival, when the flames of war on Earth spread to the Moon, Miss Chang'e's emotions were immersed in contradiction and depression. On one hand, she was terrified that life would experience many changes, and on the other hand, she wanted to take the opportunity to go to a new world to operate. After considering again and again, she finally quietly flew out of the Lunar Palace and landed randomly and aimlessly in some place.</p>
+<p>A woman's nature is ultimately afraid of烦燥(annoyance). As she flew over a corner where there was a burst of prosperous song and dance music——Shanghai seemed to have a driving force, and Miss Chang'e landed.</p>
+<p>On that night, Miss Chang'e's beautiful face and graceful figure were surrounded by a group of men who were celebrating the Mid-Autumn Festival before it even arrived. The fragrant and sweet champagne bewitched Miss Chang'e's eyes, and she unconsciously forgot her dignity and forgot her mission, and like a madman, she also rolled into the whirlwind of frivolity.</p>
+<p>Humanity in the lunar world has lost Chang'e and has become黯然(dispirited).</p>
+<p>Assuming that someone finds that this year's moonlight is still the same, then Chang'e is smiling by your side.</p>
+<h3>Work</h3>
+<p>— Zhang Yueshan</p>
+<p>Diligence and frugality intertwine to form genius (He Jia)</p>
+<p>Drive your business; or it will drive you (Franklin)</p>
+<p>Work without a plan is like navigation without a compass (English proverb)</p>
+<p>Work is the greatest remedy for mankind's painful diseases (Franklin)</p>
+<p>Working for the benefit of all is working for yourself (Henry Ford)</p>
+<p>Work has bitter roots but sweet fruit (English proverb)</p>
+<p>People struggle and suffer for work, whether foolish or intelligent, merely to seize freedom (茄立丽/Jia Li Li?)</p>
+<h3>The Ever-Deteriorating Pearl and Jade Industry</h3>
+<p>— Chen Jing</p>
+<p>Indeed, those who make a living in the pearl and jade industry today will sigh with emotion when they talk about the past. Even if we don't compare it with the booming situation of twenty or thirty years ago, we can't help but sigh at the decline in recent years.</p>
+<p>Prosperity and decline both have underlying reasons. There are many reasons for the decline of the pearl and jade industry. Let me mention one or two:</p>
+<p>(1) The high price of goods. The value of goods from five or six years ago has increased by ten, fifteen, or thirty times, causing even the middle class to give up the idea of wearing pearls and diamonds. Customers want discounts. (2) The instability of the market. In the past, in peaceful times, people with a little savings would buy accessories to fill the scene. Now it is different. Many industries are experiencing turbulence. Everyone has changed their minds and is using their savings to invest in speculation, taking the opportunity to profit. Pearls and diamonds are no longer asked about.</p>
+<p>(3) The scarcity of inventory. Even if there are occasional nouveau riche wives and grandmothers who widely search for pearls and diamonds, wanting to bring glory to their family, the goods are like foreign films in Shanghai. The source of supply has long been interrupted. The goods on the market are all inferior. Buyers cannot find goods that are satisfactory to them.</p>
+<p>(4) The most important thing is that the pearl and jade industry can only prosper when all industries are prospering first. If all industries stagnate, the pearl and jade industry will immediately come to a complete standstill. As the saying goes, "First comes warmth and fullness, then comes wealth and nobility."</p>
+<p>In addition to the above four points, there is an even more fatal wound. Think about it, pearls and diamonds are neither as afraid of moisture as cigarettes, nor as afraid of water leakage as towels and cloth, and they are not as expensive as gold ornaments, which are fifty or sixty times more expensive than they were five or six years ago. Why do people hoard cigarettes and towels and cloth, but not pearls and diamonds, which are easy to hoard? Why do buyers prefer to buy expensive gold ornaments and abandon cheaper ones? In a word, the pearl and jade industry has no public, unified, and formal price. When buyers buy, they often raise the price by two or three times the cost. When they sell, they often bleed dry the poor devils, thus losing commercial credit and deteriorating.</p>
+<p>At present, senior gentlemen have also broken the concept of sons inheriting their fathers' business and have also realized that the decline of the industry is irreparable. There are very few young people who inherit their fathers' business.</p>
+<p>However, this wealthy industry's pearl and jade market is still full of people in ragged clothes. They are clamoring and arguing, as if struggling on the hunger line. If you have time to visit the Times Theater, you will be shocked and saddened by the ferocious expressions.</p>
+<h3>Riding in the Same Boat Through Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(9) Hell on Earth</p>
+<p>Cui Zhen knew that she was Wei Yunqing's daughter, bit her lower lip, glared at her, and did not answer her words. The woman went out. There was a sound of footsteps outside, and the people guarding the door hurriedly stepped aside. Wei Shaoyun and his gang came in. His head was wrapped in a piece of blue cloth, there were drops of blood on the collar of his suit, and there were two deep black marks on both sides of his pants legs. This time, he was not as obsequious as before. He straightened his chest, inserted both hands into his waist, and shouted, "Who told you to sit there grandiosely? Get up for me! "Cui Zhen said, "It's none of your business." Wei Shaoyun said to his followers, "Take her down. The young master is here, and you don't know Mount Tai. What the hell is she?" The followers pulled Cui Zhen down. Wei Shaoyun said, "Kneel down for me. I knelt to you just now, and now it's your turn to kneel to me. Kneel!" Cui Zhen said, "You knelt because you were willing to. Why should I kneel to you?" One of his followers winked at Wei Shaoyun, and Wei Shaoyun shouted, "Kneel or not? I'll beat you!" As soon as Wei Shaoyun's words came out of his mouth, Cui Zhen felt someone grab her ear, someone press down on her leg, and a blow on her back. Her eyes blurred. She knelt down. Wei Shaoyun said, "Bian Cuizhen, you, you knelt to me! What do you want to ask of me? If you speak nicely, I, Young Master Wei, may not hold you accountable." Cui Zhen spat a mouthful of saliva, but did not hit Wei Shaoyun's face. Wei Shaoyun's anger rose again and said, "Rope! Rope!" The followers were only worried that Wei Shaoyun would not order them to do it. They thought it was an opportunity to avenge the young master and immediately took out thick and thin ropes to tie up Cui Zhen's hands and feet. (186)</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.09.24.html", "next": "1942.09.26.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

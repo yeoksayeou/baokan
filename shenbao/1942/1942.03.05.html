@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.05 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 406 - 4924409</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>爪哇日軍續有進展　萬隆東北激戰中　泗水以西兩軍發生惡戰聯軍飛機潛艇活動甚力</h3>
+<p>東京四日同盟社電　朝日新聞上海訊稱、日方機械化部隊於今日侵晨攻抵泗水以西某地、該處協約軍力阻日軍之攻擊、發生惡戰云、同時、讀賣新聞上海消息稱、萬隆荷軍司令部昨夜宣布、萬隆東北之區、日軍力攻與荷軍發生激戰、</p>
+<p>東京四日同盟社電　此間接爪哇戰訊稱、大隊日機咋襲萬隆、約歷半小時、予以重創、並炸毀油　、又日軍一路之先鋒隊已抵距萬隆三十哩之點、</p>
+<p>萬隆四日路透社電　爪哇協約軍雖作極堅强之抗拒、然已被迫後退、據荷印軍司令部今日公報稱、關於爪哇戰事今日所可報吿者、僅我軍刻正以攻勢精神與日軍交戰、日軍前進之地、均有我軍應戰、以防土地喪失、日軍因在天空握數目上之優勢、已有若干進展、日機咋猛炸萬隆近郊飛機塲之一、軍事目標受創、地面我機若干架起火、</p>
+<p>西貢四日海通社電　萬隆今日發表正式公報、承認爪哇日軍獲有進展、據稱在爪哇登陸之日軍、在堅强之抵抗下、仍略有進展、</p>
+<p>東京四日海通社電　前綫來電稱、爪哇日軍、繼續進展、爪哇西部日軍已佔領萬隆北之某重要飛機塲、其他日軍、佔領北岸附近之某鐵路中心、諒係蒂岡貝克、</p>
+<p>萬隆四日路透社電　荷蘭及協約國飛機、在爪哇上空作戰甚力、荷蘭潛艇亦在爪哇海一帶活動、爪哇島現無日軍繼續登陸、因無詳情足述、</p>
+<p>英軍歸薛特威爾指揮</p>
+<p>萬隆四日路透社電　華維爾將軍復任印度方面總司令之後、其麾下大批參謀軍官及輔助軍官、仍留爪哇英軍作戰區域、歸由薜特威爾少將節制、</p>
+<p>倫敦三日哈瓦斯社電　西南太平洋協約國聯軍總司令華維爾將軍、前往印度之後、頃據此問官方宣佈、英國軍事當局、業已任命薛特威爾少將為爪哇英軍司令、按薛特威爾少將為軍事專家、長於韜略、</p>
+<p>西貢四日海通社電　昨晚得荷印京城息、華維爾將軍之飛離爪哇、及西南太平洋聯軍總司令部之解散、引起巴達維亞方面之警愕與失望、爪哇人民信英人之逃離該島、因渠等認爪哇不能扼守、現爪哇方面已認英美已放棄該島矣、雖英美前會宣稱、「出全力以援助之」云、</p>
+<h3>摩勒斯比港　昨遭日機襲擊　澳洲布魯姆亦被炸</h3>
+<p>墨爾缽三日哈瓦斯社電　官方今日午後宣佈、日本機羣、今日襲擊糜勒斯比港、為時甚暫、損失甚微、</p>
+<p>康白拉四日路透社電　澳洲航空部長今日公報稱、新不列顚島南海岸之摩勒期比港之飛機塲與港務設備、昨日午後遭日機襲擊、澳洲兩岸之布魯姆、昨遭襲擊、死傷七人，</p>
+<p>西貢四日海通社電　雪梨報章昨一致主張保衛澳大利亞一事、應付諸美國將領、美國將領中最適於此職者厥為麥克沃塞將軍、今澳洲危機日迫、故亟須覓取外援、英國今自顧尙不暇、惟能求救於美國、</p>
+<p>東京四日海通社電　「國民新聞」昨向澳洲作嚴重之警吿謂、若澳洲不改變共對日本之敵對態度、則最近日機之空襲達爾文港、不過為進攻澳洲之序幕而已、</p>
+<h3>達爾文港續遭空襲</h3>
+<p>康白拉四日路透社電　澳總理寇丁今日宣稱、達爾文港續遭日機襲擊、詳報尙未接獲云、</p>
+<p>西貢四日海通社電　雪梨來電稱、日機對達爾文港之空襲、正在進行中、詳情並未語明、</p>
+<h3>日機襲擊吉爾勃島</h3>
+<p>里斯本三日同盟社電　據華盛頓來訊、美海軍部今日宣布日機在西南太平洋之吉爾勃島以西襲擊美艦隊、公報未述損害或喪失、</p>
+<p>華盛頓四日路透社電　美海軍昨夜公報稱、吉爾勃島迤西近有海戰、時在午後美國太平洋艦隊之航空母艦一艘、巡洋艦與驅逐艦若干艘、遭日方重轟炸機襲擊、二次襲擊相隔約半小時、</p>
+<h3>美屬莫那島　昨被砲轟</h3>
+<p>美屬波多黎谷島首府三日哈瓦斯電此間總督署宣佈、昨夜有軍艦、砲轟本島西面之莫那島，</p>
+<h3>日加緊鎳礦生產</h3>
+<p>東京四日海通社電　鑒於戰爭之需耍、日當局已撥一千萬元、以加緊鎳之製造、預料日本開發南太平洋之鎳礦時、此項出產將益增加、</p>
+<h3>傳英對北歐將發動攻勢　瑞典有被捲入可能</h3>
+<p>瑞典京城三日哈瓦斯社電　此間軍界人士預料、北歐即將發生戰事、緣英國頗有進攻北歐、以副蘇聯要求開闢第二戰綫一項願望之可能也、預料德國發動春季攻勢、其主要對象將爲蘇聯高加索邦、蓋德國企圖迅速佔領該處油井、同時並可藉以威脅蘇聯經由中東之供應路綫、協約國所以運用全力、以保持茂曼斯克與阿堪遮兩港一綫之通行無阻者、其故亦即在此、特協約國他日若果在北歐發動攻勢、則瑞典之被捲入漩渦、非不可能矣、</p>
+<h3>協約軍事會議　在倫敦召開</h3>
+<p>里斯本四日同盟社電　協約軍軍事會議昨在倫敦召開、與會者有英首相邱吉爾，澳公使歐爾與中國大使顧維鈞等人、會間雖無印度代表參與、惟信保衛印度與軍火經印度運渝問題、已加討論、</p>
+<p>瑞典京城四日海通社電　倫敦電訊、前西南太平洋聯軍總司令華維爾將軍昨自爪哇飛抵印度云、</p>
+<p>新德里四日路透社電　此間軍事發言人今日宣稱、華維爾將軍現雖已到印度、但尙未正式就仟印度方面總司令之職、外傳華維爾將軍曾在新加坡方面因飛機失事受傷、係屬誤傳、實則將軍僅於黑暗中失足傾跌、現在體康甚佳云、</p>
+<h3>美國驅逐艦　又一艘被擊沉</h3>
+<p>華盛頓三日哈瓦斯社電　海軍部今日宣布、美國驅逐艦約谷瓊斯號、已在大西洋被魚雷擊沉、水兵僅有十一人獲救、美國軍艦被擊況者、此乃第九艘、</p>
+<p>里期本四日海通社電　美海軍都昨夜宣稱、美國驅逐艦「瓊斯」號已在大西洋被擊沉沒、該艦排水量為一千零九十噸、速率三十五里、裝爲口徑十點二公分之大砲四尊、口徑七點六之高射砲一尊、五十三公分之魚雷管十二枝、該艦平時全體官兵共一百二十一人云、</p>
+<h3>德報復哨兵被殺　槍決猶人廿名</h3>
+<p>巴黎四日海通社電　法國德軍司令、為報復德軍哨兵於本月一日遭人暗殺一事、已將猶太共產黨徒二十人正法、今日各娛樂塲所均停業、以追悼殉職傯哨兵云、</p>
+<h3>東非義總司令病逝俘虜營中</h3>
+<p>羅馬三日哈瓦斯社電　前任阿比西尼亞總督奧斯泰公爵，本日在英國俘虜營中患病逝世</p>
+<h3>里翁法院開第五庭　達拉第長篇供詞　法國未能充分準備作戰其責任應由參謀部負之</h3>
+<p>里翁三日哈瓦斯社電　里翁最高法院審訊誤國案、本日開第五庭、當由主要被吿之一、即前總理兼國務部長達拉第、就法國準備不充、生產技術落後情形、作長篇供辭、惟另一被吿、即前任國防軍總司令甘茂林將軍、對於庭長賈奧斯要求渠就法國準備不充、說明自身責任所在時、渠始終守口如瓶、拒不作答、當時庭上先審達拉第、庭長賈奧斯問及巴黎區各種特別重要工業、雖在空襲危險下、聞仍保持原狀不動、此層是否屬實、達拉第稱、特種技術人材、僅可在巴黎羅致、重要工廠、如雷諾機關車廠及羅森茄機關車廠等數家、確已遷往內地、至於若干戰時工業之國營問題、從未含有政治作用、政敵持此為攻擊余之口實、絕難令人心服、查國營法律、幾由國會全體一致通過、事實上余僅令工廠十家、劃歸國營、但若干實業家於聞悉其所有工廠將歸國營時、即從中作梗、同時另有一部份實業家、唯求履行外國方面甚至中南美洲各國之軍火定單、實堪痛恨、試以國營勃倫特鋼鐵廠為例、余等提議將公司改為半官半商性質、然該公司當局需索補償費、無微不至、一九三六年十二月三十一日、即該公司改為國營之前夕、廠方將所有案卷及計劃、用卡車運出辦公室、余乃不得不命警察加以阻止又以法國中部署名之克盧梭鋼鐵廠而論、於政府決定將該公司劃歸國營之後、廠方即實地進行破壞、切斷各工塲內部交通、廠中各專家、亦被厚薪吸引、另覓其他工作、</p>
+<p>法軍備部虛有其名</p>
+<p>顧就大禮而論、戰時工業國營法、極為有利、若干工廠改歸國營後、生產增加三倍、同時政府發給各工廠補償費五萬萬法郎、厥後即由接受補償費各廠投資於其他國防工業、從而增進法國生產能力、余無須以國營法就商於陸軍參謀部、良以該法原則、巳由國會通過、但事實上、余會以此事商諸軍事當局、軍事當局對此意見紛岐、工業國營法案、於一九三六年即向參衆兩院提出、原意一九三七年即可通過、但至一九三八年、尙未能通過、實屬可憾、當時政府亦認為此項法案係一種「社會化」之辦法、爰乃決定暫不付諸實施、參衆兩院討論此案、經年累月、未得結果、今日攻擊政府不設法使兩院早日通過者、會提出各項修正案、實堪詫異、按之實際、自一九三九年九月至一九四○年五月、全國工廠製造軍械之數量、亦大見增加、例如在總動員時、每日能製造平射砲一百二十尊、一九四○年二月、增加至二百四十五尊、五月又增至四百十四尊、此在高射砲及其他大砲之產量、亦復與日俱增、職是之故、法國未能充分準備作戰之責任、應由參謀部負之、至戰爭結束、尙有砲彈數百萬枚、炸彈數萬枚、儲藏各處、未能使用、不寗唯是、各種戰具、均由參謀部選定、惟其生產、則由陸軍部各部會監製、此在甘茂林將軍、對於實施此項軍械生產計劃、並得隨時過問、每至生產停滯時、渠即促余注意、惟余始終認為、尙有大批軍械未及使用、迨至動員之日起、甘茂林將軍已非余之下屬、尙屬於最高軍事委員會、在承平時期、設立軍備部、確保軍械之充分分配、在自由經濟制度下、絕對無益、是以此軍備部、徒有虛名而已、</p>
+<p>甘茂林氏靜默無言</p>
+<p>里翁三日哈瓦斯電賈奧斯庭長本日於審訊達拉第後、續訊前國防總司令甘茂林將軍、其經過情形、頗為「戲劇化」、庭長首謂君應發言、蓋陸軍方面端賴君為之辯護、否則將成衆矢之的矣、甘茂林答稱、余現居於囚犯地位、烏能置辯、庭長賈奧斯曰、余之所欲詢問者、為君究竟答辯與否、君於一九三五年一月二十一日、繼魏剛將軍出任參諜總長、其一部份職掌、乃在監督軍需生產、促進軍部各部份之工作、於此君亦有所欲言否、甘茂林答稱、余於前次進行初步調査時、業已有所答覆、庭長賈奧斯又問、前次調査、僅係預備性質、今君應好自辯護、甘茂林默無言、庭長又詢及作戰準備未充各節、甘茂林亦不置辯、審判長又曰、君實未能充分運用權力、君謂自陸軍部隸屬國防總部以後、軍需總監賈戈梅即代行君之職權、關於此點、當另向賈戈梅詢問、惟無論如何、君實未能運用權力、此外、賈並歷數軍需不充、工事不固之種種事實、甘茂林僅稱、余不能回答、庭上父問、君旣知需要重坦克車及巨型轟炸機、何以不向政府要求撥付鉅款、緣何不為君所應為、君對此項指摘、亦無言乎、庭長雖一再盤詢、至此、庭長謂甘茂林曰、余祇可紀錄君之靜默無言矣、乃於下午五時十五分宜吿退庭、定於七日開庭審訉關於前航空部長賴尙伯部份、</p>
+<p>德方批評里翁審訊</p>
+<p>柏林四日海通社電德外部昨招待記者時、情報處長施密特博士透露一九三八年德外長里賓特洛甫與法外長龐萊之會談及里賓特洛甫於一九三八及三年對法大使所發之文件、施密特指稱、里翁法庭之審訊、僅關於於次要之問題、即法國何以戰收、其實里翁法院應偵査法之負責人何以犯對德宣戰之巨罪、當捷克事件時、德外長對法大使龐賽表示、法國若干涉德國之問題、其結果將為法失去强國之地位、但龐審及其繼任大使古隆里向巴黎之報吿、均未述及對德作戰之危險、僅依照巴黎執政當局之意旨而報吿、此乃導法國參加戰事之一部份原因、一九三八年十二月德外長里賓洛甫到巴黎訪法外長龐萊時、龐萊表示法國不干涉東歐事件、將注意其殖民地之發展、於是法德諒解乃成立、而德國亦開始改變其對東歐之計劃、但當里賓特洛甫往華沙之時、龐萊忽宣稱、法國對於東歐事件之發展、不能漠然視之、此時德外長深悉法與波蘭之聯盟、對德、法諒解威脅極大、而波外長貝克何以每日改變其態度、事後德外長將其致法外長之信公佈、內指責法國破壞其與德協定內之諾言、施密特公使最後稱、里翁法院應質詢達拉第何以聽命於英國、對德宣戰、倘此問題不加答覆、則里翁之審訊、亦無舉行之必要、倘該項審訉照舊繼續、法人及法國政府將飽受世人之譏笑</p>
+<h3>萬隆迫近戰爭邊沿</h3>
+<p>爪哇戰事，一天緊似一天，據昨天同盟社消息，日軍先鋒部隊攻抵某地，荷印軍總司令部所在地的萬隆，業遭日方大舉轟炸，萬隆係高原，物產富繞，風景幽美，離巴達維亞只有一百七十公里，實爲西爪哇的一個錦繡「花園。」萬隆山附近峯秀麗，遊人趨之若鶩，設備完備的旅館，所在都有，其地並有溫泉和著名的巴班他淵火山「土圖」萬隆附近之山景，「下圖」萬隆整潔之街市。</p>
+<h3>氣象台訓練　幹部人員</h3>
+<p>重慶四日電中央氣象台現籌辦氣象幹部人員訓練班、第一期招收學員五十名、訓練期限六個月、舉業後即派往各測候所站服務、以後並擬陸續調訓現有工作人員、</p>
+<h3>人口政策會　在渝開會　決研究綱領四項駐滇委員將開會</h3>
+<p>重慶四日電社會部以人口政策為一切社會政策之基石、關係國族前途至深且鉅、爰聘請陳長衡·陳達·潘光旦·孫本文·吳文藻等為人口政策研究委員會委員、並以陳長蘅、陳達分任駐渝駐滇召集人、該會駐渝委員于本月一日上午在該部舉行第一次會議、每日上下午均集合討論、至三日休會、出席者有陳長蘅·孫本文·吳文藻·許世瑾·陳言·傅尙霖·黃友郢，張鴻鈞·吳克剛·范任·劉助齡等、谷部長於第一次會議時參加、提出硏究要點及硏究方法、該會日來硏究之結果、經議定綱領四次、　人口政策之遠大目的、　人口政策之基本原則、　人口政策之範圍內容、　人口政策之實施方案、第一　第三各項內容業已議定、關於實施方案一項、留待第二項會議討論、又該會委員一部現駐昆明、經由該部將綱領要點郵寄召集人陳達、就近定期召開會議、俟雙方討究得有結果、再行定期召集、渝滇兩地委員舉行全體硏究會議商決一切、</p>
+<h3>蘇格蘭萬國共濟會　捐款救濟難民</h3>
+<p>重慶四日電萬國共濟會美國南轄區蘇格蘭分會長考士、近代表該會最高委員會捐助我國美金五萬元、以為振濟難民之用、聞孔副院長已代表蔣委員長復電致謝、按該會以友愛救濟眞理為宗旨、分會遍布全世界、我國北平上海均有分會、而蘇格蘭區分會則為共濟會之鼻祖、該會此次捐助鉅款、救濟我難胞、用意良堪感佩、</p>
+<h3>英空軍總監　朗格摩辭職</h3>
+<p>倫敦三日哈瓦斯社電　空軍上將朗格摩爵士、會任中東英國空軍司令、自一丸四一年起、出任空軍總監、為時不足兩年、本日忽自動辭去木職、而以候選人資格、參加林肯郡下議院競選、據渠吿人、此次吿退用意、乃欲使後進之少壯派軍官便於晋升、</p>
+<h3>英機轟炸巴黎　死傷一千餘人　盧定博物院大受損害遇難者法將視同國殤</h3>
+<p>倫敦四日路透社電　倫敦官塲今晨宣布、巴黎郊外之工廠、昨夜遭英空軍轟炸、英機係轟炸巴黎西南賽納河灣畢倫柯特地方之雷諾汽車廠、昨夜英機又轟炸、德海軍根據地基爾與威廉哈芬、德艦香霍斯特號與格納賽奴號從白萊斯特衝出後、現泊該地、</p>
+<p>維希四日哈瓦斯社電　據最近消息、英機昨夜轟炸巳黎、計炸斃六百人、炸傷千人、世界聞名之塞夫萊斯瓷器廠及盧定博物院、亦大受損壞、據各區調查人員報吿、波洛臬區房屋炸毀一百五十至二百所、居民罹難者四百人、受傷者約一千人、克拉馬脫區房屋被毀十二所、二人殞命、五人受傷、伊西區房屋被毀二十所、喪生者十七人、受傷者表多、維爾喬夫區房屋炸毀十五所、四人遇難、八人受傷、蒙脫洛區死一人、紐伊里區輕傷三人、勒不谷區死十五人、受傷二十人、塞夫萊斯區死三人、傷七人、盧埃伊爾區死傷不詳、此外、波洛臬及比朗古西區有一避彈所、收容一百五十人、出入處尙未掘開、該兩區死傷人數、因尙須增加、</p>
+<p>維希五日哈瓦斯社電　英機昨夜轟炸巴黎事、當時已由主管機關呈報貝常元首、死傷情形、亦隨時以通話陸續呈報、貝常元首今日宣稱、被難工人、不顧飢寒熱忱、為國宣勞、今竟遭遇英機殘殺、其家屬固不勝悲動、即全國人民、亦均寄以無限同情、抑瘡痍滿目之一國、各種防務均巳被奪、竟不惜對其無辜良民、肆意夜襲、已引起全國公憤其憤慨程度、已視同國難、政府除對遇難家屬發給憮卹外、遇難者舉殯之日、全國當視同國殤、為之誌哀、</p>
+<h3>渝檢閱童軍　今日舉行</h3>
+<p>重慶四日電五日為童軍紀念旬第九日、上午九時在復興關舉行童子軍大檢閱、參加童軍將有三千人、同時並將舉行全國各省市籍童子軍組織之代表隊向會長致敬典禮、總檢閱官為蔣會長（由戴季陶副會長代表）下午全體童軍在川東師範操塲舉行童子軍學術表演、藉以檢討童軍課程訓練情形、晚間在川東師範舉行營火會、並在實騐劇院開始公演平劇募款捐輸、</p>
+<h3>林主席　對印廣播</h3>
+<p>重慶四日電林主席因蔣委員長印度之行、頃特向印度人民致謝忱文、由無綫電台廣播、</p>
+<h2>Page 3</h2>
+<h3>恐怖演習昨在虹口舉行　當將外白渡橋交通阻斷軍警雙方試騐平民警務</h3>
+<p>英文大美晚報云、日方近頒布吿、所闡明之恐怖演習、今（四日）晨首次在虹口舉行、同時外白渡橋斷絕一切交通、藉以試騐上海之平民警務制度、演習結果、巳由日方與警務當局加以研究、衆信恐怖演習不久將根據今日之結果、續在各區舉行、今晨演習之區、以蘇州河與虹口浜為界、午前將近十時、外白渡橋即被遮斷、至十一時三十分始開放、演習之恐怖份子纏臂章、參與演習、遭該地民警團員與旁觀者追捕、詳細經過未悉、然衆信當頗圓滿、</p>
+<h3>捲烟限價　將付實施　蘇州河南烟價昨日昂貴如故</h3>
+<p>昨據烟兌店傳出消息、白領署頒令限制虹口與匯山區之捲烟價後、蘇州河南之捲烟價、昨日尙未受其反饗、據捲烟商謂、日方之布吿、僅適用於日商店舖、故表示非待工部局迫行、不致抑低捲烟售價、又據工部局發言人聲稱、捲烟價格問題、仍在該局之價格統制議程中、若干種捲烟價、已經局方限定、至於他種烟價、將否加以統制、尙難斷言、工部局對於任何種物價、必先詳細硏究其存底及供應與製造問題、然後始加統制、以捲烟價言、局方刻正候日當局之來字云、昨晨蘇州河南捲烟價、昂貴一如往日、少數店舖可講得二十枝裝駱駝牌與LuckyStrike牌者每包售六元五角、Roy牌售四元五角、康克令售一元八角、共他各牌捲烟價、亦未見低落、</p>
+<p>法租界正研究辦法　　上海泰晤士報云、工部局昨已從事廣　泛之　研究、以為宣布統制捲烟價之準備、同時聞法租界當局亦已硏究行將採取之辦法、俾統制擔烟售價、而將其抑低至正常水準、按近曾傳聞日當局擬將美國與佛及尼亞烟葉製成之大量捲烟、傾銷於巿、日總領署旋於日前宣布捲烟限價、並令日商店舖一體遵守、東亞戰事爆發以來、各種捲烟莫不漲價、惟昨日（三日）多數店舖之捲烟售價、已較日領署宣布限價前之巿價為低、蓋多數店舖深恐當局將禁止濫抬捲烟價、故願照日領署之限價出售也、</p>
+<h3>腳踏車聯合執照　日內發表　執照費尙未悉</h3>
+<p>近傳脚踏車聯合執照之協定、業巳簽字、昨據可靠方面吿記者稱、關於聯合脚踏車照事、可望於此後數日內發表一通吿、聞此事業已獲得原則上之協定、通吿之所以遲遲未能發表者、僅以若干小問題尙未解決故也、工部局法公董局與華界方面、目前正從事解決此等小困難、而後擬於各區域內、實施脚踏車聯合執照制度、此種聯合執照、將由各車主、向其所居地區之管轄當局領取、其執照費則尙未獲悉云、</p>
+<h3>金城銀行　投資淪陷區　華商銀行减息</h3>
+<p>同盟社本埠訊、昨悉、上海華商銀行雖存歡激增、然因毫無投資方法、故刻正實行减息主要華銀行家且考慮以款項用於內地淪陷區、關於此層、聞金城銀行巳派員赴數處淪陷區、研究投資可能性、</p>
+<h3>工部局通知米店　兼售隨苞米　每逢星期五另售一次</h3>
+<p>工部局頃發布吿、定自本月八日起、各米店僅准於每星期一·星期三及星期六、另售食米、每星期五另售碎苞米（即碎玉蜀黍）、碎苞米每人每次限購一升半、售價定為一元七角、又該局設在戈登路公平路暨華盛路各售米所自同日起、亦按照上開辦法辦理、</p>
+<h3>華比銀行保管箱　提物人數不多</h3>
+<p>華比銀行保管箱開啟後、連日赴該行前往提物者、人數仍不多、每日祇十餘人而巳、又以該行租戶物品、均屬保管性質、並無鑰匙、祇憑收條提物、故手續尙簡單、隨時申請隨時付給准提物品其提物時間、規定為上午十時至十二時、</p>
+<h3>仁濟醫院　福醫生昨逝世　明日午後舉行殯禮</h3>
+<p>蘇格蘭人福開森醫生、本耶穌基督救人肉體靈魂宗宗旨、來滬傳道行醫、在仁濟醫院主持外科醫務、約已十年之久、兩星期前、因由病人身上附帶毒蝨、染得斑疹傷寒、醫治無效、延至昨晨與世長辭、福醫生生前中外至友甚多、聞此噩耗、莫不哀悼逾恒、福醫生遺有一妻及子女各一、其公子尙在襁褓之中、遺體已舁膠州路萬國殯儀館、定於本月六日星期五午後三時半在靜安寺對面敎堂舉行殯醴、即在該處公墓安葬、</p>
+<h3>工務處着手　修理橫浜橋　五噸以上車輛禁止通過</h3>
+<p>工部局工務處自本月三日開始着手修理虹口區之橫浜橋、為期約一個月、修理期內、凡重量超過五噸以上之車輛、均禁止通行云、</p>
+<h3>怎樣認識新農業靑年會首次農學講座</h3>
+<p>上海中華基督敎靑年會舉辦「農學講座」、前日下午四時開始第一講、聽講者座無虛席、主講人徐天錫敎授、講兩小時、莊諧並作、使聽者毫無倦容、茲分述概要如下、</p>
+<p>業餘農業家　我國自古以農立國、然到如今、一般人對於新農業、往往很隔膜、很輕視、以致認識不足、但在都市裏、倒產生了許多「業餘農業家、」對農業頗感興趣、想辦農塲的人、着實不少、他們原本不是研究農業的、借此來消遣、養雞、養蜂、養兎、種果園、菜蔬、不一而足、然失敗的十居八九、記得十餘年前、北平一帶、養蜂的人風起雲湧、間有因此而發財的、可惜北平不是養蜂的地帶、因園林太少、蜂塲太多、蜂就無從採蜜、結果非但不能產蜜、反用白糖喂蜂、其失敗可知、後來又爭着養兎、但失敗的人還是很多、不旋踵又銷聲匿跡了、又山西有位傲牧師、看到美國的高粱出產很好、說動了華洋義賑會、把數十萬元的賑款、去買了種子、米經實地試騐、貿貿然分發農民播種、誰知種了不一發芽、即使芽發了而收成不佳、結果又失敗了、此種事實、即是不認議新農業的害處、要說眞有研究的人、誠如鳳毛麟角、</p>
+<p>輕視新農業　還有絕大多數人輕視農業、以為這是農民做的事、低微而沒出息、不屑為、也不足為、有的以為中國改良農業、無顯著的成效、有的說農科學生、耕種技術不及農夫、殊不知農業的科目繁多、且又非常奧妙、其實道種論調、就是中國新農業的致命傷、新農業的範圍約可分為十四門、如農藝·園藝·畜牧·獸醫·昆蟲·植物病理·農業經濟·農塲管理·森林·鄉村敎育·農業推廣·農業工程·蠶桑·農業化學等、每門又分為若干系、</p>
+<p>新農業成效　中國新農業提倡了數十年、的確已有很多顯著的成效、就以上十四門中說、最有成績的首推農藝、作物改良成功的、如江浙兩省的水稻、戰後移往西南、廣西一省、已有二百萬畝、稻作改良後、產量又增百分之二十、連四川·湖南三省總計、不下六百萬畝、華北的棉改良得也好、棉種改良後產量多而織維長、小麥小米成績也極好、在作物改良方面說、我國技術的成就、不在日本之下、國際上也有了良好的名譽、其次農業經濟、如貸款·合作社等、各省也辦得極為發達、其次病蟲害的成績亦著、像華北的棉、向來有「蚜蟲」、現巳有防止的辦法、此為一大貢獻、又南方水稻的害蟲、已有「船梳」的方法、把稻的害蟲可以一網打盡了、又如農業水利、如綏·陝·川，桂·各省的水渠河流、政府於十年來都有偉大的設施以全國而言、新農業的幹部人才、即是實際推動的人、實在太少、中國的版圖極大、全國一千六百多縣中、如每縣設一農業試騐塲、至少即需一千六百個農業幹部人才、其他不必說、</p>
+<p>怎樣來促進　我們要促進新農業、第一須社會人士認識新農業的重要性、第二須培養大批各級農業人才、有的人以為有了機器、、或有了化學肥料、纔配談新農業、其實道是大大的錯誤、至於農業敎育、分高級·中級·初級三種·高級的須農科大學畢業後再升硏究院、國內如金陵·中山·兩大學、巳經設置、不必再到歐美日本各國去留學、中級的農科大學畢業就行了、初級的只須讀完三年制的農業職校、我以為高級的幹部人員、全國至少需五萬人、中級初級的至少需五十萬人、纔够促進全國的新農業、</p>
+<p>怎樣辦農塲　都會裏的人、要想辦農塲、切忌單獨性的辦鷄塲·蜂塲·兎塲而必須辦混合性的農塲、如園藝而兼辦畜收或果樹·菜蔬·等等、否則工人的工作、不能分配平均、而工作效率，不能增高、且須注意農業經濟、如產銷等、必須觀察得十分詳確、供少求多則利、供多求少則不利、新農塲切忌貪得無厭、欲一舉而就則必敗、初時規模不必大、從小做起、脚踏實地、一切根據科學原理、則前途當有成功之望、都市附近的農塲、以生產速成為上策、農產須趕在農民之前、如春夏季出產的菜蔬、能利用暖氣、提早於冬季出產、自然可獲善價而沽、如九月菊花能用「改光」法使在八月開花、豈不大佳、如「無子西瓜」必得都市中人的歡迎、西瓜而無子、亦是奇聞、但已有中國留美學生發明成功、又如番茄變大、非常奇怪、此法英國農業家也硏究成功了、</p>
+<h2>Page 4</h2>
+<h3>法租界　限價物品</h3>
+<p>（三月三日至九日止）下列貨品　係頭等伙食店價、</p>
+<p>牛肉　肥利十二元九角、充肥利　九元七角、前腿上肉　九元四角、臀上肉　六元七角五分、　七元、　八元一角、牛排　六元七角五分、　七元、　七元七角、五分、臀肉　七元五角、紅燒肉　七元、湯肉　四元九角五至五元一角、</p>
+<p>豬肉裏精肉　四元九角八分、後腿　三元八角四分、　四元六角、前腿　三元九角、　四元五角二分、腰肉　四元三角五分、排骨　四元二角、肋條　三元一二角五分、蹄膀　二元八角、板油　三元六角二分、　三元七角、　四兀五分、肥肉　三元二角、花油　二元三角五分、豬頭　一元九角八分、蹄爪　二元、</p>
+<p>羊肉後腿　三元三角、　三元四角、　四元六角、前腿　四元二角、牟排　四元七角、肋條　三元、羊油　七角、羊腰　七角、羊腦　八角、羊肝　四元、羊心　六角、羊舌　八角、羊脚　三角五分、</p>
+<p>水牛肉臀上肉六元、湯肉四元七角五分、</p>
+<p>熟豬肉外國火腿切片　八元八角、　九元七角、中國火腿八角、　三元五角、　四元、鮮黃魚　一元九角、　二元二角、　二元五角、冰黃魚　一元一角、　一元四角、　一元六角五分、鯉魚　一元七角五分、　二元、大明蝦　每個六角、　六角五分、　七角、寗波比目魚每磅　二元三角、　二元三角五分、　三元四角、白魚　一元六角、　一元六角五分、</p>
+<p>鹹魚鹹　魚　一元八角、八角五分、鹹帶魚　一元八角、　二元、</p>
+<p>鷄鴨及蛋活鷄　五元、　五元二角五分、　五元三角、鮮　九元、　九元三角五分、蛋　三元七角、　四元三角、　四元三角五分、</p>
+<p>水菓蘋菓　二元三角、　二元三角、　二元四角五分、檸檬　一元八角、　二元、　二元五角、生梨　一元六角、　一元六角、　三元三角、蜜橘　二元三角、　二元三角、　二元四角五分、洋桔大　一元七角五分、　一元七角五分、　二元、小　二元、　二元、　二元四角、香蕉　一元、　一元一角五分、　一元三角、（未完）</p>
+<h3>學生食堂　亟待各界捐助</h3>
+<p>上海中華基督敎靑年會因鑒學生健康問題之嚴重、特於去年九月間開設學生食堂、以營養、衛生·經濟·三原則服務社會、該會學生救濟部幷撥款救濟淸寒學生、每餐給予代價券五角、普通學生亦减費優待、茲悉該項救濟計劃、現仍繼續辦理、唯該會幷擬擴充名額、需要社會各界捐助、使一般淸寒學子、得受實惠、收款處為八仙橋該會學生救濟部、</p>
+<h3>侵佔客貨被捕</h3>
+<p>法租界外灘三八號　達報關行經理程錦濤、於去歲間受客戶委託、將價値萬餘元之西藥一箱、轉託南通報關行經理陳瑞生（二十八歲安徽籍）運至北沙掘港地方、詎陳將貨車去後、即杳無音訊、程遍查無着、乃曾投報法捕房請求查緝在案、昨日程偵悉陳將自南通乘輪來滬、遂偕探至碼頭守候、屆時陳果到來、當將拘捕、現押捕房偵査</p>
+<h3>中央捕房禁毒部　破獲烟窟三處</h3>
+<p>中央捕房禁毒部探長葉毓泗、近因界內烟毒遍流、勢甚猖獗、故飭屬一體嚴緝、昨日又偵悉雲南路常三和酒店前樓、及廣東路中央大旅社二零一號·二零三號房間內、均有人私設烟窟、特飭探往拘、當在該處拘獲烟犯十餘人、並抄出大批烟具、一併候訊究、</p>
+<h3>中匯大樓四樓　男子躍下自盡</h3>
+<p>昨晨九時許、有衣衫襤褸之華人一名、自愛多亞路中匯大樓四樓躍下、即行氣絕、其年齡約三十許、自殺原因亦不明、而其衣袋內無隻字片紙、圍觀路人均莫能呼其姓名、故此人身份、無從辨認、</p>
+<p>社會服務</p>
+<h3>紹酒一</h3>
+<p>— 被騙</p>
+<p>今因小號被騙去老酒一壜、事關同業、務懇借貴報一角登載、今日上午、一個老年茶役模樣、來叫酒二壜、當時言明價目、送三馬路、某大樓某報關行、貨到付款、即派人同去、送至該處、即又來二人聲稱、一壜須送別處、一壜先送樓上、當時留下一壜、由後來二人代為看守、另一壜則由送酒人、同來叫酒者引導上樓、故不疑有他、惟因抬酒較慢、至半逮忽不見該來叫酒老者、心知有變、急回至樓下、另一壜酒、已不翼而飛、始知遇一騙、詢諸該大樓鄰人、則云該處有四路可通、此種受騙、時有發生、九江路恒豫興紹酒棧謹啟</p>
+<p>房屋如何遷讓</p>
+<p>前見貴報登載工部局取締轉租、極為詳備、自應遵行、但滬上慣例、凡有房屋一經出租之後、遇欲收回自用之時、不問全租分租或轉租、如有訂期租約者、訴之法律、或可邀准、而欲實行繼讓、則亦難乎其難、若無訂定期限之租約、絕對無法收回、即向法院請求勒遷、亦從無一案邀准、當局對於轉租者、巳有嚴厲之明文、對自需用者、尙無收回之規定、似應於取締之中、再加一條說明、如係實在自用、應如何遷讓、蘋啟、</p>
+<p>詢問返粵辦法</p>
+<p>本人欲速返粤、因路途不甚明、問題如下、祈請指導、　登記返粤手續與地點如何、　滬粤若未復航、尙有他路可返否、愛文義路一三三號、何永生啟、</p>
+<p>答療治耳流膿水法今閱貴報社會服務攔內載耳流膿水一事、余有一翳治之法、甚為簡單、祇須向藥房購「雙氨水」一瓶、以牙籤一根、頭裏藥棉、浸以藥水、每日數次洗水、不久即吿全愈、請以此法試之可也、董誠謹啟、三月一日、</p>
+<p>答「貓精擾夢」</p>
+<p>查此病名為「絞心症」、一名「狹心症」、乃心臟上之血管一時的痙攣、致血行失暢、遂有此現象、應用Nitite類、及注射Euphylin與Glucose、可以减除此項痛苦也、中藥可試服消生歸脾丸、每晚臨臥時、開水呑服三錢、（醫師徐元甫楊彥和）</p>
+<p>昨日本報發報時間六點五十分</p>
+<p>體育新聞</p>
+<h3>梅生盃小小足球賽　分成三組名單公布　每組七隊採單循環制</h3>
+<p>首屆梅生盃小小足球聯賽、全部參加名單、巳誌前報、主辦當局以加入者達廿一路雄師、特分為「梅」「生」「盃」等三組、每組七隊、採單循環制、每組優勝者再行決奪冠亞軍、該賽定本星期六下午在光夏中學招募、秩序正在編排中、茲錄分組名單於下、（梅字組）瑞龍·海關·小混·晨鐘·蓋白·百聯·馬迪、（生字組）嚶鳴·小龍·萬隆·宰文·永華·象隊·工務、（盃字組）文靜·小威·積　·致友·偉星·友夏·國華、</p>
+<h3>本屆羽毛球聯賽　今日開始報名</h3>
+<p>本屆羽毛球個人錦標賽、定今日起開始報名、報名費每人或每組參加每一項目國幣洋一元、報名處邁而西愛路法商會、項目計分男子單雙打、女子單雙打、及混合雙打等五種云、</p>
+<h3>小小足球友誼賽　瑞龍今戰文靜</h3>
+<p>小小足球友誼賽、瑞龍隊定今日下午四時出戰文靜隊於慕爾鳴路光夏中學球塲、歡迎參觀、瑞龍陣容如下、奚留福、曹偉星、張夙關、許希聖、陳金泉、鄭麟祥、李貴訓、顧一龍、王定球、張才德、張銀吉、</p>
+<h3>小型足球友誼賽　南商約戰影星</h3>
+<p>本巿南京商業儲蓄銀行小型足球隊、組織成立後、在丁山桂領導下、球藝突飛猛晋、健將如方明康、陳玉琦、戚允賢等、久戰沙塲、實力雄厚、茲約影星隊於本星期日晨十時半在西愛咸斯路通樂球塲作友誼賽、影星隊長張慧冲暨劉瓊、梅熹、襲稼農、韓闌根等均將下塲、屆時不售門票、歡迎各界參觀、王樵勤、劉永慶、陳玉濤、周燁鼎、方明康、趙慶成、陳順利、周國華、戚允賢、</p>
+<p>商業新聞</p>
+<h3>現金稍起　散漫賣風</h3>
+<p>現金粭赤暗市、步見疲落、乃各方人心已於前午由緊轉疲、且為某種關係、上兩日之散戶多頭羣起售出、且某某兩金號於晨初即紛將多額出籠、巿價在一片賣出聲中壓下、晨初為一萬三千九百元、與上日收價同、金號幫證券號嘉餘等吐售、銀號幫亦供多求少、價頓步瀉三百元至一萬三千六百元、現金號與某銀號進提至一萬三千七百五十元、奈市勢虛軟、不久散漫之賣風復熾、再削落一百八十元、降至一萬三千四百七十元低價、十一點四十分後、浮空抵補、金號幫少納、升起八十元、正午以一萬三千五百五十元為收價、比前日軋小三百五十元、當日有四百三十元差度、成交仍稀、銀樓首飾每兩兌出價、大新同行均仍掛一千四百五十元、（收進减一百五十元、紋銀掛十四元、黑市十二元半、聞有賣戶、銀幣一枚為七元三五角、</p>
+<p>外幣市况、無甚變動、英金鎊仍爲三百五十元、美金鎊仍為三百六十元、美金票略升為十六元八角、香港票續退為二元九角、大票减小一角、軍用票為四元四角半、</p>
+<h3>公債擇善而定</h3>
+<p>公債暗盤、咋巿繼續向上、甲乙戊三種比較為强、丙丁兩種、因同康及大康成續有出籠、中一亦有脫手、大中順泰協興元及通記均有補空、丙種初開為六十七元後、緩緩上升四角、惟時忽有臨時地方謠言、市價驟低、但瞬即過去、但甲乙兩種始終堅挺、人心雖尙有恍惚、但已知何者為便宜、做多者亦頗知選擇、可知行市仍可漸趨蘇醒也、巿價結果、除丙丁微小五分及四角外、餘則漲二角至六角不等、成交約四五十萬元、茲列簡明表於後、</p>
+<p>昨日外股市况、仍形平疲、中紡九元三角半、退至九元二角半、英聯廿元、怡和紗廠廿二元七五、墾植廿一元七五、祥泰木行廿三元七五、電話廿二元七五、揚子十元〇六角、蘭格志十四兀、共成交五千七百股、怡和啤酒五元半及五元七角、業廣十五六元、紙業五元半及六元、電車卅七八元、上海毛絨五元六八角、電力公債六十六元及七十元、均為經營者受委託之買賣價、中營八元半、價和六元二角、電力優先九十四元、英楂華十八元均有買戶、亞洲航業八元、英國毛絨五元、上海銀公司十三元半、鋼業十四元四角、恒業十元、會德豐五十五元、陳氏一元一角、地傍與伯土安甫同為二元、均有供無求云、</p>
+<h3>紗市平穩</h3>
+<p>棉紗巿况、依然穩定、但客銷仍屬平庸、不過日棉布疋良好也、二十支雙馬廠單初開價為二千五百十元、少頃升至二千五百四十五元、中途稍有流言、又鬆至二千四百六十五元、最後因人心堅挺、為二千五百六十兀收盤、四二支藍鳳五千七百八十元至五千七百十元、四二支陽鶴價為五千六百元、六十支牛頭九千四百元、四十支日光五千一百元、三二支仙桃四千九百五十兀、四二支毛蝶五千四百元、三二支金寳星四千六百六十兀、四十支雙虎五千〇二十元、二十支月琴二千九百元至二千九百六十五元、二十支藍鳳三千一百六十元至三千二百二十元、二十支雙地球二千七百二十元、二十支雙馬二千七百四十元至二千八百元、十六支紅奎星二千四百元至二千四百五十元、</p>
+<h3>棉布搜羅甚殷</h3>
+<p>廠布昨巿續呈挺秀、乃因廠根甚緊、同業搜羅手貨、有求過於供之狀、各布售盤、一致上漲、後市以當日最高價收盤、十六磅花蝶粗布一百三十五元、雙象一百三十二元、地球一百二十兀、大鵬細布一百十元、富貴細布一百○七元、地球細布一百十元、長壽素府綢四元五角半、一九〇美亭士林布一百丸十三元、較上日白貨漲一元至二元半、漂染布漲一元至三元、</p>
+<p>東布同業及囤戶交易仍　、市氣堅昂、龍頭細布廠單晨開一百廿六元、後散戶吐售、降至廿三元五角、午收微挺為廿四元、下午買氣又盛、復回高至一百廿六元、低盤見廿四元、收盤為廿四元七角半、較漲每疋七角半、中檔飛魚彩球非常緊俏、做至一百十五元二角半、陽鶴十四元五角、喇叭童十三元、五福雙魚十一元、寳貝細斜零二元、五福雙魚斜零四元、俱有吃戶、四君子嗶嘰十至十二月廠單四元一角三分、紅單新稅三元九角七八分、</p>
+<h3>呢絨盛行棕黃色</h3>
+<p>南京幫辦去三十餘萬元、市銷活潑、踢皮球生意復興、棕色及黃灰呢絨、趨勢極為俏活、因該棕黃顏色况在最為風行、得時之宜、昨一六七花呢每碼售價一百四十五元、三白邊元靑色子貢一百元、寅豐華達呢六十九元、大業海列司二十八元五角、友生防雨布十元、大同絲光羽紗六元二角半、寳新蔴膠布五元、永成黑炭襯四元、</p>
+<h3>薄稻已見回降</h3>
+<p>昨國米早晚稻供過於求、市價立被仰低五六元、北粳到乏未有出樣、有手貨意圖扳俏、奈被南粳價落影響致難成交、晚稻開石浦泗靑等各路薄稻為二百八十元二百七十八元至二百七十七元半不等、又早稻二百七十九元至二百七十八元半、惟元米到少銷旺、陰元斷檔、金壇白元開自二百八十七元至二百九十元之新高價、</p>
+<h3>餅豆挫落元許</h3>
+<p>豆市實銷不殷、囤戶咸恐當局實行限價、不敢再抬、故交易不多、市勢略見帶疲一二元、計售開平湖杜豆一百包、價一百六十九元、常州牛皮黃二百包、一百五十二元至一百五十一兀、崇明沙黃四十包、一百五十二元、又沙赤五十包、一百三十元、靑島次菉豆一百餘包、一百三十元、</p>
+<p>紅糧及生仁、到存俱稀、本街走銷尙活、形勢帶挺、計售開明光紅糧三車、價為八十六尤至八十六元半、又高貨八十九元、山柬生仁一百〇三包、二百八十元、明光生仁一百五十包、二百四十五元、</p>
+<p>豆餅囤銷仍淡、人心缺乏興奮、巿勢猶疲、價續挫落元許、計售開漢口豆餅一千片價二十五元、姓記豆餅五月份、棧單一千五百片、價三十五元三角至三十五元六角、利字豆餅三月下四月上棧單五千片、價四十元零五角、</p>
+<p>麩皮自經內地辦裝後、市上現貨漸減、日廠亦之大量批出、昨有鄕莊採辦、執貨者益為居奇扳俏、蘭花客麩小包開六十七元六角、而三鑫大包又自六十八元半至六十九元、小包現貨缺貨、三月份則為七十元、成交約一千六七百包、</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>投機的「集郵家」</h3>
+<p>— 尋淵</p>
+<p>報載：本埠郵政局，最近發覺郵箱內投遞之信件，每為人所竊去云。這眞可惡得很。別的東西不偷，念頭竟轉到區區信件上來，抽絲剝繭的剽剪，所値雖然集少成多，行徑到底在剪繒賊拋頂宮之下，實在太「小兒科」了；而在失主方面看來呢，損失倒未可以金錢計算，或者是火燒信，或者是吿急信，甚至是情書，家務信，報喪信，莫衷一是，人家望穿秋水，急不可待，竊信賊却順手牽來，剪而挖之，有傷陰騭，莫逾於此。古時誤托洪喬，投之於水，為的靑島使實在怕麻煩；現在人家出了足郵，小小心心，送入郵筒，却一去杳如黃鶴，空餘此筒，為的竊信賊有利可圖，然而煞風景惡作劇則初無二致，予人以惡劣「印象」！</p>
+<p>近年來市面不佳，窮極無聊的人實在層見疊出，挖空心思的「小活兒」也源源而來，竊信不過一端而巳，似乎是小焉者也。倒棺材剝屍衣旣已數見不鮮，究風有點血淋淋；幾毛錢鉛絲，「委曲」一下，把有上「下次遞取時間」招牌的小門開了，不啻探囊取物。——然而這裏中國的有，外國的投機集郵家却老早已有過，這不是新鮮的把戲。外國的竊信賊據說竟然有着大規模的組織，專揀有匯票的信偷，比「集郵」更「偉大」和緊張，但由此當局也訓練出一班專揀「投機的集郵家」抓的人，這些稽査員在郵局各處，甚至郵箱左右往往而有，比比吿是，眼睛彷彿是鷹隼和貓兒眼的混合物一樣，燒他竊信賊機警非凡。</p>
+<p>可是此時此地抓竊儅賊到底是便利的，郵筒郵箱大多數未曾「落荒而設」，祇要大衆注意，竊信賊匍下去終難逃彰彰之眼，偶而想把筒口挖得大些，要末信件尙留在鋼攔之上，不過一舉手之勞，否則祇好帶上一具氧氣溶鋼器。</p>
+<p>然而這時勢，一根長些的鋼絲也要兩三角，何况此器乎！</p>
+<h3>好萊塢消息</h3>
+<p>— 多寳</p>
+<p>華納巨頭HB華理斯已向弗蘭克威特購得空戰影片「速降轟炸機」之電影攝製權，由詹姆斯賈克奈，喬治勃倫，勞納李根三大明星領銜主演，勞合培根導演。如劇本無問題，可於三月一日開拍。</p>
+<p>琴逑羅吉絲本雷電華台柱明星，現為二十世紀福斯主人柴約克所看中，將請其為福斯主演一片，片名Roxie　Hart，由威廉惠爾門擔任監製兼導演。聞雷電華方面已允柴納克之請，特予借用，惟以一片為限云。</p>
+<p>雷電華現拍攝一新片曰「玩玩朋友」，集合明星二十四人，由凱卡塞，約翰巴里摩亞二人領銜，其餘如羅波范麗絲，梅洛勃蓀等。此片有一特點，即登塲人物，片中均用眞姓名，如巴里摩亞，即稱巴里摩亞，故預料開映時，必將轟動影城。</p>
+<p>白蘭黛瑪霞兒上月已與威廉塞爾登正式結婚，婚後三日，即趕赴坎拿大之北海灣拍戲，因伊為新片。Captain　ofThe　Clouds之女主角，男主角則為詹姆斯賈克奈，鄧尼斯毛根，導演則為羅賓漢導演人馬格爾寇蒂期。</p>
+<p>多數影迷注目之埃洛茀爾林與奧麗薇哈佛蘭，現又合演一片，片名The　Manth　Their　Boots　on，聞內容與羅賓漢等頗為相似。</p>
+<p>「唔」女郞安秀麗丹現方與蓓蒂黛維絲合演The　ManWho　Came　to　Dinner，過去伊所主演之King，sRow，業已攝竣。聞「唔」女郞俟此二片全部完工後，將作小休，然後再攝「米西西比美人」。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一）風雨之夕</p>
+<p>國器加入了他們說笑的陣綫裏道：「國芳當眞會弄船。搖呀，划呀，撑呀這是弄船人的十八般武藝，她都會。」國芳把國器一推道：「哥哥別給我吹法螺了，我不過跟着人學，學的不甚好。我最怕的，就是穿一件藍布罩衫，走在雙橋鎭上，雙橋人像是從來不曾瞧見過女學生的，不論男的女的，都得抬起眼皮來把我看一看。假使我去搖船，那看的人更多了，我倒不是怕掉在河裏，我是怕一舉一動，逃不出許多人的視綫裏。」維城笑着拍手道：「鄕裏人少見多怪是有的，但一方面也顯得你們兄妹在雙橋是鶴立鷄羣，所以一舉一動，有人注意。」國器在拾取被面上的糖和餅乾來吃，沒嚥下喉嚨，他也能說話，他說道：「維城、你恭維國芳，別把我牽扯在裏邊，說你們兄妹怎樣怎樣，我在雙橋，並沒人注意。我舉一件事為例：一天，我在街上閒逛，到了吃飯的時候，還沒有回去，我祖母派家裏一個服務多年的老媽子出來我，問舖子裏的人，看見我們器官嗎，鋪子裏的人回答沒瞧見，其實我是在街上，來，去，來，去，巳經好幾回。（一三）</p>
+<h3>「鑄情」主角的遺蹟</h3>
+<p>— 王旋</p>
+<p>莎士比亞名悲劇「羅密歐和茱麗葉」中的男主角羅密歐蒙泰格，在他的故里意大利的伐洛那，已是個被遺忘的人。莎士比亞雖說這一對不朽的情侶是一起殉情的，可是在伐洛那，却我不出這兩個歷史上最著名情侶最後殉情地的證據。茱麗葉的芳塚在浦河之濱，新婚的夫婦們常去憑弔，茱麗葉誕生的家，還有那羅密歐求愛的陽臺，至今尙在，一般情侶常到那裏去憑弔；外牆上還有一方金屬牌在着，表示這是茱麗葉的父母卡普萊特的「宮」，由此便可認明它是茱麗葉的家。羅密歐的家，就是附近一條小街上，雖然還屹立着，底層沒有鐵匠店，然而它和羅密歐本人一樣的被人們遺忘和拋棄了。</p>
+<p>雖然傳說羅密歐是和他心愛的茱麗葉葬在一起的，但是茱麗葉芳塚的大石碑上所刻字句，表示它是和羅密歐無關的。上世紀裏，巳有許多人憑弔茶麗葉的石柩，常有人在柩蓋的四週鑿石一方，留做紀念品。到後來，柩蓋竟剝落到二吋深，當時便有人　建修道院一所，把茱麗葉的石柩移葬在修道院的小敎堂裏。</p>
+<p>敎堂旁另有一所古老的佛蘭錫斯根修道院，造於一二三○年，有許多根據可證明。這兩惆不幸愛人秘密結婚時，為之祝福的著名修道士洛侖佐特萊傑奧（莎士比亞筆下的修道士勞侖斯），便是佛蘭錫斯根修道院裏的修道士。茱麗葉芳塚所在地的修道院四週，環繞着成蔭的栗木，柏樹，燦爛的鮮花，噴泉和石凳，院中央是一支織長的圓柱，上面是「埃馮河畔斯特拉福的詩人」的半身像，它是「眞誠忠實的茶麗葉」芳塚的守護者。</p>
+<p>茱麗葉至今還接到愛慕者的信件，然而羅密歐已不在愛慕者的記憶中了。茱麗葉的芳塚前，有一隻小小的信箱，上書「給茱麗葉的信」，意大利的情侶們，有傳統的信心，以為前往憑弔而投信在箱中，那末在戀愛上，便有幸運；，據守墓的老者說，從來沒有寄隻字給羅密歐的。</p>
+<p>意大利某雜誌曾經詳細調査，發現伐洛那的女郎取名茱麗葉的，有一百零三人，名喚羅密歐的男子，却只七人。</p>
+<p>游藝雜談</p>
+<h3>彈棋</h3>
+<p>— 澤夫</p>
+<p>彈棋之創始，舊有二說：一謂始於漢武帝時。武帝平西域，得胡人善蹴鞠者，蓋銜其便捷跳躍，帝好而為之，羣臣不能諫。侍臣東方朔因以此藝進之，帝就捨蹴鞠而上彈棋焉（見晋徐廣「彈棋經序」）。一謂始於漢成帝時。成帝好蹴鞠，劉向以為蹴鞠勞人體，竭人力，非至尊所宜，乃因其體而作彈棋以解之（見晋傳玄「彈棋賦序」）。然其戲至後漢冲質以後，遂吿中絕。魏文帝特好此戲，復見盛行，至宋則已失傳，故今無戲之者。戲法，古時用白黑棋各六枚，二人對局，先列棋相當，更先彈之。其局以石為之，中心隆起，四角微翹，頗似龜甲之狀。至唐則改用二十四拱，半貴半賤，用朱墨以別焉。其局亦不限於石製，或木或玉。此種彈棋，旣由蹴鞠轉變而來，故棋必圓形，始可彈擊。而棋局中心隆起，故以此棋而彈彼棋，甚非易事。按今西人打彈子之戲，亦以彈子互相彈擊，多中者多勝，似即我國彈棋之遺製；，惟彈棋只用手彈，而彈子則用棒擊，又彈檯平坦，是其不同耳。</p>
+<h3>舞臺與銀幕</h3>
+<p>— 太虛</p>
+<p>大上海封鎖迄今，有人謂劉瓊陳燕燕禁止賀客鬧洞房。現經大上海滬光當局數度磋商後，決自星期六起在滬光開映，名曰「假座」，因為本定在滬光公映的「歡樂年年」，將來也要在大上海先行「歡樂」一番。</p>
+<p>章志直家藏「對口疽」秘方，據說並不像洪警鈴的古董那樣祇供自己摩挲，而肯公開索取。</p>
+<p>某公登載聲明並不介紹印泥燈泡等兜售人，電影界却發現冒牌萬籟鳴出版的「重見光明」特刋，這位「剪影始祖」為之憤慨不止云。</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.05</h1>
+<h3>Japanese Advances Continue in Java; Fierce Fighting Northeast of Bandung; Heavy Fighting West of Surabaya; Allied Planes and Submarines Very Active</h3>
+<p>Tokyo, 4th (Domei News Agency Telegram) – Asahi Shimbun Shanghai reports that Japanese mechanized units reached a location west of Surabaya early this morning. Allied forces there are strongly resisting the Japanese attack, resulting in fierce fighting. Meanwhile, Yomiuri Shimbun's Shanghai dispatch states that the Dutch military headquarters in Bandung announced last night that Japanese forces are vigorously attacking the northeast of Bandung, leading to intense fighting with Dutch forces.</p>
+<p>Tokyo, 4th (Domei News Agency Telegram) – News from the Java front indicates that a large number of Japanese aircraft raided Bandung yesterday, causing heavy damage for about half an hour and destroying oil depots. Furthermore, the vanguard of one Japanese force has reached a point 30 miles from Bandung.</p>
+<p>Bandung, 4th (Reuters Telegram) – Although the Allied forces in Java are putting up a very strong resistance, they have been forced to retreat. According to a public statement issued today by the Dutch East Indies military headquarters, the only report concerning the Java war is that our forces are currently engaging the Japanese army with an offensive spirit. Wherever the Japanese army advances, our forces are responding to prevent the loss of territory. Due to the Japanese army's numerical superiority in the air, some progress has been made. Japanese aircraft launched a fierce raid on an airfield near Bandung, damaging military targets. Several of our aircraft on the ground caught fire.</p>
+<p>Saigon, 4th (Haitong Telegram) – An official communiqué released in Bandung today acknowledges that Japanese forces in Java have made progress. It stated that the Japanese forces landing in Java, despite strong resistance, have made some slight advances.</p>
+<p>Tokyo, 4th (Haitong Telegram) – Frontline dispatches report that Japanese forces in Java are continuing to advance. Japanese forces in western Java have occupied a certain important airfield north of Bandung. Other Japanese forces have occupied a certain railway hub near the north coast, believed to be Tjikampek.</p>
+<p>Bandung, 4th (Reuters Telegram) – Dutch and Allied aircraft are actively engaged in combat over Java. Dutch submarines are also operating in the Java Sea. No further Japanese landings are occurring on the island of Java due to a lack of detailed reports.</p>
+<p>British Forces Under Sitwell's Command</p>
+<p>Bandung, 4th (Reuters Telegram) – After General Wavell resumed his position as Commander-in-Chief in the Indian theater, a large number of staff officers and auxiliary officers under his command remained in the Java British military operation zone under the command of Major General Sitwell.</p>
+<p>London, 3rd (Havas Telegram) – After General Wavell, Commander-in-Chief of the Allied forces in the Southwest Pacific, went to India, it was officially announced here that the British military authorities had appointed Major General Sitwell as commander of the British forces in Java. Major General Sitwell is a military expert known for his strategic skills.</p>
+<p>Saigon, 4th (Haitong Telegram) – News from the capital of the Dutch East Indies last night indicated that General Wavell's departure from Java and the dissolution of the Allied Command in the Southwest Pacific had caused alarm and disappointment in Batavia. The people of Java believe that the British are fleeing the island because they believe Java cannot be defended. Java now believes that Britain and the United States have abandoned the island, despite previous declarations by Britain and the United States, "We will do everything in our power to help."</p>
+<h3>Port Moresby Attacked by Japanese Aircraft Yesterday; Broome, Australia, Also Bombed</h3>
+<p>Melbourne, 3rd (Havas Telegram) – The authorities announced this afternoon that Japanese aircraft attacked Port Moresby today, but only briefly, with minimal damage.</p>
+<p>Canberra, 4th (Reuters Telegram) – The Australian Minister for Aviation announced today that the airfield and port facilities at Port Moresby on the south coast of New Britain were attacked by Japanese aircraft yesterday afternoon. Broome, on the coast of Australia, was attacked yesterday. Seven people were killed or injured.</p>
+<p>Saigon, 4th (Haitong Telegram) – Sydney newspapers unanimously advocated yesterday that the defense of Australia should be entrusted to an American general. General MacArthur is considered the most suitable for this position. As Australia's crisis intensifies daily, there is an urgent need to seek foreign assistance. Britain is unable to take care of itself and can only seek help from the United States.</p>
+<p>Tokyo, 4th (Haitong Telegram) – "Kokumin Shimbun" issued a serious warning to Australia yesterday, saying that if Australia does not change its hostile attitude towards Japan, the recent Japanese air raid on Darwin will only be the prelude to an invasion of Australia.</p>
+<h3>Darwin Continues to be Raided</h3>
+<p>Canberra, 4th (Reuters Telegram) – Australian Prime Minister Curtin announced today that Darwin was continuing to be raided by Japanese planes. Detailed reports have not yet been received.</p>
+<p>Saigon, 4th (Haitong Telegram) – A dispatch from Sydney states that the Japanese air raids on Darwin are ongoing. No details have been specified.</p>
+<h3>Japanese Aircraft Attack Gilbert Islands</h3>
+<p>Lisbon, 3rd (Domei News Agency Telegram) – According to news from Washington, the U.S. Navy Department announced today that Japanese aircraft attacked the U.S. fleet west of the Gilbert Islands in the Southwest Pacific. The communiqué did not mention damages or losses.</p>
+<p>Washington, 4th (Reuters Telegram) – A U.S. Navy communiqué released last night stated that there was a naval battle near the Gilbert Islands. At the time, one U.S. Pacific Fleet aircraft carrier, several cruisers and destroyers were attacked by Japanese heavy bombers. The two attacks were separated by about half an hour.</p>
+<h3>Mona Island, U.S. Territory, Shelled Yesterday</h3>
+<p>San Juan, Puerto Rico, U.S. Territory, 3rd (Havas Telegram) – The Governor's Office here announced that a warship shelled Mona Island, on the western side of the island, last night.</p>
+<h3>Japan Steps Up Nickel Production</h3>
+<p>Tokyo, 4th (Haitong Telegram) – In light of the needs of the war, the Japanese authorities have allocated 10 million yen to accelerate the manufacture of nickel. It is expected that this production will increase as Japan develops nickel mines in the South Pacific.</p>
+<h3>Rumors of British Offensive in Northern Europe; Sweden May Be Drawn In</h3>
+<p>Stockholm, Sweden, 3rd (Havas Telegram) – Military circles here anticipate that war will soon break out in Northern Europe, as Britain is likely to launch an offensive there to fulfill the Soviet request to open a second front. It is expected that Germany will launch a spring offensive, primarily targeting the Soviet Caucasus region, as Germany seeks to quickly seize oil wells there, while threatening Soviet supply routes through the Middle East. This is why the Allies are exerting all their efforts to keep the Murmansk and Archangel ports open. However, if the Allies do launch an offensive in Northern Europe, it is not impossible that Sweden will be drawn into the maelstrom.</p>
+<h3>Allied Military Conference Convenes in London</h3>
+<p>Lisbon, 4th (Domei News Agency Telegram) – An Allied military conference convened in London yesterday. Attendees included British Prime Minister Churchill, Australian Minister Earle Page, and Chinese Ambassador Gu Weijun. While there was no Indian representative present, it is believed that discussions included the defense of India and the transport of military supplies through India.</p>
+<p>Stockholm, Sweden, 4th (Haitong Telegram) – London dispatches report that General Wavell, the former Commander-in-Chief of the Allied forces in the Southwest Pacific, flew to India from Java yesterday.</p>
+<p>New Delhi, 4th (Reuters Telegram) – A military spokesman here announced today that, although General Wavell has arrived in India, he has not yet officially assumed the post of Commander-in-Chief in the Indian theater. Rumors that General Wavell was injured in a plane crash in Singapore are false. In fact, the General simply lost his footing in the dark and fell. He is now in good health.</p>
+<h3>Another U.S. Destroyer Sunk</h3>
+<p>Washington, 3rd (Havas Telegram) – The Navy Department announced today that the U.S. destroyer USS Jacob Jones was torpedoed and sunk in the Atlantic. Only eleven sailors were rescued. This is the ninth U.S. warship to be sunk.</p>
+<p>Lisbon, 4th (Haitong Telegram) – The U.S. Navy Department announced last night that the U.S. destroyer "Jones" had been sunk in the Atlantic. The ship had a displacement of 1,090 tons, a speed of 35 knots, and was armed with four 10.2 cm guns, one 7.6 cm anti-aircraft gun, and twelve 53 cm torpedo tubes. The ship normally had a crew of 121 officers and men.</p>
+<h3>Germans Retaliate for Guard's Murder; 20 Jews Executed</h3>
+<p>Paris, 4th (Haitong Telegram) – The German military commander in France, in retaliation for the assassination of a German guard on the first of this month, has executed twenty Jewish communists. All entertainment venues are closed today to mourn the fallen guard.</p>
+<h3>Italian Commander-in-Chief in East Africa Dies in POW Camp</h3>
+<p>Rome, 3rd (Havas Telegram) – Duke Aosta, former Governor-General of Abyssinia, died of illness in a British prisoner-of-war camp today.</p>
+<h3>Riom Court Opens Fifth Session; Daladier's Lengthy Testimony; Responsibility for France's Inadequate War Preparation Should Fall on General Staff</h3>
+<p>Lyon, 3rd (Havas Telegram) – The High Court in Lyon, hearing the case of treason, opened its fifth session today. One of the main defendants, former Prime Minister and Minister of National Defense Daladier, gave a lengthy testimony on France's inadequate war preparation and backward production technology. However, another defendant, former Commander-in-Chief of the National Defense Army General Gamelin, remained silent and refused to answer when the presiding judge, Caous, asked him to explain his own responsibility for France's inadequate preparation. At the time, Daladier was questioned first. Judge Caous asked whether it was true that various particularly important industries in the Paris area remained unchanged despite the danger of air raids. Daladier said that specialized technical personnel could only be recruited in Paris. Major factories, such as Renault and Rosengart, had indeed been moved inland. As for the nationalization of certain wartime industries, it never contained any political motives. Political opponents used this as an excuse to attack me, which is hardly convincing. In fact, the nationalization laws were almost unanimously passed by the National Assembly. In fact, I only ordered ten factories to be nationalized. However, some industrialists interfered when they learned that their factories would be nationalized. At the same time, another group of industrialists only sought to fulfill arms orders from foreign countries, even from countries in Central and South America, which is deplorable. Take the state-owned Blen Steel Plant as an example. We proposed changing the company to a semi-official and semi-private nature, but the company authorities demanded compensation in every detail. On December 31, 1936, the day before the company was nationalized, the factory transported all files and plans out of the office in trucks, and I had to order the police to stop them. As for the Creusot Steel Plant, designated by the French government, after the government decided to nationalize the company, the factory carried out actual sabotage, cutting off internal traffic in the factory. Experts in the factory were also attracted to other jobs by high salaries.</p>
+<p>French Ministry of Armaments Exists in Name Only</p>
+<p>Considering etiquette, the wartime industrial nationalization law was extremely beneficial. Production tripled after certain factories were nationalized. At the same time, the government paid the factories 500 million francs in compensation, and then the factories that received compensation invested in other defense industries, thereby increasing France's production capacity. I do not need to consult the Army General Staff on the Nationalization Law, because the principle of the law has been passed by the National Assembly. But in fact, I consulted the military authorities on this matter. The military authorities had diverging opinions on this. The Industrial Nationalization Bill was submitted to both houses of Parliament in 1936, with the intention of passing it in 1937, but it was not passed until 1938, which is regrettable. At that time, the government also considered this bill to be a kind of "socialization" method, so it decided not to implement it temporarily. Both houses of Parliament discussed this case for many years without results. Today, attacking the government for not finding a way to make the two houses pass it earlier and submitting various amendments is surprising. In practice, from September 1939 to May 1940, the number of weapons manufactured in factories across the country also increased significantly. For example, at the time of general mobilization, 120 direct-fire guns could be manufactured every day. In February 1940, it increased to 245 guns, and in May it increased to 414 guns. The output of anti-aircraft guns and other cannons also increased day by day. For this reason, the responsibility for France's failure to fully prepare for war should be borne by the General Staff. By the end of the war, there were still millions of shells and tens of thousands of bombs stored in various places that could not be used. What is more, all kinds of weapons were selected by the General Staff, but their production was supervised by various departments of the Ministry of the Army. This meant that General Gamelin could always inquire about the implementation of this weapons production plan. Whenever production stagnated, he would urge me to pay attention. But I always believed that there were still a large number of weapons that had not been used. From the date of mobilization, General Gamelin was no longer my subordinate, but belonged to the Supreme Military Council. In peacetime, the establishment of the Ministry of Armaments to ensure the sufficient distribution of armaments is absolutely useless under the free economic system. Therefore, this Ministry of Armaments exists only in name.</p>
+<p>General Gamelin Remains Silent</p>
+<p>Lyon, 3rd (Havas Telegram) - After questioning Daladier, Presiding Judge Caous continued to question former Commander-in-Chief of National Defense General Gamelin. The process was quite "dramatic." The presiding judge first said, "You should speak, because the army depends on you to defend it, otherwise you will become the target of public criticism." Gamelin replied, "I am now in the position of a prisoner and cannot defend myself." Presiding Judge Caous said, "What I want to ask is whether you will defend yourself or not. You succeeded General Weygand as Chief of the General Staff on January 21, 1935. Part of your responsibility was to supervise military production and promote the work of various departments of the military. Do you have anything to say about this?" Gamelin replied, "I have already answered in the previous preliminary investigation." Judge Caous asked again, "The previous investigation was only preliminary. Now you should defend yourself well." Gamelin remained silent. The presiding judge also inquired about the various sections of inadequate war preparations. Gamelin also did not defend himself. The presiding judge then said, "You really failed to make full use of your power. You said that after the Army Ministry was under the National Defense Headquarters, Director-General of Military Supplies Jagomei acted on your behalf. On this point, Jagomei should be questioned separately, but in any case, you really failed to exercise your power." In addition, Jia also listed various facts of insufficient military supplies and unsound projects. Gamelin only said, "I cannot answer." A question was asked in court, "You already knew that heavy tanks and giant bombers were needed. Why didn't you ask the government to allocate huge amounts of money? Why didn't you do what you should have done? Do you have nothing to say about this accusation?" Although the presiding judge repeatedly questioned, at this point, the presiding judge said to Gamelin, "I can only record your silence." The court was adjourned at 5:15 pm, and it was decided to hold a hearing on the part of former Minister of Aviation Raishangbo on the 7th.</p>
+<p>German Criticism of the Lyon Trial</p>
+<p>Berlin, 4th (Haitong Telegram) - When the German Foreign Ministry received reporters yesterday, Intelligence Director Dr. Schmidt revealed the talks between German Foreign Minister Ribbentrop and French Foreign Minister Bonnet in 1938, as well as the documents issued by Ribbentrop to the French ambassador in 1938 and 1933. Schmidt pointed out that the trial in Lyon was only about minor issues, i.e., why France lost the war. In fact, the Lyon court should investigate why the person in charge of France committed the crime of declaring war on Germany. During the Czech incident, the German Foreign Minister expressed to the French ambassador Ponset that if France interfered in Germany's affairs, the result would be France losing its status as a strong country. However, Ponset and his successor, Ambassador Colondre, did not mention the danger of war with Germany in their reports to Paris, but only reported according to the wishes of the ruling authorities in Paris. This was part of the reason for leading France to participate in the war. When German Foreign Minister Ribbentrop visited French Foreign Minister Bonnet in Paris in December 1938, Bonnet indicated that France would not interfere in Eastern European affairs, and would pay attention to the development of its colonies. Thus, Franco-German understanding was established, and Germany also began to change its plans for Eastern Europe. But when Ribbentrop went to Warsaw, Bonnet suddenly declared that France could not ignore the development of Eastern European affairs. At this time, the German Foreign Minister deeply understood that the alliance between France and Poland was a great threat to the German-French understanding. And why Polish Foreign Minister Beck changed his attitude every day. Afterwards, the German Foreign Minister published his letter to the French Foreign Minister, in which he accused France of breaking its promise in the agreement with Germany. Minister Schmidt finally said that the Lyon court should question Daladier why he obeyed Britain and declared war on Germany. If this question is not answered, then the trial in Lyon is unnecessary. If the trial continues as before, the French and the French government will be ridiculed by the world.</p>
+<h3>Bandung Nears the Brink of War</h3>
+<p>The Java war becomes more intense by the day. According to a Domei News Agency report yesterday, the vanguard of the Japanese army has reached a certain location. Bandung, the location of the Dutch East Indies military headquarters, has been heavily bombed by the Japanese. Bandung is a highland city with abundant products and beautiful scenery. It is only 170 kilometers away from Batavia and is truly a beautiful "garden" in West Java. The mountains near Bandung are beautiful and attract many tourists. Well-equipped hotels are located everywhere. There are also hot springs and the famous Papandayan volcano. "Bottom image": Neat streets of Bandung.</p>
+<h3>Meteorological Observatory Trains Cadre Personnel</h3>
+<p>Chongqing, 4th - The Central Meteorological Observatory is currently preparing a training class for meteorological cadre personnel. The first phase will recruit 50 students, with a training period of six months. After graduation, they will be assigned to various meteorological observation stations to serve. In the future, it plans to gradually transfer existing staff for training.</p>
+<h3>Population Policy Council Meets in Chongqing; Decides to Study Four Guidelines; Committee Members Stationed in Yunnan Will Hold a Meeting</h3>
+<p>Chongqing, 4th - The Ministry of Social Affairs believes that population policy is the cornerstone of all social policies and is deeply related to the future of the nation. It has hired Chen Changheng, Chen Da, Pan Guangdan, Sun Benwen, Wu Wenzao, etc. as members of the Population Policy Research Committee, and appointed Chen Changheng and Chen Da as conveners stationed in Chongqing and Yunnan respectively. The committee members stationed in Chongqing held their first meeting at the Ministry on the morning of the first of this month. They gathered to discuss every morning and afternoon, and adjourned on the third. Attendees included Chen Changheng, Sun Benwen, Wu Wenzao, Xu Shijin, Chen Yan, Fu Shanglin, Huang Youying, Zhang Hongjun, Wu Kegang, Fan Ren, Liu Zhuling, etc. Minister Gu participated in the first meeting and put forward key points and research methods. As a result of the research by the committee in recent days, four guidelines have been agreed upon: 1. The long-term goals of population policy, 2. The basic principles of population policy, 3. The scope and content of population policy, 4. The implementation plan of population policy. The contents of the first and third items have been agreed upon. The item on the implementation plan will be left for discussion at the second meeting. In addition, some committee members are currently stationed in Kunming. The ministry has mailed the outline of the guidelines to the convener Chen Da for convening a meeting nearby on a regular basis. After both parties have reached a result, a full research meeting will be convened on a regular basis for all committee members in Chongqing and Yunnan to discuss and decide everything.</p>
+<h3>Scottish Freemasons Donate to Refugee Relief</h3>
+<p>Chongqing, 4th - Mr. Cox, the head of the Scottish Branch of the Southern Jurisdiction of the American Freemasons, recently represented the Supreme Council of the Association to donate US$50,000 to China for the purpose of helping refugees. It is heard that Vice President Kong has sent a reply on behalf of Chairman Chiang to express his gratitude. The Association aims at friendship, relief, and truth. Branches are spread all over the world. There are branches in Beijing and Shanghai in China, while the Scottish branch is the ancestor of the Freemasons. The Association's donation of a large sum of money to help our compatriots is commendable.</p>
+<h3>British Air Force Inspector General Longmore Resigns</h3>
+<p>London, 3rd (Havas Telegram) - Air Chief Marshal Sir Arthur Longmore, who served as commander of the British Air Force in the Middle East, and has been Inspector General of the Air Force since 1941, for less than two years, suddenly resigned from his post today and participated in the Lincoln County Lower House election as a candidate. According to him, the purpose of his resignation is to facilitate the promotion of younger officers.</p>
+<h3>British Aircraft Bomb Paris, Over 1,000 Casualties; The Louvre Museum Suffers Heavy Damage; French Will Treat The Deceased As National Martyrs</h3>
+<p>London, 4th (Reuters Telegram) - London officials announced this morning that a factory in the suburbs of Paris was bombed by the British Air Force last night. British aircraft bombed the Renault car factory in Billancourt in the Seine Bay southwest of Paris. British aircraft also bombed the German naval bases of Kiel and Wilhelmshaven last night. The German ships Scharnhorst and Gneisenau, after escaping from Brest, are now docked there.</p>
+<p>Vichy, 4th (Havas Telegram) - According to the latest news, British aircraft bombed the departure of Paris last night, killing 600 people and injuring a thousand people. The world-famous Sèvres Porcelain Factory and the Louvre Museum were also badly damaged. According to reports from investigators in various districts, 150 to 200 houses were destroyed in the Boulogne district, 400 residents were killed, and about 1,000 people were injured. Twelve houses were destroyed in the Clamart district, two people died, and five people were injured. Twenty houses were destroyed in the Issy district, seventeen people died, and many people were injured. Fifteen houses were destroyed in the Villejuif district, four people died, and eight people were injured. One person died in the Montrouge district, and three people were slightly injured in the Neuilly district. Fifteen people died and twenty people were injured in the Le Bourget district. Three people died and seven people were injured in the Sèvres district. The deaths and injuries in the Rueil district are unknown. In addition, there is a bomb shelter in the Boulogne and Billancourt districts that can accommodate 150 people. The entrances and exits have not yet been dug open. The number of deaths and injuries in the two districts must be increased.</p>
+<p>Vichy, 5th (Havas Telegram) - The British bombing of Paris last night was reported to Chief of State Pétain by the competent authorities at the time. The situation of deaths and injuries was also reported in succession by telephone. Chief of State Pétain announced today that the workers who were killed were diligent in serving the country regardless of hunger, cold, or heat. Now they have been brutally killed by British aircraft, their families must be filled with grief, and the people of the whole country are also extending their infinite sympathy. In a country with wounds and defenses of all kinds being seized, it is not hesitate to deliberately attack its innocent civilians at night, which has aroused public outrage across the country. The extent of the indignation has been regarded as a national disaster. In addition to paying compensation to the families of the victims, the government will regard the day of the funeral of the victims as a day of national mourning to express condolences.</p>
+<h3>Chongqing Scouting Review To Be Held Today</h3>
+<p>Chongqing, 4th - The 5th is the ninth day of the Scout Commemoration Fortnight. The Boy Scout Grand Review will be held at Fuxingguan at 9:00 am. There will be 3,000 scouts participating. At the same time, a ceremony will be held for representatives of Boy Scout organizations from various provinces and cities across the country to pay their respects to the president. The chief reviewing officer is President Chiang (represented by Vice President Dai Jitao). In the afternoon, all the scouts will hold an academic performance in the East Sichuan Normal School, to review the training of the scout curriculum. In the evening, a bonfire party will be held in the East Sichuan Normal School, and a Peking opera fundraising performance will begin in the Experimental Theater.</p>
+<h3>Chairman Lin's Broadcast to India</h3>
+<p>Chongqing, 4th - Chairman Lin, due to Generalissimo Chiang's trip to India, has specially sent a message of appreciation to the Indian people, broadcast by radio station.</p>
+<h2>Page 3</h2>
+<h3>Terror Drill Held in Hongkou Yesterday, Traffic on the Garden Bridge Was Blocked, Military Police Tested Civilian Policing</h3>
+<p>According to the English-language "North China Daily Mail," the terror drill clarified in the announcement recently issued by the Japanese side was held for the first time in Hongkou this morning (the 4th). At the same time, all traffic on the Garden Bridge was cut off to test the civilian policing system of Shanghai. The results of the exercise have been studied by the Japanese side and the police authorities. It is widely believed that the terror drills will soon be held in various districts based on today's results. This morning's drill was bounded by the Suzhou Creek and the Hongkou Ditch. The Garden Bridge was blocked at nearly ten o'clock in the morning and opened at eleven thirty. Terrorists participating in the drill wore armbands and were chased by local civil police officers and bystanders. The detailed process is not known, but it is widely believed to have been quite successful.</p>
+<h3>Cigarette Price Limits to be Implemented, Cigarette Prices in Punan Remained High Yesterday</h3>
+<p>According to news from cigarette shops yesterday, after the White Area Administration issued an order to limit cigarette prices in Hongkou and Wayside districts, cigarette prices in Punan had not yet been affected yesterday. According to cigarette merchants, the Japanese announcement only applies to Japanese shops, so they said that they would not lower cigarette prices until the Shanghai Municipal Council forced them to do so. A spokesman for the Shanghai Municipal Council said that the cigarette price issue is still on the council's price control agenda. The council has already limited the price of some types of cigarettes. As for whether to control the prices of other types of cigarettes, it is still difficult to say. The Municipal Council must first conduct a detailed study of its inventory, supply, and manufacturing issues before controlling any kind of price. As far as cigarette prices are concerned, the council is currently waiting for a letter from the Japanese authorities. Yesterday morning, cigarette prices in Punan were as high as ever. A small number of shops could sell 20-stick packs of Camel and Lucky Strike for $6.50 each, Roy for $4.50, and Conqueror for $1.80. The prices of other brands of cigarettes also did not fall.</p>
+<p>The French Concession is studying solutions. The "Shanghai Times" reported that the Shanghai Municipal Council has been engaging in extensive research in preparation for announcing control over cigarette prices. At the same time, it is heard that the French Concession authorities are also studying the measures to be taken to control cigarette prices and reduce them to normal levels. It was recently rumored that the Japanese authorities intended to dump a large number of cigarettes made from American and Virginia tobacco on the market. The Japanese Consulate-General then announced cigarette price limits a few days ago and ordered all Japanese shops to comply. Since the outbreak of the East Asian War, the prices of various cigarettes have risen. However, yesterday (the 3rd), the selling prices of cigarettes in most shops were lower than the market prices before the Japanese Consulate announced the price limits, because most shops feared that the authorities would prohibit the excessive increase in cigarette prices, so they were willing to sell at the price limit set by the Japanese Consulate.</p>
+<h3>Joint Bicycle License to be Announced Soon, License Fee Still Unknown</h3>
+<p>It has recently been reported that the agreement on joint bicycle licenses has been signed. Yesterday, a reliable source told reporters that an announcement on the joint bicycle license matter is expected to be issued within the next few days. It is heard that this matter has obtained an agreement in principle. The reason why the announcement has been delayed is only because some minor problems have not been resolved. The Shanghai Municipal Council, the French Municipal Council, and the Chinese authorities are currently working to resolve these minor difficulties, and then plan to implement the joint bicycle license system in various regions. This joint license will be obtained by each car owner from the governing authority of the area in which they reside. The license fee is still unknown.</p>
+<h3>Kincheng Bank Invests in Occupied Areas, Chinese Banks Reduce Interest Rates</h3>
+<p>Shanghai Dispatch from Domei News Agency. It was learned yesterday that although deposits in Shanghai Chinese banks have increased sharply, due to the lack of investment methods, they are currently implementing interest rate cuts. Major Chinese bankers are also considering using funds in the occupied areas of the mainland. Regarding this matter, it is heard that Kincheng Bank has sent personnel to several occupied areas to study investment possibilities.</p>
+<h3>Shanghai Municipal Council Notifies Rice Shops to Also Sell Broken Corn, An Additional Sale Every Friday</h3>
+<p>The Shanghai Municipal Council has recently issued an announcement stipulating that from the 8th of this month, each rice shop will only be allowed to sell rice on Mondays, Wednesdays, and Saturdays, and broken corn (i.e., crushed maize) on Fridays. Each person is limited to buying one and a half liters of broken corn at a time, and the price is set at $1.70. In addition, the rice shops set up by the bureau on Gordon Road, Fair Road, and Washington Road will also be handled in accordance with the above-mentioned methods from the same date.</p>
+<h3>Not Many People Withdraw Items from Banque Belge Pour L'Etranger Safety Deposit Boxes</h3>
+<p>After the Banque Belge Pour L'Etranger safety deposit boxes were opened, the number of people going to the bank to withdraw items has remained small for several days, only about ten people per day. Also, since the items of the bank's tenants are of a custodial nature and do not have keys, items can only be withdrawn with receipts, so the procedures are relatively simple. Applications are accepted and items are given immediately. The withdrawal time is set from 10:00 AM to 12:00 PM.</p>
+<h3>Dr. Ferguson of Renji Hospital Passed Away Yesterday, Funeral Service to be Held Tomorrow Afternoon</h3>
+<p>Scottish doctor Ferguson came to Shanghai to preach and practice medicine, following the principles of Jesus Christ to save people's bodies and souls. He has been in charge of surgical medical affairs at Renji Hospital for about ten years. Two weeks ago, he contracted typhus from lice carried by a patient and died yesterday morning after unsuccessful treatment. Dr. Ferguson had many Chinese and foreign friends during his lifetime. Upon hearing this sad news, everyone mourned excessively. Dr. Ferguson left behind a wife and one child. His son is still in infancy. The remains have been moved to the International Funeral Home on Jiaozhou Road. The funeral service is scheduled to be held at the church opposite Jing'an Temple at 3:30 PM on Friday, the 6th of this month, and will be buried in the cemetery there.</p>
+<h3>Shanghai Municipal Council Public Works Department Starts Repairing Yokohama Bridge, Vehicles Over Five Tons Prohibited from Passing</h3>
+<p>The Shanghai Municipal Council Public Works Department began repairing Yokohama Bridge in the Hongkou District on the 3rd of this month, for a period of about one month. During the repair period, vehicles weighing more than five tons are prohibited from passing.</p>
+<h3>How to Understand the New Agricultural Youth Association First Agricultural Lecture</h3>
+<p>The Shanghai YMCA held the "Agricultural Lecture." The first lecture started at 4 PM the day before yesterday. The audience was full. Professor Xu Tianxi, the speaker, spoke for two hours, combining humor and seriousness, so that the listeners did not feel tired. The summary is described below.</p>
+<p>Amateur Agriculturists: Since ancient times, China has been founded on agriculture. However, to this day, the general public is often very ignorant and contemptuous of new agriculture, resulting in insufficient understanding. However, in the cities, many "amateur agriculturists" have emerged, who are quite interested in agriculture. There are indeed many people who want to set up farms. They were not originally engaged in agricultural research, but use it for recreation, raising chickens, bees, rabbits, and planting orchards and vegetables. However, eight or nine out of ten fail. I remember more than ten years ago, the trend of beekeeping in the vicinity of Beiping was in full swing. Occasionally, some people made a fortune from it. Unfortunately, Beiping is not a suitable place for beekeeping, because there are too few gardens and too many bee farms, so the bees have nowhere to collect honey. As a result, not only can they not produce honey, but they have to feed the bees with white sugar. Their failure is conceivable. Later, they competed to raise rabbits, but many people still failed, and soon disappeared. Also, there was Pastor Ao in Shanxi, who saw that American sorghum was produced very well. He persuaded the China International Famine Relief Commission to use hundreds of thousands of yuan in relief funds to buy seeds. Without field testing, he rashly distributed them to farmers for planting. Who knew that the seeds would not germinate, and even if they did, the harvest was poor, resulting in another failure. This kind of fact is the harm of not recognizing new agriculture. To say that there are people who really study it is as rare as phoenix feathers and unicorn horns.</p>
+<p>Contempt for New Agriculture: There are also a large number of people who despise agriculture, thinking that this is something that farmers do, low and without prospects, not worth doing, and not enough to do. Some people think that China's agricultural improvement has no significant effect. Some say that agricultural students do not have as good cultivation techniques as farmers. Little do they know that agriculture has many subjects and is very mysterious. In fact, this kind of argument is the fatal injury of China's new agriculture. The scope of new agriculture can be divided into about fourteen categories, such as agronomy, horticulture, animal husbandry, veterinary medicine, entomology, plant pathology, agricultural economics, farm management, forestry, rural education, agricultural extension, agricultural engineering, sericulture, and agricultural chemistry. Each category is further divided into several departments.</p>
+<p>Effectiveness of New Agriculture: China's new agriculture has been promoted for several decades, and there have indeed been many significant results. Of the above fourteen categories, agronomy is the most successful. The successful crop improvement, such as rice in Jiangsu and Zhejiang provinces, was moved to the southwest after the war. In Guangxi province alone, there are 2 million mu. After the rice improvement, the yield increased by 20%. Including Sichuan and Hunan provinces, the total is no less than 6 million mu. The cotton in North China has also been improved well. After the cotton variety is improved, the yield is high and the fiber is long. The achievements of wheat and millet are also very good. In terms of crop improvement, China's technological achievements are not inferior to Japan's, and it has a good reputation internationally. The second is agricultural economics, such as loans and cooperatives, which are also very developed in various provinces. The third is the achievement of diseases and insect pests. For example, the cotton in North China has always had "aphids," and now there are ways to prevent them, which is a major contribution. Also, the pests of rice in the south have a "boat comb" method, which can catch all the pests of rice. Another example is agricultural water conservancy, such as the canals and rivers in Sui, Shan, Chuan, and Gui provinces. The government has made great facilities in the past ten years. In terms of the whole country, the cadres of new agriculture, that is, the people who actually promote it, are too few. China's territory is very large. Among the 1,600 counties in the country, if each county has an agricultural experiment station, at least 1,600 agricultural cadres are needed. Needless to say others.</p>
+<p>How to Promote: To promote new agriculture, first, the social community must recognize the importance of new agriculture, and second, a large number of agricultural talents at all levels must be cultivated. Some people think that new agriculture can only be discussed with machines or chemical fertilizers. In fact, this is a big mistake. As for agricultural education, it is divided into three levels: senior, intermediate, and junior. Senior students must graduate from agricultural colleges and then go to graduate school. Domestic universities such as Jinling and Zhongshan have already established them. There is no need to study in Europe, America, and Japan. Intermediate students can graduate from agricultural colleges. Junior students only need to complete a three-year agricultural vocational school. I think that at least 50,000 senior cadres are needed nationwide, and at least 500,000 intermediate and junior cadres are needed to promote the new agriculture nationwide.</p>
+<p>How to Run a Farm: People in the cities who want to run a farm must avoid running a single chicken farm, bee farm, or rabbit farm, but must run a mixed farm, such as horticulture combined with animal husbandry or fruit trees, vegetables, etc. Otherwise, the work of the workers cannot be distributed evenly, and the work efficiency cannot be increased. Attention must also be paid to agricultural economics, such as production and sales. They must be observed very carefully. If the supply is less than the demand, it will be profitable. If the supply is more than the demand, it will not be profitable. New farms must avoid being greedy and trying to achieve success in one fell swoop. It will fail. The scale does not have to be large at the beginning. Start small, be down-to-earth, and base everything on scientific principles, then the future will have hope of success. Farms near cities should prioritize producing quick results. Agricultural products must be ahead of the farmers. For example, vegetables produced in spring and summer can be produced in winter using heating, and naturally can be sold at a good price. If chrysanthemums in September can be made to bloom in August using the "light change" method, wouldn't that be great? "Seedless watermelon" will definitely be welcomed by urban people. Watermelon without seeds is also a wonder, but it has been successfully invented by a Chinese student studying in the United States. Another example is that tomatoes become larger, which is very strange. This method has also been successfully researched by British agriculturists.</p>
+<h2>Page 4</h2>
+<h3>Price-Controlled Items in the French Concession</h3>
+<p>(From March 3rd to March 9th) The following goods are the prices of first-class food stores:</p>
+<p>Beef: Tenderloin $12.90, Sirloin $9.70, Top Round $9.40, Rump $6.75, $7.00, $8.10, Steak $6.75, $7.00, $7.75, Rump Roast $7.50, Braised Beef $7.00, Soup Meat $4.95 to $5.10</p>
+<p>Pork: Lean Pork $4.98, Ham $3.84, $4.60, Shoulder $3.90, $4.52, Loin $4.35, Ribs $4.20, Spareribs $3.12.5, Hock $2.80, Leaf Fat $3.62, $3.70, $4.05, Fat Meat $3.20, Caul Fat $2.35, Pig Head $1.98, Trotters $2.00</p>
+<p>Lamb: Leg of Lamb $3.30, $3.40, $4.60, Shoulder $4.20, Lamb Chop $4.70, Spareribs $3.00, Lamb Fat $0.70, Lamb Kidney $0.70, Lamb Brain $0.80, Lamb Liver $4.00, Lamb Heart $0.60, Lamb Tongue $0.80, Lamb Feet $0.35</p>
+<p>Buffalo: Rump Roast $6.00, Soup Meat $4.75</p>
+<p>Cooked Pork: Sliced Foreign Ham $8.80, $9.70, Chinese Ham $0.80, $3.50, $4.00, Fresh Yellow Croaker $1.90, $2.20, $2.50, Frozen Yellow Croaker $1.10, $1.40, $1.65, Carp $1.75, $2.00, Prawns $0.60 each, $0.65, $0.70, Ningbo Flounder per pound $2.30, $2.35, $3.40, White Fish $1.60, $1.65</p>
+<p>Salted Fish: Salted Fish $1.80, $0.85, Salted Hairtail $1.80, $2.00</p>
+<p>Chicken, Duck, and Eggs: Live Chicken $5.00, $5.25, $5.30, Fresh $9.00, $9.35, Eggs $3.70, $4.30, $4.35</p>
+<p>Fruits: Apples $2.30, $2.30, $2.45, Lemons $1.80, $2.00, $2.50, Pears $1.60, $1.60, $3.30, Mandarin Oranges $2.30, $2.30, $2.45, Large Tangerines $1.75, $1.75, $2.00, Small $2.00, $2.00, $2.40, Bananas $1.00, $1.15, $1.30 (To be continued)</p>
+<h3>Student Cafeteria Urgently Needs Donations from All Sectors</h3>
+<p>The Shanghai YMCA, in view of the seriousness of students' health problems, opened a student cafeteria in September last year to serve society with the three principles of nutrition, hygiene, and economy. The Student Relief Department of the Association also allocated funds to relieve poor students, giving them meal tickets worth $0.50 per meal. Ordinary students are also given discounts. It is reported that the relief program is still ongoing, but the Association also plans to expand the number of places and needs donations from all sectors of society so that poor students can benefit. Donations can be sent to the Student Relief Department of the Association at Ba Xian Qiao.</p>
+<h3>Embezzlement of Passengers and Goods Leads to Arrest</h3>
+<p>Cheng Jintao, manager of the Da Customs Brokerage at No. 38 Bund, French Concession, was entrusted by a client last year to entrust Chen Ruisheng (28 years old, from Anhui), manager of the Nantong Customs Brokerage, to transport a box of Western medicine worth more than 10,000 yuan to Beisha Juegang. Unexpectedly, after Chen took the truck, there was no news of him. Cheng searched everywhere without success, and then reported to the French Police Station requesting investigation and arrest. Yesterday, Cheng learned that Chen would come to Shanghai from Nantong by boat, so he went to the pier with a detective to wait. When Chen arrived, he was arrested and is now being held in the police station for investigation.</p>
+<h3>Central Police Station Narcotics Division Cracks Down on Three Opium Dens</h3>
+<p>Ye Yuxi, detective chief of the Narcotics Division of the Central Police Station, recently ordered his subordinates to strictly crack down on opium dens because opium was rampant in the district. Yesterday, he learned that opium dens were being set up privately in the front building of Chang Sanhe Hotel on Yunnan Road and in rooms 201 and 203 of the Central Hotel on Guangdong Road. He specially ordered detectives to arrest them. More than a dozen opium offenders were arrested at the scene, and a large number of opium paraphernalia were seized, all of which were detained for interrogation.</p>
+<h3>Man Jumps to His Death from the Fourth Floor of Zhonghui Building</h3>
+<p>At about 9:00 AM yesterday, a poorly dressed Chinese man jumped from the fourth floor of the Zhonghui Building on Avenue Edward VII and died on the spot. He was about thirty years old, and the reason for his suicide is unknown. There was no note in his pocket. Bystanders could not call out his name, so the identity of this person could not be identified.</p>
+<p>Social Services</p>
+<h3>Shaoxing Wine One—Cheated</h3>
+<p>Today, because a small shop was cheated out of a jar of old wine, which concerns the industry, I would like to use a corner of your newspaper to publish it. This morning, an old tea servant came to order two jars of wine. At that time, the price was clearly stated, and they were to be delivered to a certain customs brokerage in a certain building on Sanma Road, with payment upon delivery. Then a person was sent with the wine. Upon delivery to the location, two more people came and claimed that one jar had to be delivered elsewhere, and one jar had to be sent upstairs first. At that time, one jar was left behind, and the two people who came later were entrusted to watch over it. The other jar was guided upstairs by the wine deliverer and the person who came to order the wine, so there was no suspicion. However, because carrying the wine was slow, the old man who came to order the wine suddenly disappeared halfway. Knowing that something had happened, he rushed back downstairs, and the other jar of wine had disappeared. Only then did he realize that he had been cheated. Asking the neighbors in the building, they said that there were four roads leading through here, and this kind of fraud occurs from time to time. Respectfully announced by Heng Yuxing Shaoxing Wine Shop, Jiujiang Road.</p>
+<p>How to Evict Tenants</p>
+<p>I saw your newspaper publish detailed reports on the Shanghai Municipal Council's crackdown on subletting, which should be followed. However, according to Shanghai customs, once a house is rented out, when the owner wants to take it back for personal use, regardless of whether it is a full lease, a partial lease, or a sublease, if there is a fixed-term lease, legal action can be taken, but it is still difficult to enforce the eviction. If there is no fixed-term lease, it is absolutely impossible to recover it. Even if you ask the court to order eviction, no case has ever been approved. The authorities have strict regulations on subletting, but there are no regulations on recovery for personal use. It seems that a clause should be added to the crackdown, explaining how to evict tenants if the house is actually needed for personal use. Ping Qi.</p>
+<p>Inquiry about Returning to Guangdong</p>
+<p>I want to return to Guangdong as soon as possible, but I am not very clear about the route. I would like to ask for your guidance on the following questions: What are the procedures and locations for registering to return to Guangdong? If there are no direct routes between Shanghai and Guangdong, is there another way to return? He Yongsheng, No. 133 Avenue Haig.</p>
+<p>Answer to the Method of Treating Ear Discharge: I read in your newspaper's Social Services column about the matter of ear discharge. I have a simple method to treat it. Just buy a bottle of "double ammonia water" from a pharmacy, use a toothpick with cotton wrapped around the head, soak it in the medicinal water, and wash the ear several times a day. It will soon be completely cured. Please try this method. Respectfully announced by Dong Cheng, March 1st.</p>
+<p>Answer to "Nightmare Caused by Cat Spirit"</p>
+<p>This disease is called "angina pectoris," also known as "coronary artery disease." It is a temporary spasm of the blood vessels on the heart, causing blood flow to be obstructed, resulting in this phenomenon. Nitite and injections of Euphylin and Glucose can be used to reduce this pain. Chinese medicine can try taking Xiaosheng Guipi Pills, three coins with warm water before going to bed every night. (Physician Xu Yuanfu Yang Yanhe)</p>
+<p>Yesterday's newspaper broadcasting time was 6:50 PM</p>
+<p>Sports News</p>
+<h3>Meisheng Cup Mini Soccer Tournament Divided into Three Groups, List Announced, Each Group of Seven Teams Adopts Single Round Robin System</h3>
+<p>The complete list of participants in the first Meisheng Cup Mini Soccer League was published in the previous newspaper. The organizers, as there are 21 participating teams, are specially divided into three groups: "Mei," "Sheng," and "Bei." Each group has seven teams and adopts a single round robin system. The winners of each group will then compete for the championship and runner-up. The competition is scheduled to be recruited at Guangxia Middle School this Saturday afternoon. The order is being arranged. The group list is recorded below: (Mei Group) Ruilong, Customs, Little Chaos, Morning Bell, Gai Bai, Bailian, Mardi, (Sheng Group) Yingming, Little Dragon, Wanlong, Zai Wen, Yonghua, Elephant Team, Public Works, (Bei Group) Wenjing, Little Wei, Ji Di, Zhiyou, Weixing, Youxia, Guohua.</p>
+<h3>Registration for This Year's Badminton League Begins Today</h3>
+<p>Registration for this year's badminton individual championship will begin today. The registration fee is one yuan per person or group for each event. The registration office is the French Chamber of Commerce on Avenue Mareschal Joffre. The events include five types: men's singles and doubles, women's singles and doubles, and mixed doubles.</p>
+<h3>Mini Soccer Friendly Match, Ruilong Will Play Wenjing Today</h3>
+<p>For the mini soccer friendly match, the Ruilong team is scheduled to play the Wenjing team at Guangxia Middle School Stadium on Moore Road at 4:00 PM this afternoon. All are welcome to visit. The Ruilong lineup is as follows: Xi Liufu, Cao Weixing, Zhang Suquan, Xu Xisheng, Chen Jinquan, Zheng Linxiang, Li Guixun, Gu Yilong, Wang Dingqiu, Zhang Caide, Zhang Yinji.</p>
+<h3>Small Football Friendly Match, South Commercial Bank Invites Movie Stars to Fight</h3>
+<p>After the organization and establishment of the small football team of Nanjing Commercial Savings Bank in this city, under the leadership of Ding Shangui, the team's skills have improved rapidly. Veterans such as Fang Mingkang, Chen Yuqi, and Qi Yunxian have been fighting on the field for a long time and have strong strength. A friendly match is scheduled with the movie star team at 10:30 AM this Sunday morning at Tongle Stadium on Avenue Edouard VII. Team Captain Zhang Huichong and Liu Qiong, Mei Xi, Xi Jianong, Han Langen, etc. will all play. There will be no tickets sold at that time. All circles are welcome to visit. Wang Qiaoqin, Liu Yongqing, Chen Yutao, Zhou Yeding, Fang Mingkang, Zhao Qingcheng, Chen Shunli, Zhou Guohua, Qi Yunxian.</p>
+<p>Commercial News</p>
+<h3>Cash Slightly Rises, Scattered Selling</h3>
+<p>The cash dark market has gradually shown fatigue, and people from all sides turned from tight to tired the day before yesterday afternoon. Due to certain relationships, many retail bulls sold out in groups on the previous two days, and certain gold shops rushed to release large amounts early in the morning. The market price was pushed down amidst a wave of selling. The opening price was 13,900 yuan, the same as the closing price of the previous day. Gold shop assistants and securities houses such as Jiayu sold off, and the silver shop assistants also supplied more than they demanded, and the price stepped down by 300 yuan to 13,600 yuan. Cash shops and a certain silver shop advanced to 13,750 yuan, but the market was weak, and the scattered selling wind revived, cutting down another 180 yuan, falling to a low price of 13,470 yuan. After 11:40, floating air filled the gap, and the gold shop assistants paid less, rising by 80 yuan. The closing price at noon was 13,550 yuan, 350 yuan less than the previous day. The difference on the day was 430 yuan, and the transaction was still rare. The exchange price of jewelry in silver shops was still 1,450 yuan by Dasing and their counterparts (the purchase price was reduced by 150 yuan, silver was listed at 14 yuan, the black market was 12.5 yuan. It was heard that there were sellers, and the price of one silver coin was 7.35 yuan.</p>
+<p>The foreign exchange market situation has not changed much. The British gold pound is still 350 yuan, the US gold pound is still 360 yuan, the US dollar bill has slightly risen to 16.8 yuan, the Hong Kong dollar has continued to decline to 2.9 yuan, the big bill is 10 cents less, and the military ticket is 4.45 yuan.</p>
+<h3>Deciding on Public Bonds with Discernment</h3>
+<p>The over-the-counter market for public bonds continues to rise. Types A, B, and E are comparatively stronger. Types C and D are being released due to continued selling of "Tongkang" and "Da Kang," and "Zhong Yi" is also being disposed of. "Da Zhong," "Shun Tai," "Xie Xing Yuan," and "Tong Ji" are all covering their short positions. Type C initially opened at 67 yuan, then slowly rose by 40 cents. However, temporary local rumors caused the market price to drop suddenly, but this quickly passed. Types A and B, however, remained strong. Although people are still somewhat uneasy, they know which are cheap, and many buyers are choosing carefully, indicating that the market can still gradually recover. The market price results, except for a slight drop of 5 cents and 40 cents for Types C and D, the rest rose by 20 to 60 cents. Transactions totaled approximately 4 to 5 million yuan. A brief summary is listed below:</p>
+<p>Yesterday's foreign stock market remained flat and weak. China Textile was at 9 yuan 35 cents, retreated to 9 yuan 25 cents. British American Tobacco was at 20 yuan. Ewo Cotton Mill was at 22 yuan 75 cents. Jenkin &amp; Jones was at 21 yuan 75 cents. Shanghai &amp; Hongkew Wharf was at 23 yuan 75 cents. Telephone was at 22 yuan 75 cents. Yangtse Insurance was at 10 yuan 6 cents. Langers was at 14 yuan. A total of 5,700 shares were traded. Ewo Brewery was at 5 yuan 50 cents and 5 yuan 70 cents. Yip Sang Chuen was at 15 and 16 yuan. Paper was at 5 yuan 50 cents and 6 yuan. Tramways was at 37 and 38 yuan. Shanghai Wool was at 5 yuan 68 cents. Electricity Bonds were at 66 yuan and 70 yuan, all of which were entrusted transactions. Central China Enterprise was at 8 yuan 50 cents. Jardine Matheson was at 6 yuan 20 cents. Electricity Preference was at 94 yuan. Jardine, Matheson &amp; Co., Ltd. was at 18 yuan. There were buyers for all of these. Asia Navigation was at 8 yuan. British Wool was at 5 yuan. Shanghai Bank was at 13 yuan 50 cents. Steel was at 14 yuan 40 cents. Heng Yeh was at 10 yuan. Wheelock was at 55 yuan. Chen's was at 1 yuan 10 cents. Di Pang and Berton Booth were both at 2 yuan, with supply but no demand.</p>
+<h3>Stable Yarn Market</h3>
+<p>The cotton yarn market remains stable, but customer sales are still mediocre. However, Japanese cotton cloth is doing well. 20-count Double Horse factory yarn opened at 2,510 yuan, and shortly after rose to 2,545 yuan. There were slight rumors in the middle, and it loosened to 2,465 yuan. In the end, due to strong confidence, it closed at 2,560 yuan. 42-count Blue Phoenix was at 5,780 yuan to 5,710 yuan. 42-count Yang He was priced at 5,600 yuan. 60-count Bull Head was at 9,400 yuan. 40-count Sunlight was at 5,100 yuan. 32-count Fairy Peach was at 4,950 yuan. 42-count Wool Butterfly was at 5,400 yuan. 32-count Jin Bao Xing was at 4,660 yuan. 40-count Double Tiger was at 5,020 yuan. 20-count Yue Qin was at 2,900 yuan to 2,965 yuan. 20-count Blue Phoenix was at 3,160 yuan to 3,220 yuan. 20-count Double Earth was at 2,720 yuan. 20-count Double Horse was at 2,740 yuan to 2,800 yuan. 16-count Red Kui Xing was at 2,400 yuan to 2,450 yuan.</p>
+<h3>Strong Demand for Cotton Cloth</h3>
+<p>The factory cloth market continued to be strong yesterday, because factory stocks are very tight, and dealers are searching for available goods, with demand exceeding supply. Sales prices for all cloths rose uniformly, and the market closed at the highest price of the day. 16-pound Flower Butterfly coarse cloth was at 135 yuan, Double Elephant at 132 yuan, Earth at 120 yuan, Big Peng fine cloth at 110 yuan, Fu Gui fine cloth at 107 yuan, Earth fine cloth at 110 yuan, Chang Shou plain silk at 4 yuan 55 cents, 190 American Ting shirting at 113 yuan, an increase of 1 to 2.5 yuan compared to the previous day for white cloth, and an increase of 1 to 3 yuan for bleached and dyed cloth.</p>
+<p>Transactions between dealers and hoarders of Eastern cloth are still frequent. The market atmosphere is firm and high. Long Tou fine cloth factory orders opened in the morning at 126 yuan, but later scattered sales by retail investors dropped it to 23 yuan 50 cents. It recovered slightly at noon to 24 yuan. In the afternoon, buying interest was strong again, returning to a high of 126 yuan, with a low of 24 yuan, and closing at 24 yuan 75 cents, an increase of 75 cents per piece. Mid-range Flying Fish Color Ball is very tight, trading at 115 yuan 25 cents. Yang He was at 14 yuan 50 cents. Trumpet Boy was at 13 yuan. Five Blessings Double Fish was at 11 yuan. Treasure Baby fine twill was at 2 yuan. Five Blessings Double Fish twill was at 4 yuan. There were all buyers. Gentlemen's Flannel for October to December factory orders was at 4 yuan 13 cents. Red ticket new tax was at 3 yuan 97.8 cents.</p>
+<h3>Woolens: Brown and Yellow in Vogue</h3>
+<p>The Nanjing merchants took away over 300,000 yuan, and sales in the market are brisk. The "kick the ball" business is reviving. Brown and yellowish-grey woolens are extremely popular, as these brown and yellow colors are currently in high fashion, taking advantage of the season. Yesterday, 167 flannel sold for 145 yuan per yard. San Bai Bian yuan qing-colored Zigong was at 100 yuan. Yin Feng gabardine was at 69 yuan. Da Ye hairline serge was at 28 yuan 50 cents. You Sheng rainproof cloth was at 10 yuan. Da Tong mercerized feather yarn was at 6 yuan 25 cents. Bao Xin hemp-rubber cloth was at 5 yuan. Yong Cheng black charcoal lining was at 4 yuan.</p>
+<h3>Early Rice Prices Drop</h3>
+<p>Yesterday, the supply of domestic early and late rice exceeded demand, and market prices immediately dropped by 5 to 6 yuan. Northern japonica rice is scarce and no samples have been seen. Those with available goods intend to raise prices, but are affected by the falling price of southern japonica rice, making it difficult to trade. Late rice, including Shi Pu, Si Qing, and other varieties, opened at 280 yuan, 278 yuan, and 277 yuan 50 cents, respectively. Early rice was at 279 yuan to 278 yuan 50 cents. However, Yuan rice is in short supply and selling well, with Yin Yuan rice out of stock. Jin Tan white Yuan rice opened at a new high price of 287 yuan to 290 yuan.</p>
+<h3>Bean Cakes Drop by About One Yuan</h3>
+<p>The bean market is not selling well, and hoarders are afraid that the authorities will implement price controls, so they dare not raise prices further. Therefore, there are not many transactions, and the market is showing slight fatigue, down by one or two yuan. It is estimated that 100 bags of Kai Ping Hu Du beans were sold, priced at 169 yuan. 200 bags of Changzhou Niu Pi Huang were at 152 yuan to 151 yuan. 40 bags of Chong Ming Sha Huang were at 152 yuan, and 50 bags of Sha Chi were at 130 yuan. Over 100 bags of Qingdao second-grade green beans were at 130 yuan.</p>
+<p>Red sorghum and raw peanuts are both scarce in arrival and stock. Sales in the local area are still brisk, and the situation is trending upwards. It is estimated that three carts of Kai Ming Guang red sorghum were sold, priced at 86 yuan to 86 yuan 50 cents, and high-quality goods were at 89 yuan. 103 bags of Shan Dong raw peanuts were at 280 yuan. 150 bags of Ming Guang raw peanuts were at 245 yuan.</p>
+<p>The hoarding and sales of bean cakes remain slow, and people lack excitement. The market situation is still tired, and prices continue to fall by about one yuan. It is estimated that 1,000 pieces of Kai Hankou bean cake were sold, priced at 25 yuan. The Xing Ji bean cake for May, warehouse receipts for 1,500 pieces, were priced at 35 yuan 30 cents to 35 yuan 60 cents. The Li Zi bean cake, warehouse receipts for 5,000 pieces for March (lower) and April (upper), were priced at 40 yuan 5 cents.</p>
+<p>Since bran has been handled by inland agents, the available goods on the market have gradually decreased, and Japanese factories are also releasing large quantities. Yesterday, some rural purchasers acquired goods, and holders are becoming more eager to manipulate prices. Orchid customer bran in small bags opened at 67 yuan 60 cents, while San Xin large bags were at 68 yuan 50 cents to 69 yuan. Small bags are currently out of stock, while March is at 70 yuan. Transactions totaled approximately 1,600 to 1,700 bags.</p>
+<h2>Page 5</h2>
+<p>Random Notes</p>
+<h3>Speculative "Stamp Collectors"</h3>
+<p>— Xun Yuan</p>
+<p>According to reports, the local post office has recently discovered that letters deposited in mailboxes are being stolen. This is truly despicable. Not stealing other things, but turning their minds to mere letters, painstakingly picking and clipping, although the value accumulates from small amounts to large, the behavior is ultimately beneath that of a common thief, truly too "small-time"; and from the perspective of the victims, the loss cannot be calculated in terms of money, perhaps it is a letter that got burned, or a distress letter, or even a love letter, a family letter, a letter reporting a death, the possibilities are endless. People wait anxiously, eager and impatient, but the letter thief casually grabs it, clips and digs it out, nothing is more detrimental than this. In ancient times, mistaking Hong Qiao and throwing letters into the water was because the Qingdao envoy was truly afraid of trouble; now people have paid the postage, carefully placing the letter into the mailbox, but it disappears without a trace, leaving only the mailbox, because the letter thief can profit from it. However, the unpleasant scene and bad joke are no different, giving people a terrible "impression"!</p>
+<p>In recent years, the market has been poor, and desperate people have emerged endlessly. "Small jobs" that are designed with great ingenuity are also constantly appearing. Stealing letters is just one example, and seems to be a minor one. Digging up coffins and stripping corpses has become all too common, which is a bit bloody; a few cents' worth of lead wire, "bending" a little, opening the small door with the sign that says "Next Collection Time," is like taking something out of a pocket. However, the Chinese do this, but foreign speculative stamp collectors have long done it, this is not a new trick. Foreign letter thieves are said to even have large-scale organizations, specializing in stealing letters with drafts, which is more "grand" and tense than "stamp collecting," but as a result, the authorities have also trained a group of people specializing in catching "speculative stamp collectors." These inspectors are often found everywhere in the post office, even around mailboxes, watching closely, their eyes seeming to be a mixture of hawk and cat eyes, making the letter thieves extremely vigilant.</p>
+<p>However, catching letter thieves is ultimately convenient here and now. Most mailboxes have not been "set up in the wilderness." As long as the public pays attention, letter thieves will eventually be caught. Occasionally, if they want to dig the opening of the mailbox a little larger, either the letters will remain stuck on the steel bars, requiring only a slight effort to retrieve them, or they will have to bring an oxygen-acetylene welding torch.</p>
+<p>However, in these times, even a slightly longer steel wire costs two or three cents, let alone such a device!</p>
+<h3>Hollywood News</h3>
+<p>— Duo Bao</p>
+<p>Warner Bros. mogul HB Wallis has purchased the film rights to the air combat film "Dive Bomber" from Frank Wead, starring James Cagney, George Brent, and Ronald Reagan, directed by Lloyd Bacon. If there are no script problems, filming may begin on March 1.</p>
+<p>Gene Tierney, a pillar star of RKO, is now favored by Darryl Zanuck, head of 20th Century Fox, who will invite her to star in a film for Fox, titled "Roxie Hart," produced and directed by William Wellman. It is said that RKO has agreed to Zanuck's request, and will lend her out, but only for one film.</p>
+<p>RKO is currently filming a new film called "Playmates," bringing together 24 stars, led by Kay Kyser and John Barrymore, with others such as Lupe Velez and May Robson. This film has a special feature, namely that the characters who appear in the film all use their real names. For example, Barrymore is referred to as Barrymore. Therefore, it is predicted that it will cause a sensation in the film city when it is released.</p>
+<p>Brenda Marshall officially married William Seiter last month. Three days after the wedding, she rushed to North Bay, Canada, to film, because she is the female lead in the new film "Captain of the Clouds," with James Cagney and Dennis Morgan as the male leads, and Michael Curtiz, the director of "Robin Hood," as the director.</p>
+<p>Errol Flynn and Olivia de Havilland, who are watched by many movie fans, are now starring together in another film, titled "The Man Who Came to Dinner." It is said that the content is quite similar to "Robin Hood."</p>
+<p>"Oomph" girl Ann Sheridan is currently co-starring with Bette Davis in "The Man Who Came to Dinner." Her previous film, "King's Row," has already been filmed. It is said that "Oomph" girl will take a short break after these two films are completed, and then film "Mississippi Gal."</p>
+<h3>Sailing in the Same Boat</h3>
+<p>— He Jia Zhi</p>
+<p>(1) Evening of Wind and Rain</p>
+<p>Guoqi joined their joking conversation and said, "Guofang really knows how to handle a boat. Rowing, paddling, poling—these are the eighteen martial arts of boatmen, and she knows them all." Guofang pushed Guoqi and said, "Brother, don't give me so much credit. I just learned from others, and I didn't learn very well. What I'm most afraid of is wearing a blue cloth coat and walking on Shuangqiao Town. The people of Shuangqiao seem to have never seen a female student. No matter if they are men or women, they have to raise their eyes to look at me. If I go rowing a boat, even more people will be watching. It's not that I'm afraid of falling into the river, but I'm afraid that my every move will not escape the sight of so many people." Weicheng clapped her hands and laughed, "It's true that people in the countryside are amazed by the rare, but on the other hand, it also shows that you siblings are outstanding in Shuangqiao, so your every move is noticed." Guoqi was picking up candy and cookies from the blanket to eat. Even with his mouth full, he could still speak. He said, "Weicheng, when you praise Guofang, don't drag me in. Don't say 'you siblings' this and that. No one notices me in Shuangqiao. I'll give you an example: One day, I was wandering around on the street and hadn't returned home by lunchtime. My grandmother sent an old servant who had worked in the family for many years to look for me, asking people in the shops if they had seen Guoqi. The people in the shops answered that they hadn't seen him, but in fact, I was on the street, going back and forth, back and forth, several times. (13)</p>
+<h3>The Remains of the "Casting of Love" Protagonist</h3>
+<p>— Wang Xuan</p>
+<p>Romeo Montague, the male protagonist in Shakespeare's famous tragedy "Romeo and Juliet," is a forgotten man in his hometown of Verona, Italy. Although Shakespeare said that this immortal couple committed suicide together, in Verona, I cannot find evidence of the last suicide site of these two most famous lovers in history. Juliet's tomb is on the banks of the Po River, and newly married couples often go to pay their respects. Juliet's birthplace, as well as the balcony where Romeo courted her, still exist today, and couples often go there to pay their respects. There is also a metal plaque on the outer wall, indicating that this is the "palace" of Juliet's parents, the Capulets, which confirms that it is Juliet's home. Romeo's house is located on a nearby small street. Although it still stands, with a blacksmith shop on the ground floor, it, like Romeo himself, has been forgotten and abandoned by people.</p>
+<p>Although legend says that Romeo was buried with his beloved Juliet, the words engraved on the large stone tablet on Juliet's tomb indicate that it has nothing to do with Romeo. In the last century, many people paid their respects to Juliet's stone coffin, often carving a square stone around the coffin lid as a souvenir. Later, the coffin lid was stripped to a depth of two inches, so someone then built a monastery and moved Juliet's stone coffin to a small chapel in the monastery.</p>
+<p>Next to the church is an old Franciscan monastery, built in 1230, for which there is much evidence to prove. The famous monk Lorenzo Trejo (Shakespeare's Friar Laurence), who blessed these two unfortunate lovers when they secretly married, was a monk in the Franciscan monastery. The monastery where Juliet's tomb is located is surrounded by shady chestnut trees, cypress trees, brilliant flowers, fountains, and stone benches. In the center of the courtyard is a tall pillar, topped with a bust of "the poet of Stratford-upon-Avon," who is the guardian of the tomb of "sincerely faithful Juliet."</p>
+<p>Juliet still receives letters from admirers, but Romeo is no longer in the memory of admirers. In front of Juliet's tomb, there is a small mailbox with the words "Letters to Juliet" written on it. Italian lovers have the traditional belief that going to pay their respects and putting a letter in the box will bring good luck in love. According to the old man guarding the tomb, no one has ever sent a single word to Romeo.</p>
+<p>An Italian magazine once conducted a detailed survey and found that there were 103 girls in Verona named Juliet, but only seven men named Romeo.</p>
+<p>Miscellaneous Arts and Entertainment</p>
+<h3>Flicking Chess</h3>
+<p>— Ze Fu</p>
+<p>There are two old theories about the origin of Flicking Chess: One is that it originated during the reign of Emperor Wu of the Han Dynasty. When Emperor Wu pacified the Western Regions, he obtained a Hu person who was good at Cuju (ancient Chinese football). Impressed by its agility and leaping, the emperor liked it and played it, but his ministers could not dissuade him. The attendant Dongfang Shuo then presented this art to him, and the emperor abandoned Cuju and took up Flicking Chess (see Xu Guang's "Preface to the Classic of Flicking Chess" in the Jin Dynasty). Another is that it originated during the reign of Emperor Cheng of the Han Dynasty. Emperor Cheng liked Cuju, but Liu Xiang thought that Cuju was harmful to people's bodies and exhausted their strength, so it was not suitable for the most noble. Therefore, he created Flicking Chess based on its form to relieve him (see Chuan Xuan's "Ode to Flicking Chess" in the Jin Dynasty). However, this game ceased to exist after Emperor Chong and Emperor Zhi of the Later Han Dynasty. Emperor Wen of the Wei Dynasty particularly liked this game, and it flourished again. By the Song Dynasty, it had been lost, so no one plays it today. In ancient times, the gameplay used six white and six black chess pieces, and two people played against each other, first placing the chess pieces opposite each other, and then flicking them first. The board was made of stone, with the center raised and the four corners slightly upturned, resembling a turtle shell. In the Tang Dynasty, it was changed to use twenty-four arches, half expensive and half cheap, distinguished by vermilion and ink. The board was also not limited to stone, but could be made of wood or jade. This kind of Flicking Chess was transformed from Cuju, so the chess pieces must be round to be flicked. And the center of the board is raised, so it is very difficult to flick one chess piece to hit another. According to the Western game of billiards today, the billiards are also flicked against each other, with the one who hits the most winning, which seems to be a legacy of our country's Flicking Chess; however, Flicking Chess only uses the hand to flick, while billiards uses a stick to hit, and the table is flat, which is the difference.</p>
+<h3>Stage and Screen</h3>
+<p>— Tai Xu</p>
+<p>Since the Great Shanghai has been blockaded until now, some people say that Liu Qiong and Chen Yanyan are forbidden from having wedding guests making a scene in the bridal chamber. After repeated consultations with the authorities of the Great Shanghai Hu Guang, it has been decided that the premiere will be held at Hu Guang starting on Saturday, called "Replacing the Seat," because "Happy Years," which was originally scheduled to be released at Hu Guang, will also be "happy" at the Great Shanghai first.</p>
+<p>Zhang Zhizhi's family has a secret prescription for "mumps," which is said not to be like Hong Jingling's antiques, only for his own enjoyment, but he is willing to make it public for those who ask for it.</p>
+<p>Someone published a statement not introducing peddlers of inkpads and light bulbs, but the film industry discovered a special edition of "Seeing the Light Again" published by a fake Wan Laiming. The "founder of silhouette animation" is indignant about this.</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.03.04.html", "next": "1942.03.06.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

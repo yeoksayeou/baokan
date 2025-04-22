@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.07.20 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 407 - 4924546</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>協約國潛艇　沉毀達九十七艘　日大本營昨日公布</h3>
+<p>東京十九日同盟社電　日大本營本日下午四時卅分宜布、從去年十二月八日大東亞戰爭爆發以來、至本中七月十日止、日本海軍擊沉及損傷協約國潛艇計九十七艘、其中五十九艘沉沒、三十八艘受傷、</p>
+<h3>日海軍紀念節前夕　平出大佐廣播演說</h3>
+<p>東京十九日同盟社電　日大本營海軍報道部課長平出大佐、於海軍紀念日前夕發表廣播演說、要旨如次、十四世紀初、曾有制海即制世界之古諺、迄今尤痛感其重要性、不論在第一次世界大戰及此次歐戰暨大東亞戰爭、海上權力總佔極重要地位、按確保海權、不僅在加强海軍力、即在運輸力方面亦具有重大意義、日海軍自開戰以來、擊沉敵艦船三六〇艘、計九三〇·〇〇〇噸、最近一月內又於西印度洋方面、擊沉敵船舶廿五艘、計廿萬噸、英國所必須之船舶噸數、於戰前為七·二〇〇·〇〇〇噸、最近德義每月平均擊沉其六〇〇·〇〇〇噸、長此以往、不論英國造船能力如何、本年年底決可將其所必須之噸數悉數擊沉、再日海軍於南方作戰之際、曾截獲敵船甚多、因而更可加强日本之運輸力又日本之交通綫亦因大東亞共榮圈之地形極為優良、故敵雖集中潛艇來襲、亦難得逞也、一方面又因日本之造船力大為增加、故交通綫當可無憂云、</p>
+<h3>美居間斡旋　英埃兩國關係　英士弟自印度抵開羅阿拉眠前綫激戰未已</h3>
+<p>瑞士京城十八日哈瓦斯社電　巴塞爾晚報駐土耳其京城訪員電稱、士國外交界人士、對於美國在埃及境內活動日甚一點、極為注意、揣其目的、顯然不止僅以在英埃兩國之間從事斡旋為限、英駐埃公使寇克、最近迭與埃王法魯克暨那哈斯總理晤談、即其明證、不寗唯是、近東美國空軍司令麥克斯威爾將軍、除與那哈斯總理及埃及參謀部軍官會談外、亦曾晋謁法魯克王、據可靠消息、寇克與麥克斯威爾兩氏、殆曾吿知埃及當局、該國倘能改變現行立塲、而與英美駢肩作戰、則美國願以大批軍械接濟埃及陸軍云、</p>
+<p>開羅十八日哈瓦斯社電　英王弟格魯斯特公爵、昨自印度來此、當由英駐埃及大使藍浦遜爵士、予以招待、</p>
+<p>瑞典京城十九日同盟社電　據開羅消息、德軍向阿拉眠地區英軍陣地陸空兩路繼續猛攻、十八日德軍佔領北部地區英主耍陣地數十處後、十九日復奪取中部地區英軍陣地數處、現正向英主要陣錢猛攻中、</p>
+<p>里斯本十八日同盟社電　據路透社開羅况稱、開羅英軍司令部發表戰據稱、阿拉眠戰錢之傯義聯軍、十七日對英軍陣地再度猛襲、英軍不得已後退、已放棄若干地點云、</p>
+<h3>土駐蘇新大使　展期赴任</h3>
+<p>土京十九日海通社電　土耳其新任駐蘇大使阿錫凱辛、聞將於八月間取道德赫蘭乘飛機前往庫壁希夫任所、按阿氏原訂於上週赴蘇履新、後因要事、須與外長相商、故展期赴蘇云、</p>
+<h3>近東英空軍　新任司令　地中海空軍司令由巴克將軍繼任</h3>
+<p>里斯本十八日同盟社電　據開雜來電、英西亞軍司令部十八日發表稱、浦立頓將已就任西亞空軍司令官云、</p>
+<p>瑞典京城十九日海通社雷　倫敦昨日電訊、英國地中海空軍司令勞合已予免職、據消息靈通人士稱、彼在最近北非戰役中、指揮空軍不力、故當局予以撤職按勞合在任一年、今將另就他職、英國地中海空軍司令遺缺、將任命巴克將軍繼任之、</p>
+<h3>英日交換僑民　辦法商定</h3>
+<p>倫敦十八日哈瓦斯社電　頃悉、英日兩國交換僑民辦法、經瑞士居間幹旋之後、業已成立協定、居住日本、滿洲、中國淪陷區、安南、泰國、菲律濱等處之英國人民及協約國人民一千八百名、將於八月二十七日至九月七日間、分乘日輪龍田丸及鐮倉丸前往東菲葡屬羅朗索馬貴斯港、與日僑實行交換、途中由瑞士委派代表隨輪照料、俟抵目的地後、再由原輪載運旅居英印澳菲之日泰兩國僑民返國、</p>
+<h3>印獨立聯盟改組</h3>
+<p>盤谷十九日海通社電　印度在泰國所設立之印度國民聯盟議會、現已遵照印度獨立大會六月間在盤谷所通過之決議、加以解散、改組為大亞洲印度獨立聯盟會泰國支會、該會前議長陶斯即被舉為支會會長、按陶斯係印度詩人泰戈爾之學生、致力印度自由運動巳有多年云、</p>
+<h3>加拿大下院　舉行秘密會議　討論緊急戰爭問題</h3>
+<p>里斯本十九日同盟社電　據渥太華訊、加拿大下院昨日舉行第二次秘密會議、討論緊急戰爭問題、二小時後休會、定期復會、</p>
+<h3>傳英保守黨議員　將攻擊內相等</h3>
+<p>倫敦十八日哈瓦斯社電　工黨閣員即內務大臣莫里遜、勞工大臣裴文、及商務大臣達爾頓三人、預料在下議院下次開會時、將遭受保守黨議員之猛烈攻擊、大抵一般議員將以內務部行政腐敗、圈禁敵國人民及嫌疑份子、處置失當、不思改進等罪名、攻擊莫里遜、而以勞工部違反勞工條例、規定女工及童工之勞動時間一事、攻擊裴文、至於商相達爾登、一般議員則認為渠利用其地位、偏袒大托拉斯、不惜妨害小企業之利益、對於產業界、並企圖採行國有化一項原則、預料屆時當將引起激烈辯論、良以若干政黨之議員、先後宣佈均懷有攻擊逹爾頓之意見、</p>
+<h3>英美商船　續被擊沉</h3>
+<p>華盛頓十八日哈瓦斯社電　海軍部本日發表第二次公報稱、美國中型商輪一艘、在大西洋南美洲北岸海面被魚雷擊沉、遇救船員已在東部某港登陸、</p>
+<p>華盛頓十八日哈瓦斯社電　海軍部今夜發表公報稱、美國貨輪一艘、在美國東岸數百英里之外某處、被魚雷擊沉、遇救船員已抵美國某港、</p>
+<p>華盛頓十八日哈瓦斯社電　海軍部頃發表公報稱、英國小型貨船一艘、於數星期前在大西洋被敵方潛艇擊沉、獲救給員、已在東部沿海某港登陸、</p>
+<p>柏林十八日哈瓦斯社雷據此間無綫電台宜布、在過去二十四小時中、德國海軍共擊沉敵方軍艦商船三十一艘、</p>
+<h3>美審訊　德間諜案</h3>
+<p>華盛頓十八日哈瓦斯社電　德國工作人員八名、前於五月間分乘潛艇來美、第一批四人、在紐約附近長島登陸、喬裝便衣在海灘安埋定時炸彈、其餘四人、則係在佛羅里達州登陸、此八人均曾僑居美國、對於破壤工作、訓練有素、藏有美國兵工廠之淸單、曾破壞美國鐵路及兵工廠多處、此案經總檢察官皮特爾親自起訴後、業經法院開庭審訊、各犯均承認實行破壞工作不諱、法院方面聞已定於下星期內宣判、</p>
+<h3>德軍分兵三路　圍攻羅斯托夫城　頓河中游局勢漸穩定</h3>
+<p>東京十九日同盟社電　此間「日日新聞載瑞典京城特電稱、据莫斯科路透電稱、南部戰綫德軍之進攻方向、已自斯達林格勒南轉至羅斯托夫、且傾其全力集中進攻、又摒稱、攻擊該方面之德軍、計分三路、一路自泰幹洛格沿亞索夫海岸、一路自東北方面經馬留土爾鐵路、一路自伏羅希洛夫地區南下云、</p>
+<p>烏克閨邦邊境某地十八日哈瓦斯社電　頃据前綫最後消息、羅斯托夫區德軍、現正竭力設法突破該之外圍綫、雙方砲隊開砲互轟、甚為猛烈、紅軍總司令部似已決定堅決抵抗、惟一般人咸信、斯托夫城之防務、不及塞伐斯托波爾港之堅固、扼守該城似較困難、時至此際、羅斯托夫城已成為布克將軍進攻之主要目標、德軍現分兩路、一路由西而東、另一路則由北而南、以鉗形恣態會攻此城、總之、德軍總司令部現在三區發動攻勢、　沿亞索夫海正面進攻羅斯托夫城　在廣大前綫發動攻勢、向唐納資河推進、　自米勒洛伏城南進攻向唐納　河及頓河推進、据各方消息、日來紅軍在唐納資河流域賡續後退、自德軍向米勒洛伏城南面推進之後、自伏羅希洛夫城至斯達林城之鐵路綫已被切斷、故紅軍益有被包圍之虞、惟德軍向斯達林城推進似已暫停、將來之成敗、悉視奥期泰希柯夫區大戰之結果如何而定、最近三日來大戰已在醞釀中、不信德軍在此大戰結束之前能向斯達林城推進、至於頓河中流、局勢似極穩定、昨夜在米古里斯克與加柴斯克兩城之間發生激戰、德軍雖向北猛烈進攻、但局勢仍極穩定云、</p>
+<p>柏林十九日海通社電　德軍司令部昨夜宣稱、吾軍續在東綫南路進擊潰退之蘇軍、德軍在唐納資建立橋頭堡後、冒大雨繼續向前挺進、敵軍現均壓迫退至米勒洛伏迤南、現正由德羅聯軍加以殲滅中、佔領伏維希洛夫城後、德空軍續往不斷轟炸潰退蘇軍及後方鐵路綫、敵軍進犯德軍在伏朗尼慈方面之橋頭堡、並未　逞、</p>
+<p>蘇擁有强大戰鬬力伏朗尼慈反攻得手</p>
+<p>烏克蘭邦邊境某地十八日哈瓦斯社電　此間軍事專家本日評論東綫南路戰局稱、德軍員額衆多、器械精良、佔絕對優勢、自不待言、至於紅軍主力部隊、究在何處、雖難斷言、但有一事確實無疑者、即凡受威脅之處均無大隊紅軍是也、於此可見此番紅軍總司令部之戰略、顯在保持實力、以備保衛頓河及伏爾加河、是故此際對於紅軍實力若竟估計過低、實屬錯誤、觀於了莫生將軍所部最近在伏朗尼　附近及在米勒洛伏城東、迭次大舉反攻、可知紅軍仍擁有强大之戰鬬力柯、初末因此次遭受挫折而喪失其戰鬬力也、</p>
+<p>莫斯科十八日哈瓦斯社電　蘇聯統帥部頃發表戰報稱、本日我軍繼續在伏朗尼慈及米勒洛伏以南與敵軍鏖戰、就中伏朗尼慈耶一綫、我軍稍有進展、曾收復村鎭數處、其他各錢無事足述、波羅的海方面、我軍艦曾擊沉敵軍八千噸運輸艦一艘云、</p>
+<p>瑞典京城十八日哈瓦斯社常佛朗克孚日報軍事評論家、本日發表一文、略謂截至目下為止、丁莫生柯將軍之防禦計劃、內容如何、迄無所聞、即其抵抗綫之確實地點、亦不知之、緣其部隊自在庫斯克以東失敗之後、現仍一蹶小振、僅命令其部隊採用「彈性的抵禦」戰略、其主要目的、自在阻止德軍迅速推進、使其無法如願以償、若謂德國坦克車隊從未遭遇任何抵抗、實屬錯誤惟有一事可斷言者、即蘇聯抵抗散漫而無系統、故德維聯軍先東進而後南下、均未遭受嚴里抵抗、至於伏朗尼慈城之攻佔、應視為德軍向南發動攻勢之準備、亦即保護德軍左翼之一種策略、此在蘇聯方面、力言紅軍曾在伏朗尼慈區堅決抵抗、紅軍機關報「紅星報」本日會以紅軍」猛烈推進為言、並謂曾用著名五十噸重之重坦克車作戰、故已能截堵德軍向北推進、惟眞理報承認、德軍又調到大批生力軍增援、軍學評論家以為紅軍倘在伏朗尼慈區發動攻勢、則德軍總司令部進窺斯達林城一項計劃、勢將無法迅速實現、總之、丁莫生柯將軍所部、確已依照預定計劃、逐漸後退、但德軍佔領伏羅希洛夫城之說、莫斯科方面尙未能證實之、其對於德軍正面進攻羅斯托夫城一事、亦復保守緘默云、</p>
+<p>南路德軍進攻結果佔領土地九萬方哩</p>
+<p>斯科所需之原料供應、均已遭遇切斷、自莫期科通至東面之鐵路今已極為擁擠、欲運取蘇聯東境之供應品巳屬不可能云、</p>
+<p>柏林十九日每通社電　德國軍界方面向海通社補充昨日之德軍戰報稱、蘇軍喪失伏羅希洛夫格勒後之影響甚重、德軍現已立即向唐納資迤東頓河下流推進、深入蘇軍之後方、截斷蘇軍各重要之公路綫、伏羅希洛夫格勒為工業及煤礦區域、故蘇軍曾在該城有巷戰之準備、該城為尙在蘇軍手中之唐納資盆地之入口、蘇軍重要之供應根據地及蘇聯重要之交通中心、該城失陷後、則唐納資盆地之全部　門戶洞開、該區原料與礦產之富、實為蘇聯不可補償之損失、其影響所及、對於戰事之戰局誠非淺詳、</p>
+<h3>傳南路蘇軍　司令易人</h3>
+<p>土京十九日海通社電　此間外交界人士接庫壁希夫傳來消息稱、蘇軍南路司令即　易人、或已於過去二十四小時內另仟新人代之、據傳丁莫生柯之繼任人、係蘇聯前參謀總長夏波希尼哥夫將軍云、</p>
+<h3>德傘兵參加　東綫作戰</h3>
+<p>里斯本十八日同盟社電　據莫斯科來電東部戰綫南部地區之德軍、運用精銳之機動力、對蘇軍猛烈追擊、惟伏朗尼慈地區之蘇軍、尙未將其陣地完全放棄、德軍除對蘇軍增援部隊、反覆加以猛擊外、同時不斷用傘兵部隊降落於蘇軍後方陣地、共同作戰云、</p>
+<h3>美軍事專家討論　開闢第二戰塲問題　此舉短期內勢難實現</h3>
+<p>華盛頓十八日哈瓦期社電　當此德軍正在蘇聯南路節節推進之際　　　各軍事專家速日正忙於會商如何减輕紅軍所受之德方壓力據聞多數主張立卽開闢第二　塲、但若干專家、則認為在目前情勢之下、此舉絕不可能、認為惟有利用英美兩空軍、大規模轟炸德國工業區、則不僅足以挽救蘇聯、且可左右戰局之最勝負、其中第派力言協約國此際所可調動之商船噸位、當在四千五百噸以上、以如此龐大之運輸力量、用於運送遠扯軍赴歐陸作戰以及接濟軍需、實屬綽乎有餘、况以英美兩國對外交通現狀　論、不得不將所有商船分佈全　界各地、固屬實在情形、顧其中最重要之交通錢、亦唯溝通英美兩國之一綫而已、觀乎大批兵員器械之源源自美國運抵英國、可知此終實為防禦最强組織最佳之綫、今後即使抽調若十力量、以備征歐登陸夕用、當亦不致引起重大影響、此在第二派、則認為欲使　闢第二戰塲之舉、　竿見影發揮實效、至少需要二白寓兵力、三百萬噸商船、自非今日之協約國所能勝任、此外，另有一派則認為所謂「侵犯歐陸」、應純以空軍為之、果爾、則美國必能大事接濟、良以今日之美國飛機、十九均可直接自美飛歐、中途毋需降落、且可隨帶一部份航空人村故也、</p>
+<p>紐約十八日哈瓦斯社電　紐約泰晤士報　　表社評、對於東綫近况有所論列、略謂、蘇聯人　、曾聞開闢第二戰塲之諾言、如竟不能實現、勢必大為失望、現蘇軍雖在全綫實施反攻、惟形勢依然異常嚴　、前者蘇聯外交委員長莫洛托夫訪問英美兩國、得悉英美竭力支持蘇聯、極為滿意、但時至兮日、蘇聯　府顯已知開闢第二戰塲之議、非短時期內所能實現矣、</p>
+<h3>英德互施空襲</h3>
+<p>柏林十九日海通社電　據此間權威方面宣稱、敵方轟炸機多架、昨夜出現於東普魯士海岸上空、投爆炸彈多枚、但無損失、</p>
+<p>瑞典京城十九日海通社電　據倫敦息、德機一架於今日侵晨在英格里亞東部某鎭投彈、該鎮之鎭名則並未宣布、</p>
+<h3>法內閣　舉行會議</h3>
+<p>維希十八日哈瓦斯社電　內閣於本日午前十時半舉行國務會議、由貝當元首親任主席、首由政府首長賴伐爾報吿國內外局勢、此次前往巴黎與德國當局接洽經過、以及招募工人前往德國工作之成續、旋即由農業部長勒洛亞拉杜利說明政府以蔬菜牛油供給各大城市之各項步驟、</p>
+<h3>亞港法艦　處置問題　美法觀點不同談判仍進行中</h3>
+<p>維希十八日哈瓦斯社電　關於亞力山大港法艦處置問題、自法國政府披露法美兩國政府迭次交換之照會後、此間政界人士對於美法談判之進展、仍保守緘默、僅謂美法兩國觀點不同、現仍深刻、但此非談判已至破裂之謂、良以羅期福總統之來照曾喟、此一問題與埃及戰爭之運命無關、故不得不認為具有超然性質、賴伐爾首長每遇極微妙之問題、輒以外交文件之內容吿知法國及各國輿論界、此為第二次、查其第一次係在英軍侵入馬　斯　島之後、上開兩事、問題之要旨從同、質言之、即法國仍信守停戰協定、而美國袒護英國所採取之行動、不欲提出具體解决方案是也、頓伐爾首長之合法地位無庸討論、一言以蔽之、即遵守法德停戰協定第八條及法義停戰協定第十二條之規定、（規定法幽軍艦停泊於法國港內）此在德義方面、則已正式提供保證、決計遵守此項條款、即使佔領亞力山大港、對於法艦亦不視為戰利品、使法國立塲益加有力云、</p>
+<h3>巴黎發生　恐怖案件兩起</h3>
+<p>巴黎十八日哈瓦斯社電　此間昨又發生恐怖案兩起、第一起在第四區、曾有一人在招募工人前往德國工作之辦公室前、投擲炸彈一枚、除房尾稍受損傷而外、幸無死傷、厥後又有人一在他處招募工人登記處投擲一彈、死警察及路人各一名、並有少女一名受傷、兩案暴徒均逃逸無踪</p>
+<h3>希土恢復通車　成立協定</h3>
+<p>匈牙利京城十八日哈瓦斯社電　據雅典來雷、土耳其與希臘間之鐵路貨運、停頓經年、最近兩國鐵路當局業已成立協定、可望於短時期內恢復通車，</p>
+<h3>土潛艇沉失　船員全部殉難</h3>
+<p>安加拉十九日海通社電　沉沒在瑪拉瑪拉海之土耳其潛艇、全部船員三十八人業已殉難、該艇沉在八十公尺深之海底、所有之撈救工作已吿失敗、該艇沉失之原因未明、惟信恐係該艇作潛水試騐時發生意外之事云、</p>
+<h3>波斯尼亞北部　淸鄉結束</h3>
+<p>匈京十八日哈瓦斯社電　克羅地邦軍隊得德軍之協助在波斯尼亞北部加薩拉山區貫行淸鄉、近已圓滿結束、計擊斃叛軍三千餘人、另有七千人投降云、</p>
+<h3>瑞典保加利亞　締結商約</h3>
+<p>案非亞十九日海通社電　瑞典保加利亞商約已於星期五夜在此簽字、該約有效期間一年、規定交換價値四〇〇·〇〇〇·〇〇〇里伐之貨物、保國將以菸草供給瑞典、瑞典則將予以織維及鋼鐵、</p>
+<h3>紅髮女星　再度結婚</h3>
+<p>熊城十九日同盟社電　據好萊塢訊、紅髮女星拉娜透納與商人克蘭恩突往那伐達州賴斯維茄斯結婚後、昨已返抵好萊塢、按透納芳齡二十二歲、前曾嫁與流行音樂大王阿蒂　、旋吿仳離、克蘭恩亦會一度結婚、</p>
+<h2>Page 3</h2>
+<h3>兩租界米號　今起三期授糧　憑第三聯買米證購領麵粉售價已减少三角</h3>
+<p>據大通社記者探悉、兩租界米號今日起出耀第三期口糧、憑第三聯買米證發給碎米一升、白米半升、麵粉一斤半、碎米與白米、合售儲鈔三元八角、麵粉售儲鈔三元四角、查上期為碎米半升、白米一升、此次白米與碎米數量、適成一反比例、麵粉售價、較上期减少三角、</p>
+<p>麵粉進價已予抑低</p>
+<p>查麵粉售價减少原因、緣工部局統制麵粉辦事處、售與麵製品商售價、每包祇儲鈔八十五元、而米糧辦事處派與米號、則儲鈔一百元、故米吾民曾要求同要待遇、惟當上星期附三期麵粉款時、雖仍付原價、可望於本星期找還、亦以每包八十五元作價、至三期戶口糧出售期限、至本月二十五日為止、</p>
+<p>米店隱匿十倍處罰</p>
+<p>六百五十九家立約米店、遵照辦理授糧規章、對第二期發售戶口糧報吿單、准兮日向工部局米糧管理委員會或福履理路六號糧食物價管理科報告、上項報吿單、必須連同售米換回之聯票一併呈交、即無論如何每一米店所售食米之數量、須與交回之聯票數目上所載之米糧完全相符、倘所售米糧超過交還聯票數目上所載之米量時、則處以逾量米價十倍之罰金、</p>
+<p>今日核發二批米證</p>
+<p>各分發購米證辦事處對核發第二批購米證應辦手續、業已準備就緖、定　日起開始發給各納稅人、憑得購買第五六七八等四期戶口糧、其領購米證日期、凡公共租界各納稅人、憑　季房捐收據之背面所　日期領取、即上次領取首批購實證同日、法租界各納稅人憑房捐收據至各原分發處、領取購米證、日期已由各區警察署長迪吿聯保長轉知各甲長戶長、</p>
+<h3>英橋一千八百餘人　下月撤通</h3>
+<p>英文泰晤士報云、昨（十八）據日領署官員吿泰晤士報記者稱英僑在八月中、確將由日本及上海撤離、其撤橋輪亦巳決定、為鎌倉丸及龍田丸二艘、英領事凱鐵遜氏等十一人將來滬、在衆信除業巳規定一輪外另一郵船、或亦被派行駛、以載此等另增之僑民、鎌倉丸將載在日之英僑撤通、同時龍田丸將載在華撤退之橋民、據聞鎌倉輪將過滬椗泊、所以載龍田丸所不及載去之乘客、現時撤退僑民之總數、約計一千八百名、但或因外港之英僑同時被選撤離、則人數難免增多、據謂在上海之英橋、擬於此次撤離者不多、</p>
+<h3>法商電車月季票　須貼本人照相</h3>
+<p>上海法商雷車電燈公司通吿云、茲因應用月季票時有越規事件發生、故自一九四二年八月一日起、該項月季票、應備有本人照片及簽名、凡乘客執有月季票或常年派司、在售票時、或遇公司人員應即繳出查騐為禱</p>
+<h3>收受橡皮車胎等臟物　大批車行人員被捕</h3>
+<p>中央捕房華探目韓壽山周凱文等、最近在界內弋獲大批人犯、計有王賢瑾陳一淸翁國樑錢生沈正元陳　生胡仲芳史豐泰張榮卿王友君何廣南陸雲發陳海元陳金福等十叫名、其中何廣南係山東路三二二弄十一號廣記書局主、張榮卿係愛多亞路泰昌車行主、陳德元係貴州路一二四號陳福昌包車行主、陳金福係貴州路一二〇號陳發昌包車行主、內中尙有仁記路華達運輸公司職員雲南路同昌車行職員等、據悉獲犯所犯之案、係竊盜及收受贓物、其所竊收之物、係屬價値十餘萬元之橡皮車胎等受統制之物品、現捕房正在嚴密偵查、故將獲犯予以收押、候查明再究、</p>
+<h3>申報讀者助學金　今日開始申請　申請定本月廿八日截止八月一日舉行甄別考試</h3>
+<p>第三屆申報讀者助學金、於今日起開始申請登記、所有助學金章程、申請登記表、登記證、均經本報印就、此次所印申請表格、以發完為止申請　期即將於本月二十八日截止、並定於八月一日開始辦理登記各生甄別考試手續、申請及甄別日期、旣經規定、決無展延變動等情、故亟盼申請各生即來申請、以免向隅、並希逐日注意登記後各項通吿、以免貽誤、</p>
+<p>籲請讀者踴躍助金</p>
+<p>本屆助學金</p>
+<p>目前巳收各界捐款、計達儲劵六萬餘元、以目前生計之艱、學費之貴、雖承各界慷慨捐輸、猶虞不克救助淸寒學生於什一、本報職工同人於奔走呼號之餘、亦曾勉力捐輸、稍盡棉薄、所冀各界仍本熱忱贊助之風、願續予協力、使淸寒學子、少一人失學、即本報讀者助學金少一分罪譴、亦即社會各界多造就一人材、同人深以舉辦本屆助學金之重要、較歷屆尤甚救濟失學端賴助金籌款之踴躍、謹於開始申請之日、重向各界　請凡此苦心當荷各界鑒諒</p>
+<p>登記手續精密注意</p>
+<p>本屆助學金於今日起開始申請、凡淸寒學生無力繳付學費者、自小學五年級至大學止、均得親自來本報、向營業部領取助學金章程、申請登記表、逐項塡明、但須特別注意者、　成績報吿單所列成續主科每科在七十分以上、或主科有一科不滿七十分、而其餘兩科均在八十分以上者、方能獲得參加甄別測騐權利、故各生如自讅成績不合上項規定者、不必申請登記、因縱登記亦徒勞手續耳、　申請登記表必須用墨筆正楷照塡、不得草率、蓋淸寒學生如對申請助金而不以鄭重手續處理、則其刻苦精神、似已欠缺、本報讀者助鑒金原所以獎勵優秀淸寒學生、字跡潦草者自在擯棄之列、　凡各項手續在章程中或開始申請後、本報逐日所刋載之通吿、巳有公布者、如有投函詢問、不再答復、蓋本報助學金不願對於漫不經心之學生而仍予獎助、致負各界捐款之厚意、　在未開始申請　、各生或家長來函叙明姓名請予兌記者、均作無效、應即依照手續來本館親領登記證、照章辦理、</p>
+<p>定期辦理甄別考試</p>
+<p>申請登記後、本報即開始辦理初審申請各生成績、其合於標準者當於報端公布、約期來館領取甄別別試騐入塲證、其不合格者即憑本報所發登記證取回證件、至本報此次辦理申請各生甄別原因、　學生程度不整齊、　各校分數寬　不一、　各生之普通常識是否合於一般水凖、　杜絕塗改分數等弊、此次甄別係委託滬上著有盛譽之學校代辦、一俟甄別手續完竣、即辦理調查各生家庭狀况、其有成績合格而家庭狀况差堪繳付學費者、概以不合格論、以重助余用途、</p>
+<h3>日海軍經理部佈吿　限期速領貨款</h3>
+<p>據同盟社訊、本市東百老匯路六一〇號第一海軍經理部物資處理事務所、以該所收買物品之所有人或權利人、尙有未來請求付給貨款者、特於二十日發佈吿示、着於本月底以前前往領取、否則認為拋棄權利、即將物品沒收、茲將該吿示譯錄於后、為佈吿事、照得此次處理上海海軍警備區域內物資、本所收買物品之所有人或權利人、尙有未來請求付給貨款者、應於七月三十一日以前、前來本所辦理規定手續、全數具領、否則認為拋棄請求權、即將物品沒收、此佈、昭和十七年七月二十日、第一海軍經理部物資處理事務所、</p>
+<h3>租界與閘北通電話　定八月初實現</h3>
+<p>英文泰晤士報云、昨悉華中電力公司、已定於八月初使公共租界與閘北二處、直接可通電話、此種特殊器具、亦已分別裝置於上海電話公司、與上海電話總局試騐業吿成功、故裝接電綫事宜、不久亦可開始、</p>
+<h2>Page 4</h2>
+<h3>氣候現正酷熱　霍亂疫氛蔓延　未注射者應從速注射</h3>
+<p>英文泰晤士報云、法公董局衛生處於星期發表特別報吿稱、最近期內、法租界共發現六起亂案、地點均近華界村郊、其染疫區域、皆經封鎖、此六人之中、已有一人亡故、</p>
+<p>水之供給已予消毒</p>
+<p>於其染疫地點、現每日均施以消毒、同時水之供給、亦經放置消毒物、而染疫者亦已被遷出、此報吿父謂、雖然法租界內居民、亦有極多數注射防疫針、惟仍有不少未經注射、該項注射者總數、現仍停滯於六二五〇五三人數中、在五月以前注射者、實應施行第二次防疫注射、以在此霍亂菌盛行之情形下、保衛自身、實屬必要、衛生處辦事所除星期日之外、每日均辦公、</p>
+<p>時疫二院收容病人</p>
+<p>大西路四十七號A上海現為本市時疫病人收容院、並自即日起、由該院繼續二次注射防疫針、並簽發新證、凡息時症病人或須注射防疫針者、均可逕赴該院診視、醫藥住院均不取費、病房小分等級、母須熟人介紹、手續簡便、日夜應診、該院院址在大西路四十七號A、電話二二三九五號、</p>
+<p>五福股票公司成立</p>
+<p>五福股票公司係本埠實業界金融界領袖所組織、於昨日下午三時、假新都飯店開創立會、推許曉初為主席、報吿出席股東人數及代表股權、均超過法定人數、繼由楊伯庚報吿籌備經過情形、次通過公司章程、選舉董監、結果許　初、金宗城．潘仰堯、顧克民、陸　本　、張蓮舫、楊伯庚、柯蘭初、張致果、馬崇淦、林軼肯、　竹樓、馬繼元、當選為董事、金錫章為候補董事、葛士彝　顧仲民、蔣受之．當選為監察人、會後技開董監聯會、推許　初為董　長、楊伯庚顧克民馬崇淦林軼肯為常務董事、馬維元馬偉廉為正副經理、該公司人才濟濟、將來對於華股事業定有貢獻、地址在江西路二馬路新康大樓四〇七號、又聞該公司原定資本為中儲券五十萬元、後因認股踴躍臨時增資為中儲券六十萬元、</p>
+<h3>各界雜訊</h3>
+<p>元亨錢莊河南路　十號元亨錢莊、近以無限組織申請上海市踐業同業公會加入為會員、業經准予人會、所有該莊之一切票據收解、准自八月一日起、參加上海市錢業聯合準備庫辦理交換、</p>
+<p>綸暨襪廠　綸豐襪　出品之虎頭牌反口條子球襪、合宜於西式短裝及運動裝等、中裝亦能兼用、今夏色樣增添、分卡開漂白軍黃秋香叫種、各大百貨公司均售、本廠地址華成路十號、電話八　六二〇、</p>
+<p>國醫奚昌炎　國醫內科奚昌炎、診所設武定路（西摩路西）五三七　六八號、自即日起對於赤貧病人、照常送診、並由陳善士捐助藥材、</p>
+<p>昨日本報發報時間六點二十分</p>
+<p>體育新聞</p>
+<h3>國斌盃圓門球昨賽　南洋四對一勝中聯　女子友隊勝愛國</h3>
+<p>國斌盃圓門球聯賽、昨日在光夏中學舉行、共計四塲、結果華南以五對一勝强星、女子友隊以二對〇敗愛國、藥光以四對二克V隊、南洋則以四對一負中聯、陽光雖烈、觀衆仍不衰、足見斯項球賽號召力之豪大、茲將南洋中聯名單錄下、</p>
+<p>南洋</p>
+<p>韓龍泉　李垚</p>
+<p>張邦倫　王裕人</p>
+<p>李森上　張有璋</p>
+<p>許錫祿下　樊天成</p>
+<p>中聯</p>
+<p>陳煥文　林秉憲</p>
+<p>方鶴鳴　舒過　任亞偉</p>
+<p>羅從周　方書高</p>
+<p>運動簡訊</p>
+<p>實業盃籃球賽、本星期六開賽、參加各隊尙有未淸手續者、希從速往南陽路該校辦理、</p>
+<p>光明化學廠仝人、組織光明女子乒乓隊、參加者女性八員、昨日成立、已報名加入同仁盃聯賽角逐、全隊名單探錄如后、游寶珠（隊長）、朱安（幹事）柴夢桃、黃惟德、朱人義、盧世琴、吳鍾英、張守琯、</p>
+<p>四川路中華靑年會游泳池、自七月一日開放以來、參加之男女靑年至為踴躍、祇以地位及時間關係、不得不嚴格限制額數、不久即告額滿、現騰出星期一三五、中牛十二時半至二時、星期二四六下午四時至五時之時間、予未來者以參加機會、即日開始報名、</p>
+<p>維他富盃慈善排球、展期二十五日截止報名、今日召開末次審備會議、</p>
+<p>經濟專刊</p>
+<h3>市塲動態</h3>
+<p>華股</p>
+<p>華股起伏漸巨，不復如過去一路上漲之順風，此係重要之注意點。</p>
+<p>上週繼被步漲者為百貨股，永安獨占鰲頭，新新帶上。人誚永安之好，於是福及永安百貨。加以永安當局，最近大露頭角，持股人隨而興奮；亦不無關係。</p>
+<p>紗布市面萎頓，紡織股自難免此，永安則獨因增資關係而例外上漲。前週為傳言所惑而暴漲之閘北水電與華商電氣，上週巳現反動，來勢非輕。</p>
+<p>新藥股進退無定，實業股漲跌互見，金融股進出皆無。新籌碼的偷鶏交易，最引人入勝。</p>
+<p>公債</p>
+<p>上週為債市第二週之拉鋸，先昇後疲，較前週又軋小一元左右，此種盤局，若能打開，將有較大變動，目前尙恍惚不定。</p>
+<p>謙益，聯和，鑫豐等初呑後吐，不過了結性質。同利等週初一度傾出，旋即束手。實力派大都壁上觀。</p>
+<p>貨幣變動後，市塲通貨，不無吿緊。但資金活動之餘地亦較前為窄，債市之軋小，尙不脫興趣問題。</p>
+<p>紗布</p>
+<p>雙馬現貨，照藍鳳開做，紗布變動以日紗東疋為標準之局面，不論形式或實際上，均已吿成。近月來所謂對於紗布投機之取締程序，至此可謂已吿一段落。</p>
+<p>上週市况續疲，鳳縮二百餘元：馬退六百多步，龍頭亦輕十磅左右。一體萎靡，大都看小。為目前紗布市塲之全貌。</p>
+<p>雜糧</p>
+<p>市塲雖被封管，市况反呈活氣。豆類豆餅麩皮紅糧等等一致吿漲；為上週獨一無二之奇象。蓋受江北麥市上漲影響。據電傳，天津雜糧市塲，上週亦一致上騰，津地當局實行强制結價，概照本月十五日之市價為標準云。</p>
+<h2>Page 5</h2>
+<p>自由談</p>
+<p>小談</p>
+<h3>照顧自己</h3>
+<p>— 郭家驥</p>
+<p>俗語說：「鳥之將死，其鳴也哀；人之將死，其言也善。」鳥語少有人懂，所以其哀鳴不大有人去理會它：而逝世以前的人言，却往往為世人所重視。</p>
+<p>紀元前三百九十九年，希臘哲學家蘇格拉底為了眞理的追求而犧牲了自己的性命。當時的罪名是『敎訓與宗敎相違背，』及『誘致靑年入邪途。」為了這些莫須有的罪名，他被判處死刑，被迫仰毒而死。</p>
+<p>他臨死以前，他的門生兼朋友格立土問他有甚麼吩咐。他說了一句極普通的話，「沒有什麼別的，不過，我時常敎訓你們，要照顧自己。這工作可說是為了我而做，理可說是為你自己而做的……」這就是這位先哲的臨死贈言。</p>
+<p>「照顧自己」，這雖是一句最平凡的話，然而也是一句至善的話。不論在甚麽環境之中，尤其是在患難的情景下，我們如果重要有所作為，我們必須照顧自己，這是一切的先決條件。</p>
+<p>在　裏，照顧自己並不是自私自利的，而是為了要做更多的工作，耍使這個世界成為一個更完美的世界。</p>
+<p>所以為了我們自己，也為了別人，我們要照顧自己。</p>
+<p>隨筆</p>
+<h3>癆病人語</h3>
+<p>— 莫名</p>
+<p>我以為肺病療養之道，在力爭主動的地位。病人要做病菌之主，而勿為病菌之奴；要盡力控制疾病，而勿受控制於疾病，要盡可能地使疾病遷就病人的生活，而勿使生活無條件地投降於疾病。</p>
+<p>善於做主人的病人，不務必視疾病為奴，他或將視疾病為賓。更可愛的是視疾病為一種隨身的累贅，一種習慣的漫不措　的累贅。他雖比常人多了此累贅，但其間差別不過是等於戴帽的和不戴帽的人，繫領結的和敞領的人。一個人只要能做累贅之主不做累贅之奴，那麽即使終其生而累贅不去，他也將不以為苦，甚至反而以有此累贅為樂，也未嘗不可。</p>
+<p>肺癆病人的藝術是「遺忘」。肺癆病人中最不為疾病所苦的，大概是最善於這種藝術的人。但這裏所說的「遺忘」，是指遺忘疾病，並不是遺忘現實，遺忘生活。有許多病人就是這樣背道而馳，這是很錯誤的。另有許多病人，努力於把疾病，生活，現實一起都遺忘了，這種努力往往是徒然的，很少有成功的希望；而且即使能成功，也無益，並且也不値得。</p>
+<p>對於藥（補藥之類），一個肺病人最好是一絲一毫也不信仰，否則，就得澈頭澈尾的信仰它。肺　無藥，然而我們現在仍無可奈何地倚賴若干種藥品，這與其說我們希望它們有治療的功能，　　說我們重視它們能使病人信仰而產生力量，這種信仰的力量往往有意想不到的效力。</p>
+<p>一切信仰，不管怎樣愚昧，錯誤，假使其結果確有利於信仰的人，我們大可不必去打倒它，反對它。我們不必勸一個　信藥品的肺癆病人停止吃藥，正如我們不必使一個虔誠的敎徒去懷疑上帝：甚至一個人在做着虛無的美夢，我們也不必去點破他，假使我們在點破後，不能給他更好的安慰。</p>
+<p>吃補食也是如此。生肺病的要講究營養，但切忌迷信營養。病人有了「牛奶至上，鶏蛋第一，得之則生，失之則死」這樣的觀念，吃得起的固然不成問題，萬一吃不起則痛苦孰甚？此種人即是所謂「疾病之奴」。</p>
+<h3>理想</h3>
+<p>— 小紫</p>
+<p>當一個國家的理想死了時，這國家就滅亡了。</p>
+<p>弗里門</p>
+<p>人漸漸長大，他的理想也漸漸改變。依列斯</p>
+<p>沒有行動的說話，是理想的暗殺者。胡佛</p>
+<p>話匣</p>
+<h3>大學觀感錄</h3>
+<p>— 洪道</p>
+<p>（二）六種大學生</p>
+<p>在大學裏，各色各樣的學生全有，有交際明　，有花花公子，有政治家，有商業　手，有書獃子，也有為追求知識而讀書的大學生。</p>
+<p>入大學時的動機該是硏究高深的學問了。可是這似乎「理論」上的話，事實並不完全如此。有些大學生別有懷拖，簡直不把讀書當做一回事。他們入大學好像另有目的，讀書生活或大學生的幌子不過是達到那種目的的工具吧了。例如交際明星之類，一天到晚忙於交結異性朋友，參加社交集會，看電影，跳舞，打牌，或弄其他時髦的玩意兒。這便是他們的日常「功課」。他們不得己到課堂去聽講時，總是懶洋洋的，無精打采的。花花公子們天天換着時髦的新衣服，認為這是出風頭的不二法門。他信們是富家子弟，有的是錢，衣食無憂。他們入大學的目的只在混一個資格，只在取得大學生的牌子，使他們將來在社會上活動時較為便利。他們對敎授的訓誨和書本的知識始終抱着漠不關心的冷淡態度。說者諄諄，聽者藐藐。他們不怕考試失敗，不怕拿不到學分，也不怕留級。敎授們碰到這兩種學生最感到灰心，最覺得頭痛。</p>
+<p>大學生中也有不少的政治家。他們把大學社會當做運籌帷幄，鈎心鬥角的實騐塲，他們的領袖慾甚熾，集合「同志」，結成「黨派」，希望爭取「羣衆」，獲得「政權」。無論在甚麼學校團體中和集會中，都有他們的蹤跡。他們到處活動，與「政敵」明爭暗門，運用種種策略去獲得勝利。此外還有一些有「生意眼」的大學生，利用讀書的機會逐什一之利。他們在同學中販賣新舊貨品，大打算盤，其精明不下於市塲上的大商賈。在這緊張的空氣中，要這兩種大學生專心於功課，自然是辦不到的事。</p>
+<p>大學如果沒有　獃子，似乎便不成其為大學了。書獃子一名書蛀虫。這種大學生終日埋首於故紙堆十，視書本為天下最神聖的東西。他們不知課外活動為何物，對世事不加問問，因此缺乏實際的學識。他們把課本，講義，筆紀，參考書之類讀得爛熟，考試的時候分數也許很高，可是事實上難免有食古不化，囫圇呑棗的毛病，所以他們能否獲得眞正的知識，能否由大學敎育獲得處世的學問和技能，倒是一個疑問。</p>
+<p>最後還有一種　迫求知識而讀書的大學生。這種學生才是名符其實的大學生，才是國家未來的柱石。他們瞭解大學敎育的目的，他們知道大學生對於個人，家庭，社會，國家所負的責任何等重大，因此他們覺得應該儘量利用那四年的寶貴光陰，夫完成最完美的大學教育。他們知道怎樣聽講，抄筆記，預備課本和參考書。他們對於分數和學分不太重視，也不太輕重。他們知道圖書館和實騐室在大學敎上的重要，也知道敎授的薰陶和良朋益友的切磋琢磨在大學生活上的意義。總之，他們在德智體羣各方面都有着平衡的發展。四年的大學敎育把他們造成優秀的知識份子，使國家增加了一些有用的人才。如果每個大學生都能拿這種大學生做模範，大學敎育之成功便巳有了保證了。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（七）迅雷</p>
+<p>翠珍麒不得什麽嫌疑，走上去，一把揑住了維城的手腕問道：「城弟，你怎麽啦？手是冰冷的，這紙上寫的什麽」？她一方面是間，一方面是看維城的臉，一方面也對維城手裏的紙看着。維城颓然的坐下去，兩眼向那注意的紙上看了下去，本來沒多少字，一下子就看完了。有氣沒力的說道：「翠珍姊，沒有什麼？你出去。別大驚小怪。」翠珍道：「這紙上寫的是什麽？」維城道：「沒有什麽，請你出去。」翠珍道：「你身體好不好，剛才把我一嚇。」維城道：「我挺好，沒有什麽，沒有什麽。」他揮揮手。</p>
+<p>翠珍向來尊重維城的意旨的，看維城要她出去，她就出去，走到門外，還回頭看一看維城。維城等翠珍走出去了，把那張紙鋪在桌子上，細細的閱看起來，原來這是他母親葉大太太厲氏的遺囑，上面寫着這幾行字：「字與吾兒維城知悉：汝父是死於程炳之手。程炳因何事殺死汝父，汝可不必問。我家中舊時，藏有程炳之小影，藏之多時。但此幾年來，尋覓不到。我病已無望，我亦無力尋覓。噫！程炳於出事後已高飛遠走。汝長大，當報父仇。但葉氏惟汝一子，報仇有殺身之危險，所以汝必生子，使汝父有孫而後可以報仇。母遺囑。」</p>
+<p>維城仔細一看，眼淚冉也遏止不住了，一滴兩滴三滴，撲簌簌的滴在遺囑上。他為了保護那張遺囑起見，立刻掬手帕出來擦乾了眼淚。他霍地一站，雙手揑着拳頭，把拳頭打着胸脯；又噓出一口長長的氣。一抬頭，映在他眼簾裏的，是父親愛棠公和母親厲氏的遺像，他的眼淚又來了。站到遺像面前，說道：「爸爸，媽，兒子在你們的面前。媽的遺囑；兒子看到了。兒子以前一直在做夢，在夢裏……，」他有些頭暈，退了兩步，靠在桌子上：沒桌子，他或者是跌倒了。（一三二）</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.07.20</h1>
+<h3>Allied Submarines Sunk and Damaged Reach Ninety-Seven Vessels: Japanese Imperial Headquarters Announced Yesterday</h3>
+<p>Tokyo, 19th (Domei News Agency) – The Japanese Imperial Headquarters announced today at 4:30 PM that since the outbreak of the Greater East Asia War on December 8th of last year, up to July 10th of this year, the Japanese Navy has sunk and damaged a total of ninety-seven Allied submarines, of which fifty-nine were sunk and thirty-eight were damaged.</p>
+<h3>On the Eve of the Japanese Navy Memorial Day: Rear Admiral Hiraide Delivers Broadcast Speech</h3>
+<p>Tokyo, 19th (Domei News Agency) – Rear Admiral Hiraide, chief of the Naval Reporting Department of the Japanese Imperial Headquarters, delivered a broadcast speech on the eve of the Navy Memorial Day. The gist is as follows: At the beginning of the 14th century, there was an ancient proverb that controlling the sea means controlling the world, and even now, we keenly feel its importance. Whether in the First World War, the current European War, or the Greater East Asia War, sea power always occupies a very important position. Securing sea power is not only about strengthening naval power, but also has great significance in terms of transport capacity. Since the beginning of the war, the Japanese Navy has sunk 360 enemy ships, totaling 930,000 tons. In the past month, it has sunk another 25 enemy ships, totaling 200,000 tons, in the western Indian Ocean. The tonnage of ships necessary for Britain before the war was 7,200,000 tons. Recently, Germany and Italy have been sinking an average of 600,000 tons per month. If this continues, no matter how great Britain's shipbuilding capacity is, by the end of this year, it will definitely be able to sink all the tonnage it needs. Furthermore, when the Japanese Navy operated in the south, it intercepted many enemy ships, thus further strengthening Japan's transport capacity. Moreover, Japan's transportation lines are also extremely advantageous due to the geography of the Greater East Asia Co-Prosperity Sphere, so even if the enemy concentrates submarines to attack, it will be difficult to succeed. On the other hand, Japan's shipbuilding capacity has greatly increased, so there is no need to worry about transportation lines.</p>
+<h3>US Mediation: British-Egyptian Relations; British Royal Brother Arrives from India; Fierce Fighting Continues on the El Alamein Front</h3>
+<p>Swiss City (Bern), 18th (Havas News Agency) – A correspondent for the Basler Nachrichten in Istanbul reports that diplomatic circles in Turkey are paying close attention to the increasing activities of the United States in Egypt. It is speculated that its purpose is clearly not limited to mediating between Britain and Egypt. The recent meetings between the British Ambassador to Egypt, Sir Miles Lampson, and King Farouk of Egypt and Prime Minister Nahas are clear evidence of this. Moreover, General Maxwell, commander of the U.S. Air Force in the Near East, in addition to holding talks with Prime Minister Nahas and Egyptian General Staff officers, also paid a visit to King Farouk. According to reliable sources, Sir Miles Lampson and General Maxwell almost informed the Egyptian authorities that if the country could change its current position and fight alongside Britain and the United States, the United States would be willing to supply the Egyptian army with a large number of armaments.</p>
+<p>Cairo, 18th (Havas News Agency) – The Duke of Gloucester, brother of the British King, arrived here yesterday from India and was received by Sir Miles Lampson, the British Ambassador to Egypt.</p>
+<p>Stockholm, 19th (Domei News Agency) – According to news from Cairo, German forces continued their fierce attacks on British positions in the El Alamein area by land and air. After German forces occupied dozens of key British positions in the northern area on the 18th, they captured several British positions in the central area on the 19th and are currently fiercely attacking the main British lines of defense.</p>
+<p>Lisbon, 18th (Domei News Agency) – According to a Reuters dispatch from Cairo, the British military headquarters in Cairo announced that the combined Italian-German forces on the El Alamein front launched another fierce attack on British positions on the 17th. The British army was forced to retreat and has abandoned some locations.</p>
+<h3>New Turkish Ambassador to the Soviet Union: Postponed Assumption of Office</h3>
+<p>Istanbul, 19th (Haitong News Agency) – It is reported that the newly appointed Turkish Ambassador to the Soviet Union, Mr. Acikalin, will take a flight to Kuibyshev via Tehran in August to assume his post. Mr. Acikalin was originally scheduled to depart for the Soviet Union last week, but his trip was postponed because of important matters that needed to be discussed with the Foreign Minister.</p>
+<h3>New Commander of the British Air Force in the Near East: Air Commander of the Mediterranean Sea Replaced by General Park</h3>
+<p>Lisbon, 18th (Domei News Agency) – According to a dispatch from Cairo, the British Army Headquarters in the Middle East announced on the 18th that General Pulford had taken office as Commander of the Air Force in the Middle East.</p>
+<p>Stockholm, 19th (Haitong News Agency) – London reported yesterday that Air Marshal Lloyd, Commander of the British Air Force in the Mediterranean, has been dismissed. According to well-informed sources, he was ineffective in commanding the Air Force during the recent North African campaign, so the authorities dismissed him. Mr. Lloyd has served for one year and will now take up another position. The vacancy for the Air Commander of the British Air Force in the Mediterranean will be filled by General Park.</p>
+<h3>Agreement Reached on British-Japanese Exchange of Nationals</h3>
+<p>London, 18th (Havas News Agency) – It is learned that an agreement has been reached on the method for exchanging British and Japanese nationals through the mediation of Switzerland. 1,800 British and Allied nationals residing in Japan, Manchuria, occupied areas of China, Annam, Thailand, and the Philippines will travel on the Japanese ships Tatsuta Maru and Kamakura Maru between August 27th and September 7th to Lourenço Marques in Portuguese East Africa for an exchange with Japanese nationals. Representatives appointed by Switzerland will accompany the ships to provide care during the journey. After arriving at their destinations, the original ships will carry Japanese and Thai nationals residing in British India, Australia, and the Philippines back to their respective countries.</p>
+<h3>Reorganization of the Indian Independence League</h3>
+<p>Bangkok, 19th (Haitong News Agency) – The Indian National League Council established in Thailand has now been dissolved and reorganized into the Greater Asian Indian Independence League, Thailand Branch, in accordance with the resolution passed by the Indian Independence Congress in Bangkok in June. Mr. Das, the former chairman of the Council, has been elected as the chairman of the Branch. Mr. Das is a student of the Indian poet Tagore and has been dedicated to the Indian freedom movement for many years.</p>
+<h3>Canadian House of Commons Holds Closed-Door Meeting: Discussion of Urgent War Issues</h3>
+<p>Lisbon, 19th (Domei News Agency) – According to Ottawa, the Canadian House of Commons held its second closed-door meeting yesterday to discuss urgent war issues and adjourned after two hours, setting a date for resumption.</p>
+<h3>Rumors of Conservative MPs Attacking Cabinet Members</h3>
+<p>London, 18th (Havas News Agency) – Three Labour cabinet members, namely Home Secretary Morrison, Minister of Labour Bevin, and Minister of Commerce Dalton, are expected to be subjected to fierce attacks by Conservative MPs when the House of Commons next meets. Generally, MPs will accuse Morrison of administrative corruption in the Home Office, improper handling of the confinement of enemy nationals and suspected persons, and failure to improve. They will attack Bevin for the Labour Department's violation of labour regulations regarding the working hours of female workers and child labourers. As for Commerce Minister Dalton, MPs generally believe that he has used his position to favour large trusts, harming the interests of small businesses, and is attempting to implement a principle of nationalization in the industrial sector. It is expected that this will spark a heated debate, as MPs from several parties have successively announced that they hold opinions critical of Dalton.</p>
+<h3>British and American Merchant Ships Continue to be Sunk</h3>
+<p>Washington, 18th (Havas News Agency) – The Navy Department issued a second bulletin today, stating that a medium-sized American merchant ship was sunk by a torpedo in the Atlantic Ocean off the north coast of South America. The rescued crew members have landed in a port in the eastern part.</p>
+<p>Washington, 18th (Havas News Agency) – The Navy Department issued a bulletin tonight stating that an American cargo ship was sunk by a torpedo somewhere several hundred miles off the east coast of the United States. The rescued crew members have arrived at a port in the United States.</p>
+<p>Washington, 18th (Havas News Agency) – The Navy Department has just issued a bulletin stating that a small British cargo ship was sunk in the Atlantic Ocean by an enemy submarine several weeks ago. The rescued crew members have landed at a port on the east coast.</p>
+<p>Berlin, 18th (Havas News Agency) – According to a broadcast from the local radio station, the German Navy sank a total of thirty-one enemy warships and merchant ships in the past twenty-four hours.</p>
+<h3>US Trials of German Espionage Case</h3>
+<p>Washington, 18th (Havas News Agency) – Eight German operatives, who arrived in the United States in May by submarines, were divided in two groups, with the first four landing on Long Island near New York. Disguised in civilian clothes, they planted time bombs on the beach. The remaining four landed in Florida. All eight had previously resided in the United States and were well-trained in sabotage. They possessed lists of American armaments factories and had sabotaged several American railways and armaments factories. After being personally prosecuted by Attorney General Biddle, the case has been brought to court for trial. All the defendants admitted to carrying out sabotage. It is learned that the court is scheduled to pronounce sentence within the coming week.</p>
+<h3>German Forces Divide into Three Routes to Besiege Rostov: Situation in the Middle Reaches of the Don River Gradually Stabilizes</h3>
+<p>Tokyo, 19th (Domei News Agency) – The local "Mainichi Shimbun" carries a special dispatch from Stockholm stating that, according to a Reuters dispatch from Moscow, the direction of the German offensive on the southern front has shifted south from Stalingrad to Rostov, and all efforts are being concentrated on the attack. It is also stated that the German forces attacking in this direction are divided into three routes: one along the coast of the Sea of Azov from Taganrog, one from the northeast via the Mariupol railway, and one south from the Voroshilov region.</p>
+<p>Somewhere on the Border of Ukraine, 18th (Havas News Agency) – According to the latest news from the front, German forces in the Rostov area are currently trying their best to break through the outer defense lines of the city. Artillery batteries from both sides are exchanging fire fiercely. The Red Army General Staff seems to have decided to resolutely resist. However, it is generally believed that the defenses of Rostov are not as strong as those of Sevastopol, and it will be more difficult to defend the city. At this point, Rostov has become the main target of General von Kleist's offensive. German forces are now divided into two routes: one from west to east and the other from north to south, attacking the city in a pincer movement. In short, the German General Staff is now launching offensives in three areas: 1. Launching an offensive along the Sea of Azov towards Rostov. 2. Launching an offensive along a broad front, advancing towards the Donets River. 3. Advancing south from Millerovo towards the Don River and the Don. According to various sources, the Red Army has been continuously retreating in the Donets River basin in recent days. Since the German forces advanced south of Millerovo, the railway line from Voroshilovgrad to Stalingrad has been cut off, so the Red Army is increasingly in danger of being surrounded. However, the German advance towards Stalingrad seems to have temporarily halted, and the future success or failure depends on the outcome of the great battle in the Ostrogozhsk area. A major battle has been brewing for the past three days, and it is unlikely that the German forces will advance towards Stalingrad before this battle is over. As for the middle reaches of the Don River, the situation seems extremely stable. Fierce fighting took place last night between the cities of Migulinskaya and Kazanskaya. Although the German forces launched a fierce offensive to the north, the situation remains extremely stable.</p>
+<p>Berlin, 19th (Haitong News Agency) – The German High Command announced last night that our forces continued to attack the retreating Soviet troops on the southern route of the Eastern Front. After establishing a bridgehead on the Donets, German forces continued to advance in the rain, and the enemy forces are now forced to retreat to the south of Millerovo, where they are being annihilated by German and Romanian forces. After occupying Voroshilovgrad, the German Air Force continued to bomb the retreating Soviet troops and rear railway lines. The enemy's offensive against the German bridgehead in the Voronezh area did not succeed.</p>
+<p>The Soviet Union Possesses Strong Fighting Power: Counter-Offensive Successful in Voronezh</p>
+<p>Somewhere on the Border of Ukraine, 18th (Havas News Agency) – Military experts here commented today on the war situation on the southern route of the Eastern Front, stating that the German forces are numerous and well-equipped, possessing an absolute advantage, which goes without saying. As for the location of the Red Army's main forces, although it is difficult to say for sure, one thing is certain: there are no large Red Army units in any of the threatened areas. From this, it can be seen that the Red Army General Staff's strategy is clearly to maintain its strength in order to defend the Don and Volga Rivers. Therefore, it would be a mistake to underestimate the Red Army's strength at this time. Judging from the recent large-scale counter-offensives by General Timoshenko's troops near Voronezh and east of Millerovo, it can be seen that the Red Army still possesses strong fighting power and has not lost its fighting power due to this setback.</p>
+<p>Moscow, 18th (Havas News Agency) – The Soviet High Command issued a battle report stating that our forces continued to engage in fierce battles with enemy forces south of Voronezh and Millerovo today. Among them, our forces made slight progress on the Voronezh line and recovered several villages and towns. Nothing else is worth mentioning on other fronts. In the Baltic Sea, our fleet sank an 8,000-ton enemy transport ship.</p>
+<p>Stockholm, 18th (Havas News Agency) – A military commentator for the Frankfurter Zeitung wrote an article today stating that, as of now, the content of General Timoshenko's defense plan is still unknown, and even the exact location of his resistance lines is unknown, because his troops have not recovered since their defeat east of Kursk and are only ordering their troops to adopt a "flexible defense" strategy, the main purpose of which is to prevent the German forces from advancing rapidly and preventing them from achieving their goals. It is a mistake to say that German tank fleets have never encountered any resistance. However, one thing can be asserted: Soviet resistance is scattered and unsystematic, so the German and allied forces did not encounter serious resistance when they first advanced east and then south. As for the capture of the city of Voronezh, it should be regarded as a preparation for the German forces to launch an offensive to the south, that is, a strategy to protect the German left flank. On the Soviet side, it is strongly argued that the Red Army has resolutely resisted in the Voronezh area. The Red Army's organ, "Red Star," stated today that the Red Army has "fiercely advanced" and used well-known 50-ton heavy tanks in combat, so it has been able to block the German advance to the north. However, Pravda acknowledged that the German forces have also deployed a large number of reinforcements. Military commentators believe that if the Red Army launches an offensive in the Voronezh area, the German General Staff's plan to advance on Stalingrad will not be realized quickly. In short, General Timoshenko's troops have indeed retreated gradually according to plan, but Moscow has not been able to confirm the German occupation of Voroshilovgrad, and it remains silent on the German frontal attack on Rostov.</p>
+<p>As a Result of the German Offensive on the Southern Route, 90,000 Square Miles of Land is Occupied</p>
+<p>The supply of raw materials needed by Moscow has been cut off, and the railway from Moscow to the east is now extremely congested, making it impossible to transport supplies from the eastern regions of the Soviet Union.</p>
+<p>Berlin, 19th (Haitong News Agency) – German military sources supplemented yesterday's German battle report to Haitong News Agency, stating that the loss of Voroshilovgrad by the Soviet army has a significant impact. The German army is now immediately advancing east of the Donets and into the lower reaches of the Don River, deep into the rear of the Soviet army, cutting off the Soviet army's important roads. Voroshilovgrad is an industrial and coal mining area, so the Soviet army had prepared for street fighting in the city. The city is the entrance to the Donets Basin, which is still in the hands of the Soviet army, an important supply base for the Soviet army, and an important transportation center for the Soviet Union. The fall of the city means that the entire Donets Basin is now wide open. The richness of the region's raw materials and minerals is an irreparable loss for the Soviet Union, and its impact on the overall war situation is by no means insignificant.</p>
+<h3>Rumors of a Change of Commander in the Southern Route of the Soviet Army</h3>
+<p>Istanbul, 19th (Haitong News Agency) – Diplomatic sources here have received news from Kuibyshev that the commander of the Southern Route of the Soviet Army has been replaced, or has been replaced by a new person in the past 24 hours. It is rumored that General Shaposhnikov, the former Chief of Staff of the Soviet Union, is the successor to General Timoshenko.</p>
+<h3>German Paratroopers Participate in Combat on the Eastern Front</h3>
+<p>Lisbon, 18th (Domei News Agency) – According to a dispatch from Moscow, German forces in the southern region of the Eastern Front are using elite mobile forces to vigorously pursue the Soviet forces. However, the Soviet forces in the Voronezh region have not completely abandoned their positions. In addition to repeatedly attacking the Soviet reinforcements, German forces are also constantly using paratrooper units to land behind Soviet positions and fight together.</p>
+<h3>American Military Experts Discuss the Issue of Opening a Second Battlefield: This Move is Difficult to Achieve in the Short Term</h3>
+<p>Washington, 18th (Havas News Agency) – As German forces are advancing on the southern route of the Soviet Union, various military experts are hurrying to discuss how to alleviate the pressure the Red Army is suffering from the German side. It is reported that the majority advocate opening a second battlefield immediately, but some experts believe that this is absolutely impossible under the current circumstances. They believe that only by using the British and American air forces to bomb German industrial areas on a large scale can the Soviet Union be saved and the outcome of the war be determined. One faction strongly argues that the Allied powers can currently mobilize more than 4,500 tons of merchant shipping. Using such a large transport capacity to transport distant troops to the European continent and provide military supplies is more than enough. Moreover, considering the current state of Anglo-American external communications, it is necessary to distribute all merchant ships all over the world, which is the real situation. However, the most important line of communication is still the one connecting Britain and the United States. The fact that a large number of troops and equipment are constantly being transported from the United States to Britain shows that this is ultimately the strongest and best organized line of defense. Even if some forces are withdrawn to prepare for the European landing operation, it should not cause a significant impact. This second faction believes that in order to make the opening of a second battlefield take effect quickly, at least two hundred thousand troops and three million tons of merchant ships are needed, which is beyond the capabilities of the Allied powers today. In addition, another faction believes that the so-called "invasion of the European continent" should be carried out purely by air force. If so, the United States will definitely be able to provide a great deal of assistance, because most of the American planes today can fly directly from the United States to Europe without landing in between, and can bring a part of the aviation personnel with them.</p>
+<p>New York, 18th (Havas News Agency) – The New York Times published an editorial commenting on the recent situation on the Eastern Front, stating that the Soviets will be greatly disappointed if the promise to open a second battlefield cannot be realized. Although the Soviet army is implementing a counter-offensive on all fronts, the situation is still extremely severe. Previously, Soviet Foreign Minister Molotov's visit to Britain and the United States revealed that Britain and the United States were making every effort to support the Soviet Union, which was extremely satisfactory. However, the Soviet government clearly knows that the proposal to open a second battlefield cannot be realized in the short term.</p>
+<h3>Britain and Germany Conduct Mutual Air Raids</h3>
+<p>Berlin, 19th (Haitong News Agency) – According to authoritative sources here, several enemy bombers appeared over the coast of East Prussia last night and dropped several bombs, but there were no losses.</p>
+<p>Stockholm, 19th (Haitong News Agency) – According to London, a German plane dropped bombs on a town in eastern England this morning, but the name of the town was not announced.</p>
+<h3>French Cabinet Holds Meeting</h3>
+<p>Vichy, 18th (Havas News Agency) – The Cabinet held a state council meeting at 10:30 AM today, chaired by Marshal Pétain himself. First, Prime Minister Laval reported on the domestic and international situation, the progress of his trip to Paris to meet with German authorities, and the success of recruiting workers to work in Germany. Then, Minister of Agriculture Le Roy Ladurie explained the government's steps to supply vegetables and butter to major cities.</p>
+<h3>The Disposition of French Warships in Alexandria: Differing US and French Views; Negotiations Still Ongoing</h3>
+<p>Vichy, 18th (Havas News Agency) – Regarding the issue of the disposition of French warships in Alexandria, since the French government disclosed the notes repeatedly exchanged between the French and American governments, political figures here have remained silent about the progress of the US-French negotiations, saying only that the views of the US and France are still deeply different. But this does not mean that the negotiations have broken down, because President Roosevelt's letter stated that this issue is not related to the fate of the Egyptian war, so it must be regarded as having a transcendent nature. Whenever Prime Minister Laval encounters an extremely delicate issue, he informs the French and international public opinion circles of the content of the diplomatic documents. This is the second time. The first time was after the British army invaded Madagascar. The main points of the above two matters are the same. In essence, it is that France still adheres to the armistice agreement, while the United States protects the actions taken by Britain and does not want to put forward a concrete solution. There is no need to discuss the legitimate status of Prime Minister Laval. In a word, it is to abide by the provisions of Article 8 of the Franco-German Armistice Agreement and Article 12 of the Franco-Italian Armistice Agreement (stipulating that French warships should be docked in French ports). On the German and Italian side, they have formally provided guarantees that they will abide by this clause. Even if Alexandria is occupied, the French warships will not be regarded as war prizes, making France's position even stronger.</p>
+<h3>Two Terrorist Incidents Occur in Paris</h3>
+<p>Paris, 18th (Havas News Agency) – Two more terrorist incidents occurred here yesterday. The first incident took place in the 4th arrondissement, where someone threw a bomb in front of an office recruiting workers to work in Germany. Fortunately, there were no deaths or injuries, except for minor damage to the rear of the building. Later, someone threw a bomb at a worker registration office elsewhere, killing one policeman and one passerby, and injuring one girl. The perpetrators of both cases escaped without a trace.</p>
+<h3>Agreement Reached on the Resumption of Rail Traffic Between Greece and Turkey</h3>
+<p>Budapest, 18th (Havas News Agency) – According to a dispatch from Athens, the rail freight transport between Turkey and Greece, which has been suspended for many years, has recently reached an agreement between the railway authorities of the two countries and is expected to resume traffic in the near future.</p>
+<h3>Turkish Submarine Sunk: All Crew Members Killed</h3>
+<p>Ankara, 19th (Haitong News Agency) – All thirty-eight crew members of the Turkish submarine that sank in the Sea of Marmara have died. The submarine sank to a depth of 80 meters. All rescue efforts have failed. The cause of the sinking is unknown, but it is believed that it was an accident during a diving test.</p>
+<h3>Clearing of Northern Bosnia Completed</h3>
+<p>Budapest, 18th (Havas News Agency) – Croatian troops, with the assistance of German troops, have completed the clearing of the Gasara Mountains in northern Bosnia. More than 3,000 insurgents have been killed, and another 7,000 have surrendered.</p>
+<h3>Sweden and Bulgaria Conclude Trade Agreement</h3>
+<p>Sofia, 19th (Haitong News Agency) – The Swedish-Bulgarian trade agreement was signed here on Friday night. The agreement is valid for one year and stipulates the exchange of goods worth 400,000,000 leva. Bulgaria will supply tobacco to Sweden, and Sweden will supply textiles and steel.</p>
+<h3>Red-Haired Star Remarries</h3>
+<p>Bear City, 19th, Allied News Agency Electricity – According to Hollywood news, red-haired star Lana Turner and businessman Crane suddenly went to Rice Vegas, Nevada, for marriage, and returned to Hollywood yesterday. It is reported that Turner is 22 years old and was previously married to pop music king Artie, but divorced shortly after. Crane has also been married once.</p>
+<h2>Page 3</h2>
+<h3>Rice Shops in Two Concessions to Distribute Grain in Three Phases Starting Today; Flour Price Reduced by 30 Cents with Third Coupon</h3>
+<p>According to a report from a Datong News Agency reporter, rice shops in the two concessions will start distributing the third phase of rations today. One liter of broken rice, half a liter of white rice, and one and a half catties of flour will be issued with the third coupon. The broken rice and white rice will be sold together for 3.8 yuan in reserve notes, and the flour will be sold for 3.4 yuan in reserve notes. It is noted that in the previous phase, it was half a liter of broken rice and one liter of white rice. This time, the quantities of white rice and broken rice are inversely proportional. The price of flour has been reduced by 30 cents compared to the previous phase.</p>
+<p>Flour Purchase Price Has Been Suppressed</p>
+<p>The reason for the reduction in the price of flour is that the Shanghai Municipal Council's Flour Control Office sells flour to baked goods merchants for only 85 yuan in reserve notes per bag, while the Rice and Grain Office distributes it to rice shops for 100 yuan in reserve notes. Therefore, the rice merchants once requested the same treatment. However, when the third phase of flour payments was attached last week, the original price was still paid, but it is expected to be returned this week, also priced at 85 yuan per bag. The deadline for the sale of the third-phase household rations is the 25th of this month.</p>
+<p>Tenfold Penalty for Rice Shops Concealing Grain</p>
+<p>The 659 contracted rice shops must comply with the regulations for distributing grain. The report forms for the second phase of household rations must be submitted to the Shanghai Municipal Council's Rice and Grain Management Committee or the Grain and Food Price Management Section at No. 6 Fuli Road within the specified time. The above report form must be submitted together with the coupons returned from the rice sales. In any case, the quantity of rice sold by each rice shop must be completely consistent with the quantity of rice recorded on the returned coupons. If the quantity of rice sold exceeds the quantity of rice recorded on the returned coupons, a penalty of ten times the price of the excess rice will be imposed.</p>
+<p>Second Batch of Rice Coupons Issued Today</p>
+<p>The procedures for issuing the second batch of rice purchase coupons at the distribution offices have been prepared. It is scheduled to start issuing them to taxpayers from [date]. Taxpayers can purchase the fifth, sixth, seventh, and eighth phases of household rations with the coupons. The date for receiving the rice coupons is determined by the date recorded on the back of the seasonal property tax receipt for taxpayers in the Public Concession, which is the same day as the last time the first batch of purchase coupons was received. Taxpayers in the French Concession can receive the rice coupons at the original distribution offices with their property tax receipts. The dates have been communicated to the Bao Chiefs and household heads by the chiefs of the district police stations.</p>
+<h3>Over 1,800 British Nationals to Leave Shanghai Next Month</h3>
+<p>According to the English-language "The China Press", yesterday (18th), an official from the Japanese Consulate told "The China Press" reporter that British nationals will indeed be evacuated from Japan and Shanghai in mid-August. The evacuation ships have also been decided, namely the "Kamakura Maru" and "Tatsuta Maru". Eleven people, including British Consul Mr. Kelliher, will come to Shanghai. In addition to the one ship already designated, another postal ship may also be dispatched to carry these additional expatriates. The "Kamakura Maru" will carry British nationals evacuated from Japan, while the "Tatsuta Maru" will carry British nationals evacuated from China. It is reported that the "Kamakura Maru" will anchor in Shanghai to take on passengers that the "Tatsuta Maru" cannot accommodate. The total number of expatriates being evacuated is currently estimated at 1,800, but the number may increase if British nationals from outer ports are also selected for evacuation at the same time. It is said that not many British nationals in Shanghai intend to leave in this evacuation.</p>
+<h3>French Concession Tramway Monthly Passes Require Personal Photo</h3>
+<p>Shanghai French Tramway and Electric Light Company announced that due to irregularities in the use of monthly passes, from August 1, 1942, the monthly passes must have a personal photo and signature. Passengers holding monthly passes or annual passes should present them for inspection when purchasing tickets or when requested by company personnel.</p>
+<h3>Large Number of Car Company Personnel Arrested for Receiving Stolen Goods such as Rubber Tires</h3>
+<p>Central Police detectives Han Shoushan, Zhou Kaiwen, and others recently arrested a large number of suspects in the concession, including Wang Xianjin, Chen Yiqing, Weng Guoliang, Qian Sheng, Shen Zhengyuan, Chen [blank], Hu Zhongfang, Shi Fengtai, Zhang Rongqing, Wang Youjun, He Guangnan, Lu Yunfa, Chen Haiyuan, and Chen Jinfu, totaling more than a dozen people. Among them, He Guangnan is the owner of Guangji Bookstore at No. 11, Lane 322, Shandong Road; Zhang Rongqing is the owner of Taichang Car Company on Avenue Edward VII; Chen Deyuan is the owner of Chen Fuchang Taxi Company at No. 124 Guizhou Road; and Chen Jinfu is the owner of Chen Fachang Taxi Company at No. 120 Guizhou Road. There are also employees of Huada Transportation Company on Renji Road and Tongchang Car Company on Yunnan Road. It is reported that the suspects are involved in theft and receiving stolen goods. The stolen goods are restricted items such as rubber tires worth over 100,000 yuan. The police are conducting a thorough investigation and have detained the suspects for further investigation.</p>
+<h3>Shen Bao Readers' Scholarship Applications Open Today; Application Deadline is the 28th of This Month, Screening Test to be Held on August 1st</h3>
+<p>Applications for the third Shen Bao Readers' Scholarship will open today. All scholarship regulations, application forms, and registration certificates have been printed by this newspaper. The application forms printed this time will be issued until they are exhausted. The application period will end on the 28th of this month, and the screening test for registration applicants will begin on August 1st. Since the application and screening dates have been set, there will be no extensions or changes. Therefore, we urge all applicants to apply as soon as possible to avoid missing out, and to pay attention to the notices published daily after registration to avoid delays.</p>
+<p>Appeal to Readers for Generous Donations</p>
+<p>Current donations received for this year's scholarship from all sectors total over 60,000 yuan in reserve certificates. Given the current economic difficulties and high tuition fees, although we have received generous donations from all sectors, we are still concerned that we will not be able to provide sufficient assistance to impoverished students. In addition to our staff's efforts to solicit donations, they have also made contributions to the best of their ability. We hope that all sectors will continue to maintain their enthusiasm for supporting education and continue to cooperate with us, so that fewer impoverished students will be forced to drop out of school. This will reduce the Shen Bao Readers' Scholarship's sense of guilt and enable all sectors of society to cultivate more talent. We deeply believe that the importance of holding this year's scholarship is even greater than in previous years. Providing relief to those who have dropped out of school depends on generous fundraising. On the day of the application launch, we reiterate our appeal to all sectors, and we hope that our efforts will be appreciated.</p>
+<p>Pay Close Attention to Registration Procedures</p>
+<p>Applications for this year's scholarship will open today. Impoverished students who are unable to pay tuition fees, from the fifth grade of elementary school to university, can personally come to this newspaper's business department to obtain the scholarship regulations and application form, and fill them out completely. However, it should be noted that: 1. The grades listed on the report card must be 70 or above in each major subject, or if one major subject is below 70, the other two subjects must be 80 or above in order to be eligible to participate in the screening test. Therefore, students who assess that their grades do not meet the above requirements do not need to apply for registration, as registration would be in vain. 2. The application form must be filled out in ink and in regular script, and must not be sloppy. If impoverished students do not handle the application for scholarships with seriousness, it seems that their spirit of hard work is lacking. The Shen Bao Readers' Scholarship is intended to reward outstanding impoverished students, and those with illegible handwriting will be rejected. 3. For all procedures that have been announced in the regulations or in the daily notices published by this newspaper after the application launch, inquiries will no longer be answered. This is because this newspaper's scholarship does not want to reward students who are careless, and thus betray the generous intentions of the donors. 4. Applications from students or parents who have written to inquire about registration before the application launch will be deemed invalid and must follow the procedures to personally obtain a registration certificate from this newspaper and follow the regulations.</p>
+<p>Conduct Screening Test on Schedule</p>
+<p>After registration, this newspaper will begin to review the grades of the applicants. Those who meet the standards will be announced in the newspaper, and they will be notified to come to the newspaper to receive the screening test admission ticket. Those who do not meet the standards can retrieve their documents with the registration certificate issued by this newspaper. The reasons for this newspaper's screening of applicants are: 1. Uneven academic levels of students. 2. Inconsistent grading standards among schools. 3. To assess whether students' general knowledge meets general standards. 4. To prevent cheating such as altering grades. This screening is entrusted to a well-reputed school in Shanghai to conduct. Once the screening process is completed, we will investigate the family circumstances of each student. Those who have passed the test but whose family circumstances are sufficient to pay tuition fees will be deemed unqualified in order to prioritize the use of funds.</p>
+<h3>Japanese Naval Accounting Department Announcement: Deadline for Receiving Payments</h3>
+<p>According to the Allied News Agency, the Material Disposal Office of the First Naval Accounting Department at No. 610 East Broadway Road in this city issued an announcement on the 20th stating that there are still owners or rights holders of items purchased by the office who have not yet claimed payment. They are instructed to go to the office to claim payment before the end of this month, otherwise, their rights will be deemed abandoned and the items will be confiscated. The announcement is translated as follows: Announcement: Regarding the disposal of materials within the Shanghai Naval Garrison Area, there are still owners or rights holders of items purchased by this office who have not yet claimed payment. They should come to this office to complete the prescribed procedures and receive all payments before July 31st, otherwise, their right to claim will be deemed abandoned and the items will be confiscated. This announcement is issued on July 20, Showa 17 (1942) by the Material Disposal Office of the First Naval Accounting Department.</p>
+<h3>Telephone Connection Between Concessions and Zhabei Scheduled for Early August</h3>
+<p>According to the English-language "The China Press", it was learned yesterday that the China General Edison Company has scheduled to enable direct telephone connections between the Public Concession and Zhabei in early August. This special equipment has also been installed at the Shanghai Telephone Company and the Shanghai Telephone Administration and the test has been successful. Therefore, the installation of telephone lines can also begin soon.</p>
+<h2>Page 4</h2>
+<h3>Hot Weather Prevails; Cholera Epidemic Spreads; Those Not Vaccinated Should Get Vaccinated Promptly</h3>
+<p>According to the English-language "The China Press", the Health Department of the French Municipal Council issued a special report on Sunday, stating that six cases of cholera have been discovered in the French Concession recently. The locations are all near the Chinese villages in the suburbs, and the infected areas have been sealed off. Among these six people, one has already died.</p>
+<p>Water Supply Has Been Disinfected</p>
+<p>The infected locations are being disinfected daily, and disinfectants have also been placed in the water supply. The infected people have also been moved out. The report also stated that although a large number of residents in the French Concession have been vaccinated, there are still many who have not been vaccinated. The total number of vaccinated people is currently stagnant at 625,053. Those who were vaccinated before May should receive a second vaccination in order to protect themselves in this cholera-prevalent situation. The Health Department office is open every day except Sunday.</p>
+<p>Epidemic Hospital Receives Patients</p>
+<p>The Shanghai Epidemic Hospital at 47A Avenue Haig (Daxi Road) is now the city's hospital for receiving epidemic patients. From today, the hospital will continue to administer second vaccinations and issue new certificates. Patients with epidemic symptoms or those who need to be vaccinated can go directly to the hospital for diagnosis and treatment. Medical treatment and hospitalization are free of charge. The wards are divided into different levels, and no introductions are required. The procedures are simple, and medical care is available day and night. The hospital address is 47A Avenue Haig (Daxi Road), telephone number 22395.</p>
+<p>Five Blessings Stock Company Established</p>
+<p>The Five Blessings Stock Company, organized by leaders in the industrial and financial circles of this city, held its inaugural meeting at the New Capital Hotel at 3:00 PM yesterday. Xu Xiaochu was elected as the chairman. The number of shareholders present and the shares they represented exceeded the legal quorum. Yang Bogeng then reported on the preparations. Next, the company's articles of association were approved, and directors and supervisors were elected. As a result, Xu [blank]chu, Jin Zongcheng, Pan Yangyao, Gu Kemin, Lu [blank]ben [blank], Zhang Lianfang, Yang Bogeng, Ke Ranchu, Zhang Zhiguo, Ma Chonggan, Lin Yiken, [blank] Zhulou, and Ma Jiyuan were elected as directors, with Jin Xizhang as the alternate director. Ge Shiyi, Gu Zhongmin, and Jiang Shouzhi were elected as supervisors. After the meeting, the board of directors and supervisors held a joint meeting and elected Xu [blank]chu as the chairman of the board, Yang Bogeng, Gu Kemin, Ma Chonggan, and Lin Yiken as managing directors, and Ma Weiyuan and Ma Weiluan as the general manager and deputy general manager. The company has a wealth of talent and will surely contribute to the Chinese stock market in the future. The address is Room 407, New Kang Building, 2nd Road, Jiangxi Road. It is also reported that the company's original capital was 500,000 yuan in Central Reserve Certificates, but due to enthusiastic subscription, the capital was temporarily increased to 600,000 yuan in Central Reserve Certificates.</p>
+<h3>Miscellaneous News from All Sectors</h3>
+<p>Yuanheng Money Shop Yuanheng Money Shop at No. 10 Henan Road recently applied to the Shanghai Trade Association of Money Changers as a member with unlimited liability and has been approved to join. All bills of exchange and collection documents of the shop will be handled through the Shanghai Money Trade United Reserve from August 1.</p>
+<p>Lun Ji Hosiery Factory The Tiger Head brand ribbed socks produced by Lunfeng Hosiery Factory are suitable for Western-style shorts and sportswear, and can also be used with Chinese clothing. This summer, new colors have been added, including khaki, bleached, military yellow, and autumn fragrance. They are sold in major department stores. The factory address is No. 10 Huacheng Road, telephone number 8[blank]620.</p>
+<p>National Physician Xi Changyan National Physician of Internal Medicine Xi Changyan, clinic located at No. 537[blank]68 Wuding Road (west of Seymour Road), will provide free medical care to indigent patients as usual from today. Medicines will be donated by Chen Shanshi.</p>
+<p>Yesterday's Newspaper Broadcast Time: 6:20 PM</p>
+<p>Sports News</p>
+<h3>Guobin Cup Croquet Tournament Yesterday: Nanyang Won 4-1 Against Zhonglian; Women's Friendship Team Won Against Aiguo</h3>
+<p>The Guobin Cup Croquet League match was held at Guangxia Middle School yesterday, with a total of four games. As a result, Huanan won 5-1 against Qiangxing, the Women's Friendship Team lost 2-0 to Aiguo, Yaoguang won 4-2 against Team V, and Nanyang lost 4-1 to Zhonglian. Despite the intense sun, the audience was still enthusiastic, demonstrating the great appeal of this sport. The rosters for Nanyang and Zhonglian are listed below:</p>
+<p>Nanyang</p>
+<p>Han Longquan, Li Yao</p>
+<p>Zhang Banglun, Wang Yuren</p>
+<p>Li Senshang, Zhang Youzhang</p>
+<p>Xu Xilu, Fan Tiancheng</p>
+<p>Zhonglian</p>
+<p>Chen Huanwen, Lin Bingxian</p>
+<p>Fang Heming, Shu Guo, Ren Yawei</p>
+<p>Luo Congzhou, Fang Shugao</p>
+<p>Sports Briefs</p>
+<p>The Industrial Cup Basketball Tournament will start this Saturday. Teams that have not yet completed the procedures should go to the school on Nanyang Road as soon as possible.</p>
+<p>All members of the Guangming Chemical Factory organized the Guangming Women's Table Tennis Team. Eight female members participated and were established yesterday. They have registered to join the Tongren Cup League competition. The full roster is listed below: You Baozhu (Captain), Zhu An (Secretary), Chai Mengtao, Huang Weide, Zhu Renyi, Lu Shiqin, Wu Zhongying, Zhang Shuguan.</p>
+<p>Since the opening of the Chinese Youth Association Swimming Pool on Sichuan Road on July 1, the number of young men and women participating has been very enthusiastic. Due to location and time constraints, the number of participants has had to be strictly limited. Soon, the quota was full. Now, the time from 12:30 PM to 2:00 PM on Mondays, Wednesdays, and Fridays, and the time from 4:00 PM to 5:00 PM on Tuesdays, Thursdays, and Saturdays will be freed up to provide opportunities for future participants. Registration will begin immediately.</p>
+<p>The Vita Fu Cup Charity Volleyball registration deadline has been extended to the 25th. The final preparatory meeting will be held today.</p>
+<p>Economic Special</p>
+<h3>Market Trends</h3>
+<p>Chinese Stocks</p>
+<p>The fluctuations in Chinese stocks are gradually becoming greater, no longer the smooth upward trend of the past, which is an important point to note.</p>
+<p>Last week, department store stocks continued to rise, with Wing On taking the lead and Sincere following. People praised Wing On's performance, which benefited Sincere Department Store. In addition, Wing On's management has recently been prominent, which has excited shareholders. There is also a connection.</p>
+<p>The yarn and cloth market is sluggish, and textile stocks are inevitably affected. Wing On is an exception due to capital increase. The Zhabei Water &amp; Electricity and China General Edison, which soared last week due to rumors, have shown a reaction this week, and the momentum is not light.</p>
+<p>New pharmaceutical stocks are fluctuating, industrial stocks are showing mixed gains and losses, and financial stocks are inactive. The sneaky trading of new chips is most fascinating.</p>
+<p>Government Bonds</p>
+<p>Last week was the second week of the seesaw in the bond market, rising first and then weakening, about one yuan lower than the previous week. If this kind of consolidation can be broken, there will be a greater change. Currently, it is still uncertain.</p>
+<p>Qianyi, Lianhe, and Xinfeng initially advanced but then retreated, but it was just profit-taking. Tongli and others dumped their positions at the beginning of the week, but then gave up. Powerful players are mostly on the sidelines.</p>
+<p>After the currency change, the circulation of currency in the market is somewhat tight. However, the space for capital activities is also narrower than before. The compression of the bond market is still related to the interest rate issue.</p>
+<p>Yarn and Cloth</p>
+<p>Double Horse spot goods are priced according to Blue Phoenix. The situation in which the price changes in yarn and cloth are based on Japanese yarn Dong Pi has been completed in both form and substance. The so-called crackdown on speculation in yarn and cloth in recent months can be said to have come to an end.</p>
+<p>The market continued to weaken last week. The Phoenix decreased by more than 200 yuan, the Horse retreated by more than 600 steps, and the Longtou also declined by about 10 pounds. The entire market was sluggish, and most people were pessimistic. This is the whole picture of the current yarn and cloth market.</p>
+<p>Grains</p>
+<p>Although the market has been sealed off, the market is surprisingly active. Beans, bean cakes, bran, red sorghum, and so on all rose in price, which is a unique phenomenon last week. This was influenced by the rising wheat market in Jiangbei. According to reports, the Tianjin grain market also rose across the board last week. The Tianjin authorities implemented mandatory price settlement, based on the market price on the 15th of this month.</p>
+<h2>Page 5</h2>
+<p>Free Talk</p>
+<p>Small Talk</p>
+<h3>Take Care of Yourself</h3>
+<p>— Guo Jiaji</p>
+<p>As the saying goes, "A bird about to die, its chirping is mournful; a person about to die, their words are benevolent." Few people understand bird language, so few people pay attention to their mournful chirping. However, the words of people before their death are often valued by the world.</p>
+<p>In 399 BC, Greek philosopher Socrates sacrificed his life for the pursuit of truth. At the time, the charges were "teaching doctrines that contradict religion" and "inducing young people to follow evil paths." For these trumped-up charges, he was sentenced to death and forced to drink poison and die.</p>
+<p>Before his death, his student and friend Crito asked him what instructions he had. He said a very ordinary sentence, "Nothing else, but I often teach you to take care of yourselves. This work can be said to be done for me, and the principles can be said to be done for yourselves..." This is the last word of this philosopher.</p>
+<p>"Take care of yourself" is a most ordinary sentence, but it is also a most virtuous sentence. Regardless of the environment, especially in times of hardship, if we want to achieve something, we must take care of ourselves. This is a prerequisite for everything.</p>
+<p>Here, taking care of yourself is not selfish, but to do more work and to make this world a more perfect world.</p>
+<p>So for ourselves and for others, we must take care of ourselves.</p>
+<p>Essay</p>
+<h3>Words of a Tuberculosis Patient</h3>
+<p>— Mo Ming</p>
+<p>I believe that the way to treat tuberculosis is to strive for an active position. Patients should be the masters of the bacteria, not slaves to the bacteria; they should try their best to control the disease, not be controlled by the disease; they should make the disease adapt to the patient's life as much as possible, not make life unconditionally surrender to the disease.</p>
+<p>Patients who are good at being masters do not necessarily regard the disease as a slave, but may regard the disease as a guest. What is more lovable is to regard the disease as a burden, a habitual, clumsy burden. Although he has this burden more than ordinary people, the difference between them is only equal to people who wear hats and those who do not, those who wear ties and those who do not. As long as a person can be the master of the burden and not be a slave to the burden, then even if the burden never goes away in his lifetime, he will not think it is bitter, and may even enjoy having this burden.</p>
+<p>The art of tuberculosis patients is "forgetfulness." The tuberculosis patients who are least troubled by the disease are probably the best at this art. But the "forgetfulness" mentioned here refers to forgetting the disease, not forgetting reality, forgetting life. Many patients go against this, which is very wrong. There are also many patients who try to forget the disease, life, and reality together. This effort is often in vain and has little hope of success; and even if it succeeds, it is useless and not worthwhile.</p>
+<p>Regarding medicine (such as tonics), a tuberculosis patient is best not to believe in it at all, otherwise, he must believe in it thoroughly. There is no cure for tuberculosis, but we are still helpless to rely on some drugs. Rather than saying that we hope they have a therapeutic function, it is more that we value their ability to make patients believe and generate strength. This power of belief often has unexpected effects.</p>
+<p>All beliefs, no matter how ignorant, wrong, if their results are indeed beneficial to the believers, we don't have to overthrow them, oppose them. We don't have to persuade a tuberculosis patient who believes in medicine to stop taking it, just as we don't have to make a devout Christian doubt God: even if a person is dreaming empty dreams, we don't have to expose him, unless we can give him better comfort after exposing him.</p>
+<p>Eating tonics is the same. People with tuberculosis should pay attention to nutrition, but avoid being superstitious about nutrition. If a patient has the idea that "milk is supreme, eggs are the best, getting them means life, losing them means death," it is of course not a problem if he can afford them, but what if he can't afford them? Such a person is what is called a "slave to the disease."</p>
+<h3>Ideal</h3>
+<p>— Xiao Zi</p>
+<p>When the ideal of a country dies, the country is destroyed.</p>
+<p>Freeman</p>
+<p>As a person grows older, his ideals gradually change. Ellis</p>
+<p>Words without action are the assassins of ideals. Hoover</p>
+<p>Chatterbox</p>
+<h3>University Impressions Record</h3>
+<p>— Hong Dao</p>
+<p>(II) Six Types of University Students</p>
+<p>In universities, there are all sorts of students: those skilled in socializing, playboys, politicians, business experts, bookworms, and university students who study for the pursuit of knowledge.</p>
+<p>The initial motive for entering university should be to study advanced knowledge. However, this seems to be just "theory," and the reality is not entirely so. Some university students harbor other intentions and simply don't treat studying as a serious matter. Their entry into university seems to serve another purpose, and the life of studying or the pretense of being a university student is merely a tool to achieve that purpose. For example, social butterflies spend their days busy making friends with the opposite sex, attending social gatherings, watching movies, dancing, playing cards, or engaging in other fashionable pastimes. This is their daily "homework." When they are forced to attend lectures, they are always lazy and listless. Playboys change into fashionable new clothes every day, believing this is the best way to show off. They are the sons of wealthy families, not lacking money, food, and clothing. Their purpose in entering university is only to obtain a qualification, only to acquire the label of a university student, so that they can operate more conveniently in society in the future. They always maintain an indifferent and apathetic attitude towards the teachings of professors and the knowledge in books. The speaker is earnest, but the listener is dismissive. They are not afraid of failing exams, not afraid of not getting credits, and not afraid of repeating a year. Professors feel most discouraged and have the biggest headaches when they encounter these two types of students.</p>
+<p>There are also many politicians among university students. They regard the university society as a training ground for planning strategies and engaging in intrigue. Their desire for leadership is very strong, gathering "comrades," forming "factions," hoping to win over the "masses," and gain "political power." They can be found in all kinds of school groups and gatherings. They are active everywhere, fighting openly and secretly with "political enemies," using various strategies to achieve victory. In addition, there are some university students with a "business sense" who take advantage of the opportunity to study to pursue petty profits. They sell new and used goods among their classmates, make big plans, and their shrewdness is no less than that of the big merchants in the market. In this tense atmosphere, it is naturally impossible for these two types of university students to concentrate on their studies.</p>
+<p>If a university does not have bookworms, it does not seem to be a university. Bookworms are also called book moths. These university students bury themselves in old papers all day long, regarding books as the most sacred things in the world. They do not know what extracurricular activities are, and they do not ask about world affairs, so they lack practical knowledge. They read textbooks, lecture notes, notes, and reference books thoroughly, and may get very high scores during exams, but in fact, they inevitably have the problem of being dogmatic and swallowing knowledge whole without digesting it. Therefore, whether they can acquire true knowledge and whether they can acquire the knowledge and skills to deal with the world through university education is a question.</p>
+<p>Finally, there is the kind of university student who studies for the sake of pursuing knowledge. This kind of student is a true university student and the pillar of the country's future. They understand the purpose of university education, and they know how important the responsibilities of a university student are to the individual, family, society, and country. Therefore, they feel that they should make the most of those four precious years to complete the most perfect university education. They know how to listen to lectures, take notes, prepare textbooks, and reference books. They do not pay too much attention to scores and credits, nor do they underestimate them. They know the importance of libraries and laboratories in university education, and they also know the meaning of the influence of professors and the mutual refinement of good friends in university life. In short, they have balanced development in all aspects of morality, intelligence, physical fitness, and social skills. Four years of university education turn them into excellent intellectuals, adding some useful talents to the country. If every university student can take this kind of university student as a model, the success of university education is guaranteed.</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(VII) Swift Thunder</p>
+<p>Cui Zhen didn't care about any suspicion, stepped forward, and grabbed Wei Cheng's wrist, asking, "Brother Cheng, what's wrong with you? Your hand is ice cold, what's written on this paper?" On the one hand, she was asking, on the other hand, she was looking at Wei Cheng's face, and on the other hand, she was also looking at the paper in Wei Cheng's hand. Wei Cheng slumped down, his eyes looking at the paper that had attracted his attention, and he finished reading the few words on it in an instant. He said weakly, "Sister Cui Zhen, it's nothing? Please go out. Don't make a fuss." Cui Zhen said, "What's written on this paper?" Wei Cheng said, "It's nothing, please go out." Cui Zhen said, "Is your body okay? You just gave me a scare." Wei Cheng said, "I'm fine, it's nothing, nothing." He waved his hand.</p>
+<p>Cui Zhen had always respected Wei Cheng's wishes. Seeing that Wei Cheng wanted her to go out, she went out, and looked back at Wei Cheng when she reached the door. After Wei Cheng waited for Cui Zhen to go out, he spread the paper on the table and read it carefully. It turned out to be the will of his mother, Madam Li, which read these lines: "To be known by my son Wei Cheng: Your father died at the hands of Cheng Bing. You need not ask why Cheng Bing killed your father. In my family's old belongings, there is a small portrait of Cheng Bing, which has been hidden for a long time. But I have been unable to find it in recent years. My illness is hopeless, and I am also unable to search for it. Alas! Cheng Bing has fled far away after the incident. When you grow up, you should avenge your father. But the Ye family has only you as a son, and avenging your father carries the danger of being killed, so you must have a son so that your father has a grandson before you can avenge him. Mother's will."</p>
+<p>Wei Cheng looked at it carefully, and tears could no longer be stopped, one drop, two drops, three drops, pattering on the will. In order to protect that will, he immediately took out a handkerchief to dry his tears. He suddenly stood up, clenching his fists with both hands, and punching his chest; then he exhaled a long breath. When he looked up, what came into his sight were the portraits of his father, Lord Aitang, and his mother, Madam Li. Tears came to his eyes again. Standing in front of the portraits, he said, "Dad, Mom, your son is in front of you. Mother's will; your son has seen it. Your son has been dreaming, in a dream...," he felt a little dizzy, took two steps back, and leaned on the table: without the table, he might have fallen down. (132)</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.07.19.html", "next": "1942.07.21.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

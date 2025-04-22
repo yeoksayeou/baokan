@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.10.10 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 486 - 4924625</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>伏爾加河畔蘇展開猛烈反攻爾齊夫區惡戰進行中</h3>
+<p>里斯本八日同盟社電</p>
+<p>斯達林城攻防戰迄今已達四十六日某方情報稱戰仍在斯城西北部工廠地進行德蘇兩軍互埋大型坦克車為堡壘展開砲戰及白刃戰該設點央部德軍某一部隊經與蘇軍數十次激戰七日進抵伏爾加河岸自右翼取得包圍西北部蘇軍態勢危急已急派強力坦克車部隊馳援據稱已將德軍自伏爾加河岸擊退此外斯城北方蘇軍反攻亦烈尚無變化又據蘇新聞報息德軍七日起已調普魯士突擊隊參加斯城巷戰</p>
+<p>倫敦八日哈瓦斯社電</p>
+<p>據路透社莫產電稱爾齊夫區(Bjey在莫斯科西北)德蘇兩軍正在惡戰中該區德方曾以生力軍兩師加入助戰據云城內火光燭天遍地烈燄云</p>
+<p>柏林九日海通社電</p>
+<p>德軍在斯達林格勒北部現已改用重軍器及重砲向蘇軍防地轟擊德軍為避免不必要之犧牲起見每先以重砲擊潰其抵抗巢穴然後由步兵與工兵衝往加以佔領進行雖緩但收效甚宏德軍攻勢之主要目標乃伏爾加河亦已於數週前衝抵目的地東線各段之主動地位均在德軍手中云</p>
+<p>蘇聯邊境某地八日哈瓦斯社電</p>
+<p>此間軍事觀察家頃談稱德軍在東線所發動之夏季攻勢即將告一段落預料在軍事上不致發生驚人事件據德軍發言人狄特馬爾上校發表談話稱德軍總司令部於今後數星期內將集中力量改進現行陣地尤其是完全佔領斯達林城一俟此項目的達到前線戰事即將趨於穏定此在高加索方面德軍現正賡續移動以期佔領一線然後就此戰線鞏固陣地俾能安全渡過冬天並作為將來發動攻勢之根據地臺萊克河流域雖仍在激戰中但德方作戰目的並不在賡續前進而在突破紅軍防線俾能佔領較優之陣地至於黑海沿岸都浦斯港之戰事因受氣候影響頗感困難日來大雨傾盆雲霧瀰漫　已使德軍前進大為遲緩至於斯達林城區方面雙方現在城北工業區中心發生激戰德國飛機不斷轟炸該處不下千餘架農上製造廠及坦克車廠均已炸毀但紅軍仍在大雨中抵抗預料德軍準備數日之後即當向紅軍陣地發動具有決定性質之攻勢雙方均用飛機運到大批生力軍增援此在斯達林城之西北則因運日大雨之故平地已成泥沼惟丁莫生柯將軍所部不顧一切仍賡續進攻頓河與伏爾加河間之德軍陣地據昨夜蘇方消息紅軍在頓河羅夫里亞與特拉克蒂斯克之間已能架起浮橋云</p>
+<p>莫斯科八日哈瓦斯社電</p>
+<p>紅軍總司令部頃發有戰報稱本日我軍在斯達林城及摩茲杜克等區賡續作戰其他戰區無重大變化云</p>
+<h3>用蒸汽機消素兒童牙刷此刷三枝一組平售一元五角</h3>
+<p>梁新記兄弟牙刷公司所製雙十牌牙刷均經過最新式蒸汽機消素各種原料採用新柄新鬃漱口擦牙無不良的陳舊氣味最近平價的兒童牙刷每組三枝祗售一元五角若以現在各種物價比較售價之低無有出其右者因之梁新記總支行及全市百貨商店發售此刷異常暢銷蓋　客恐此刷售完再無有此奇廉貨也</p>
+<h3>勇猛精進刻苦耐勞</h3>
+<p>— 汪兆銘</p>
+<p>國父於乙未年在廣州發起第一次國民革命其時殉職者有陸皓東同志自此以後全國青年繼續不斷以其熱血貢獻於國民革命直至辛刻三月二十九日七十二烈士以最純潔的血全國中最有智識最有人格的青年的最純情潔的血集合在一起為中華民國植下了基礎於是中華民國始得於同年八月十九日成立起來</p>
+<p>中華民國成立以來多災多難最近數年幾乎亡國從前中華民國的成立靠著青年現在中化志國的更生自然也靠著青年每一個青年良心上總懷著一個問題中國能否得救具體些說和平運動能否成功中國能否在大東亞戰爭中得到解放這些問題其實只有一個答覆全看青年自己怎樣如果全國青年萎靡不振徘徊不定那麼答案只有悲觀如果全國青年有大覺司下大決心將復興中華保衛東亞的責任一肩擔起那麼答案是事無不成新國民運動所給與全國青年團及童子軍的口號是勇猛精進刻苦耐勞現在時局是容易使人穩如泰山喪的我們反之以勇猛精進認定了復興中華保衛東亞的偉大目的以堅強的心志進取不已務底於成現在時局是容易使人受不住痛苦的我們反之以刻苦耐勞認定了這些痛苦都是復興中結保衛東亞所必經的過程我們體會出孟子所謂生於憂患死於安樂我們打壘起精神遍歷了苦其心志勞其筋骨餓其體膚窮乏其身行指亂其所為所以動心忍性增益其所不能的實境以現在的苦求將來的甘以個人的苦求全體的甘我們的國家民族自然有苦盡甘來的日子我們在這時局特特標出勇猛精進刻苦耐勞的八個字來做新國民運動的口號是有深意的新國民運動的全體同志務須明瞭此意將此八個字實行起來三十二年的國慶日較之今年必然更樂觀更有進步</p>
+<h3>隆重慶祝國慶并舉行閱兵禮</h3>
+<p>南京九日中央社電</p>
+<p>十日為民國三十一年之國慶紀念日中樞方面於晨八時在國府大禮堂舉行隆重慶祝典禮中央各機關簡任以上長官均將參加文官著常禮服或藍袍黑褂并佩紀念章軍官著軍常服佩刀并佩和平紀念章及軍事會議紀念章</p>
+<h2>Page 3</h2>
+<h3>革命烈士祠紀念塔修繕工程告竣</h3>
+<p>南京九日中央社電</p>
+<p>國父陵園靈谷寺附近原有國民革命軍陣亡將士祠及紀念塔自經中央政治委員會決議為保存國民革命之整個觀念起見改為國民革命烈士祠及紀念塔後由國父陵園管理委員會辦理修繕工作該委員會於本年八月間起開始修葦直至最近大天馬行空無竣汪主席對於修繕工程關懷至切特於九日下午三時借國父陵園管理委員會襦主任委員民誼親詣國民革命烈士社員從紀念塔視察決監祖禹郭宣傳部次長秀峯載振務委員會常委策等均在烈士祠前恭候主席先到烈士祠正氣堂對國民革命烈士靈位致敬禮然後到紀念塔視烈士祠及紀念塔內原有內戰時代及國難時代碑記謾罵不恭文字悉遵照中央政治委員會決議一律磨去祠堂中問改建國民革命烈士靈位兩旁右刻國父遣囑左刻國歌紀念塔內則刻國父遺訓林木陰森建築物莊嚴凈潔充分足以表現高尚純粹之國魂主席於視察烈士祠及紀念塔過後並到靈谷寺內視察新修紀念援助國民革命日本同志之光明殿對於各項修繕工程切指示計前後視察達一小時始循中山路歸返官舍</p>
+<h3>柏林生出席日文部省聯合宴會</h3>
+<p>東京九日中央社電</p>
+<p>林柏生氏九日上午九時半偕秘書華漢光等六人前往考察戰時下日本之青年教育學校正午赴芝嵯峨量出席大日本興亞同盟午餐會下午訪問前任駐華大便阿部大將二時半在帝國飯店出席大日本青少年團主辦之座談會六時於華族會館應外務省情報局及部興亞院聯合歡宴出席者有小沼有田永井三特使谷外相山本外務次官橋田文相菊池又部次官奧村情報次長興亞院松村文化部長中國駐日大使木村陸軍次官澤本海軍次官及興亞同盟會長林銑十國大府山岡理事長大日本青少年團鈴木團長朝比奈副團長等歷二時始盡歡而散九時起林氏　以自努力與互相協力為題發表廣播演講</p>
+<p>東京九日中央社電</p>
+<p>大東亞建設與青少年團運動座談會日情報局長　村惛首先致詞題為日本政府對建設大東亞之方針大意稱大東亞呀爭與建設具有密切之關係若無建設由勝利亦無意　中兩國應攜手向復興東亞大道前進最後由林田生氏致祠略謂新國民運動目標在於　興中國保衛東亞故新國民運動之推進乃為中國為日本為東亞故須先求中國之復興始能完成建設東亞的責任希望日本青少年運動指導者予以協助</p>
+<h3>軍政機構將改組陸海空直隸軍委會</h3>
+<p>南京九日同盟社電</p>
+<p>國府機構即將於立法手續完成後實行改組旨在集中並擴充軍事機關為最高司令部而陸海軍兩部均將受擴充後之軍事委員會管轄俾陸海空三軍咸受軍委會主席統一指揮此項計劃已於八月十三日經中央政治會議通過於立法院核準後即付諸實施依此計劃陸海軍兩部不復霖屬行政院蛤將肅屬於軍委會再已設或建設之戰略編制教導會計及情報構關與陸海空三軍有關者其一切事務亦將由軍委會辦理此種軍政機構之刷新共必要人選均已於八月間中政會通過改組計劃時委定如次陸長鮑文樾陸次鄭大章海長任授道海次招桂章按國府去歲八月初次改級交十四部減為目下之十部即陸海軍內政外交財政教育司法實業交通與宣傳部是</p>
+<h3>日使訪華影片定期放映</h3>
+<p>南京九日中央社電</p>
+<p>宣傳部主辦中華電影公司巡麺放映班放映之日本答訪使節團訪華影片定十日上午八時召國民大會堂開始放映</p>
+<h3>太湖二期清鄉區展開首步工作</h3>
+<p>杭州九日中央社電</p>
+<p>幫湖東南第二期清鄉工作積極展開其第一步戒律鄧為軍事掃蕩完畢後一面開始封鎖組織區公所清是戶口編查保甲並於清查戶口時即編造壯丁名冊著手作編造之準備其壯丁年齡規定為十八歲以上四十自歲以下所有編組方法參本島五衛組織暫行人身權例規定以完成壯丁隊之組織待至十一月底即將壯丁隊改編為正式之自衛團輔助這警保衛地方俾加強地方自衛力量</p>
+<h2>Page 4</h2>
+<h3>史丹萊取道開羅返國謀調和協約國間異見美駐土大使即將返任</h3>
+<p>莫斯科九日同盟社電</p>
+<p>美國駐蘇聯大使史丹萊海軍少將已於昨日乘飛機取道伊朗埃及兩國京城返國向羅斯福總統報告蘇聯局勢及調整蘇聯與協約國之齷齪</p>
+<p>瑞典京城九日同盟社電</p>
+<p>斯丹萊六日與斯達林法行重要會談後七日於返國前向記者團發表談話稱蘇聯與論對於美國之授蘇均稱未能滿足希故余此次返國擬設法解決此問題並將向羅總統報告蘇聯之抗戰情況及意見云觀斯丹萊此項談話足以表示蘇聯與英美間對於戰爭之意見極為分岐</p>
+<p>里斯本九日海通社電</p>
+<p>華盛頓電訊</p>
+<p>羅斯福總統昨接見美駐土大使史坦哈特有所會談史氏辭出時拒不向記者宣佈其會談內容僅謂余將於數週內返土耳其任所</p>
+<h3>日蘇關係依然不變</h3>
+<p>滿洲里九日同盟社電</p>
+<p>日駐蘇大使館參事官宮川最近休假返國八日下午一時許行抵此間據談日蘇中冷凍箱　約成立後日蘇關係因蘇聯遵守中立條約毫無變化佐滕駐蘇大使曾蒙蘇外長莫洛托夫招待參觀蘇聯最高會議目睹會議情形對於日本仍取友好態度云</p>
+<h3>威爾斯演說力主援蘇開闢第二戰線認為不容遲疑</h3>
+<p>葡京近日海通社電</p>
+<p>美國務副卿威爾斯昨夜在波斯頓哧世界經濟會聚餐時發表演說據稱本人希望美國能在最短期間出其全力援助蘇聯並謂美國在獲勝之前決不議和今後美國將儘量以軍火供給蘇聯且將開闢第二戰線以分德國之軍力至於戰後解決世界經濟困難之工作雖然艱鉅不致無辦法最後肆氏提及美洲尚有二國縱容軸心國之爪牙在境內從事反對鄰國之活動殊屬遺憾</p>
+<h3>德駐土大使巴本返任</h3>
+<p>巴丹埤九日海通社電</p>
+<p>德駐土大使巴本離土已有三星期茲已自兇牙利乘專機反此</p>
+<h3>伊拉克新閣陣容</h3>
+<p>容加拉九日海通社電</p>
+<p>伊拉克總理隆伊特第五次內閣之陣容如下</p>
+<p>總理兼國防部長薩伊特</p>
+<p>外交部長哈費士</p>
+<p>內務部長阿勘卡里</p>
+<p>經濟部長夏拉許</p>
+<p>財政部長賈布爾</p>
+<p>社會事務部長巴培</p>
+<p>司法部長巴桑</p>
+<p>教育部長阿利</p>
+<p>公共工程兼交通部長柴基</p>
+<p>羅馬九日海通社電</p>
+<p>據此間接獲消息伊拉克閣潮之原因為英國威爾遜將軍企圖合併伊拉克軍隊於英軍第十軍之計劃伊軍反對此項計劃伊拉克當局亦表示反對云</p>
+<h3>英印度事務大臣陳述印度現狀認為甘地應負糾紛全責印教徒各國外呼籲斡旋</h3>
+<p>倫敦八日哈瓦斯社電</p>
+<p>下議院本日開會時中務大臣愛梅立曾答覆各黨議員種種問話以印度目前局勢完全應由聖雄甘地負責英政府及印度大會黨間現無妥協可能為言略謂印度發生暴動以來喪生者八百四十六人受傷者二千零二十四人公務員喪生者六十人受傷者六百四十八人歐洲人喪生者僅有英空軍士兵若干名英軍當局所由利用機關槍掃射示威羣眾者實因示威運動之激烈已構成人類之危機以故不得不出此末策印督已開始與正宗派印度教大乘會（即瑪哈薩巴黨）各領袖舉行秘密談話渠並望此項談話擴大及於其他政治領袖滋陰自本年八月八日我方與大會黨談判破裂以來總督已多方努力但截至目前為止尚未獲何項結果至於甘地對於此項談判失敗所負責任問題已由各報及一般輿情討論及之余並不以為此際有就此問題發表白皮書之必要</p>
+<p>里斯本八日中央社電</p>
+<p>據新德里電印度教徒聯盟特委會鑒於英印情勢日益惡化因於八日致電羅斯福及蔣介石要求從速斡旋打開英印關係之難局雷文大意稱對於目下印度情勢禥橡膠為必要且為收服印度民心起見承認印度獨立委付人以實權樹立印人政府尤屬必要解決印度問題之最後責任胥視英國當局之態度而定如印督之拒絕吾人與甘地會見徒使事態更為惡化故僅用彈壓手段決不能解決此問題云云又孟加拉州長亦電美要求從速出而調停英印關係云</p>
+<h3>傳渝當局向威爾基提出六項要求</h3>
+<p>里斯本八日同盟社電</p>
+<p>據紐約電稱訪問重慶中之威爾基七日下午自重慶乘機飛往某地</p>
+<p>廣州九日同盟社電</p>
+<p>據重慶訊美總統特使威爾基此次訪渝重慶當局曾向之提出備忘錄一件內填鴨式六項要求即㈠美國派駐事慶方面之飛機數量不足應即增加㈡美國應全力助華收復失地㈢美國應即向日本轟炸㈣美國對於中國戰場應同樣重視㈤美國應諒解重慶之地位㈥美國應廢止人種差別待遇</p>
+<h3>西政牙發現古羅馬城遺跡</h3>
+<p>瑪德里九日海通社電</p>
+<p>二世紀古羅馬城之遺跡已在西班牙摩拉村附近發見其城牆與人行道業已掘出並發現大批磚石器皿磨石及古羅馬銀幣</p>
+<h3>伊朗蘇軍大批撤退</h3>
+<p>瑞典京城八日中央社電</p>
+<p>據阿列漢達報伊斯坦布爾電稱伊朗境內蘇軍大部隊目下源源自伊朗撤退所殘留之部隊則集結於邊境附近之達普里斯該電又稱英蘇兩軍佔領地域在事實上已無境界伊朗大部為英軍所佔英軍在毗隣蘇聯國境之伊朗北部正從事建築巨大新軍事設施</p>
+<h3>法將實現一黨專政</h3>
+<p>巴黎九日海通社電</p>
+<p>法國將成立法國聯合黨以便實行一黨專政制該黨由現存各政黨合併組織之</p>
+<h3>搞通英僑輪抵達英國</h3>
+<p>里斯本九日同盟社電</p>
+<p>倫敦訊埃及之交換僑民輪艾而奈埃與及那肯達號今日駛抵英國某口岸上載從日本及中國撤退之英僑一千一百人前任英國駐日大使克萊開春爵士亦在內此輩撤退者均係政府官員教士醫師及其眷屬</p>
+<h2>Page 5</h2>
+<h2>Page 6</h2>
+<h3>燈火管制以後隨時舉行</h3>
+<p>事先不再通行準備不可懈怠對信號及遮蔽燈光仍宜留意</p>
+<p>日陸海軍防空司令部宣布葉次燈火管制訓練期已千結束後公共租界警務處防寬課某要員稱今後將不時舉行燈火管制演習而下次燈火管制期將在不久之將來舉行故居民咸應隨時準備遮蔽窗戶與雷炬如十月一日起之情形然盡今後將不復在報端預告警告即開始燈火管制演習也</p>
+<p>應留意信號</p>
+<p>居民更應熟知不同之氣笛信號三十秒一次為警戒警報期之開始五秒數次中為空襲警報期之先聲旋發三十秒一鎰之汽笛為解除警報警戒警報發出後應自動的完全管制燈火至二十秒一次之汽笛發出始告解除又法租界近在徐家匯路臺拉斯脫路福履理路與拉都路之間舉行空襲時之消防演習今後演習事先僅告知有關者一或四人</p>
+<p>法總領表示</p>
+<p>法總領事對界內居民深知勉力服從防空演習各規則特特致謝因賴全體居民之努力及不異因葉而所生之浩大費用十月一日至八日演習期中獲得極良好之結果此外法總領事並感謝消極防禦委員會保甲組織救火會工程處衛生處電務處電車公司及警察署等機關對此特別困難工作之克盡厥職總之此次吾　之能尅服艱巨全賴羣策羣力有以致之也云云</p>
+<p>演習之結果</p>
+<p>警務處渡正監綜合詳述八日間訓練成績最初三間成績頗為惡國後經又署長之督盛保甲自警團員努力結果成績即呈優秀躙與數年訓練所獲者相媲美矣惟西虹口區貧民窟區仍頗多遮蔽裝置不完全者可喜者厥為訓練燈火管制下各類犯罪案件反較半時減少</p>
+<p>違章徵處者</p>
+<p>虹口警署轄區內有未可燈火管制設備週密裝置曾於七日仿間檢舉四十餘名新閘成都兩警署管轄區內則採取將違反者之市民證沒收之方針曾有六名被署沒收匯山警署轄區內之猶太村成績並不甚佳嗣後對該批不良者擬予放逐嚴厲自分</p>
+<p>發警報地點</p>
+<p>另悉依照上海區日本陸海　防空司令部宣布公共租界蘇州河以南於燈火管制時期內發警報之地點共計有南　路永發公司樓頂與成都路補房以及靜安寺救火會一處而浜北則亦另設有發警報地點數處焉</p>
+<h3>今日雙十節國慶紀念</h3>
+<p>今日為國慶紀念日本零蛋各警務當局均施行臨時戒備除各馬路衝要之處加派探捕外各聯保區自警團亦增加值崗人數法租界毘連華輥各鐵門除增派中法越捕外並調女差班檢查進出之男女行人至法租界連接愛多亞路各馬路如八里橋路自來火街車新橋街等均將佈設鐵線綱斷絕交通至敏體尼蔭路老北門等處鄭家木橋等出口對進出行人均將施行檢查非經核準後任何集會概行禁止類厲禁止燃放爆竹戒備極為嚴峻</p>
+<p>發表廣播舉行儀式</p>
+<p>本市清鄉分會黨務辦事處凌兼處長憲文李副處長文龔副處長文煥特於今日（十日）上午十一時三十分鐘起假座大上海廣播電臺向全市民眾廣播又清鄉委員會上海分會及上海特別市黨部為慶祝國慶紀念發表告全市民眾書市府與保安司令部清鄉分會並舉行隆重儀式</p>
+<p>滬四警察局長潘達發表慶祝民國三十一年雙十節文略云今日是雙十節慶祝之餘應從兩大目標做去第一實現全國和平和平奮門救中國是國父的國策中國積弱已深故今日之急務倘欲解除一切障礙及痛苦必先實現一面和平希望人民和政府共同努力達到目的第二努力本位工作我們要復興中國決不是空談可以做到要實事求是每個國民都有責任無論農工商學於本位工作應精益污跡表增加效率這樣纔能解除國家困難痛苦保持民族生存獨立</p>
+<h3>日方交還工幫七所並舉行典禮</h3>
+<p>茲聞日當局定十月十日中國國慶紀念日續將工廠七所解除軍管理定於十日下午二時假北四川路東和洋行旅館舉行發選典禮屆時出席者聞有國府代表軍管理工廠整理委員會主任委員福山及中日有關代表等多人至此次妻還之七廠為</p>
+<p>工廠名稱委托經營者</p>
+<p>恒豐紡織（上海）大日本紡織</p>
+<p>永安紡織二廠及四廠（上海）</p>
+<p>永安紡織二廠及四廠（上海）</p>
+<p>裕豐紡織</p>
+<p>緯成絲廠（嘉興）鐘紡公大</p>
+<p>利泰紡織廠（太倉）內外棉紗廠</p>
+<p>華豐造紙廠（杭州）松方彥</p>
+<p>南洋克弟煙草（上海）</p>
+<p>中華煙草公司</p>
+<h3>徐家匯孤兒院答謝日方捐款</h3>
+<p>以工藝品贈品贈兩代表</p>
+<p>中央社滬訊日本十六團體代表曾於日前參觀徐家匯天主教修道院孤獨院學校及其他公共機關當時南京路孫昌植氏及千代洋行曾捐以巨款充作經費該孤獨院頃官酬答厚　起見決將孤獨所精製之工藝品二箱回贈二氏特於昨日呈由軍報道部橫山中佐代為分別轉交</p>
+<h3>居民領得麺粉可換購麺食</h3>
+<p>工部局布告查憑以購領局米之風以米證第十三號聯票儀表和至本月十日為上過　期作廢在本月十二日至十九日為止之一期內各米店暨本局售僅憑第十四號聯票售米屆時由聯票上註明登記號碼之米店按每一聯票發售白米一升碎米半升售價合計三元八角同時持票人得隨意搭購麺粉一斤半售價三元四角再各米店暨本局售米所定於本月二十日停止售炷天但十八日星期日以及嗣後各星期日（在另有通行以前）照常營業</p>
+<p>又據該局情報處公告云查麺粉之分配量業由每票一斤增至一斤半食戶方面凡無相當熟料飪設備以利用此項麺粉者可將領得之麺婁售與切麺店或大餅油條店一面換購切麺或餅饅此事絕無困難</p>
+<p>公共租界內之各分發購米證辦事處自十月十二日星期一至廿一日星期　止停止辦公六天</p>
+<h3>後日起輪運土貨須繳納濬浦捐</h3>
+<p>江海關海關長茲奉總稅務司令自本年十月十二日起所有由各地運嚴酷埠及由本埠運往國內各地之輪運土貨均須繳納濬浦捐</p>
+<h3>工部局布告重申禁燃爆竹前令</h3>
+<p>工部局頃發布告第六一一七號說明為維護租界之治安起見禁止燃放任何種類之爆竹或熖火違者當予拘究</p>
+<h3>滬西昨起通行三輪車</h3>
+<p>據悉滬西二家三輪車行各已獲得二十一輛與十八輛通行於滬西之執照昨已行駛此項三十張執照由車行於星期三下午領得於不久將來續發</p>
+<h3>蔣祿生逝世</h3>
+<p>滬西紳士蔣　祿生和平對於地方慈善事業夙所熱心因病於前日去世翌日午時在漕寶路蔣家塘本宅大殮享年六十五歲一般親友執佛者約逾千人</p>
+<h3>今後市民出境倘需證件可領旅行證歸鄉通行證辦事處結束</h3>
+<p>工部局情報處公告云查關於簽發歸鄉通行證一事本局最近曾與日本當道討論鑒於市民證及居住證業經本局暨各區分別核發歸鄉通行證之簽發自無需要結果決定將本局所設簽證國事處所自即日起一律裁　嗣後華籍居民倘因特別情形而需用證件者可向鍬思威路一一四七號上海日本陸軍局（舊特務部）按照以往手續請領旅行證查自本年一月三十日起至十月八日止經本局各簽證辦事處簽發之歸鄉通行證計共五十分萬二千一百四十九張</p>
+<h2>Page 7</h2>
+<h3>保甲擴大宣傳週昨舉行音樂大會</h3>
+<p>保甲自警團音樂大會於九日上午十隆重舉行計到工部局袁副總董履登橫山軍報導部長工部局渡警視總監保甲指導部重田主任松間事筆墨官司上保甲指導委員會王副主席伯元幹事部陳九蜂程志良徐湘生梁任政譚煥祥及總聯保長謝葆生暨各聯保長來賓等約有三千餘人司儀程志良紀錄譚煥祥行禮如儀全體唱國歌由工部局警察鼓笛隊奏樂繼奏軍艦行進曲旋由袁副總董致開會辭及橫山報導部長渡警視總監等相樓層至辭發表當選保甲歌目警團歌作家並發給獎品計自警團歌作家高大棲作詞作曲保甲歌作家周一六作詞陳寉作曲乃分唱保甲歌及自警團歌由胡美芳小姐陳宿主領導合唱中國建設青年團及全體來賓齊唱畢旋演奏菲委濱音樂由閏司指揮演奏中國音樂由陳鶴指揮節目計㈠蘿蔓㈡秋的懷念㈢滿洲姑娘㈣支那之夜均由胡美芳小姐主唱直至中午十二時半始畢</p>
+<p>募捐遊藝</p>
+<p>該會並定十一日起為勸募保甲經費假大美電臺廣播遊藝節目計十一日為平劇十二日為越劇滑稽十三日為申曲彈詞惟原定十一日舉行之足球義賽因籌備不及均已臨時展期云</p>
+<p>青年部之組織</p>
+<p>公共租界保甲當局部發起籌組保甲自警團青年部業經關係方面數度會議經兩月來之研究與進行頃原則上大體均已決定團本部組織工作亦在加緊進行中預料在保甲擴大達理詐騙罪募週完畢後當能迅速宣佈成立據稱自警團青年部完全為年齡自十勻以上三十下之青年自警團團員編組而成但保甲人士及其他有高尚志向出方成意者亦得請求加入為青年部部員青年部之一切工作臍帶　務之運用無前面直接受公共租界警視總監之是導至於青年部本部之幹事人選警視總監亦有委任及罷免之權們青年部之經濟事務則須由保甲指導部負責指導</p>
+<h3>慈善義賣跳舞會</h3>
+<p>善義賣跳舞會定十月二十四日及二十五日假華懋飯店九樓舞廳舉行二十五日公訴如待中國人士故名中國夜二十四日則執行各辦士名國際夜因規模盛大參加人士必夥結懋飯店已允在舞廳中拆除一牆至少可容客一千五百人聞茶舞與餐舞票已售出甚多籌備委員會婦女組為協助進行計由潘達夫人召開會議商討一切當經決議由婦女組負責辦理裝飾搖彩搜羅珍奇以共義賣暨商請電影女星交際名退去伴舞招街等工作又各方捐款予籌備委員會辦事處（漢彌登大廈第六五三號電話一三九二六）絡繹不絕總數已近六萬元</p>
+<h3>將發買粉證</h3>
+<p>據大通社記者向工部局米糧管理會探悉買粉證二十二日將分發其形式與買米證相似其唯一之異點厥為買米證三字書於證書之右邊而買粉證則書於左飛行這址居民領取買米證發證之辦法凡居民由甲區而遷至乙區者公文人告密在證中由所屬保甲長加以證明加蓋印章後即可向買米證發給辦事處申請領取</p>
+<h3>蝴蝶花店開幕</h3>
+<p>霞飛路九九○號虹橋療養院內蝴蝶花店新屋落成今日開募所製花藍花球花屏花圈設計精美各式具備並代辦一切鮮花裝飾定價克實而四天一送之插花供花尤稱經濟簡便</p>
+<h3>各界簡訊</h3>
+<p>張徐聯姻工部局華董張德欽於今日為長公子恩慶與徐通沛君之次女愛上姐假座浦東同鄉會禮廳舉行結婚曲禮離群請袁履登證婚是日上午十時起海上名票尤菊蓀等會串平劇致賀車水馬龍必有一番盛況</p>
+<p>大滬食品公司開幕</p>
+<p>三馬路揚子飯店東首大滬食品公司素以製海寗燒考聞名擴充工竣本日下午二時正式開幕聞蘭亭揭幕孫景路藍蘭二女士剪彩</p>
+<p>源豐恒今日開幕愚園路二五三號百樂門飯店對面源豐恒南貨號由南貨業後起之秀王承章杜功標等所發起今日開幕各貨一律特賤長期平沽電話購貨二三六四二</p>
+<p>昨本報發報時間六點四十分</p>
+<p>體育新聞</p>
+<h3>今日國慶中西足球賽東華出戰蘇殼爾下午四時起在東華球場</h3>
+<p>中西足球友誼賽東華會定今日雙十節下午四時迎戰蘇兩隊辣斐德路舉勛路口該會球場東華本年重復參加西聯會甲組角逐為秣馬厲兵起見曾三度約戰聖芳濟結果二和一勝後復與西聯交綏一對一秋色本分實力之強是聲威之盛與昔無異今日與西人勁旅蘇殼爾會師定有極度精彩之演出不售門票歡迎參觀東華今日出場陣容如下</p>
+<p>張邦綸李寗莊友仁周光中韓龍海王錫聲劉祖儒梁樹棠載麟經賈幼良張銘生</p>
+<p>（預備員）張昭鵬曹琴芳舒十耕潘鴻海</p>
+<h3>合眾盃小型球賽今在通樂揭幕</h3>
+<p>合眾冷氣工程公司體育會主辦之合眾盃小型足球聯賽參加者五十六隊分成七組競賽今日下午二時假西愛咸斯路通樂球場揭開戰幕請謝均如開球門票不售秩序如下</p>
+<p>Ｗ隊——勤昌（合）二時</p>
+<p>慧金——天觀（程）三時</p>
+<p>鼓浪——西西（眾）四時</p>
+<p>三星——合眾（表）五時</p>
+<p>商業新聞</p>
+<h3>永安紡股</h3>
+<p>一日間升漲二百七十元見一千八百六十元高價</p>
+<p>昨華商股票市況續趨商關懷各方人心多向上實因永安紡織忽起還廠等雙重利買投資消息頓呈有求少供狀竟由一千五百六十上元步飛升至一千八百六十元高價比上日軋升二百七十元之巨是以將各股買勢掀動大生一三兩廠亦在買勢中上升小額票面之大中結強造與宏牲亦曾升至十二元終前者十一元半軋平後者十一元七五升二角半孚昌染織略低二角半十七元二五為最後價上海毛織低五角計上元寗波織造疲乏無神新股中最為軟弱安大襯衫仍二十五元內衣三十三元已回升五角百貨業一致上升永安公司已衝出一百二十元外最高一百二十二元產為二十一元軋升三元新新一百十八元半國貨一百十上四元各加一角文化股收局又削落一元為七十三元乃近來劇漲過高少買戶也永祥印書仍十六元商務三百十元左右中華一百十五元各升五元新藥業新亞藥廠因上日飛升二元太多有見高賣戶活動回小五角至四十六元半中法由八十二元升至八十四五元大二元民誼六十上五元半加五角成交獨稀五洲三百十元在西四百二十五元均為最後價新亞材料又稢圣城一十七元公用業閘北水電三十七元左右升二角半華商電氣在三十一元半間大七角半南洋煙公鴟一角為一百○八元半華成見二百五十元高價大中華火柴二百元有限價買戶升至二百○三元是後二百○二元升二元兇製罐九十五元有求少供其他各股亦多向上進展交易不稀今天雙十節例假今分記股市表誌後</p>
+<p>類別最高最低</p>
+<p>永安紡織一八六○·○○一五·○·○○</p>
+<p>孚昌染織一七·五○一七·○○</p>
+<p>新豐染織二三·七五二三·二五</p>
+<p>上海棉織一四·五○一三·五○</p>
+<p>宏牲織造一二·○○二·○○</p>
+<p>大中華織造一二·○○二·二五</p>
+<p>大生一廠二○五·○○二○○·○○</p>
+<p>大生三廠二四○２○○二三七·五○</p>
+<p>中國內衣二三·二五三二·○○</p>
+<p>永安公司二三·○○二六·○○</p>
+<p>新新公司三○·○○二七·○○</p>
+<p>中華書局二二○·○○三○·○○</p>
+<p>世界書局七四·○○七一·○○</p>
+<p>華成煙草二五○·○○</p>
+<p>南洋煙草二○·○○一○六·○○</p>
+<p>閘北水電二七·五○三六·五○</p>
+<p>大中華火柴一○五·○○二○○·○○</p>
+<p>新亞藥廠四七·五○四六·○○</p>
+<p>中法藥房八五·○○八○·○○</p>
+<p>中英藥房二五○·○○</p>
+<p>康元製罐九五·○○</p>
+<h3>公債不耐齊衝出六十元關</h3>
+<p>公債場外市況又飛黃騰達猛漲不已五種公債均衝出六十元大關再造之新高價所有以前之二折一觀念已無形銷滅前之所謂限價四十五元者今始知為一種煙幕其實際原因多數屬於游資作崇少數屬於空頭異鄉今既已出軋恐勢如破竹一時恐已收束不住游資汜濫之為害如此今日集中於公債者則公債狂漲他日移而至他恐亦有同樣劇烈初做時除甲種外均在六十元關內不十分鐘即均衝出六十元關多方買進不遣餘力補空者再從而加力推送乃如火上加油更遇大風也丙種最高六十四元最後三元六角甲為二元五角高價為二元工角乙灶元五角高價丁亦為冰十二元零五角高價戊亦為六十一元二角高價計漲二元四角至三元九角成交約三百餘萬元今日為雙十節休假一天</p>
+<h3>食糖零售並地限制</h3>
+<p>近來各南貨店零售食糖咸有限制購買以致一般市民忽感不便盲者以食糖為吾人食料之至特赴糖商合作營業處探詢究竟據謹言慎行上贈人云現在所存這糖為睚豐足供長期配給一般市民似母庸恐慌惟近來有少數乙種零售商外對於門售數量並未有可限制云云爰記所聞以告市民</p>
+<h3>疋頭沉藏堅昂之氣</h3>
+<p>廠布</p>
+<p>昨布市實銷沉靜異常而同業人堅定如故蓋以原料成本而論雖壓力重重猶是易漲難跌之局面十六磅地球粗布一九○元飛鴻一八度一元五我磅新字一一○元五角八磅振中一○七元五觚十二磅地球細布上一六十　元大鵬新單一六○元富貴五五元銀行單一五一元富貴細斜一四一元雛雞士林二四三元琴美人元布一三七元三羊嗶嘰五元有半俱鮮變更</p>
+<p>東布</p>
+<p>市盤微昂十二磅龍頭細布銀行單初開一五九元二角半小至一五八元七角半又轉上升一五九元二角半而有求無供上價為一五九元五角較升五角新新單龍頭進出甚少仍喊一六八元彩球細布一五八元二角半屏一五六元五角陽宿主一五五元喇叭童一五四元半五福一五三元半了二角半至五角四君子嗶嘰紅單午收六元九角一分軋漲一分形勢轉堅</p>
+<h3>餅豆稍有交易</h3>
+<p>豆類市況昨交稀價堅計開崇明沙蠶廿包價為二百六十五元</p>
+<p>豆餅交易頗形活動市呈挺俏計開牲記豆餅十月份棧單一千張價七十元元隆豆餅二車價六十八元至六十和元肥字豆餅一車價六十九元</p>
+<h2>Page 8</h2>
+<p>游藝界</p>
+<h3>老伶工鮑吉祥</h3>
+<p>— 駝公</p>
+<p>徒弟上臺老師把場以前故都有余叔巖給李少春上海有王瑤卿給王玉勞保余叔巖是生行首席王瑤卿是旦行通天教主盡人皆知這次鮑吉祥給李宗義把場上海人對錢包吉祥覺得陌生的想是不少所以介紹一下</p>
+<p>鮑吉祥是吳連奎的徒弟（和余叔巖全是吳的開蒙）工於二路老生登臺伴角唱戲循規蹈矩絕沒有近年來一般二路老生上臺拚命火氣十足的要好可是做到傳神處也使臺我眾讚賞楊小樓要他配角有戰宛城的賈詡和落馬湖的襦彪百代有此唱片其成績聽過和看過的自有公論余叔巖要他配的戲更多了如盜宗卷陳平搜孤之公孫杵臼探母的六郎定軍山之嚴瘢空城計之王平大有非鮑不足與配的意思梅蘭芳要他配角灌一唱片玉堂春的藍袍大約大家全在聽過誰注意過那一個在唱裹邊夾白的應知中他能在短促胡琴過門裹說的從容不迫可知他的火候了</p>
+<p>他肚子裹老生戲可說得上博老腔老調更不用說了所以孟小冬拜了余老板之後也拜他做老師近年收的徒弟很有幾位如楊寶森等等孟拜他為的是他玩藝規矩其實余的玩藝何嘗不規矩呢容別文論之</p>
+<p>他的大號叫鳳麟今年六十多勻瘦長的身量斑白的頭髪要不知道這位老伶工的一定說他是一位教書的先生態度安詳給人說起戲來老不著急循循善誘堪稱名師李宗義拜他可說是識得正路李為大津票友前幾年筆者在天津聽過一次那時嗓子不好學些馬連良這次聽說嗓子很衝很掛味但盼和這位老師多多習學把馬腔凈去就不難成為名角了</p>
+<h3>李宗義李玉芝合論</h3>
+<p>— 梅花館主</p>
+<p>當李宗義李玉芝未來滬之前凡關心戲劇者莫不為更新擔憂以為當此各劇院競邀名角之際而更新竟來兩個名字不很響亮的角兒相形見絀之下對於售座方面決難懷他家相提並論那知事實卻大不然當二李以四郎探母打泡之日一個是滿工滿調聲容並茂一個是風光旖旎有聲有色從坐呂到回令生旦二人彼此都特別卯上不但大段唱工引人入勝連極平凡的小動作亦居然博得滿堂彩聲都說二李的名詞不大可是玩藝卻都在水準以上這樣的口碑傳了出去第二天以後的賣買果然格外的熱門起來了</p>
+<p>關於二李的戲我所看到的宗義部份有平空城計王定義中放曹大保國二進宮桑園會珠簾寨李陵碑打鼓罵曹羣英會清官冊等十餘齠玉芝部份比較多些除生旦合演的對兒戲以外還聽了她不少單有的傑作如女起解玉堂春春秋配得意緣能仁寺悅來店母女會等青衣花旦刀馬都有宗義生就一副好嗓子又亮又竹時老生除去宋賢羅堪稱伯仲外其餘簡直找不出第二　來造詣方面經過老伶工鮑吉祥的指正自然很有規律罵曹的鼓亦練得相當純熟並且非常花梢票友下海有此成績亦總算難能的了</p>
+<p>玉芝的戲青衣花旦並皆擅長唱做效程玉霜很夠程度要水袖漂亮邊式尤見其功夫之深青衣戲如武家坡桑園會母女會大保國二進宮等確有相當修養嗓音高下都有吃調在六半以上進宮一劇且能與高嗓之李宗義金少臣別過苗頭眞是不易花旦戲更顯玲瓏活潑眉目間充滿著戲的情味能仁寺的作派完全草原倣荀慧生為安張二人作伐時之表情聲容可謂美到極點亦可說寫意到咪小翠花小留秀不能專美於前了李多奎初來時嗓音略嫌枯澀最近幾天卻十分暢潤起來七日晚場的釣金鬼精神飽滿舒展自如眞能給觀眾聽一個痛快</p>
+<h3>藝壇情報</h3>
+<p>— 麗來</p>
+<p>博愛中朱石麟導演的那場戲顧也魯頻頻以兩拳敲頭據說這是朱石麟本人的習慣動作</p>
+<p>夏霞在麗華登臺祗是婦院一個戲月支薪二千元</p>
+<p>阿那編劇的多夫實鑑已見麗華大戲院預告此夫已排演多次而始終沒有漏臉與婦院無獨有偶</p>
+<p>據說方沛霖已加冕歌唱片權威導演新片為凌波仙子</p>
+<p>陸露明在蘭心演少奶奶的扇子是彷唐若青例拆賑二成</p>
+<p>嚴俊的國語有刮辣風脆之妙屠光啟的梅孃曲已屬意他做梅孃的丈夫</p>
+<p>韓非賀賓上官雲珠等已安坻天津第一劇為殉情之後將由北平而出關見娘歸來之期當在半載以後</p>
+<p>介紹半月戲劇梅花館主主編之半月戲劇一四卷五期新書業已出版內容益見充實對面為吳素秋梅玉配戲像三色版名畫家吳青霞女士題眉銅略差一十餘幅有吳素秋李多奎李慧芳諸專員及王熙春金素雯結婚照片多種文字二十餘篇執筆者皆海內知名之士由金神父路四三四弄半月戲劇出版社總發行（編者）</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一○）飛來峯</p>
+<p>黃龍把胸口一拍說道我們為什麼要怕他們門外有一百個人我們只當他是一百個鬼人會怕鬼嗎翠珍一直被嚇破了的膽給黃龍幾句話振奮起來把兩腳踏在地上很想跟了黃龍立刻離工這個場所可是一下地身軀一晃幾乎栽了一個觔斗黃龍道我來遲了你可受了苦了他說著靠了翟珍往下一蹲蹲的矮下半截來把手拍了拍他的著膀翠珍懂得他的意思到這時候還有什麼喚做避嫌疑便毫不遲疑的伏在他身上嘴裹說道我地不起你黃龍覺得身上有了一些分量脖子裹也左右來了兩隻纖纖玉手知道翠珍已是伏在他身上他一站偏過臉來看躺在地下的衛少雲眼閉的開只有出氣沒有入氣便自顧自走往房門口趣聞兩步又自言自語道還是從來的地該去產吧他又退回來趣聞兩步把個身體向左一側從襪統裹抽出長不滿一尺的又是亮晃晃的一柄尖刀從左手裹交到了右手裹覷準了衛少雲的臉便是一刀</p>
+<p>翠珍究竟不是殺人不眨眼的惡漢她看黃龍的刀脫手情不自禁地喊了一聲啊但是刀長也似地插在地權上只和衛少雲那隻左耳朵關得一二分為了上重下輕的關係刀身便在燈光裹搖晃不定這時房外突然有一人說話衛少爺你現在怎麼樣了做事天淵之別面手嗎你答我一句話好讓我去告訴他們他們說得到了衛少爺的眞實喜訊才動手把那一隻五香鴨下筷子黃龍究上一步禿一聲把燈吹滅嘴裹不清不楚的把口腔裹的聲音打從鼻腔裹轉出來稱是回答了房外問話的房外問話的也眞容易對付得了黃龍這麼一聲便出去報告黃龍從一團漆黑之中摸十強賽到了後窗口把窗開了西北風是鳴一聲進來他和翠珍卻是迎著風出去（一九九）</p>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.10.10</h1>
+<h3>Vigorous Counter-offensive Launched by the Soviets on the Volga River Front; Fierce Fighting Underway in the Rzhev District</h3>
+<p>Lisbon, 8th, Alliance News Agency</p>
+<p>The battle for Stalingrad has been ongoing for 46 days. According to certain intelligence, the fighting is still taking place in the factory area northwest of the city. German and Soviet forces have mutually buried large tank vehicles as fortresses, engaging in artillery battles and close-quarters combat. A certain unit of the German army, located in the central area of these installations, after dozens of fierce battles with the Soviet army, reached the banks of the Volga River on the 7th, taking a threatening stance by encircling the northwestern Soviet forces from the right flank. Strong tank units have been urgently dispatched to provide support and it is claimed that they have repelled the German forces from the banks of the Volga River. Furthermore, the Soviet counter-offensive north of Stalingrad is also fierce, with no changes yet. According to Soviet news reports, the German army has mobilized Prussian shock troops to participate in the street fighting in Stalingrad since the 7th.</p>
+<p>London, 8th, Havas News Agency</p>
+<p>According to a Reuters dispatch from Moscow, German and Soviet forces are engaged in fierce fighting in the Rzhev district (northwest of Moscow). The German side has added two fresh divisions to assist in the battle in this area. It is said that the city is ablaze with light and flames are everywhere.</p>
+<p>Berlin, 9th, Huitong News Agency</p>
+<p>The German army in northern Stalingrad has now switched to using heavy weaponry and heavy artillery to bombard Soviet defense positions. In order to avoid unnecessary sacrifices, the German army first uses heavy artillery to destroy resistance nests, and then infantry and engineers rush in to occupy them. Although the progress is slow, the results are very effective. The main objective of the German offensive is the Volga River, which they reached several weeks ago. The initiative on all sectors of the Eastern Front is in the hands of the German army.</p>
+<p>Somewhere on the Soviet border, 8th, Havas News Agency</p>
+<p>Military observers here recently commented that the summer offensive launched by the German army on the Eastern Front is coming to an end, and it is expected that no surprising military events will occur. According to a statement by German spokesman Colonel Dittmar, the German High Command will concentrate its efforts in the coming weeks on improving existing positions, especially the complete capture of Stalingrad. Once this objective is achieved, the frontline fighting will stabilize. In the Caucasus, the German army is continuing to move in order to occupy a line and then consolidate its positions on this line to safely get through the winter and serve as a base for future offensives. Although fierce fighting is still taking place in the Terek River basin, the German operational objective is not to continue advancing but to break through the Red Army's defenses in order to occupy a more advantageous position. As for the fighting at the port of Tuapse on the Black Sea coast, it is facing considerable difficulties due to the weather. Heavy rain and dense fog in recent days have greatly slowed the German advance. As for the Stalingrad area, fierce fighting is now taking place in the city's northern industrial district. German planes have continuously bombed the area, with no less than a thousand aircraft. Agricultural machinery factories and tank factories have been destroyed, but the Red Army is still resisting in the heavy rain. It is expected that the German army will launch a decisive offensive against the Red Army's positions after a few days of preparation. Both sides are using aircraft to transport large numbers of fresh troops as reinforcements. In the northwest of Stalingrad, the flat ground has become a quagmire due to the heavy rain, but General Timoshenko's troops are continuing to attack the German positions between the Don and Volga rivers regardless of everything. According to Soviet news last night, the Red Army has been able to erect pontoon bridges between the Don River's Luriya and Traktisky.</p>
+<p>Moscow, 8th, Havas News Agency</p>
+<p>The Red Army General Headquarters has issued a war report stating that our army continued to fight in the Stalingrad and Mozdok areas today. There were no major changes in other war zones.</p>
+<h3>Using a Steam Engine to Sterilize Children's Toothbrushes; This Brush, Three in a Set, Sells for a Flat Price of One Yuan and Fifty Cents</h3>
+<p>The Double Ten brand toothbrushes manufactured by Liang Xinji Brothers Toothbrush Company are all sterilized by the latest steam engine. All raw materials use new handles and new bristles. Rinsing your mouth and brushing your teeth will not result in any stale odors. Recently, affordable children's toothbrushes are sold at a flat price of only one yuan and fifty cents per set of three. If compared to the current prices of various commodities, the low price is unparalleled. Therefore, the sales of this brush are extremely popular in Liang Xinji's head and branch offices and department stores throughout the city. Customers fear that this brush will sell out and there will be no such cheap goods available again.</p>
+<h3>Courageous, Vigorous, Hardworking, and Enduring</h3>
+<p>— Wang Zhaoming</p>
+<p>In the year of Yiwei (1915), the Founding Father launched the first National Revolution in Guangzhou. At that time, Comrade Lu Haodong died in the line of duty. Since then, young people across the country have continuously contributed their blood to the National Revolution until the March 29th Uprising of Xinhai, when the seventy-two martyrs used the purest blood, the blood of the most knowledgeable and morally upright youth in the country, gathered together, to lay the foundation for the Republic of China. Thus, the Republic of China was established on August 19th of the same year.</p>
+<p>Since the founding of the Republic of China, there have been many disasters and hardships. In recent years, the country has almost been on the verge of destruction. The establishment of the Republic of China relied on young people, and the regeneration of China will naturally rely on young people. Every young person always has a question in their conscience: Can China be saved? To be more specific, can the peace movement succeed? Can China be liberated in the Greater East Asia War? In fact, there is only one answer to these questions: it all depends on how young people themselves act. If young people across the country are demoralized and hesitant, then the answer is only pessimistic. If young people across the country have a great awakening and determination to take on the responsibility of revitalizing China and defending East Asia, then the answer is that nothing is impossible. The slogan given by the New Citizens' Movement to the youth groups and Boy Scouts across the country is: Courageous, vigorous, hardworking, and enduring. The current situation easily makes people feel secure and lose their will. On the contrary, we must have courage and vigor, firmly believe in the great goal of revitalizing China and defending East Asia, and strive unremittingly with a strong will until we succeed. The current situation easily makes people unable to bear the pain. On the contrary, we must be hardworking and enduring, firmly believe that these pains are necessary processes for revitalizing China and defending East Asia. We realize what Mencius meant when he said, "Born in sorrow, die in ease." We gather our spirits and experience the realities of "afflicting their minds, taxing their sinews and bones, starving their bodies, impoverishing their beings, confounding their actions; therefore, their minds are moved, their natures are hardened, and what they could not do is made possible." We use the suffering of the present to seek the happiness of the future, and we use the suffering of individuals to seek the happiness of the whole. Our country and nation will naturally have days of joy after suffering. We specifically highlight the eight characters of "courageous, vigorous, hardworking, and enduring" at this time to serve as the slogan of the New Citizens' Movement, which has profound meaning. All comrades of the New Citizens' Movement must understand this meaning and put these eight characters into practice. The National Day of the 32nd year will definitely be more optimistic and more progressive than this year.</p>
+<h3>Solemn Celebration of National Day and Military Parade Held</h3>
+<p>Nanjing, 9th, Central News Agency</p>
+<p>The celebration ceremony was solemnly held at the National Government Auditorium at 8 AM on the morning of the 10th, which was the National Day of the 31st year of the Republic of China. All senior officials above the rank of Simplified Appointment of the Central Government participated. Civil officials wore regular dress or blue gowns and black vests and wore commemorative badges. Military officers wore military uniforms, swords, peace commemorative badges, and military conference commemorative badges.</p>
+<h2>Page 3</h2>
+<h3>Renovation Project of the Revolutionary Martyrs' Shrine and Memorial Tower Completed</h3>
+<p>Nanjing, 9th, Central News Agency</p>
+<p>The National Revolutionary Army Martyrs' Shrine and Memorial Tower, originally located near Linggu Temple in the Sun Yat-sen Mausoleum, were renamed the National Revolutionary Martyrs' Shrine and Memorial Tower in accordance with a resolution by the Central Political Committee for the purpose of preserving the entire concept of the National Revolution. The renovation work was carried out by the Sun Yat-sen Mausoleum Management Committee, which began the renovation in August of this year until recently. Chairman Wang was extremely concerned about the renovation project and personally visited the National Revolutionary Martyrs' Shrine and Memorial Tower at 3 PM on the afternoon of the 9th, accompanied by Chairman Min Yi of the Sun Yat-sen Mausoleum Management Committee. Executive Committee Member Zu Yu and Vice Minister of Propaganda Guo Xiufeng, Zai Zhen, and other committee members were waiting in front of the Martyrs' Shrine. The Chairman first paid respects to the spirits of the National Revolutionary Martyrs at the Hall of Righteousness in the Martyrs' Shrine, and then inspected the Martyrs' Shrine and Memorial Tower. In accordance with the resolution of the Central Political Committee, all inscriptions and disrespectful texts from the Civil War era and the National Crisis era were removed. The center of the shrine was rebuilt as the spirits' altar of the National Revolutionary Martyrs. On both sides were inscribed the Founding Father's testament on the right and the national anthem on the left. Inside the Memorial Tower was inscribed the Founding Father's teachings. The shady trees and solemn, clean buildings fully express the noble and pure national spirit. After inspecting the Martyrs' Shrine and Memorial Tower, the Chairman also inspected the Hall of Light, newly built in Linggu Temple to commemorate Japanese comrades who aided the National Revolution. He gave detailed instructions on various renovation projects. The inspection lasted for one hour before he returned to his official residence along Zhongshan Road.</p>
+<h3>Lin Baisheng Attends Joint Banquet of the Japanese Ministry of Education and the Ministry of Greater East Asia Affairs</h3>
+<p>Tokyo, 9th, Central News Agency</p>
+<p>Mr. Lin Baisheng and his secretary Hua Hanguang and six others went to inspect the youth education schools in Japan under wartime conditions at 9:30 AM on the 9th. At noon, they attended a luncheon hosted by the Greater Japan Xingya League in Shiba Saga. In the afternoon, they visited former ambassador to China General Abe. At 2:30 PM, they attended a symposium hosted by the Greater Japan Youth Group at the Imperial Hotel. At 6 PM, they attended a joint banquet hosted by the Information Bureau of the Ministry of Foreign Affairs and the Ministry of Greater East Asia Affairs at the Kazoku Kaikan. Attendees included Special Envoys Onuma, Arita, and Nagai, Foreign Minister Tani, Vice Minister of Foreign Affairs Yamamoto, Minister of Education Hashida, Vice Minister of Education Kikuchi, Director Okumura of the Information Bureau, Director Matsumura of the Cultural Affairs Department of the Ministry of Greater East Asia Affairs, Chinese Ambassador to Japan, Army Vice Minister Kimura, Navy Vice Minister Sawamoto, Chairman Hayashi Senjuro of the Xingya League, President Ozato Yamaoka of the National Government, Director Suzuki of the Greater Japan Youth Group, and Deputy Director Asahina. The banquet lasted two hours and ended with joy. At 9 PM, Mr. Lin delivered a broadcast speech titled "Self-Effort and Mutual Cooperation."</p>
+<p>Tokyo, 9th, Central News Agency</p>
+<p>At the symposium on Greater East Asia Construction and Youth Group Movement, Director Murakami of the Japanese Information Bureau first gave a speech titled "The Japanese Government's Policy on the Construction of Greater East Asia." The general idea was that the Greater East Asia War and construction are closely related. Without construction, victory would be meaningless. China and Japan should join hands and advance toward the great road of reviving East Asia. Finally, Mr. Lin Baisheng delivered a speech stating that the goal of the New Citizens' Movement is to revitalize China and defend East Asia. Therefore, the promotion of the New Citizens' Movement is for China, for Japan, and for East Asia. Therefore, we must first seek China's revival in order to fulfill the responsibility of building East Asia. He hoped that the leaders of the Japanese youth movement would assist.</p>
+<h3>Military and Political Institutions to be Reorganized; Army, Navy, and Air Force Directly Under the Military Affairs Commission</h3>
+<p>Nanjing, 9th, Alliance News Agency</p>
+<p>The National Government's institutions will be reorganized after the legislative procedures are completed, with the aim of concentrating and expanding military organs into the highest command. The Army and Navy Departments will be under the jurisdiction of the expanded Military Affairs Commission, so that the Army, Navy, and Air Force will be under the unified command of the Chairman of the Military Affairs Commission. This plan was approved by the Central Political Conference on August 13 and will be implemented after approval by the Legislative Yuan. According to this plan, the Army and Navy Departments will no longer be under the jurisdiction of the Executive Yuan, but will be under the Military Affairs Commission. The strategic, compilation, instruction, accounting, and intelligence departments that have been established or will be established that are related to the Army, Navy, and Air Force will also be handled by the Military Affairs Commission. The necessary personnel for this reform of military and political institutions have already been determined when the reorganization plan was approved by the Central Political Conference in August, as follows: Army Chief Bao Wenwei, Army Vice Chief Zheng Dazhang, Navy Chief Ren Shoudao, and Navy Vice Chief Zhao Guizhang. The National Government initially reduced the fourteen departments to the current ten departments in early August of last year, namely the Army, Navy, Interior, Foreign Affairs, Finance, Education, Justice, Industry, Transportation, and Propaganda Departments.</p>
+<h3>Screening of Film on Visit of Japanese Envoy to China Scheduled</h3>
+<p>Nanjing, 9th, Central News Agency</p>
+<p>The screening of the film on the visit of the Japanese Envoy Delegation to China, organized by the Propaganda Department and screened by the China Film Company's touring screening team, is scheduled to begin at the National Assembly Hall at 8:00 AM on the 10th.</p>
+<h3>First Steps of the Second Phase of the Clearing Campaign in Taihu Lake Area Launched</h3>
+<p>Hangzhou, 9th, Central News Agency</p>
+<p>The second phase of the clearing campaign in the southeastern area of Taihu Lake is being actively launched. The first step, military suppression through martial law, has been completed. On the one hand, blockade organization district offices, census households, and organize baojia. At the same time as the census, a roster of able-bodied men is compiled in preparation for forming groups. The age of able-bodied men is stipulated to be 18 to 40 years old. All organization methods refer to the organization of the Five Guards on the island, and the provisional regulations on personal rights are implemented to complete the organization of the able-bodied men's teams. By the end of November, the able-bodied men's teams will be reorganized into formal self-defense groups to assist the police in protecting the local area and strengthening local self-defense capabilities.</p>
+<h2>Page 4</h2>
+<h3>Stanley Returns Home via Cairo to Seek Reconciliation of Disagreements Among Allied Nations; US Ambassador to Turkey to Return to His Post Soon</h3>
+<p>Moscow, 9th, Alliance News Agency</p>
+<p>US Ambassador to the Soviet Union Rear Admiral Stanley flew back to his country via the capitals of Iran and Egypt yesterday to report to President Roosevelt on the situation in the Soviet Union and to reconcile the friction between the Soviet Union and the Allied nations.</p>
+<p>Stockholm, Swedish Capital, 9th, Alliance News Agency</p>
+<p>After Stanley had important talks with Stalin on the 6th, he made a statement to reporters before returning home on the 7th, saying that Soviet public opinion was dissatisfied with the US aid to the Soviet Union. Therefore, he plans to find a way to resolve this issue during his return to the country and will report to President Roosevelt on the Soviet Union's war effort and opinions. Stanley's statement is sufficient to show that there are great differences in opinion between the Soviet Union, Britain, and the United States regarding the war.</p>
+<p>Lisbon, 9th, Huitong News Agency</p>
+<p>Washington Dispatch</p>
+<p>President Roosevelt met with US Ambassador to Turkey Steinhardt yesterday. Steinhardt refused to announce the content of his meeting to reporters when he left, only saying that he will return to his post in Turkey in a few weeks.</p>
+<h3>Japanese-Soviet Relations Remain Unchanged</h3>
+<p>Manzhouli, 9th, Alliance News Agency</p>
+<p>Miyagawa, Counselor of the Japanese Embassy in the Soviet Union, recently returned to his country on vacation. He arrived here at about 1:00 PM on the afternoon of the 8th. According to him, after the establishment of the Japanese-Soviet Neutrality Pact, Japanese-Soviet relations have not changed because the Soviet Union abides by the neutrality treaty. Ambassador Sato to the Soviet Union was invited by Soviet Foreign Minister Molotov to visit the Supreme Soviet and witnessed the proceedings. The Soviet Union still takes a friendly attitude toward Japan.</p>
+<h3>Welles' Speech Vigorously Advocates Aiding the Soviet Union and Opening a Second Front, Believing That There Should Be No Delay</h3>
+<p>Lisbon, Recent, Huitong News Agency</p>
+<p>US Undersecretary of State Welles delivered a speech at a dinner of the World Economic Association in Boston last night. He stated that he hoped the United States could exert its full strength to aid the Soviet Union in the shortest possible time and said that the United States would never negotiate peace before winning. In the future, the United States will supply the Soviet Union with as many munitions as possible and will open a second front to divert Germany's military strength. As for the work of resolving world economic difficulties after the war, although it is arduous, it is not without a solution. Finally, Mr. Welles mentioned that there are still two countries in the Americas that condone Axis agents engaging in activities against neighboring countries within their borders, which is regrettable.</p>
+<h3>German Ambassador to Turkey, Papen, Returns to His Post</h3>
+<p>Badanpi, 9th, Huitong News Agency</p>
+<p>German Ambassador to Turkey Papen, who had been away from Turkey for three weeks, has now returned here by special plane from Hungary.</p>
+<h3>Composition of the New Iraqi Cabinet</h3>
+<p>Yongala, 9th, Huitong News Agency</p>
+<p>The composition of the fifth cabinet of Iraqi Prime Minister Longyi is as follows:</p>
+<p>Prime Minister and Minister of Defense Said</p>
+<p>Foreign Minister Hafes</p>
+<p>Minister of the Interior Akhan Kari</p>
+<p>Minister of Economic Affairs Sharash</p>
+<p>Minister of Finance Jabur</p>
+<p>Minister of Social Affairs Bapei</p>
+<p>Minister of Justice Basang</p>
+<p>Minister of Education Ali</p>
+<p>Minister of Public Works and Transportation Chaiqi</p>
+<p>Rome, 9th, Huitong News Agency</p>
+<p>According to news received here, the reason for the Iraqi cabinet reshuffle was General Wilson's attempt to merge the Iraqi army into the British 10th Army. The Iraqi army opposed this plan, and the Iraqi authorities also expressed their opposition.</p>
+<h3>British Secretary of State for India States the Current Situation in India, Believing That Gandhi Should Be Fully Responsible for the Disputes; Indian Religious Groups Abroad Call for Mediation</h3>
+<p>London, 8th, Havas News Agency</p>
+<p>When the House of Commons met today, the Secretary of State for India, Emery, answered various questions from members of parliament of various parties, saying that Mahatma Gandhi was fully responsible for the current situation in India and that there was no possibility of compromise between the British government and the Indian Congress Party. Since the outbreak of the riots in India, 846 people have died, 2,024 have been injured, 60 civil servants have died, 648 have been injured, and only a few British air force soldiers have died and been injured. The reason why the British military authorities used machine guns to shoot at the demonstrating crowds was that the intensity of the demonstration had constituted a human crisis, so they had to resort to this last resort. The Indian Governor has begun secret talks with the leaders of the orthodox Hindu Mahasabha Party. He also hopes that these talks will be expanded to other political leaders. Since our negotiations with the Congress Party broke down on August 8th of this year, the Governor has made many efforts, but so far he has not achieved any results. As for the question of Gandhi's responsibility for the failure of these negotiations, it has been discussed by various newspapers and public opinion. I do not think it is necessary to publish a white paper on this issue at this time.</p>
+<p>Lisbon, 8th, Central News Agency</p>
+<p>According to a dispatch from New Delhi, the Special Committee of the Hindu League, in view of the worsening situation in India, telegraphed Roosevelt and Chiang Kai-shek on the 8th, requesting that they mediate as soon as possible to break the deadlock in British-Indian relations. The general idea of the telegram was that rubber is necessary for the current situation in India, and in order to win over the hearts of the Indian people, it is necessary to recognize India's independence, entrust real power to the people, and establish an Indian government. The final responsibility for resolving the Indian problem depends on the attitude of the British authorities. If the Indian Governor refuses to meet with us and Gandhi, it will only make the situation worse. Therefore, repressive means alone cannot solve this problem. The Governor of Bengal also telegraphed the United States, requesting that it mediate British-Indian relations as soon as possible.</p>
+<h3>Rumor That the Chongqing Authorities Made Six Demands to Willkie</h3>
+<p>Lisbon, 8th, Alliance News Agency</p>
+<p>According to a dispatch from New York, Willkie, who is visiting Chongqing, flew to a certain place from Chongqing by plane on the afternoon of the 7th.</p>
+<p>Guangzhou, 9th, Alliance News Agency</p>
+<p>According to news from Chongqing, the Chongqing authorities presented a memorandum containing six demands to US Presidential Envoy Willkie during his visit to Chongqing: (1) The number of aircraft stationed in Chongqing by the United States is insufficient and should be increased immediately; (2) The United States should fully assist China in recovering lost territories; (3) The United States should bomb Japan immediately; (4) The United States should give equal importance to the Chinese battlefield; (5) The United States should understand Chongqing's position; (6) The United States should abolish racial discrimination.</p>
+<h3>Remains of Ancient Roman City Discovered in Spain</h3>
+<p>Madrid, 9th, Huitong News Agency</p>
+<p>The remains of an ancient Roman city from the 2nd century have been discovered near the village of Mora in Spain. Its walls and sidewalks have been excavated, and a large number of bricks, stone utensils, millstones, and ancient Roman silver coins have been found.</p>
+<h3>Large-Scale Withdrawal of Soviet Troops from Iran</h3>
+<p>Stockholm, Swedish Capital, 8th, Central News Agency</p>
+<p>According to a telegram from Istanbul in the Alehan Da newspaper, a large number of Soviet troops are currently withdrawing from Iran. The remaining troops are gathered in Tabriz near the border. The telegram also stated that there is no border in fact in the area occupied by British and Soviet troops. Most of Iran is occupied by British troops, and British troops are engaged in building large new military facilities in northern Iran, which borders the Soviet Union.</p>
+<h3>France to Implement One-Party Dictatorship</h3>
+<p>Paris, 9th, Huitong News Agency</p>
+<p>France will establish the French United Party in order to implement a one-party dictatorship system. The party will be formed by merging existing political parties.</p>
+<h3>Evacuee British Ship Arrives in England</h3>
+<p>Lisbon, 9th, Alliance News Agency</p>
+<p>London News</p>
+<p>The evacuee exchange ships Al-Naia and Nakenda from Egypt arrived at a port in England today, carrying 1,100 British evacuees from Japan and China. Former British Ambassador to Japan, Sir Clive Keer, was also among them. These evacuees are government officials, clergy, doctors, and their families.</p>
+<h2>Page 5</h2>
+<h2>Page 6</h2>
+<h3>After the Blackout, Be Ready at Any Time</h3>
+<p>Preparations Must Not Be Relaxed; Still Pay Attention to Signals and Shading Lights</p>
+<p>After the Japanese Army and Navy Air Defense Headquarters announced that the period for the Yeci blackout training has ended, an important official from the Public Concession Police Department's Anti-Air Raid Section stated that blackout drills will be held from time to time in the future, and the next blackout period will be held in the near future. Therefore, residents should always be prepared to shade windows and turn off torches, as was the case from October 1. However, in the future, there will no longer be advance notice in newspapers, and the blackout drill will begin without warning.</p>
+<p>Pay Attention to Signals</p>
+<p>Residents should also be familiar with the different whistle signals. One blast every thirty seconds marks the beginning of the alert period. Several short blasts every five seconds serve as a prelude to the air raid alert period. A whistle sounding one blast every thirty seconds indicates the end of the alert. After the alert is issued, lights should be automatically and completely controlled until a whistle sounding once every twenty seconds indicates that the alert has been lifted. In addition, the French Concession recently held a fire drill during an air raid between Xujiahui Road, Terrace Road, Fulili Road, and Ladu Road. In the future, only those concerned will be informed of the drill in advance, one or four people.</p>
+<p>The French Consul-General Expresses</p>
+<p>The French Consul-General is deeply grateful to the residents within the Concession for their efforts to abide by the rules of the air defense drills. He specifically expressed his thanks for the efforts of all residents and the large expenses incurred due to the incident, which resulted in excellent results during the October 1st to 8th drills. In addition, the French Consul-General also thanked the Passive Defense Committee, the Baojia organization, the Fire Brigade, the Engineering Office, the Health Office, the Electric Power Office, the Tram Company, and the Police Department for their dedication to this particularly difficult task. In short, this time, we were able to overcome the difficulties thanks to the collective efforts of the people.</p>
+<p>The Results of the Drill</p>
+<p>Police Inspector Watanabe comprehensively detailed the results of the eight-day training. The results of the first three days were quite poor. Afterwards, thanks to the supervision of Director Ono and the efforts of the Baojia self-defense team members, the results showed excellence comparable to those obtained from several years of training. However, there are still many incomplete shading devices in the slums of the West Hongkou District. What is gratifying is that the number of various types of crimes committed during the blackout was less than half the time.</p>
+<p>Those Who Violated the Regulations Were Punished</p>
+<p>The Hongkou Police Department's jurisdiction arrested more than forty people who did not have complete blackout equipment at the imitation inspection on the 7th. The Xinza and Chengdu Police Department's jurisdiction adopted a policy of confiscating the citizen's certificates of those who violated the regulations. Six people were confiscated by the department. The results in the Jewish village under the jurisdiction of the Huishan Police Department were not very good. In the future, it is planned to exile and severely punish those who do not comply.</p>
+<p>Locations Where Alerts Are Issued</p>
+<p>In addition, according to the announcement of the Shanghai District Japanese Army and Navy Air Defense Headquarters, the locations where alerts are issued in the Public Concession south of the Suzhou River during the blackout period are the roof of the Yongfa Company on Nanjng Road, the supplementary house on Chengdu Road, and the Fire Brigade in Jing'an Temple. There are also several other alert locations set up in Hama North.</p>
+<h3>Today's Double Tenth National Day Celebration</h3>
+<p>Today is the National Day celebration. All Japanese "zero-egg" police authorities are implementing temporary security measures. In addition to increasing the number of detectives at crucial road intersections, each joint defense area's self-defense corps is also increasing the number of guards on duty. At the border of the French Concession, next to the Hua community, all iron gates have increased the number of Chinese, French, and Vietnamese police, and also deployed female officers to inspect men and women entering and exiting. All roads connecting to Avenue Edward VII in the French Concession, such as Pa Li Chiao Road, Water and Electricity Street Tram, New Bridge Street, etc., will be equipped with steel wire nets to cut off traffic. At places such as Route Say Zoong (Avenue des Soeurs), Old North Gate, and Zheng Jia Mu Bridge, pedestrians entering and exiting will be inspected. Any gatherings not approved will be strictly prohibited, and the ban on setting off firecrackers will be extremely severe.</p>
+<p>Broadcasts Announced, Ceremonies Held</p>
+<p>Ling Xianwen, concurrent Director of the Qingxiang Branch of the Kuomintang's Party Affairs Office in this city, and Li Wen, and Gong Wenhuan, Deputy Directors, will broadcast to all citizens from the Shanghai Radio Station at 11:30 a.m. today (the 10th). In addition, the Shanghai Branch of the Qingxiang Committee and the Shanghai Special City Kuomintang Headquarters will issue a message to all citizens to celebrate the National Day. The City Government and the Security Command Headquarters of the Qingxiang Branch will also hold grand ceremonies.</p>
+<p>Pan Da, Chief of the Shanghai Fourth Police Bureau, issued a text celebrating the Double Tenth National Day of the 31st Year of the Republic of China, briefly stating: Today is the Double Tenth Festival. In addition to celebrating, we should work towards two major goals. First, realize national peace. Working hard for peace to save China is Dr. Sun Yat-sen's national policy. China has been weak for a long time, so the urgent task today is to remove all obstacles and suffering by first achieving peace. I hope that the people and the government will work together to achieve this goal. Second, strive for our respective work. We must revive China, and it cannot be achieved through empty talk. We must be pragmatic. Every citizen has a responsibility, whether in agriculture, industry, commerce, or education, to improve our work and increase efficiency. Only in this way can we alleviate the country's difficulties and suffering and maintain national survival and independence.</p>
+<h3>Japanese Side Returns Seven Factories to the Workers' Association and Holds Ceremony</h3>
+<p>It is heard that the Japanese authorities have decided to lift military control over seven factories on October 10th, the Chinese National Day. A ceremony will be held at 2:00 p.m. at the Dowa Yoko Hotel on North Sichuan Road. It is heard that representatives from the National Government, Mr. Fukuyama, Director of the Military-Managed Factory Reorganization Committee, and relevant Chinese and Japanese representatives will attend. The seven factories being returned this time are:</p>
+<p>Factory Name Delegated Operator</p>
+<p>Hengfeng Textile (Shanghai) Dai Nippon Spinning</p>
+<p>Wing On Textile Factories No. 2 and No. 4 (Shanghai)</p>
+<p>Wing On Textile Factories No. 2 and No. 4 (Shanghai)</p>
+<p>Yufeng Textile</p>
+<p>Weicheng Silk Factory (Jiaxing) Kanebo</p>
+<p>Litai Textile Factory (Taicang) Naimaimen Spinning Mill</p>
+<p>Huafeng Paper Mill (Hangzhou) Matsukata Yansan</p>
+<p>Nanyang Brothers Tobacco (Shanghai)</p>
+<p>China Tobacco Company</p>
+<h3>Xujiahui Orphanage Thanks Japanese Donors</h3>
+<p>Gifts of Handicrafts Presented to Two Representatives</p>
+<p>Central News Agency, Shanghai: Representatives of sixteen Japanese groups visited the Xujiahui Catholic Seminary, orphanage, school, and other public institutions some days ago. At that time, Mr. Sun Changzhi of Nanjing Road and Chiyo Yoko Company donated a large sum of money to be used as expenses. The orphanage recently decided to express its gratitude by returning two boxes of handicrafts meticulously made by the orphans to the two gentlemen, and yesterday presented them to Lieutenant Colonel Yokoyama of the Military Press Department for distribution.</p>
+<h3>Residents Who Receive Flour Can Exchange It for Noodles</h3>
+<p>Shanghai Municipal Council Announcement: The use of rice coupons No. 13, which were used to purchase rice from the Council, expires on the 10th of this month. During the period from the 12th to the 19th of this month, rice shops and the Council's sales offices will only sell rice using coupon No. 14. At that time, the rice shop with the registered number marked on the coupon will sell one sheng of white rice and half a sheng of broken rice for a total price of 3.8 yuan for each coupon. At the same time, the coupon holder can purchase one and a half jin of flour for 3.4 yuan. Furthermore, the rice shops and the Council's rice sales offices will stop selling rice on the 20th of this month, but will continue to operate as usual on Sundays the 18th and subsequent Sundays (until further notice).</p>
+<p>In addition, according to an announcement from the Council's Information Office, the allocation of flour has been increased from one jin to one and a half jin per coupon. Those food consumers who do not have adequate cooking facilities to utilize this flour can sell the flour they receive to noodle shops or pancake and fried dough stick shops to exchange for noodles or pancakes. There is absolutely no difficulty in this.</p>
+<p>All distribution offices for rice purchase certificates in the Public Concession will be closed for six days from Monday, October 12th, to Sunday, October 21st.</p>
+<h3>From Tomorrow Onward, Local Goods Shipped by Boat Must Pay Dredging Tax</h3>
+<p>The Shanghai Customs Commissioner has received an order from the Inspector General of Customs that, starting from October 12th of this year, all local goods transported by boat from various locations to this port and from this port to various locations within the country must pay dredging tax.</p>
+<h3>Shanghai Municipal Council Announcement Reiterates Previous Order Banning the Lighting of Firecrackers</h3>
+<p>The Shanghai Municipal Council has recently issued Announcement No. 6117, stating that, in order to maintain the security of the Concession, the lighting of any kind of firecrackers or fireworks is prohibited. Violators will be arrested and prosecuted.</p>
+<h3>Tricycles Permitted in West Shanghai Starting Yesterday</h3>
+<p>It is reported that two tricycle companies in West Shanghai have each obtained licenses to operate 21 and 18 tricycles in West Shanghai. These tricycles began operating yesterday. These 30 licenses were obtained by the companies on Wednesday afternoon, and more will be issued in the near future.</p>
+<h3>Jiang Lusheng Passes Away</h3>
+<p>Mr. Jiang Lusheng, a gentleman from West Shanghai, was always enthusiastic about local charitable causes. He passed away from illness the day before yesterday. The coffin was sealed at his residence in Jiangjiatang, Caobao Road, the next day at noon. He was 65 years old. About a thousand relatives and friends who were Buddhist practitioners attended.</p>
+<h3>In the Future, If Citizens Need Documents to Leave the Country, They Can Obtain Travel Permits. The Office for Returning Home Permits is Closed.</h3>
+<p>Shanghai Municipal Council Information Office Announcement: Regarding the issuance of Returning Home Permits, the Council recently discussed this with the Japanese authorities. Given that Citizen Certificates and Residence Certificates have already been issued separately by the Council and various districts, the issuance of Returning Home Permits is no longer necessary. As a result, it has been decided to close all of the Council's visa offices from today onward. In the future, if Chinese residents need documents due to special circumstances, they can apply for travel permits from the Shanghai Japanese Army Bureau (former Special Service Department) at 1147 Rue Amiral Courbet (Xiwei Road) according to the previous procedures. From January 30th to October 8th of this year, the Council's various visa offices issued a total of 502,149 Returning Home Permits.</p>
+<h2>Page 7</h2>
+<h3>Baojia Expanded Publicity Week Held a Music Concert Yesterday</h3>
+<p>The Baojia Self-Defense Corps Music Concert was held solemnly at 10 a.m. on the 9th. Those present included Mr. Yuan, Deputy Chairman of the Shanghai Municipal Council, Mr. Lüdeng, Mr. Yokoyama, Director of the Military Press Department, Mr. Watanabe, Police Inspector General of the Shanghai Municipal Council, Mr. Shigeda, Director of the Baojia Guidance Department, Mr. Matsuma, official in charge of legal affairs, Mr. Wang Boyuan, Vice Chairman of the Shanghai Baojia Guidance Committee, Mr. Chen Jiufeng, Mr. Cheng Zhiliang, Mr. Xu Xiangsheng, Mr. Liang Renzheng, Mr. Tan Huanxiang from the Secretariat Department, Mr. Xie Baosheng, Chief of the General Joint Defense, and other guests, totaling about 3,000 people. Mr. Cheng Zhiliang served as the master of ceremonies, Mr. Tan Huanxiang as the recorder, and the formalities were performed according to etiquette. The entire audience sang the national anthem, and the Shanghai Municipal Council Police Band played music, followed by "Military March." Then, Mr. Yuan, Deputy Chairman of the Shanghai Municipal Council, delivered an opening speech, and Mr. Yokoyama, Director of the Military Press Department, and Mr. Watanabe, Police Inspector General, also gave speeches. After the speeches, the winners of the Baojia song and Self-Defense Corps song competitions were announced and awarded prizes. The Self-Defense Corps song was written and composed by Gao Daqi, and the Baojia song was written by Zhou Yiliu and composed by Chen He. Then, the Baojia song and Self-Defense Corps song were sung, led by Miss Hu Meifang and Mr. Chen Su. The Chinese Construction Youth Corps and all the guests sang together. Finally, Philippine music was played, conducted by Run Si, and Chinese music was played, conducted by Chen He. The program included (1) Romance (2) Autumn Memories (3) Manchurian Girl (4) China Night, all sung by Miss Hu Meifang. The concert ended at 12:30 p.m.</p>
+<p>Fundraising Entertainment</p>
+<p>The association has also scheduled fundraising entertainment programs starting on the 11th at the Damei Radio Station to raise funds for the Baojia. The programs include Peking Opera on the 11th, Yue Opera and comedy on the 12th, and Shanghai Opera and storytelling on the 13th. However, the charity football match originally scheduled for the 11th has been postponed due to insufficient preparation.</p>
+<p>Organization of the Youth Department</p>
+<p>The Public Concession Baojia Administration has initiated the establishment of a Youth Department of the Baojia Self-Defense Corps. After several meetings by relevant parties and two months of research and progress, a general agreement has been reached in principle, and the organization work of the Youth Department Headquarters is being accelerated. It is expected that the establishment can be announced quickly after the completion of the Baojia Expanded Publicity Week. It is said that the Youth Department of the Self-Defense Corps is entirely composed of Self-Defense Corps members aged from 16 to 30. However, Baojia personnel and others with lofty aspirations can also request to join as members of the Youth Department. All work of the Youth Department is directly guided by the Shanghai Municipal Council Police Inspector General. The Police Inspector General also has the power to appoint and dismiss the cadres of the Youth Department Headquarters. The economic affairs of the Youth Department are the responsibility of the Baojia Guidance Department.</p>
+<h3>Charity Bazaar and Dance Party</h3>
+<p>A charity bazaar and dance party will be held on October 24th and 25th in the ballroom on the ninth floor of the Cathay Hotel. The 25th is specifically for Chinese people, hence the name "China Night," and the 24th is for people from all walks of life, named "International Night." Due to the grand scale, the Cathay Hotel has agreed to remove a wall in the ballroom, which can accommodate at least 1,500 guests. It is heard that many tickets for tea dances and dinner dances have been sold. The women's group of the organizing committee convened a meeting, chaired by Mrs. Pan Da, to discuss everything to assist in the process. It was resolved that the women's group would be responsible for decorations, raffles, and collecting rare items for the bazaar, as well as inviting film stars and socialites to dance. Donations to the organizing committee office (Room 653, Hamilton House, telephone 13926) have been continuous, totaling nearly 60,000 yuan.</p>
+<h3>Flour Purchase Certificates to Be Issued</h3>
+<p>According to a Datong News Agency reporter who inquired with the Shanghai Municipal Council's Grain Management Committee, flour purchase certificates will be distributed on the 22nd. Their form is similar to rice purchase certificates. The only difference is that the words "Buy Rice Certificate" are written on the right side of the certificate, while the words "Buy Flour Certificate" are written on the left. Residents can obtain flour purchase certificates using the same method as obtaining rice purchase certificates. If a resident moves from District A to District B, a written notification is required, and the Baojia chief of the resident's district will certify and stamp it, then the resident can apply to the rice purchase certificate issuing office to receive the certificate.</p>
+<h3>Butterfly Flower Shop Opens</h3>
+<p>The new building of Butterfly Flower Shop at 990 Avenue Joffre inside the Hongqiao Sanitarium is now opening. The flower baskets, flower balls, flower screens, and flower wreaths are exquisitely designed and fully equipped. All kinds of flower arrangements are also available at reasonable prices. The flower arrangement service delivered every four days is particularly economical and convenient.</p>
+<h3>News in Brief from All Walks of Life</h3>
+<p>Zhang-Xu Wedding The Shanghai Municipal Council's Chinese Director Zhang Deqin will hold a wedding ceremony today for his eldest son, Enqing, and Miss Ai Shangjie, the second daughter of Mr. Xu Tongpei, at the Pudong Native Place Association Hall. Mr. Yuan Lüdeng is invited to officiate the wedding. Starting at 10 a.m., famous Peking Opera performers such as You Jusun will perform Peking Opera to offer congratulations. There is sure to be a grand occasion.</p>
+<p>Opening of Da Hu Food Company</p>
+<p>Da Hu Food Company, known for its sea slug dishes, is located on the east side of the Yangtze Hotel on the Third Road. The expansion has been completed and will officially open at 2 p.m. today. It is heard that Ms. Sun Jinglu and Ms. Lan Lan will cut the ribbon at the opening ceremony.</p>
+<p>Yuan Fenghang Opens Today Yuan Fenghang, a southern goods store located at 253 Yuyuan Road, across from the Paramount Ballroom, was founded by Wang Chengchang, Du Gongbiao, and other rising stars in the southern goods industry. It opens today. All goods are specially discounted and sold at long-term low prices. Telephone purchase: 23642.</p>
+<p>Yesterday, this newspaper's broadcast time was 6:40 p.m.</p>
+<p>Sports News</p>
+<h3>Today's National Day Sino-Western Football Match: Donghua vs. Sokwell, at 4 p.m. at Donghua Stadium</h3>
+<p>Sino-Western Football Friendly Match: Donghua Club is scheduled to play against Sokwell at 4 p.m. today, Double Tenth Festival, at its stadium at the intersection of Route Lafayette and Rue Guichou. Donghua is re-participating in the Western Football League's A Group competition this year. In order to prepare for the competition, it has played against St. Francis three times, resulting in two draws and one win. After that, it played against the Western League team, resulting in a 1-1 tie. Its strength and prestige are no different from before. Today's match against the strong Western team Sokwell is sure to be extremely exciting. Admission is free, and all are welcome to visit. Today's Donghua lineup is as follows:</p>
+<p>Zhang Banglun, Li Ning, Zhuang Youren, Zhou Guangzhong, Han Longhai, Wang Xisheng, Liu Zuru, Liang Shutang, Zai Linjing, Jia Youliang, Zhang Mingsheng</p>
+<p>(Reserves) Zhang Zhaopeng, Cao Qinfang, Shu Shigeng, Pan Honghai</p>
+<h3>Hezhong Cup Small-Sided Football Tournament Opens Today at Tongle</h3>
+<p>The Hezhong Cup small-sided football league, organized by the Hezhong Air Conditioning Engineering Company Sports Association, with 56 teams participating and divided into seven groups, opens today at 2 p.m. at Tongle Stadium on West Aihamus Road. Mr. Xie Junru is invited to kick off the match. Tickets are not sold. The schedule is as follows:</p>
+<p>W Team — Qinchang (Joint) 2:00 p.m.</p>
+<p>Huijin — Tianguan (Cheng) 3:00 p.m.</p>
+<p>Gulang — Xixi (Public) 4:00 p.m.</p>
+<p>Samsung — Hezhong (Table) 5:00 p.m.</p>
+<p>Business News</p>
+<h3>Wing On Textile Shares</h3>
+<p>Soared by 270 yuan in one day, reaching a high price of 1,860 yuan.</p>
+<p>Yesterday, the market conditions for Chinese stocks continued to improve. People from all walks of life were concerned, and the sentiment was mostly positive. The main reason was that Wing On Textile suddenly announced the return of the factory and other dual benefits, and investment news suddenly showed a state of demand exceeding supply. The price flew from 1,560 yuan to a high of 1,860 yuan, a huge increase of 270 yuan compared to the previous day. This stirred up the buying momentum of various stocks. Dasheng No. 1 and No. 3 factories also rose in the buying momentum. Small-denomination stocks such as Dachung and Hongsheng also rose to 12 yuan. The former closed at 11.5 yuan, up 2.5 jiao, and the latter closed at 11.75, up 2.5 jiao. Fuchang Dyeing and Weaving was slightly lower by 2.5 jiao, with the final price at 17.25. Shanghai Woolen was lower by 5 jiao, with the price at 20 yuan. Ningbo Weaving was weak and listless. Among the new stocks, Anda Shirts was still at 25 yuan, and Underwear was at 33 yuan, a rebound of 5 jiao. The department store industry rose unanimously. Wing On Company had already broken through 120 yuan, with the highest price at 122 yuan, up 3 yuan. Xinxin was at 118.5 yuan, and Chinese Goods was at 114, each up 1 jiao. Culture stocks closed down again by 1 yuan at 73 yuan, which is due to the recent dramatic rise being too high and a lack of buyers. Yongxiang Printing was still at 16 yuan, Commercial Press was around 310 yuan, and China Bookstore was at 115 yuan, each up 5 yuan. The new pharmaceutical industry, Xinya Pharmaceutical Factory, saw a small pullback of 5 jiao to 46.5 yuan due to the soaring price of 2 yuan the previous day and high selling activity. Sino-French rose from 82 yuan to 84.5 yuan, up 2 yuan. Minyi traded at 65.5 yuan, up 5 jiao. The rare Five Continents was at 310 yuan, and the Western Four Continents was at 425 yuan, both being the final prices. Xinya Materials was at 17 yuan. In the utilities sector, Zhabei Water and Electricity was around 37 yuan, up 2.5 jiao. Chinese Electric was at 31.5 yuan, up 7.5 jiao. Nanyang Tobacco fell 1 jiao to 108.5 yuan. Huacheng saw a high price of 250 yuan. Great China Match rose to 203 yuan, but then fell back to 202 yuan, up 2 yuan. Xiong's Cans was at 95 yuan with demand exceeding supply. Other stocks also made upward progress. Trading was not rare. Today is the Double Tenth holiday. The stock market report is recorded below:</p>
+<p>Category Highest Lowest</p>
+<p>Wing On Textile 1860.00 1500.00</p>
+<p>Fuchang Dyeing and Weaving 17.50 17.00</p>
+<p>Xinfeng Dyeing and Weaving 23.75 23.25</p>
+<p>Shanghai Cotton Weaving 14.50 13.50</p>
+<p>Hongsheng Weaving 12.00 2.00</p>
+<p>Great China Weaving 12.00 2.25</p>
+<p>Dasheng No. 1 Factory 205.00 200.00</p>
+<p>Dasheng No. 3 Factory 240.00 237.50</p>
+<p>Chinese Underwear 23.25 32.00</p>
+<p>Wing On Company 23.00 26.00</p>
+<p>Xinxin Company 30.00 27.00</p>
+<p>China Bookstore 220.00 30.00</p>
+<p>World Bookstore 74.00 71.00</p>
+<p>Huacheng Tobacco 250.00</p>
+<p>Nanyang Tobacco 20.00 106.00</p>
+<p>Zhabei Water and Electricity 27.50 36.50</p>
+<p>Great China Matches 105.00 200.00</p>
+<p>Xinya Pharmaceutical Factory 47.50 46.00</p>
+<p>Sino-French Pharmacy 85.00 80.00</p>
+<p>Sino-British Pharmacy 250.00</p>
+<p>Kangyuan Cans 95.00</p>
+<h3>Government Bonds Broke Through the 60 Yuan Barrier</h3>
+<p>The over-the-counter market conditions for government bonds were once again prosperous, rising sharply and continuously. The prices of the five types of government bonds all broke through the 60 yuan mark, reaching new highs. All previous concepts of 20% off have disappeared. The so-called limit price of 45 yuan is now known to be a kind of smokescreen. The actual reason is mostly speculation by floating capital, and a small number of short positions. Now that it has been squeezed, it is feared that the momentum will be unstoppable. The harm of the flooding of floating capital is so great. Today, it is concentrated in government bonds, and the price of government bonds has skyrocketed. If it shifts to other areas in the future, it is feared that there will be similar dramatic consequences. At the beginning of trading, all bonds except Type A were within the 60 yuan range. In less than ten minutes, they all broke through the 60 yuan barrier. The buyers were buying in every way possible, and those covering short positions added to the momentum, which was like adding fuel to the fire and meeting a strong wind. The highest price for Type C was 64 yuan, and the last price was 63.6 yuan. Type A had a high price of 62.5 yuan. Type B also had a high price of 61.5 yuan. Type D also had a high price of 61.05 yuan. Type E also had a high price of 61.2 yuan, an increase of 2.4 yuan to 3.9 yuan. The transaction volume was approximately 3 million yuan. Today is the Double Tenth holiday, and there will be no trading today.</p>
+<h3>Retail Sugar Sales are Restricted</h3>
+<p>Recently, retail sugar sales in various southern goods stores have been restricted, causing inconvenience to the general public. Many people consider sugar to be an essential food item for us, so they went to the Sugar Merchants Cooperative Business Office to inquire about the situation. According to Mr. Jin Yan Shen Xing, the sugar currently in stock is abundant and sufficient to be allocated to the general public for a long time, so there seems to be no need to panic. However, recently, a small number of Type B retailers have not restricted the quantity sold at the door. Therefore, the information heard is recorded and announced to the public.</p>
+<h3>Piece Goods Exhibit Strong Upward Pressure</h3>
+<p>Factory Cloth</p>
+<p>Yesterday's cloth market was unusually quiet in terms of actual sales, but industry insiders remained firm, as the cost of raw materials, although under heavy pressure, was still more likely to rise than fall. 16-pound Earth brand coarse cloth was 190 yuan, Flying Swan 181.5 yuan, 5-pound New Character 110.5 yuan, 8-pound Zhenzhong 107.5 yuan, 12-pound Earth brand fine cloth 160 yuan, Dapeng Single 160 yuan, Fugui 55 yuan, Bank Single 151 yuan, Fugui Fine Twill 141 yuan, Chick Linin 243 yuan, Qin Meiren Yuan Cloth 137 yuan, Three Sheep Serge 5.5 yuan. There were few changes.</p>
+<p>East Cloth</p>
+<p>The market was slightly up. 12-pound Longtou Fine Cloth Bank Single opened at 159.25 yuan, fell slightly to 158.75 yuan, and then rose again to 159.25 yuan. Demand exceeded supply, and the asking price was 159.5 yuan, an increase of 0.5 yuan. There was very little trading of Xinxin Single Longtou, and the asking price was still 168 yuan. Caiqiu Fine Cloth was 158.25 yuan, Ping 156.5 yuan, Yang Su 155 yuan, Trumpet Child 154.5 yuan, Five Blessings 153.5 yuan, up 2.5 jiao to 5 jiao. The closing price of Four Gentlemen Serge Red Single was 6.91 yuan, up 1 fen, and the situation turned firm.</p>
+<h3>Beans and Bean Cakes Saw Some Trading</h3>
+<p>The bean market saw thin trading but firm prices. 20 bags of Chongming Sandworm were priced at 265 yuan.</p>
+<p>There was quite a bit of activity in the bean cake market, and the market was firm. A thousand sheets of Shengji bean cake for October delivery were priced at 70 yuan. Two cars of Yuanlong bean cake were priced at 68 to 69 yuan. One car of Feizi bean cake was priced at 69 yuan.</p>
+<h2>Page 8</h2>
+<p>Entertainment World</p>
+<h3>Veteran Actor Bao Jixiang</h3>
+<p>— Tuo Gong</p>
+<p>The apprentice takes the stage, and the teacher takes charge. In the past, Yu Shuyan had Li Shaochun in Peiping, and Wang Yaoqing had Wang Yulao in Shanghai. It is well known that Bao Jixiang, Yu Shuyan was the chief of the male roles, and Wang Yaoqing was the master of all female roles. This time, Bao Jixiang is supporting Li Zongyi, and many Shanghainese may find Bao Jixiang unfamiliar, so let me introduce him.</p>
+<p>Bao Jixiang is a disciple of Wu Liankui (both he and Yu Shuyan were Wu's students). He is skilled in the second male lead role, and his performances are always in accordance with the rules. He never takes the stage with the kind of desperate energy that is common among second male leads in recent years, but when he performs vividly, he also earns the praise of the audience. Yang Xiaolou wanted him to play supporting roles, such as Jia Xu in "Fighting Wan Cheng" and Ru Biao in "Luoma Lake." Bai Dai has a record of this, and those who have heard and seen his performance know the results. Yu Shuyan wanted him to play even more supporting roles, such as Chen Ping in "Stealing Zongjuan," Gongsun Chujiu in "Searching for the Orphan," Liulang in "Visiting Mother," Yan Yan in "Dingjun Mountain," and Wang Ping in "Empty City Strategy." It seemed that only Bao could be worthy of the role. Mei Lanfang wanted him to play the role of Lan Pao in the record "Yutang Chun." Everyone has probably heard it, but who has paid attention to the ad-libbed lines in the singing? He is able to say them calmly in the short huqin interlude, which shows his skill.</p>
+<p>He can be said to have a broad knowledge of old male roles, not to mention the old tunes. Therefore, after Meng Xiaodong became Yu's apprentice, she also became his student. He has taken in many apprentices in recent years, such as Yang Baosen, etc. Meng became his student because of his well mannered acting. But why aren't Yu's acting also well mannered? Let's discuss it in another article.</p>
+<p>His real name is Fenglin. He is more than sixty years old, with a thin figure and gray hair. If you didn't know that he was a veteran actor, you would definitely say that he was a teacher. He is calm and never rushes when talking about opera. He is a patient and kind mentor. It can be said that Li Zongyi made the right choice by becoming his student. Li was a Tianjin amateur performer. A few years ago, I heard him perform in Tianjin when his voice was not good and he was learning Ma Lianliang's style. Now I hear that his voice is very strong and resonant. I hope he will study hard with this teacher and get rid of the Ma accent so that he can become a famous actor.</p>
+<h3>Li Zongyi and Li Yuzhi Combined Review</h3>
+<p>— Plum Blossom Hall Owner</p>
+<p>Before Li Zongyi and Li Yuzhi came to Shanghai, all those who cared about drama were worried about New Stage, thinking that at a time when various theaters were competing to invite famous actors, New Stage actually came up with two not-so-famous actors. Compared with each other, it was difficult to compare with other theaters in terms of seat sales. Who knew that the facts were not so bad? When the two Lis performed "Silang Visits His Mother" on the first night, one was full of energy and graceful, and the other was charming and colorful. From the start to the return, the two male and female characters matched each other particularly well. Not only were the long singing passages captivating, but even the most ordinary small movements actually won applause from the entire audience. Everyone said that the names of the two Lis were not well-known, but their performances were above par. Such word-of-mouth spread, and the sales for the second day and after were indeed extraordinarily popular.</p>
+<p>Regarding the plays of the two Lis, I have seen more of Zongyi's performances, including "Empty City Strategy," "Wang Dingzhi Releases Cao," "Protecting the Country," "Two Entries to the Palace," "Sangyuan Hui," "Pearl Curtain Village," "Li Ling Stele," "Beating the Drum and Scolding Cao," "Heroes' Gathering," and "Clean Official Record." I have seen more of Yuzhi's performances. In addition to the duet plays performed by the male and female roles, I have also heard many of her solo masterpieces, such as "Female Escort," "Yutang Chun," "Spring and Autumn Match," "Satisfied Marriage," "Nengren Temple," "Yuelaidian," and "Mother and Daughter Meeting." Zongyi was born with a good voice, both bright and clear. Apart from Song Xian and Luo Kan, it is difficult to find a second one who can be compared to him in the old male role. After being instructed by the veteran actor Bao Jixiang, his attainments are naturally very methodical. His drumming in "Scolding Cao" is also quite pure and very fancy. It is rare for an amateur performer to have such achievements.</p>
+<p>Yuzhi's acting is proficient in both the female lead and the female supporting roles. Her singing and acting are quite similar to those of Cheng Yanqiu. Her water sleeves are beautiful, and her skills are especially evident in the patterns. Her female lead roles, such as "Wujiapo," "Sangyuan Hui," "Mother and Daughter Meeting," "Protecting the Country," and "Two Entries to the Palace," do have considerable training. Her voice is high and low, and she is able to control her tune above 6.5. In "Entry to the Palace," she is even able to compete with Li Zongyi and Jin Shaochen, which is truly not easy. Her female supporting roles are even more exquisite and lively, with her eyes full of the play's emotions. Her demeanor in "Nengren Temple" completely imitates that of Xun Huisheng when she acted as a matchmaker for An and Zhang. Her expressions and voices can be said to be beautiful to the extreme, and it can also be said that she is as vivid as Cuihua and Xiaoliuxiu. When Li Duokui first came, her voice was slightly dry, but in the past few days, it has become very smooth. On the evening of the 7th, her performance of "Fishing for the Golden Turtle" was full of energy and ease, and she was truly able to give the audience a pleasant experience.</p>
+<h3>Entertainment News</h3>
+<p>— Li Lai</p>
+<p>In the play directed by Zhu Shilin at Bo Ai Theatre, Gu Yelu frequently hit his head with both fists. It is said that this is Zhu Shilin's own habitual action.</p>
+<p>Xia Xia's appearance on stage at Li Hua Theatre is only for a one-month engagement at the Women's Hospital, with a salary of two thousand yuan.</p>
+<p>The multi-husband reality drama, scripted by A Na, is already being previewed at the Li Hua Grand Theatre. This play has been rehearsed many times but has consistently failed to debut, much like what's happening at the Women’s Hospital.</p>
+<p>It is said that Fang Peilin has been crowned the authority on song and dance films. His new film is "The Fairy Ling Bo".</p>
+<p>Lu Luming's fan, while playing the young mistress at the Lyceum Theatre, is based on Tang Ruoqing's example of donating 20% for disaster relief.</p>
+<p>Yan Jun's Mandarin has a spicy and crisp charm. Tu Guangqi has already considered him for the role of Mei Niang's husband in the Mei Niang song.</p>
+<p>Han Fei, He Bin, Shangguan Yunzhu, etc., have safely arrived in Tianjin. Their first play is "After殉情". They will then depart from Beiping and return home after half a year.</p>
+<p>Introducing the Bi-monthly Drama: Edited by the host of Mei Hua Guan, the new book "Bi-monthly Drama" issue 5 of volume 14 has already been published. The content is even more substantial. The opposite page features a three-color lithograph of Wu Suqiu and Mei Yu performing together, with calligraphy by the famous painter Ms. Wu Qingxia. There are ten or so sketches, including portraits of Wu Suqiu, Li Duokui, Li Huifang, and various wedding photos of Wang Xichun and Jin Suwen. There are more than twenty articles, written by well-known figures from all over the country. Published and distributed by Bi-monthly Drama Publishing House, No. 434, Lane 4, Jin Shenfu Road (Editor).</p>
+<h3>Riding the Storm Together</h3>
+<p>— He Jia Zhi</p>
+<p>(10) Flying Peak</p>
+<p>Huang Long slapped his chest and said, "Why should we be afraid of them? Even if there are a hundred people outside the door, we'll just treat them like a hundred ghosts. Do people fear ghosts?" Cui Zhen, whose courage had been broken by fear, was invigorated by Huang Long's words. She put her feet on the ground and wanted to leave this place of work with Huang Long immediately. However, as soon as she stood up, her body swayed and she almost fell. Huang Long said, "I'm late. You must have suffered." As he spoke, he leaned toward Cui Zhen and squatted down halfway, patting her shoulders. Cui Zhen understood what he meant. At this moment, what was the point of avoiding suspicion? Without hesitation, she leaned on him and said in her mouth, "I can't afford you." Huang Long felt some weight on his body, and two slender hands came around his neck from left to right. Knowing that Cui Zhen was leaning on him, he stood up, turned his face to look at Wei Shaoyun, who was lying on the ground with his eyes closed, only exhaling and not inhaling. He then went to the door, muttering to himself, "Should I go back to where I came from?" He retreated two steps, turned his body to the left, pulled out a shiny, less than a foot-long dagger from his stocking, transferred it from his left hand to his right, aimed it at Wei Shaoyun's face, and stabbed.</p>
+<p>Cui Zhen was not a ruthless killer after all. When she saw Huang Long's knife leave his hand, she couldn't help but cry out, "Ah!" But the knife, as if growing longer, stuck in the floor tile, only a fraction of an inch away from Wei Shaoyun's left ear. Due to the weight being heavier on top and lighter on the bottom, the blade swayed uncertainly in the lamplight. At this moment, someone outside the room suddenly spoke, "Young Master Wei, how are you now? Is everything different from before? Answer me one sentence so I can tell them. They said they would only start eating the spiced duck after receiving Young Master Wei's true news." Huang Long took a step forward and blew out the lamp with a "puff" sound. He muttered indistinctly, using the sounds in his mouth and nasal cavity to answer the question from outside the room. The person outside the room was easily dealt with. After Huang Long made that sound, he went out to report. Huang Long groped in the darkness and went to the back window, opened it, and the northwest wind came in with a wail. He and Cui Zhen went out against the wind. (199)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.10.09.html", "next": "1942.10.11.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

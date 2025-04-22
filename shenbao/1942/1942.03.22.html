@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.22 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 423 - 4924426</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>羅斯福總統宣稱　決予澳極大援助　澳將設最高作戰會議由麥克沃塞擔任主席</h3>
+<p>華盛頓二十一日路透電　陸軍部昨晨宣布、菲列賓方面沉寂無戰事、美國陸軍軍官隨同麥克沃塞將軍赴澳洲者共有十四人、此外、據羅斯福總統告各報記者、關於麥克沃塞將軍在澳作戰計畫、凡可爲者無不爲之、惟須注意美澳之間相距甚遠、自美國運輸至澳須時甚久、叉况全世界對於船隻、甚感缺乏、</p>
+<p>華盛頓二十日哈瓦斯社電　羅斯福總統頃向報界發表談話稱、「吾人將竭盡所能、以極大援助、畀予麥克沃塞將軍及澳洲人民與美國遠征部隊、但戰爭發生於距美國千里之外、而運輸軍需品及彈藥前往菲列濱及澳洲、接濟軍隊、又復缺乏船隻、此則爲吾人所不能或忘者耳、美國擁有大批技術工人、從事軍備生產工作、但如何始能將此項技術工人用於最善之途、則必須加以確定、關於此層政府或將發表命令、動員全國工人、」</p>
+<p>西貢二十一日海通社電　康白拉咋夜來電稱、關於設立澳洲戰區協約國最高作戰會議之決定、不久或可宣布、該會將由太平洋協約軍總司令麥克沃塞將軍任主席、而協約國空軍司令白賴特中將、澳洲區協約國海軍司令李海海軍中將亦將加入會議、昨日澳洲陸相福特曾召集美澳高級軍人談話、商討澳洲區作戰事宜、及設立澳洲最高作戰會議等問題、</p>
+<p>墨爾缽二十一日路透社電　西南太平洋方面最高司令麥克沃塞將軍定於今口蒞此、軍政當局已準備歡迎、</p>
+<p>墨爾缽廿一日路社電　奧紐區盟軍總司令麥克沃塞將軍於今晨九持五十五分在羣衆歡呼聲中抵墨爾缽、</p>
+<p>瑞典京城廿一日海通社電　麥克沃塞將軍本日抵達墨爾缽、發表廣播演說稱、將軍不能無中生有、猶巧婦不能爲無米之炊、今後作戰之成敗何如、須視各國政府供給之資源如何而定、余信兵士及軍需之供給、可不負所望、無論如何、本人必盡其所長、保持兵士之信心云、</p>
+<p>康白拉二十日哈瓦斯社電　頃據此問官方宣稱、麥克沃塞將軍就任澳洲協約國聯軍總司令之後、澳軍總司令部行將移交其大部份職司、而成爲一種行政機關、又聯軍副司令勃萊特將軍本日亦已乘坐飛機抵此、曾與內閣總理寇丁及航空部長達克福特會唔、歷一小時之久、事後即遄返聯軍總司令部、</p>
+<p>瑞典京城二十一日海通社電　據墨爾缽消息、澳陸相福特昨夜演說稱、此後澳洲僅可由美國獲得軍火、澳洲所最需要老爲轟炸機及高射砲、英國現已無法援助澳洲、</p>
+<p>西二十一日海通社電　據康白拉消息、澳洲徵兵總監懷特福德巳任澳洲美軍與澳軍之聯絡軍官、</p>
+<p>倫敦二十日哈瓦斯社電　澳洲聯邦駐英特使貝治爵士頃談稱、聯軍欲獲勝利、必須將需要之供應品先期運到、決不可延至戰敗之後、始行運到、截至目下爲止、吾人固始終病於接濟太遲、今後爲爭取勝利起見、務當襲擊對方供養根據地、並控制海洋、此外、並須努力改進航運、</p>
+<p>墨爾缽二十日路透社電　澳陸軍部長福特於視察美陸軍兵營以後聲稱、余所見及之兵營效能才高、使余獲得深刻印象、吾人獲悉、彼等到達澳洲後、內心極感安定、</p>
+<h3>日蘇簽訂協定　漁約展長一年</h3>
+<p>倫敦二十一日路透社電　據莫斯科無綫雷臺昨夜宣佈、日本與蘇聯已在庫壁希夫簽訂協定、展長兩國現行漁約、</p>
+<p>斯丹埠二十一日海通社電　昨晚庫壁希夫官方宜稱、蘇聯外交副委員長維辛斯基昨在庫壁希夫與日本駐蘇大使建川簽訂草約、延長一九二八年之日蘇漁業條約至一九四二年、同時雙方舉行換文、，該約簽訂於一九二八年後即延長至一九一三六年、以後一再延展、因新漁業條約之簽訂、始終尙未實現、最近在庫壁希夫雙方決定再延長一年、其條款如下、</p>
+<p>日本政府同意日本漁業公司禁止在十九漁區中之五區捕魚、　日本政府同意所有日本漁業公司當付百分之二十之附加稅、此項附加稅加於所有之一切捐稅上、此外尙有一九三九年四月二日所規定徵收百分之十之租借稅、則將來仍須照付、　日本政府宜言準備以金塊或金條償付外滙與蘇聯國家銀行、　日本政府同意日本漁業公司更付百分之四之附加費、以爲運輸金塊之費用、</p>
+<h3>傳緬境華軍與日接觸　泰北部亦有戰事</h3>
+<p>倫敦二十一日合衆社電　遠東訊、英軍自仰光以西五十哩之沙拉瓦第撤守以後、日軍進攻瓜城、似已迫眉隨、日軍將以兩路同時進攻、一路開西湯河而上、趨東瓜英軍陣地、一路沿伊洛瓦嶼江流域向是羅姆進攻、傳華軍之先頭部隊已在西湯河陣綫與日接觸、</p>
+<p>西貢二十一日海通社電　英軍司令部昨晚宣稱、緬甸西登河區域之英軍繼續後退、並已扼守新陣地、</p>
+<p>臘戍二十一日電庇古以北日步騎聯合兵一部、於十九日晨向良列賓附近進攻、與華入緬部隊接觸、泰國北部日一部、於六日在八奇等地、向彭沂陳（景東西）進攻、至九日拂曉續有戰事、</p>
+<h3>中印緬境內　並無美軍</h3>
+<p>華盛頓二十一日路透社電　外傳中國第五第六兩軍司令史蒂威爾中將、統率中國印度及緬甸境內美國軍之說、已由此間加以否認、實則中印緬三處並無美國一兵一卒、</p>
+<h3>美國飛機　炸沉一艦</h3>
+<p>華盛頓廿一日路透電　空部司令部公報稱、昨日我轟炸機羣對在某處海面實施襲擊、有重巡洋艦一艘起火沉沒、</p>
+<h3>日方宣布修改　國際海戰法規　並已同知關係各國</h3>
+<p>東京二十一日同盟電　日本海軍省鑒於英美屢有違反國際公法經由中立國轉吿各敵國、修改海戰法十項如下、　所有船隻、凡懸敵國旗或由敵國政府准許航行者、概作敵船論、　所有船隻、凡不能證明有權懸掛日本或其同盟國或中立國旗者、或其船主仇視日本者、或爲敵國或仇視日本各國利甩者、共貨物目的地如在封鎖區域各港、概須被沒收、　違禁品淸單範圍須予擴大、即所有物品凡足資敵者、槪作違禁品論、　在中立國船上所可拘捕之俘虜範圍、亦當予以擴大、　在指定區域內、無錢電之收發、概予禁止、　船隻航行由敵機掩護者、應如何處置、另行規定之、　船隻被截留後、所有搭客如何待遇、另行規定之、　所有截獲船隻、得押往港口受檢查、　被截獲船隻所載貨物檢查手續、由艦長決定之、　襲擊艦長無須說明其所屬之各艦番號、亦無須說明其準備攔截或檢查之船隻、</p>
+<h3>印各領袖準備與英　商討合作問題　英璽相在開羅小作勾留正與軍事當局會商一切</h3>
+<p>倫敦二十一日路透社電　英國掌　大臣克里普斯、已於星期四午後、乘飛機到開羅、昨晨曾在英國駐埃及大使館、與中東軍總司令歐慶勒克將軍地中海艦隊司令克寗漢上將及英國駐埃及大使藍普森舉行會議、克里普斯並擬在此勾留數日、然後赴新德里、會見印度各黨各派領袖、</p>
+<p>斯丹埠二十一日海通社電　帝國副參謀長尼限少將、業已抵達開羅、渠將與英國掌　大臣克里浦斯商議一切、</p>
+<p>新德里二十日路透社電　據傳截至目前止、當局發出請柬、邀與克里浦斯相晤者、爲三主要政治團體及各界領袖七人、該三團體爲國民大會·回敎同盟·及印度大乘會、該七人則爲薩泊魯·查署加·法資魯哈·阿拉布·安貝德卡爾·麥克拉查·及諾卓希、國民大會及回敎同盟得各擇代表六人、大乘會擇代表三人、暫定之會晤日期、三團體代表爲三月二十五日、各界領袖爲三月二十六日、可資注意之事實、即此次請柬均係按照克里浦斯之請求而發、將來當彼認爲適宜時、可再予擴充、據傳各省省長若干人於本週內前來新德里、或係鑒於克氏之到達、先與總督舉行磋商、瑪德拉斯　買·孟加拉·旁遮普等省長亦將來此、</p>
+<p>新德里廿日路透社電　據此間傳稱、當局已發出請柬、邀王公會議總理與克里浦斯相晤、</p>
+<p>龐那二十一日路透社電　印度自由黨領袖沙斯特利、今日發表言論、籲請行將與克里浦斯爵士會商之印度各黨派領袖與王公、放棄「英政府未能尤准之極端要求」、略謂、「妥協之舉、非特必須、且於諸君乃光榮之事、此非讓步，但係對母國之主權需要讓步、諸君其負此責、而予以確切之保證、信從諸君者必樂予忠誠之襄助云、按沙斯特利係前任印政府駐南非代表、</p>
+<p>美代表團即將赴印</p>
+<p>華盛頓二十一日路透社電　美國駐印度代表團長約翰遜、昨日謁見羅斯福總統、面受最後訓令、約翰遜定於日內啟程赴新德里、</p>
+<h3>阿拉斯加築公路　軍略上頗重要　並擬在北極開航空綫</h3>
+<p>瑞典京城二十一日海通社電　泰晤士報稱、其起點在亞爾培泰西疆和平河上游距美洲西海岸六百公里之聖約翰港、然後西北行經納爾遜砲台、再折向西行、至勒維斯河之華特遜及白馬城、然後再沿烏公河、直達阿拉斯加邊界而至范朋克城爲止、此綫母庸經過崇高之洛磯脈、沿途均爲一帶美麗之處女平原、在加拿大之一段、沿途各站皆爲加拿大政府航空錢所經之各站、故可使陸空兩方面之重要、均有增加、此外美蘇直達航空計劃、亦在積極籌劃、現自舊金山至莫斯科之航程長一萬五千公里、如能往北極飛行、則航程可大爲縮短、</p>
+<h3>美東海岸　防空演習　實施燈火管制</h3>
+<p>紐約廿一日哈瓦斯社電　大西洋岸一帶、昨夜演習燈火管制、參加者有十五區之多、規模之大、實乃開戰以來所未有、演習時有消極防空隊員五千人在各處站崗、消極防空總指揮即紐約市長賴加第亞、乘車出巡、車燈未滅、曾被防空隊員攔住、飭令車夫熄燈、然後放行、</p>
+<h3>英駐蘇新大使　抵莫斯科</h3>
+<p>莫斯科二十一日路透社電　英駐蘇大使寇爾、今日自庫壁希夫乘機抵此、以便呈遞國書、並訪晤外委長莫洛托夫、</p>
+<h3>巴庫附近　發現新油田</h3>
+<p>外高加索巴庫二十日哈瓦斯社電　巴庫附近發現豐富新油田、</p>
+<h3>英國軍費浩大　已耗去九十七萬萬鎊</h3>
+<p>倫敦二十一日路透社電　關於英國軍費、財務大臣胡特昨宣稱、英國在上次世界大戰中、共費九十五萬萬三千萬鎊、在此次世界大戰中、每日費一千二百五十萬鎊、截至上月底止、已費九十七萬萬一千萬鎊、較之上次大戰四年軍費、已超過一萬萬八千萬鎊矣、</p>
+<h3>美全部商船　積極武裝中　英美商西印度聯防辦法墨西哥精兵駐沿海地帶</h3>
+<p>紐約二十日哈瓦斯社電　海長諾克斯本日在浮琴尼亞州諾福克港宣稱、美國商船現正在積極武裝中、凡航行於最危險區域之船隻、尤其是橫貫大西洋之商船、本享有優先權、而儘先配置武裝、且今後商船之上、更當分配善於使用高射砲之水手若干名、</p>
+<p>華盛頓二十日哈瓦斯社電　英美兩國加勒比安海聯防委員會、已於本月九日成立、羅斯福總統本日訓令美國代表、着其務於最短期內前往西印度羣島、與英國代表會晤、</p>
+<p>阿根廷京城二十一日海通社電　墨西哥陸軍部昨稱、墨西哥軍隊中之精兵、已駐屯於墨西哥海岸、作防禦之預防措施、同時外交部宣稱、凡參加防衛西半球之美洲各國之船隻及飛機、得在墨西哥領土內停留、</p>
+<h3>中路蘇軍　反攻大捷　克復六大城鎮</h3>
+<p>倫敦二十一日合衆社電　據蘇軍發言人稱、進攻斯摩倫斯克之蘇軍、於過去十日內、攻克六大城鎭及村落二千五百處、擊斃德軍一萬七千人、德國之反攻暫趨緩滯以後、蘇軍之攻勢顯獲推動力、「每日郵報」瑞典京城訊、蘇軍克復卡柯夫之期、已在眉睫、</p>
+<h3>渝市各報舉行　印刷工作競賽</h3>
+<p>重慶二十一日電　渝市各報印刷工作競賽廿一日起開始實行、爲期暫定一月、對報紙印刷有關之拚排用字大小框邊綫條標點等特別重視、競賽目的在使板面淸晰達於盡善盡美之境、</p>
+<h3>糧食增產　川粵成績最佳</h3>
+<p>重慶廿一日電　糧食部糧食增產委員會發表第二次公報稱、本會最近根據各省增產工作報告、統計後方十五省共計增加食糧生產八千九百七十餘萬市担、較原計劃之預期成效超過五千七百九十餘萬市担、其中增產數額在一千萬市担以上者、計有用粵贛三省、增產數額在五百萬市担以上者、計有桂湘浙魯等四省、在一百萬市担以上者、計有陝豫閩皖等四省、其他如甘寗鄂等四省之增產數額、亦在二十萬市担以上、查後方各省糧食總產額、年約十六萬萬市担、故此次所增產量、僅佔總產額百分之五左右、至各種增產措施之成效比率、則推廣冬耕增產小麥雜糧三千八百五十餘萬市担、佔增產總額百分之四三、利用荒地隙地種植雜糧增產三千一百四十餘萬市担、佔百分之三五、减糯改秈或限制種植非必耍作物改種食糧作物增產一千三百九十餘萬市担、約百分之十五、推廣改良華種與提倡再生稻增產一百八十餘萬市担、約佔百分之二、防治虫害增產約一百餘萬市担、約佔百分之二、興修農田水利及推廣肥料共計增產二百餘寓市担、約佔百分之三、</p>
+<h3>維希向美提供保證　西半球法屬島嶼決不供軸心利用</h3>
+<p>華盛頓二十一日路透社電　權威方面悉、美政府現已接獲維希確實保證、即以後法國不得將其西半球島嶼任聽軸心國船隻或飛機利用、最近期內美國與維希之間鎖綜關係、可望全部澄淸、現在美國企圖澄淸之一點、即欲軸心船隻從速離開法屬瑪丁尼格·聖丕爾·米圭倫·及其他諸島、</p>
+<h2>Page 3</h2>
+<h3>兩租界不分畛域　簽證疏散居民　今日各團體仍照常簽發　寗籍回響居民已便利</h3>
+<p>工部局簽發通行證辦事處、今日雖星期日、仍照常簽發回鄕通行證、其辦公時間爲上午八時至十二時、下午一時至四時、其他分辦事處及委託發回鄉證之同鄕會等團體、星期日亦照常簽發、舟車半價證繼續可以申請、法租界內居民不分畛域、亦得向公共租界方面申請、每日發出回鄕證甚多、</p>
+<p>離滬回通　就地照料</p>
+<p>上海流散回甯屬各縣市、民、昨日又有五百人、搭首次駛甬之華萬輪赴甬、到寗波江北岸後、即由當地組織之斡旋隊予以照料如轉赴舉慈鎭姚各縣者、由該隊代爲購半費船票、需在甬躭荊者、爲介紹經濟旅館、須執有回鄉證、方予種便利、故離滬回鄕者、對回鄉證之保藏應特別注激、萬勿遺失、致遭不便、</p>
+<h3>遺散難民　最後一天</h3>
+<p>上海收容難民、明日爲最後寬展遣散之期、據大通社記者探悉、　　信　路北浙江路　極司非爾路　天后宮四處難民所、昨日續有出所者、留剩部份亦已準備就緒可於明日全數出所、捕房方面屆時將派捕會同執行、其屬外埠者、由工部局簽發回鄕證及牛價證、以便其回</p>
+<h3>寗波路封鎖區　昨夜開放</h3>
+<p>寗波路傳宮舞廳生炸彈案後、業經當局週各路人行道予以封鎖、已逾旬日、茲悉於昨晚十二時起、該處一帶封鎖綫開放、恢復交通、</p>
+<h3>對恐怖演習疏忽　店舖暫遭封閉</h3>
+<p>最近法捕房實行恐怖演習時、在開槍地點某店舖負責人、并不電話通知捕房。茲將該店舖暫時封閉、以儆其疏忽、茲法當局乘此機會、特再申令界內居民、對撲滅恐怖行為之合作、含有強制性質、連者嚴　不貸、</p>
+<h3>寗波路綢莊大火　灼斃一幼童　半小時後火勢始受控制　焚燬綢約值數十萬元</h3>
+<p>昨晨零時左右、公共租界寗波路二八四弄丸號、突然發生大火、烈燄騰空、該號房屋係爲舊式、故延燒甚速、中央救火會聞悉後、即派救火車、於零時六分趕到失火塲所、其時火勢已　穿屋頂、烈燄冲宵而該屋四壁亦已燒着、</p>
+<p>幾將波及</p>
+<p>鄰屋救火員等即以駛到之二輛幫浦車發動液救、設法阻過火勢、使不波及鄰屋、然該弄甚狹、施救爲難、致火燄得以越過該弄而將對面住屋之露台焚去多座、幸經各救火員迅速灌救、歷三十四分鍊而將火勢控制、約一小時後、大火即吿完全撲滅、結果該號房屋、全部焚燬、開設其內之乙昶綢莊元棉布號</p>
+<p>損失嚴重</p>
+<p>其堆存之絲綢、約値數十萬元之鉅、盡付焚如、此外有一幼童被灼斃、其屍體由救火員於黎明後、自瓦礫堆中尋　全身焦黑、慘不忍　、尙有母子二人、則於救火車未到前、自行跪下、竟得無　、該婦先以被褥　裹其孩、自　窗口　下、自身亦　而躍下母子兩人均無損傷云、事後査悉、此次大火係起於樓下、未幾即延燒至樓上與屋頂、該屋原爲舊式建築、內部均以木造、且所堆絲綢易於着火、致火勢一發而不可收拾、</p>
+<h3>法租界二月份罪案</h3>
+<p>二月份之罪案、校一月份减少、殺人案僅有二起、第一起被　人係霞飛路一皮貨店中華籍職員、屍首在店中後房箱內發現、喉管被人割斷、謀役原因迄未査明、第二起則係一高麗人、在八里橋街其萬中被向之案款之匪衆開槍擊斃、流彈穿入鄰室、致一華人受輕傷、綁票案一起、被綁者爲一旅行社職員、當日脫險、綁匹三人就逮、持械强盜案卅起較一月份少七起加重情形之竊盜案、則尤爲减少、僅有撬竊卅六起、（二月份計有六十五起）　牆竊廿起（一月份有廿九起）、搶奪四十三起（一月份九十六起）、而此九十九起加重竊盜中、五十四起已破案、共拘鑊七十一人、叉同月內之單純竊盜案共二百六十九起、較一月份少一百一十起、其中允十七起、已破案、獲犯七十九名</p>
+<h3>偽造西藥</h3>
+<p>抄獲七百數十瓶　案犯六名均押究新　房華探目王希昌、近偵悉有一種投機份子、監於西藥之價格飛漲、不惜偽造各種西藥出售、冀獲巨利、此種行爲、非特昨欺他人財物、抑且對於人民之身體康健、影響殊深且巨、遂着手偵査之下、於前日在派克路寗波路及靑鳥路三十三號六十七號等處、拘獲劉重華季貴和滕耀天朱紹明胡波平徐立寬等八名、抄鑊已裝瓶之偽造法國製「大健凰」治肺樂七百八十九瓶、及未裝瓶者散片甚多、以及僞造此項西藥之商標印二只興原料機器等件、一併帶入捕房、予以覾押、候査明再行究辦、</p>
+<h2>Page 4</h2>
+<h3>麵粉用戶登記者　共有四千餘戶　每日申請者祗限三百戶　每日申請祇約五千包</h3>
+<p>工部局統制麵粉辦事處、自重訂麵粉申辦法、申請人先後依次以醫面通知購買後、關於申請手續、亦有變更、大通社記者茲探錄於後、</p>
+<p>麵粉申請　手續變更</p>
+<p>工部局統治麵粉辦事處、自本星期起、以卡片一種、發給登記麵粉用戶、卡片印明店號．地址．號碼．以及上次派粉日期數量、以後派粉日期數量、均印明於上、以憑核發</p>
+<p>公和祥棧　繼續出粉</p>
+<p>據大通社記者探悉、麵粉用戶、向該處登記者、共有四千餘戶、每日申請、祇限三百戶左右、每日撥派麵粉、約五千包、現在撥派麵粉、指定向公和祥（碼頭）棧房提取、</p>
+<p>先後開啓　十餘堆棧</p>
+<p>工部局統制麵粉辦事處、於去年十月間成立、聘前澳政府商務專使謝亮夫主持、先後開啟出粉堆棧、有阜鑒，福新．東萊．中國．金城．滬　．上海駁運等十餘所、該處近來範團擴大、人事亦有更迭、前主持人謝亮夫二度辭職、已由局方於二十日公函照准、至該處最近又將公和祥棧開啟出粉、以供麵製品商申請、</p>
+<p>洋米門糶　日期照常</p>
+<p>工部局米糧辦事處、定明日繼續發給苞米費單與各米號、付款後、向蘇州路一九五號禮和棧出貨、以供下星期五門縣、米糧辦事處、前日又以苞米一批、發給禮和洋行碾軋、至下星期洋米出繼日期、仍爲星期一三六三天、星期五出縣苞米云、</p>
+<h3>失業窮困自殺</h3>
+<p>甬人柴世鶴二十一歲、近因失業受困、致生短見、於前日夜間、至敏體尼蔭路一四六號榮華棧借宿二十四號房間、當夜呑服來沙而藥水自殺、至昨晨七時、始由茶房發覺、柴已死於床上、　上遺有來沙而空瓶、即報吿捕房、派探往査、幷將屍體舁入騐屍所、傳到其母柴張氏、當日領屍收殮，</p>
+<h3>滬西昨日下午　恐怖演習</h3>
+<p>昨日下午二時許、滬西極司非而路　園路靜安寺路等各要隘、予以對鎖、並在各馬路加派屬哨、約還兩小時之久、至四時左右、始行開放事後査悉係該區內恐怖演習、</p>
+<h3>天潼路一賭窟　昨夜捕房破</h3>
+<p>公共租界匯司捕房總探長百順、副探長黃福森探目陸義心、於昨晚九時五十分、探悉天潼路六一五弄十五號內有人開設賭窟、規模宏大、內設牌九搖攤大小等賭具、當即按址馳往、當拘獲頭家兪阿實兪戴氏及賭客十七名、乃一併帶返捕房訴究、農校徴求實習空地本校原有農塲地點過遠、學生實習極感不便、茲徾求兩租界內花園或空地一、本校代爲設計一耕種、爲可利用一廢地生產糧食、請函白克路一八一六號本校、新光補校設義務班　北京路河南路西首三八四號新光補習學校、爲救濟失學學生及店員起見、特附設義務班兩級、相當高小及初中程度、計有國算英三科、每晚六時上課、學費全免、祗收雜費三元、本月廿七日開課、即日起報名、請讀者作山農前草有正名文化學說一書、擬成小册、貴報館服務社會、先生又抱經世之才、茲將本書綱目抄寬、計二十章、請駕臨斧正、徐家滙仙居山農、</p>
+<p>昨日本報發報時間六點四十分</p>
+<h3>合羣募款足球末次賽　金獅今日決戰合羣　另塲震旦與徐匯交鋒</h3>
+<p>合羣體育會募款足球賽、自展幕以來、已屆最後開頭、前兩賽均因參加之四强關力平衝、故每次必能吸收大量觀衆、現最後一幕巳定今日下午二時起、仍在呂班路震旦球塲舉行決賽、首幕即係金獨決戰合羣、次幕震旦戰徐團、震且如敗、則背定黃包裹、徐匯如勝、尙有一綫奪標之望、雙方爲校譽計、必各全力以赴、今日首塲賽畢將當衆拍賣義球、至獎品已由主辦當局捐出、計冠軍得大銀盃一座、亞季軍各得銀盾一座、門票仍售元四元、節目及陣容如下、</p>
+<p>合羣——金獅　下午二時</p>
+<p>徐匯——震且　三時三刻</p>
+<p>合羣</p>
+<p>陳志賜唐　陳忠湘戴　潘鴻海張　會挺凡　佐文蕭子文　　經王定球　挺陸　祥　許克宏</p>
+<p>金獅</p>
+<p>陶自鳴　莊友仁　陳効平　胡漢文　沈錦遠　陶廷富　林興華　葉新福　趙永芳　李垚</p>
+<p>廖世明　賈幼良　龍拉克　伏迺堂　高致文　顧之藩</p>
+<p>徐匯</p>
+<p>强遠智　曹德明　莊文權　陳焯光　鐘桂靑　麥兩森　周德法　黃仁奎　袁錕田　　錫佐　汪國光郁黎明</p>
+<p>震旦</p>
+<p>劉紹麟　楊蓮君　郁黎華　馬魯智　囂星祥　王錫勝吳俊麟　可洛茲夫　吳變　凌期驃　芮器先　陳大業</p>
+<h3>中葡足球第二幕　二對二成和局</h3>
+<p>本月三十日決賽</p>
+<p>中葡足球裹賽、於昨日下午二會挺凡佐文蕭子文麟經王定球。挺陸　祥　許克宏時展開第二慕、爭覇賽觀衆八千餘、情緒熱烈、在戰局極度緊張中、雙方各以二和局賽至中途、拚賈義球由五百元開價增至九千元、終由王永康以一萬元最高價格成交、一裁判張樂何春暉黃仁藜、旣賽、軍傾師來犯法凡笑頭上開花金鏞不及搶救、首吿失陣、距開賽僅三分鐘、未二分鐘、番將雷米迪手觸賽球、被判任意球在三十碼阿戴搮力、惜未得中、而後費春華有數度良機、均未建功三十八分鐘、幼良越鐵關、維克泰近門力扣葡軍守門、羅柴遼疾臥撿救、已吿失效、打成各一平手、上半時結束、再戰聲中、葡隊雷米迪換上貢山夫、華隊則以江潮高保正、易陳效平蕭子文、戰局在十六分鐘時柯拉沙獲蓋恩之傳、二十碼處橫掃、球應聲入網、葡軍以二比一佔先、混戰四分鐘際、費春華袁錕田雙雙進竄、賈幼良乘勢混入、輕傳蕭子文、維克泰喝上一步蕭以頭頂入敵陣、再度媾成和局、時間吿終二比二平分秋色、靜待木月三十日最後決賽、</p>
+<p>中華　范金鏞　莊友仁　張林根　陳效平下　江潮上　韓龍海　張昭鵬　蕭子文　高保正　戴麟經　賈幼良　費春華</p>
+<h3>金價稍轉堅　金鎊各升十元</h3>
+<p>昨日現金烚赤暗市、盤旋中轉堅、在萬七千元關左右、統制消息下、現金號售賣不止、但軍票上升、中儲鈔隨漲、人心轉而向榮、證券幫各號吸收、籌碼復感枯短、晨初爲一萬七千元、迨開市一萬七千一百元、比上日午收高四百元、大中力進五六百兩、合發與宏慶永分兩次收吸、義茂永補空、價遂升爲一萬七千三百元、現金號四起力售、時和成記萬豐生大永某證券號實貨吐售、價頓步瀉七百元、遜至一萬六千六百元、又爲南京幫力進抬上至一萬七千元左右、升至一萬七千零五十元、現金號與銀樓業售賣、遜爲一萬六千七百元、證券號力進、市、價爲一萬七千元、比上日收價高三百元、當日有七百元差度、收後　爲一萬六千九百元、正午後收爲一萬七千一二百元、成交不旺、午升至一萬七千七百元、銀樓飾金每兩於下午掛升一百元、爲一千八百五十元、（收進减二百元）紋銀掛二十元、黑市仍疲、退至十二三元、仍少買戶、銀幣一枚亦遜至八元、　昨外幣市况、英美金鎊各升十元、前者爲四百元、後者爲四百十元、美金票回小至二十元三四角香港票升爲三元四角、大票减小一角、軍用票步高至七元四角半、</p>
+<h3>棉紗漲風强</h3>
+<p>棉紗市况、轉趨上升、且漲風頗强、此因軍票然也、二十支雙廠單初開爲三千一百〇五元、少頃因多頭吐出、鬆至三千〇五十兀嗣後在三千一百外迴旋頗久、不料四二支綫及二十支現紗行情良好、人心甚緊、逼近收盤時、市盤突然橫跳至三千三百〇五元、收盤回至三千二百七十元、四二支藍鳳七千四百二十元至七千七百二十元、六十支日光一萬七千三百五十元、四二支水月七千五百五十元、四十支彩球七千一百五十元、四十支金虎七千二百元、六十支牛頭一萬五千五百元、三二支紅喜六千四百二士兀、二十支月琴四千一百十元、二十支藍鳳四千五百元、二十支雙馮三千八百元至三千九百五十元、二十支天女三千七百五十元、十八支織女四千一百元、十七支彩球三千九百元、十四支金塔三千四百五十元、十六支金橋三千七百廿元、十支童子軍二千六百七十元、十支雙地球二千五百八十元、</p>
+<h3>布市觀望</h3>
+<p>業外不斷搜羅</p>
+<p>廠布　昨市因軍票回升、囤戶進胃又濃、粗細布疋續喊高每疋三四元不等、但實際客銷依然沉寂、故成交不旺、十六磅飛鴻粗布一五六元、地球一六五元、十六大鵬細布一五一元、富貴一四九元、富貴細斜一三五元、雛鶏士林二三元、又安安藍布一八〇元、長壽府綢五元七角、萬木利五元四角半、白貓花布一二五元、俱有做開、</p>
+<p>東布　昨以週六、祇有上午半天交易、業心思阢隍、蓋因四月一日起實行移動證、而在統制辦法未公佈前、咸抱觀望熊度、故各布市價雖有業外囤戶、不斷搜羅、漲勢殊緩、龍頭細布新單晨開百九十二三元、盤旋甚久、午收時聞軍票與變馬紗俱昂、拉高至百九十四元五角、較漲每疋一元五角、現貨百六十八元五角、同一商標、相差每疋二十六元之鉅、實屬駭異、彩球飛魚細布做開百七十三元五角、陽鶴百七十二元、喇叭百七十元、亦提升每疋一二元、四君子嗶嘰十至十二月廠單五元八角半、紅單新稅五元五角六分、而現貨則僅五元三角、與十至十二老單比較差跌每碼五角五分、足徴實銷之不動、</p>
+<h3>呢羢有漲無跌</h3>
+<p>呢羢昨仍有漲無跌、各種貨價、依然如風箏一般、愈放愈高、夏季貨羽紗呢．法蘭羢．巴勒呢．胖別取．凡而頂派力司．紗蔴膠布·白嗶嘰．白直貢等、漲風更銳、春銷之西裝薄花呢．草綠華達呢．薄素嗶嘰．亦頗堅俏一時、因實銷發動、買方需要提早、貨底缺乏異常、同業中居奇不出、外行囤戶搜吸殷繁故耳、法蘭羢廠貨已罄、進口貨頭號每碼須售一百四十元、二號一百十五元、二號一百元、羽紗呢巴勒呢凡立頂、齊皆開沽百元以上、申織本廠貨、大半亦須售至七士兀之外云</p>
+<h3>公債又轉頹勢　股票行市反好</h3>
+<p>公債暗盤、昨市又轉頹勢、賣戶求售、而接受者竟寥若晨星、一般人頗有無意於此之概、一方冬頭急於出籠、不得不貶價求脫市價再小一元餘、仍不外去而之他之慣例、亦一時爲環境造成之特有畸形局面、昨日各方買賣、最大數不過三萬、故其總成交數、竟不出二十萬元、而市價竟已跌落六角至一元四角之多、茲列簡明表於後、</p>
+<p>昨日外股穩定、成交淸稀、七一千二百股、怡和紗廠退至廿五一元二五即回平爲廿五元半、上海毛絨六元四角半、怡和啤酒六元二三角、英聯廿一元、開平一卅七元、業廣十七元四五角、紙一業六元二角半及六元三角、電一車三十五元七五及四十元、揚一子十元〇九角、又做電力公債一萬元、價爲七十五元、餘如航一業進價七元、售出七元九角、中一紡十元三五角、中營十元〇五一角及十一元、祥泰木行廿四五元、其餘有求少供、計會德豐五十四元、墾植廿五元、鋼業十二元、電話廿五元、信和紗廠七元、電話公債七十二元、英楂華十五元半、蘭格志十四元、克羅華一元半云、</p>
+<p>昨華股亦受軍票上升之影響、人心樂觀、市　堅挺、永安公一司七十四元、新新七十五元、各升一二元、中國內衣由十八元升至十八元七角半（老）、十八一元半、升爲十九元、大中華火柴一百十二元半、南洋烟公司五十五元五角、新亞（新）冊二元一半、中法（新）四十五元、均有成交、世界書局五十元〇五角、公一用業股平定、紡織業買賣均稀云、</p>
+<h3>雜糧商漸知覺悟</h3>
+<p>昨日各物趨漲聲中、惟獨雜糧市况仍然平淡、蓋以麩皮前車可鑒、投機者已漸歛跡、僅本街店戶零星點綴、結果漲落互有、黃豆軋降二三元、囂豆升三五元、赤豆平、豆餅昂一二元、計售開天津金元九十包、價二百十元至二百零八元、南橋黃豆五十包、價一百八十八元、崇明沙囂二百包、價二百三十元至二百四十元、又沙赤一百包、價一百八十九元至一百九十元、天津赤豆二十包、價一百八十五元、奔牛赤豆六十包價一百七十五元至一百七十三元、漢”豆餅一千片、價三十八元、肥字豆餅二車、十一月份棧單四十七元八角、又新棧單五十四元半、甡記豆餅二千片、五月份棧單五十三元、六月份棧單五十三元二角半至五十四元、</p>
+<h2>Page 5</h2>
+<p>家庭</p>
+<h3>家庭幸福由於雙方努力</h3>
+<p>— 禾風</p>
+<p>人們對於現實總是不滿的，一個已婚的男子往往怨天怨地爲着家庭的負擔太重而整天沒有笑容，一個活潑的少女突然踏進了家庭的圈子也只感覺到寂寞難受。在我婚前有一位同學走來同我談起一對大學畢業的情侶，結婚之後，男人走回家，爲了外面應酬得够了，回家簡直懶得說話，更不想再出去玩。女人在家裹等了一整天，想東想西，想前想後，心上已覺得無聊之極；等到丈夫回來，看見丈夫一臉都是嚴肅的肅情，話也揰不上一句，心上的寂寞更擴大起來，於是回想到婚前丈夫對自己種種的體貼和溫存，覺得結婚簡直是愛情的墳墓。從此伊逢到人就說．「不耍結婚，結婚之後，愛情就會消滅的。於是夫婦間的情感因此而漸趨冷淡。</p>
+<p>我吿訴他我的意思：「婚姻本來是一件很平凡的事，絕不會像戀愛時那麼熱烈，每天相處在一起的人，不能和難得見面的人比校，以前的丈夫是你的愛人，因了種種的阻碍，見面時當然覺得甜蜜難得，但是結婚的甜蜜應該想到是以前的希望的完成。有誰相愛之後，不想永遠在一起嗎？只有結婚可以完成你這希望。所以結婚之後，不應專用過去那短短的一刹那來比較這具有永久共同意義的生活，那種相較不但有點吹毛求疵，並且是不正常的，因爲那種太甜蜜和太痛苦的戀愛生活，根本是不正常，不能久遠的。唯有結婚的生活是久遠的，是正常的，是共同的，是値得頌揚的。</p>
+<p>「男子在婚後，有了家庭的負擔，因這種負擔而生的困倦和痛苦，是應該由妻子來分擔的。如果一個妻子，分擔不能，而反怨聲四起，猜忌叢生，那是妻子的責任。每個妻子若能了解伊的丈夫，在丈夫困倦的時候，自己保持着鎭靜的態度，我想丈夫的困倦是比較容易消失的。」我的朋友對我的意思想了想，笑着說：「看你吧，」</p>
+<p>「這一點我是可以做到的，」我總這樣吿訴伊。</p>
+<h3>眼角生春之家用按摩</h3>
+<p>— 王一之</p>
+<p>予昔在國內，常見貧家少婦，眼圈黑而下眼皮深深陷落，遂以白圭之玷，有損觀瞻，影響及於自身及家庭前途之運命，恨不能以一手援大下，以挽此簾底銀波，以拯此精神所造之陷溺也。</p>
+<p>査下眼皮之皺，不僅起於年老，儘有年未老而困於多愁，誤於生活不正常，或多啼泣或失眠者，此因下眼皮之內，藏有甚多溝通血循環之靜脈，並有內泌淡黃色淋巴液夕淋巴腺，人當愁苦憤怒，衰敝勞瘁之餘，內部常缺血，並缺淋巴液，而眼外皮，即因脈及腺之忽擴大與忽緊抽，凹凸靡常靡常而不時起皺，欲除此苦今有三途</p>
+<p>應屛除减睡疲神之長夜賭博，而改撢有助體質有裨學識與長經騐利人羣之正常娛樂</p>
+<p>試行簡易之按摩，上下眼皮盡嬌嫩，而下眼皮尤爲重要，施術者每日兩次已足，宜僅憑左右手之第。第三兩指尖，輕抵眼皮而小心摩撫。先用兩指尖，輕輕抵住眉與睫毛間之上眼皮，起自鼻梁上端而向左右開抹，繼用兩指尖，輕輕抵住下眼皮，改從左右兩方面，向鼻梁心抹去，抹時用力勿重，不可將眼皮擠動。</p>
+<p>則爲人勿因小小事故而動演甚大之悲劇，生當物力艱困之秋，「達觀」之價値，可以買得萬金所不易致之「事功」與「幸福」，上述之例即其一端。</p>
+<h3>飲食的心理　如何饋飢你的丈夫？</h3>
+<p>— 保羅</p>
+<p>在美國什麽事情都是很進步的，因此關於家庭各方面的心理研究，也就層出不窮。據說如果一個丈夫對於飯菜抱着隨便的態度時，就是他對於食品並沒有多大興趣的表示。根據心理學家的研究，、一個人所進的食物，對於他的情感，有很大的關係，近年以來，雖則食物營養的學說，日益進步。然而離婚率的增高，很足以驚人。推根究原，是食物烹煮不得法所致。</p>
+<p>維他命和卡路里（食物所產生的身體熱力）是決定食物營養價値的兩大要點，然而美國的婦女界，却忽略了下列兩點：</p>
+<p>男子們因爲工作的關係，每天所用去的熱力較女子爲多。</p>
+<p>維他命和卡路里固然是身體所必需的，但它們並沒有誘起食慾的力量。</p>
+<p>不久以前，紐約有一個美食家協會，曾經舉行一次測騐，目的是要調査男子們所愛吃的終究是什麽東西。結果，發現男子們最愛吃的是肉類，蛋，火腿，豆，　牛肉，卷心菜，鶏，肉餅和煨肉類。</p>
+<p>在不時注意體態和竭力保持固定的體重的美國婦女，看見了這　張食單，自然要相顧失色。而且每天要吃這些貴價的東西在於家庭預算方面，也無形中是一個很大的威　。　然而事實上並不是這樣簡單而難辦的，肉類也有幾種價目，某一個部份比較另外一個部份的售價較低，那末只要是合乎淸　衙生的條件，自不妨購買售價較廉的一個部份。</p>
+<p>有一部份的美國人，以爲美國的男子是不愛把菜燒得很濃的，其實不是事是，因爲男子們往往坐上他的餐桌以後立刻就要拿起他的調味品——蕃茄漿。（在中國自然不必顧到這一點，因為中國的菜是烹調得不像西菜那末地淸淡的。）</p>
+<p>美國的婦女們，又有一種顧慮，就是伊們的夫丈，往往不愛吃蔬菜，其實這也是烹調的問題，如果烹調得法，即便是最普通的蔬菜，也可以有十分的美味。</p>
+<p>美國的食物專家，又曾經討論到食物的熱度問題，據說食物的熱度，對於食然方面，有很大的關係，宜於然食的食品在未吃之前就根本不能使它們冷却，有許多女子，爲着要使菜肴的顏色十分動人，因此在煮熟以後，再去費了許多功夫用檸檬片，蕃茄片裝飾起來，顏色固然是美觀了，然而食物的滋味，已經大受損傷，事實上男子們吃東西，美味是第一個條件，外表的美觀，是屬於次要的。</p>
+<p>最後，美國的心理學家說如果一個妻子能彀從食物上使伊的丈夫注意，那未他就會注意到他的妻子的一切，間接就能毅造成婚姻的幸福。不但美國如此，即吾國的家庭主婦亦應注意到這一點。</p>
+<h3>一星期家常菜單</h3>
+<p>— 華英女士</p>
+<p>近半月來，洋米既不容易買，杜米價又大漲特漲，「巧婦難爲無米炊」，叫我們做主婦的，眞的要活活急死了。不要說是米，就是食油也發生了問題，每斤已到十元大關，並且照樣要排隊去買·，所以筆者提倡「省油運動」，做菜時無論葷素，總是以省油爲第要着，可以白燒的，就改爲白燒，不要加油加醬的紅燒了。本屋期七天的菜，就以省油爲原則，多配白燒淸燉的在內，請主婦們多多注意。</p>
+<p>星期一</p>
+<p>嵌肉油豆腐</p>
+<p>淸燉小編魚</p>
+<p>菠菜炒綫粉</p>
+<p>葱花豆辦沙</p>
+<p>星期二</p>
+<p>番薯牛肉湯</p>
+<p>燒豆腐</p>
+<p>豆苗炒筍片</p>
+<p>麻醬拌水芹</p>
+<p>星期三</p>
+<p>芹菜炒肉絲</p>
+<p>蝦米蛋花湯</p>
+<p>消炒小靑菜</p>
+<p>雪菜菉豆芽</p>
+<p>星期四</p>
+<p>洋葱牛肉絲</p>
+<p>淸炊　魚湯</p>
+<p>胡葱燒豆腐</p>
+<p>海蜇羅蔔絲</p>
+<p>星期四</p>
+<p>肉豆腐湯</p>
+<p>銁絲炒魷魚</p>
+<p>淸炒捲心菜</p>
+<p>京冬菜粉皮</p>
+<p>星期六</p>
+<p>蘿葡鴨雜湯</p>
+<p>紅燒糟靑魚</p>
+<p>亁絲炒　菜</p>
+<p>蝦米炒麵筋</p>
+<p>星期日</p>
+<p>醢鮮</p>
+<p>煎黃魚</p>
+<p>素十景</p>
+<p>拌馬</p>
+<p>天廚食譜（九四）</p>
+<h3>（一六五）　粉銀魚（菜）</h3>
+<p>— 柳賢擬稿</p>
+<p>預備…苞米粉糯米粉（或麵粉）菜　蝦米監味精醬油料酒製法…將菜切細，在油中炒過，蝦米用酒渥過，加鹽與味精興成一鍋鮮湯，乃以苞米紛中和入一部份之糯米粉，加水及鹽少許，調成糊狀（宜乾），用筷夾入正在煮沸之鮮湯中糊入水，卽凝成銀魚狀，待熟，即可盛食。</p>
+<h3>（一六六）苞米蒸肉餅（點心）</h3>
+<p>預備…肋條肉苞米或苞米粉百葉料酒天廚家用菱粉鹽天廚醬油精液</p>
+<p>製法…將百葉切成一方寸面積之菱形，加鹽略揑，襯於碗底，另以肋條肉洗凈後切成細粒，加人苞米或苞米粉內，再和以適量之鹽，料酒及醬油精液，拌透，最後調入菱粉少許，舖於碗面，乃放在飯鍋上蒸熟，趁熱取食，異常可口。</p>
+<p>啓事（一）本食譜擬於本月底暫告結束，所有投稿諸君，因地址更改，未奉酬品者，請於本月底前，來兩通知，以便分別寄奉。啓事（二）天廚味精廠出品之『味精』，「味宗」，『天廚醫油精液』，『天廚家用菱粉』本市各大公司，各南貸食品店，均有出售。</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.22</h1>
+<h3>President Roosevelt Declares Decisive Aid Will Be Given to Australia; Australia Will Establish Supreme War Council with General MacArthur as Chairman</h3>
+<p>Washington, 21st (Reuters) - The War Department announced yesterday morning that there has been no fighting in the Philippines and that there are fourteen U.S. Army officers accompanying General MacArthur to Australia. In addition, President Roosevelt told reporters that everything possible would be done regarding General MacArthur's war plan in Australia. However, it must be noted that the distance between the United States and Australia is very far, and it takes a long time to transport things to Australia from the United States. Furthermore, there is a global shortage of ships.</p>
+<p>Washington, 20th (Havas) - President Roosevelt recently made a statement to the press saying, "We will do everything we can to give the greatest possible assistance to General MacArthur, the people of Australia, and the American Expeditionary Force. But the war is happening thousands of miles away from the United States, and transporting military supplies and ammunition to the Philippines and Australia to supply the troops, and the shortage of ships, are things we cannot forget. The United States has a large number of skilled workers engaged in military production work, but how to best use these skilled workers must be determined. Regarding this, the government may issue orders to mobilize workers nationwide."</p>
+<p>Saigon, 21st (Haitong News Agency) - A dispatch from Canberra last night stated that a decision on the establishment of the Allied Supreme War Council in the Australian theater may be announced soon. The council will be chaired by General MacArthur, Supreme Commander of the Allied Forces in the Pacific, and Lieutenant General Brett, Commander of the Allied Air Force, and Vice Admiral Leary, Commander of the Allied Navy in the Australian area, will also join the meeting. Yesterday, Australian Minister for the Army Ford convened a meeting of senior American and Australian military personnel to discuss operational matters in the Australian area and the establishment of the Australian Supreme War Council.</p>
+<p>Melbourne, 21st (Reuters) - General MacArthur, Supreme Commander of the Southwest Pacific, is scheduled to arrive here today. Military and political authorities have prepared a welcome.</p>
+<p>Melbourne, 21st (Reuters) - General MacArthur, Commander-in-Chief of the Allied Forces in the Australia-New Zealand area, arrived in Melbourne at 9:55 this morning amidst cheers from the crowd.</p>
+<p>Stockholm, 21st (Haitong News Agency) - General MacArthur arrived in Melbourne today and gave a radio address stating that generals cannot create something from nothing, just as even the cleverest housewife cannot cook without rice. The success or failure of future operations will depend on the resources provided by the governments of various countries. I believe that the supply of soldiers and military supplies will not fall short of expectations. In any case, I will do my best to maintain the confidence of the soldiers.</p>
+<p>Canberra, 20th (Havas) - It has recently been officially announced here that after General MacArthur takes office as Commander-in-Chief of the Allied Forces in Australia, the Australian Army Headquarters will transfer most of its duties to him and become an administrative agency. In addition, Allied Deputy Commander General Brett also arrived here by plane today and met with Prime Minister Curtin and Minister for Air Drakeford for an hour, after which he quickly returned to Allied Headquarters.</p>
+<p>Stockholm, 21st (Haitong News Agency) - According to news from Melbourne, Australian Minister for the Army Ford said in a speech last night that Australia can only obtain military supplies from the United States from now on. What Australia needs most are bombers and anti-aircraft guns. Britain is now unable to help Australia.</p>
+<p>Saigon, 21st (Haitong News Agency) - According to news from Canberra, Australian Director-General of Recruiting Whiteford has been appointed as the liaison officer between the US military and the Australian military in Australia.</p>
+<p>London, 20th (Havas) - Sir Keith Murdoch, the Australian Federal Envoy to Britain, recently stated that in order for the Allied forces to win victory, the necessary supplies must be shipped in advance and must not be delayed until after defeat. Up until now, we have always been plagued by delays in supply. In order to win victory in the future, we must attack the enemy's supply bases and control the sea. In addition, we must strive to improve shipping.</p>
+<p>Melbourne, 20th (Reuters) - Australian Army Minister Ford stated after inspecting the US Army barracks, "The efficiency of the barracks I have seen is very high, which has deeply impressed me. We have learned that after they arrived in Australia, they felt very settled in their hearts."</p>
+<h3>Japan and Soviet Union Sign Agreement Extending Fisheries Treaty for One Year</h3>
+<p>London, 21st (Reuters) - According to an announcement last night by Moscow Radio, Japan and the Soviet Union have signed an agreement in Kuybyshev to extend the current fisheries treaty between the two countries.</p>
+<p>Istanbul, 21st (Haitong News Agency) - Last night, officials in Kuybyshev announced that Soviet Deputy Foreign Minister Vyshinsky signed a draft agreement in Kuybyshev with Japanese Ambassador to the Soviet Union Tatekawa, extending the 1928 Japan-Soviet fisheries treaty to 1942. At the same time, the two sides exchanged notes. The treaty was signed in 1928 and then extended to 1936, and then extended repeatedly, because the signing of a new fisheries treaty has never been achieved. Recently, the two sides decided to extend it for another year in Kuybyshev, with the following terms:</p>
+<p>The Japanese government agrees that Japanese fishing companies are prohibited from fishing in five of the nineteen fishing zones. The Japanese government agrees that all Japanese fishing companies shall pay an additional 20% surtax, which is added to all taxes. In addition, the 10% lease tax stipulated on April 2, 1939, will still have to be paid in the future. The Japanese government declares its readiness to pay foreign exchange to the Soviet State Bank in gold bullion or bars. The Japanese government agrees that Japanese fishing companies will pay an additional 4% surcharge as a fee for transporting the gold bullion.</p>
+<h3>Reports of Contact Between Chinese Troops and Japanese in Burma; Fighting Also in Northern Thailand</h3>
+<p>London, 21st (United Press) - A dispatch from the Far East states that after British troops withdrew from Shazawaddy, 50 miles west of Rangoon, Japanese troops attacked Guacheng, seemingly forcing a move to Bhamo. Japanese troops will attack simultaneously on two routes, one up the Xitang River, heading towards British positions in Taungoo, and the other along the Irrawaddy River towards Prome. Reports indicate that the vanguard of Chinese troops has made contact with the Japanese on the Xitang River front.</p>
+<p>Saigon, 21st (Haitong News Agency) - British Headquarters announced last night that British troops in the Sittang River area of Burma continue to retreat and have secured new positions.</p>
+<p>Lashio, 21st - A unit of Japanese infantry and cavalry north of Pegu attacked the vicinity of Lianliebin on the morning of the 19th, making contact with Chinese troops entering Burma. A unit of the Japanese in northern Thailand attacked Peng Yicheng (Jingdongxi) and other places on the 6th, and fighting continued until dawn on the 9th.</p>
+<h3>No U.S. Troops in China, India, or Burma</h3>
+<p>Washington, 21st (Reuters) - Reports that Lieutenant General Stilwell, commander of the Fifth and Sixth Chinese Armies, commands American troops in China, India, and Burma have been denied here. In fact, there is not a single U.S. soldier in China, India, or Burma.</p>
+<h3>U.S. Aircraft Sinks a Ship</h3>
+<p>Washington, 21st (Reuters) - An Air Force Headquarters communiqué stated that yesterday our bomber groups conducted an attack on the sea surface in a certain location, and a heavy cruiser caught fire and sank.</p>
+<h3>Japan Announces Revisions to International Naval Warfare Regulations; Notification Sent to Relevant Countries</h3>
+<p>Tokyo, 21st (Domei News Agency) - The Japanese Ministry of the Navy, in view of repeated violations of international law by Britain and the United States in conveying messages through neutral countries to enemy countries, has revised ten articles of the naval warfare regulations as follows: All ships flying the flag of an enemy country or permitted to sail by the government of an enemy country shall be regarded as enemy ships. All ships that cannot prove the right to fly the flag of Japan or its allies or neutral countries, or whose owners are hostile to Japan, or are used for the benefit of enemy countries or countries hostile to Japan, and whose cargo destinations are in ports within a blockade area, shall be confiscated. The scope of the list of contraband shall be expanded, that is, all items that can be used by the enemy shall be regarded as contraband. The scope of prisoners of war that can be arrested on neutral ships shall also be expanded. The receipt and transmission of wireless telegraphs in designated areas are prohibited. How to deal with ships sailing under the cover of enemy aircraft shall be specified separately. How to treat all passengers after ships are intercepted shall be specified separately. All intercepted ships may be taken to port for inspection. The procedures for inspecting cargo on intercepted ships shall be determined by the captain. The captain of the attacking ship is not required to state the ship numbers of the ships under his command, nor is he required to state the ships he intends to intercept or inspect.</p>
+<h3>Indian Leaders Prepare to Discuss Cooperation with Britain; Lord Privy Seal Briefly Stops in Cairo, Consults with Military Authorities on Everything</h3>
+<p>London, 21st (Reuters) - British Lord Privy Seal Cripps arrived in Cairo by plane on Thursday afternoon. Yesterday morning, he held meetings at the British Embassy in Egypt with General Auchinleck, Commander-in-Chief of the Middle East Forces, Admiral Cunningham, Commander of the Mediterranean Fleet, and British Ambassador to Egypt Lampson. Cripps plans to stay here for several days before heading to New Delhi to meet with leaders of various parties and factions in India.</p>
+<p>Istanbul, 21st (Haitong News Agency) - Deputy Chief of the Imperial General Staff, Major General Nye, has already arrived in Cairo. He will discuss everything with British Lord Privy Seal Cripps.</p>
+<p>New Delhi, 20th (Reuters) - It is reported that, as of now, the authorities have issued invitations to meet with Cripps to seven people from the three major political groups and various sectors of society. The three groups are the Indian National Congress, the Muslim League, and the Hindu Mahasabha. The seven people are Sapru, Jayakar, Fazl-ul-Haq, Allabux, Ambedkar, Mookerji, and Naidu. The Indian National Congress and the Muslim League will each select six representatives, and the Hindu Mahasabha will select three representatives. The tentative meeting dates are March 25 for representatives of the three groups and March 26 for leaders from various sectors of society. It is noteworthy that these invitations were all issued at Cripps' request and may be expanded later when he deems it appropriate. It is reported that several provincial governors are coming to New Delhi this week, perhaps in view of Cripps' arrival, to consult with the Governor-General first. The governors of Madras, Bengal, and Punjab will also come here.</p>
+<p>New Delhi, 20th (Reuters) - It is reported here that the authorities have issued an invitation to the Prime Minister of the Chamber of Princes to meet with Cripps.</p>
+<p>Poona, 21st (Reuters) - Leader of the Indian Liberal Party, Sastri, made a statement today, urging the leaders of various Indian parties and princes who are about to consult with Sir Stafford Cripps to abandon "extreme demands that the British government cannot grant." He said, "Compromise is not only necessary, but also glorious for you. This is not a concession, but a concession to the sovereign needs of the motherland. You must take this responsibility and give it a definite guarantee. Those who trust you will be happy to give their loyal assistance." Sastri is the former representative of the Indian government in South Africa.</p>
+<p>U.S. Delegation to Depart for India Soon</p>
+<p>Washington, 21st (Reuters) - The head of the U.S. delegation to India, Johnson, met with President Roosevelt yesterday and received final instructions. Johnson is scheduled to depart for New Delhi within days.</p>
+<h3>Construction of Highway in Alaska Strategically Important; Air Route Planned Across Arctic</h3>
+<p>Stockholm, 21st (Haitong News Agency) - The Times reports that its starting point is Fort St. John on the Peace River in the western part of Alberta, 600 kilometers from the west coast of the Americas, then northwest through Nelson Forks, then westward to Watson Lake and Whitehorse on the Lewis River, and then along the Yukon River, directly to the Alaskan border to Fort Fairbanks. This line will not pass through the high Rocky Mountains, and the route is a beautiful virgin plain. The section in Canada, the stations along the route are all stations passed by the Canadian government's air routes, so the importance of both land and air can be increased. In addition, a direct air route plan between the United States and the Soviet Union is also being actively planned. The current flight distance from San Francisco to Moscow is 15,000 kilometers, but if it can fly over the Arctic, the flight distance can be greatly shortened.</p>
+<h3>Air Raid Drills on U.S. East Coast; Blackout Implemented</h3>
+<p>New York, 21st (Havas) - A blackout drill was conducted along the Atlantic coast last night, involving as many as fifteen districts. The scale of the drill was unprecedented since the start of the war. During the drill, 5,000 passive air defense members were on duty everywhere. The overall commander of passive air defense, New York Mayor La Guardia, patrolled by car, and his car lights were not turned off. He was stopped by an air defense member, who ordered the driver to turn off the lights before letting him go.</p>
+<h3>New British Ambassador to Soviet Union Arrives in Moscow</h3>
+<p>Moscow, 21st (Reuters) - British Ambassador to the Soviet Union Kerr arrived here today from Kuybyshev by plane in order to present his credentials and visit Foreign Minister Molotov.</p>
+<h3>New Oil Field Discovered Near Baku</h3>
+<p>Baku, Transcaucasia, 20th (Havas) - A rich new oil field has been discovered near Baku.</p>
+<h3>Huge British Military Expenditure; £9.7 Billion Already Spent</h3>
+<p>London, 21st (Reuters) - Regarding British military expenditure, Chancellor of the Exchequer Wood stated yesterday that Britain spent a total of £9.53 billion in the last World War. In this World War, it is spending £12.5 million per day, and has spent £9.71 billion up to the end of last month, which is £180 million more than the four-year military expenditure in the last war.</p>
+<h3>All U.S. Merchant Ships Being Actively Armed; Britain and U.S. Discuss Joint Defense of West Indies; Elite Mexican Troops Stationed Along Coast</h3>
+<p>New York, 20th (Havas) - Secretary of the Navy Knox stated today in Norfolk, Virginia, that U.S. merchant ships are currently being actively armed. Ships sailing in the most dangerous areas, especially merchant ships crossing the Atlantic, have priority and are given priority for the allocation of arms. In the future, a number of sailors skilled in the use of anti-aircraft guns should be assigned to merchant ships.</p>
+<p>Washington, 20th (Havas) - The British-American Caribbean Joint Defense Committee was established on the 9th of this month. President Roosevelt today instructed the US representative to proceed to the West Indies as soon as possible to meet with the British representative.</p>
+<p>Buenos Aires, 21st (Haitong News Agency) - The Mexican Ministry of the Army said yesterday that elite troops from the Mexican army have been stationed on the Mexican coast as a preventive measure for defense. At the same time, the Ministry of Foreign Affairs declared that ships and aircraft of all American countries participating in the defense of the Western Hemisphere may stay in Mexican territory.</p>
+<h3>Soviet Troops Launch Successful Counteroffensive on Central Front; Recapture Six Major Towns</h3>
+<p>London, 21st (United Press) - According to a Soviet military spokesman, Soviet troops attacking Smolensk have captured six major towns and 2,500 villages in the past ten days, killing 17,000 German soldiers. After the German counteroffensive temporarily slowed down, the Soviet offensive has gained momentum. The Daily Mail's Stockholm dispatch states that the recapture of Kharkov by Soviet troops is imminent.</p>
+<h3>Chongqing Newspapers Hold Printing Competition</h3>
+<p>Chongqing, 21st - A printing competition among Chongqing newspapers started on the 21st, with a tentatively scheduled duration of one month. Special attention will be paid to typesetting, font size, borders, lines, punctuation marks, etc., related to newspaper printing. The purpose of the competition is to make the layout clear and perfect.</p>
+<h3>Food Production Increases; Sichuan and Guangdong Achieve Best Results</h3>
+<p>Chongqing, 21st - The Food Production Committee of the Ministry of Food released its second public announcement, stating that according to reports from various provinces on food production work, the committee recently calculated that the fifteen provinces in the rear have increased food production by more than 89.7 million dan [a unit of weight], exceeding the original planned target by more than 57.9 million dan. Among them, the provinces with increased production of more than 10 million dan each are Sichuan, Guangdong, and Jiangxi. The provinces with increased production of more than 5 million dan each are Guangxi, Hunan, Zhejiang, and Shandong. The provinces with increased production of more than 1 million dan each are Shaanxi, Henan, Fujian, and Anhui. Other provinces such as Gansu, Ningxia, and Hubei also increased production by more than 200,000 dan. It is found that the total food production of the provinces in the rear is about 1.6 billion dan per year, so the amount of increased production this time only accounts for about 5% of the total production. As for the effectiveness ratio of various production increase measures, the promotion of winter plowing to increase production of wheat and miscellaneous grains increased by more than 38.5 million dan, accounting for 43% of the total increase in production. The use of wasteland and idle land to plant miscellaneous grains increased production by more than 31.4 million dan, accounting for 35%. Reducing glutinous rice and changing to indica rice or restricting the planting of non-essential crops and changing to food crops increased production by more than 13.9 million dan, accounting for about 15%. Promoting improved varieties of rice and promoting ratooning rice increased production by more than 1.8 million dan, accounting for about 2%. Pest control increased production by about 1 million dan, accounting for about 2%. The construction of farmland water conservancy and the promotion of fertilizers increased production by a total of more than 2 million dan, accounting for about 3%.</p>
+<h3>Vichy Provides Assurances to U.S. That French Islands in Western Hemisphere Will Not Be Used by Axis</h3>
+<p>Washington, 21st (Reuters) - Authoritative sources state that the U.S. government has now received firm assurances from Vichy that France will not allow its islands in the Western Hemisphere to be used by Axis ships or aircraft. The complex relationship between the United States and Vichy is expected to be fully clarified in the near future. One point that the United States is currently trying to clarify is to have Axis ships leave French Martinique, Saint Pierre, Miquelon, and other islands as soon as possible.</p>
+<h2>Page 3</h2>
+<h3>Concessions Do Not Divide Territories; Visas for Evacuated Residents; Various Groups Still Issue Them as Usual Today; Ningbo Residents' Homecoming Facilitated</h3>
+<p>The visa office of the Public Works Department is open as usual today, Sunday, issuing return-to-hometown visas. Its office hours are from 8:00 am to 12:00 pm and from 1:00 pm to 4:00 pm. Other branch offices and hometown associations and other groups entrusted to issue return-to-hometown visas are also issuing them as usual on Sundays. Half-price train and bus tickets can continue to be applied for. Residents in the French Concession, regardless of their territory, can also apply to the Public Concession. A large number of return-to-hometown visas are issued every day.</p>
+<p>Returning to Ningbo from Shanghai; Cared For Locally</p>
+<p>Yesterday, another 500 people from various counties and cities belonging to Ningbo who were displaced in Shanghai took the first Hua Wan ship to Ningbo. After arriving on the north bank of the Jiangbei River in Ningbo, they were cared for by the local organization's mediation team. Those who transferred to Cixi, Zhenhai, Yuyao, and other counties were helped by the team to purchase half-price boat tickets. Those who needed to stay in Ningbo were introduced to economical inns. Those who hold a return-to-hometown visa will be given various conveniences. Therefore, those who leave Shanghai to return to their hometowns should pay special attention to the preservation of their return-to-hometown visas and must not lose them, so as not to be inconvenienced.</p>
+<h3>Last Day for Dispersing Displaced Refugees</h3>
+<p>Tomorrow is the last day for the Shanghai refugee shelters to be widened and dispersed. According to a report by a Datong News Agency reporter, the refugee shelters at North Xinzha Road, North Zhejiang Road, Jessfield Road, and Tianhou Temple continued to see people leaving yesterday. The remaining part is also ready and can be released in full tomorrow. The police will send patrols to carry out the mission at that time. Those who belong to other places will have their visas and half-price train tickets issued by the Public Works Department so that they can return.</p>
+<h3>Ningbo Road Blocked Area Reopened Last Night</h3>
+<p>After the bombing at the Chuanggong Dance Hall on Ningbo Road, the authorities blocked the sidewalks along the road for more than ten days. It is learned that the blockade line in the area was opened from 12:00 last night, and traffic was restored.</p>
+<h3>Neglecting Terrorist Drills; Shop Temporarily Closed</h3>
+<p>During a recent anti-terrorism exercise carried out by the French police, the person in charge of a shop at the location of the shooting did not notify the police by telephone. The shop has been temporarily closed as a warning for its negligence. The French authorities are taking this opportunity to reiterate that the cooperation of residents within the concession in suppressing terrorist activities is of a compulsory nature, and those who violate it will be severely punished without leniency.</p>
+<h3>Fire at Silk Shop on Ningbo Road; One Child Burned to Death; Fire Under Control After Half an Hour; Silk Worth Hundreds of Thousands of Dollars Destroyed</h3>
+<p>At around 0:00 yesterday morning, a sudden fire broke out at No. 284, Lane 15 on Ningbo Road in the Public Concession. The flames soared into the sky. The houses at that number were old-style, so the fire spread very quickly. After the Central Fire Brigade learned of the fire, they dispatched fire trucks, which arrived at the scene of the fire at 0:06. At that time, the fire had already penetrated the roof, and the flames were soaring into the sky, and the walls of the house were also burning.</p>
+<p>Nearly Affected</p>
+<p>The firefighters and others in the neighboring houses immediately used the two pump trucks that had arrived to spray liquid and tried to prevent the fire from spreading to the neighboring houses. However, the lane was very narrow, making rescue difficult, so the flames were able to cross the lane and burn down many of the balconies of the houses opposite. Fortunately, the firefighters quickly poured water to extinguish the fire, and the fire was brought under control after 34 minutes. About an hour later, the fire was completely extinguished. As a result, the houses at that number were completely destroyed, and the Yichang Silk Store and Yuan Mianbu Store opened inside.</p>
+<p>Serious Loss</p>
+<p>The silk stored there, worth hundreds of thousands of dollars, was completely burned. In addition, a child was burned to death. After dawn, the firefighters found his body in the rubble, completely charred, a tragic sight. There were also a mother and child who knelt down before the fire trucks arrived and were unharmed. The woman first wrapped her child in a quilt and threw it out of the window, and then she also jumped down. Both mother and child were unharmed. It was learned later that the fire started downstairs and soon spread to the upstairs and the roof. The house was originally an old-style building, with the interior made of wood, and the stored silk was easy to catch fire, so the fire spread rapidly and could not be contained.</p>
+<h3>Crime in the French Concession in February</h3>
+<p>The number of crimes in February decreased compared to January. There were only two homicides. In the first case, the deceased was a Chinese employee of a leather goods store on Avenue Joffre, and his body was found in a box in the back room of the store. His throat was cut, and the motive for the murder has not yet been determined. In the second case, a Korean was shot and killed by robbers near its bank on Avenue du Cardinal Mercier; a stray bullet entered a neighboring room, causing minor injuries to a Chinese person. There was one kidnapping case. The kidnapped person was an employee of a travel agency and escaped on the same day. Three kidnappers were arrested. There were 30 armed robbery cases, seven fewer than in January. The cases of aggravated theft were even fewer, with only 36 burglary cases (there were 65 in February), 20 wall-climbing theft cases (29 in January), and 43 snatching cases (96 in January). Of these 99 aggravated theft cases, 54 have been solved, and a total of 71 people have been arrested. In addition, there were a total of 269 simple theft cases in the same month, 110 fewer than in January. 17 of them have been solved, and 79 criminals have been arrested.</p>
+<h3>Forged Western Medicine</h3>
+<p>Confiscated Seven Hundred and Seventy Bottles; Six Suspects Detained for Investigation. Detective Wang Xichang of Fanghua learned recently that a group of speculators, seeing the soaring prices of Western medicines, were forging various Western medicines for sale, hoping to make huge profits. This behavior not only defrauds others of their property but also has a profound and significant impact on the health of the people. He immediately began investigating and, on the previous day, arrested eight people, including Liu Chonghua, Ji Guihe, Teng Yaotian, Zhu Shaoming, Hu Boping, and Xu Likuan, at various locations such as 33 and 67 Park Road, Ningbo Road, and Qingniao Road. He confiscated seven hundred and eighty-nine bottles of forged French-made "Da Jian Feng" (Great Health Phoenix) lung medicine that had already been bottled, as well as many loose pieces of unbottled medicine, two forged trademarks for this Western medicine, raw materials, machinery, and other items. All were taken to the police station for interrogation and detention, pending further investigation.</p>
+<h2>Page 4</h2>
+<h3>Registered Flour Users Total More Than Four Thousand Households; Daily Applications Limited to Only Three Hundred Households; Daily Applications Approximate Five Thousand Bags</h3>
+<p>The Shanghai Municipal Council's Flour Control Office has revised the flour application procedures. Applicants are notified in order by flour distribution notices to purchase flour. There have also been changes in the application procedures. A reporter from the Datong News Agency has gathered the following information:</p>
+<p>Flour Application Procedure Changes</p>
+<p>Starting this week, the Shanghai Municipal Council's Flour Control Office will issue a card to registered flour users. The card will show the shop name, address, number, and the date and quantity of the last flour distribution. Future distribution dates and quantities will also be printed on the card as a basis for verification.</p>
+<p>Gong He Xiang Warehouse Continues Flour Distribution</p>
+<p>According to a reporter from the Datong News Agency, over four thousand households have registered as flour users at Gong He Xiang. Daily applications are limited to around three hundred households. Approximately five thousand bags of flour are allocated each day. Currently, flour is allocated for collection from the Gong He Xiang (wharf) warehouse.</p>
+<p>More Than Ten Warehouses Opened Successively</p>
+<p>The Shanghai Municipal Council's Flour Control Office was established in October of last year, with Xie Liangfu, the former commercial envoy of the Australian government, in charge. More than ten flour distribution warehouses have been opened successively, including Fuxin, Donglai, Zhongguo, Jincheng, Shanghai, and Shanghai Barge Transportation. The scope of the office has recently expanded, and there have been personnel changes. Former director Xie Liangfu resigned twice, and the Council officially approved his resignation on the 20th via official letter. The office has recently reopened the Gong He Xiang warehouse for flour distribution to meet the applications of flour product merchants.</p>
+<p>Foreign Rice Door Sales Dates as Usual</p>
+<p>The Shanghai Municipal Council's Rice and Grain Office has scheduled to continue issuing corn fee slips to various rice shops tomorrow. After payment, goods will be released at Li He Warehouse, 195 Suzhou Road, to supply the county gates next Friday. The Rice and Grain Office also issued a batch of corn to Li He Foreign Firm for milling the day before yesterday. The foreign rice release dates will remain Mondays, Wednesdays, and Saturdays, with corn for the county gates being released on Fridays.</p>
+<h3>Unemployed and Impoverished Suicide</h3>
+<p>Chai Shihe, a 21-year-old native of Ningbo, recently committed suicide due to unemployment and hardship. On the night of the previous day, he borrowed room 24 at the Ronghua Inn, 146 Mintini Road, and ingested Lysol disinfectant that night. At 7:00 AM yesterday, the tea boy discovered Chai dead in bed. An empty Lysol bottle was left on the bed. The police were immediately notified and sent detectives to investigate. The body was taken to the coroner's office. His mother, Mrs. Chai Zhang, was notified and claimed the body for burial that same day.</p>
+<h3>Terrorist Drill in Western Shanghai Yesterday Afternoon</h3>
+<p>Yesterday afternoon, around 2:00 PM, various key locations in Western Shanghai, such as Jessfield Road, Yu Yuan Road, and Jing'an Temple Road, were blocked off, and additional guards were stationed on various roads for about two hours. Around 4:00 PM, the roads were reopened. After investigation, it was found that this was a terrorist drill within the district.</p>
+<h3>Gambling Den on Tiantong Road Busted by Police Last Night</h3>
+<p>Chief Inspector Baisun of the Public Concession Police Department, along with Deputy Inspector Huang Fusen and Detective Lu Yixin, learned at 9:50 PM last night that a large-scale gambling den had been established at 15, Lane 615, Tiantong Road, with gambling equipment such as Pai Gow, dice tables, and big and small games. They immediately rushed to the address and arrested the owner, Yu Ashi, Yu Dai, and seventeen gamblers, all of whom were taken back to the police station for prosecution. The Agricultural School Seeks Practical Training Land. The current agricultural field of the school is too far away, which is extremely inconvenient for students to practice. Now we are looking for a garden or open space in the two concessions, and the school will design and cultivate it to use wasteland to produce food. Please send a letter to the school at 1816 Baker Road. Xinguang Supplementary School Sets Up Free Classes. Xinguang Supplementary School, 384 West Section of Beijing Road, Henan Road, has set up two free classes for the purpose of relieving out-of-school students and shop assistants, equivalent to the level of senior elementary school and junior high school, with three subjects: Chinese, arithmetic, and English. Classes are held every night at 6 o'clock, and tuition is free, with only miscellaneous fees of three yuan. Classes start on the 27th of this month, and registration starts today. Readers, please refer to Mr. Shan Nong's book "An Introduction to a Cultural Theory". It is planned to be made into a booklet. Your newspaper serves the society, and the gentlemen have the talent to manage the world. Now I have copied the outline of this book, with twenty chapters, and ask you to come and correct it. Shan Nong, Xianju Mountain, Xujiahui.</p>
+<p>Yesterday's newspaper was broadcast at 6:40.</p>
+<h3>Joint Fundraising Football Final Match: Golden Lion Decisively Battles Joint Team Today; Another Match: Aurora College Faces Xuhui</h3>
+<p>The joint sports association's fundraising football match, since its opening, has reached its final stage. The previous two games were evenly matched between the four strong teams participating, so each time it was able to attract a large number of spectators. The last scene has been scheduled to start at 2:00 PM today, and will still be held at the Aurora College Stadium on Luban Road for the final. The first game will be the Golden Lion's decisive battle against the Joint Team, and the second game will be Aurora College versus the Xuhui team. If Aurora College loses, they will definitely be in a yellow package (lose). If Xuhui wins, there is still a ray of hope for winning the championship. Both sides must go all out for the sake of the school's reputation. After the first game today, a charity ball will be auctioned publicly. The prizes have been donated by the organizers, including a large silver cup for the champion and a silver shield for the runners-up. Tickets are still sold for one to four yuan. The program and lineup are as follows:</p>
+<p>Joint Team——Golden Lion 2:00 PM</p>
+<p>Xuhui——Aurora College 3:45 PM</p>
+<p>Joint Team</p>
+<p>Chen Zhici, Tang; Chen Zhongxiang, Dai; Pan Honghai, Zhang; Hui Tingfan; Zuo Wen, Xiao Ziwen; Jing Wang Dingqiu; Ting Lu, Xiang; Xu Kehong</p>
+<p>Golden Lion</p>
+<p>Tao Ziming; Zhuang Youren; Chen Xiaoping; Hu Hanwen; Shen Jinyuan; Tao Tingfu; Lin Xinghua; Ye Xinfu; Zhao Yongfang; Li Yao</p>
+<p>Liao Shiming; Jia Youliang; Long Lake; Fu Nai Tang; Gao Zhiwen; Gu Zhifan</p>
+<p>Xuhui</p>
+<p>Qiang Yuanzhi; Cao Deming; Zhuang Wenquan; Chen Zhuoguang; Zhong Guiqing; Mai Liangsen; Zhou Defa; Huang Renkui; Yuan Kuntian; Xi Zuo; Wang Guoguang, Yu Liming</p>
+<p>Aurora College</p>
+<p>Liu Shaolin; Yang Lianjun; Yu Lihua; Ma Luzhi; Xiao Xingxiang; Wang Xisheng, Wu Junlin; Coloziov; Wu Bian; Ling Qipiao; Rui Qixian; Chen Daye</p>
+<h3>Second Act of China-Portugal Football: Two to Two Draw</h3>
+<p>Final Match on the 30th of This Month</p>
+<p>The second match of the China-Portugal football competition was launched at 2:00 PM yesterday. There were more than 8,000 spectators for the championship game, and the emotions were intense. In the extremely tense battle situation, the two sides drew two goals each. The charity ball auction started at 500 yuan and increased to 9,000 yuan, and was finally sold to Wang Yongkang at the highest price of 10,000 yuan. The judges were Zhang Le, He Chunhui, and Huang Renli. After the game, the military came and attacked, and the French (Fa) fans laughed (Fa), and the Golden (Jin) goalkeeper was caught off guard and conceded the first goal. It was only three minutes after the start of the game. In less than two minutes, the Portuguese player Remy touched the game ball with his hand and was sentenced to a free kick at 30 yards. Adaitere's (phonetic) shot unfortunately missed. Afterwards, Fei Chunhua had several good opportunities, but none were successful. At thirty-eight minutes, Youliang crossed the iron gate, and Victor near the goal powerfully buckled the Portuguese goalkeeper. Luo Chailiao (phonetic) lay down quickly to save, but it had failed, and each team tied at one point. The first half ended. Amidst the roar of re-battle, the Portuguese team replaced Remy with Gongshanfu, while the Chinese team replaced Chen Xiaoping and Xiao Ziwen with Jiang Chao and Gao Baozheng. In the sixteenth minute of the battle, Colasa received a pass from Gaines, and swept from 20 yards. The ball went into the net, and the Portuguese army took the lead with a score of two to one. During a mixed battle four minutes later, Fei Chunhua and Yuan Kuntian both rushed forward, and Jia Youliang took the opportunity to mix in and gently passed to Xiao Ziwen. Victor stepped forward and Ziwen headed the ball into the enemy's formation, again making a tie. Time ran out, and the two sides had a 2-2 tie, waiting for the final match on the 30th of this month.</p>
+<p>China: Fan Jinyong, Zhuang Youren, Zhang Linggen, Chen Xiaoping (replaced by Jiang Chao), Han Longhai, Zhang Zhaopeng, Xiao Ziwen, Gao Baozheng, Dai Linjing, Jia Youliang, Fei Chunhua</p>
+<h3>Gold Prices Slightly Strengthen; Gold Pounds Each Rise Ten Yuan</h3>
+<p>Yesterday, the cash spot price of gold fluctuated and strengthened, hovering around the 17,000 yuan mark. Under the control news, cash shops sold non-stop, but military tickets rose, and Central Reserve Bank notes followed suit, and people's hearts turned to prosperity. Securities firms absorbed the market, and chips felt scarce again. In the early morning, it was 17,000 yuan, and when the market opened, it was 17,100 yuan, which was 400 yuan higher than the afternoon closing on the previous day. Da Zhong vigorously advanced five or six hundred taels, and He Fa and Hong Qing Yong absorbed in two times. Yi Mao Yong shorted, and the price rose to 17,300 yuan. Cash shops rose and sold vigorously, and Shi Hecheng, Ji Wanfeng, Sheng Da Yong, and a certain securities firm sold actual goods, and the price plummeted by 700 yuan, falling to 16,600 yuan, and then the Nanjing gang vigorously raised the price to around 17,000 yuan, rising to 17,050 yuan. Cash shops and jewelry businesses sold, and the price fell to 16,700 yuan, and the securities firms vigorously advanced, and the market price was 17,000 yuan, which was 300 yuan higher than the closing price on the previous day, and the range on the day was 700 yuan, and after closing, it was 16,900 yuan, and after noon, the closing price was 17,100 yuan to 17,200 yuan, and the transaction was not strong, and it rose to 17,700 yuan in the afternoon. The price of gold jewelry per tael increased by 100 yuan in the afternoon, to 1,850 yuan (purchase reduced by 200 yuan). The black market for silver was still tired, falling to 12 or 13 yuan, and there were still few buyers, and the price of silver coins also fell to 8 yuan. Yesterday's foreign exchange market conditions, British and American gold pounds each rose by ten yuan, the former to 400 yuan, and the latter to 410 yuan. U.S. dollar bills returned slightly to 20 yuan, 30 to 40 cents, and Hong Kong bills rose to 3 yuan, 40 cents, and large bills were reduced by 10 cents, and military tickets rose to 7 yuan and 45 cents.</p>
+<h3>Cotton Yarn Prices Rise Strongly</h3>
+<p>The cotton yarn market situation has turned upwards, and the rising trend is quite strong, because of military tickets. The initial opening price of 20 count double factory singles was 3,105 yuan. After a while, due to the spitting out of the bulls, it relaxed to 3,050 yuan. Afterwards, it revolved outside 3,100 yuan for a long time. Unexpectedly, the market for 42 count thread and 20 count spot yarn was good, and people's hearts were very tight. Approaching the close, the market suddenly jumped horizontally to 3,305 yuan, and the closing price returned to 3,270 yuan. 42 count Blue Phoenix was 7,420 yuan to 7,720 yuan, 60 count Sunlight was 17,350 yuan, 42 count Water Moon was 7,550 yuan, 40 count Color Ball was 7,150 yuan, 40 count Golden Tiger was 7,200 yuan, 60 count Bull Head was 15,500 yuan, 32 count Red Joy was 6,420 yuan, 20 count Moon Lute was 4,110 yuan, 20 count Blue Phoenix was 4,500 yuan, 20 count Double Feng was 3,800 yuan to 3,950 yuan, 20 count Heavenly Girl was 3,750 yuan, 18 count Weaver Girl was 4,100 yuan, 17 count Color Ball was 3,900 yuan, 14 count Golden Tower was 3,450 yuan, 16 count Golden Bridge was 3,720 yuan, 10 count Boy Scouts was 2,670 yuan, and 10 count Double Earth was 2,580 yuan.</p>
+<h3>Cloth Market Watching</h3>
+<p>Non-Industry Continues to Search</p>
+<p>Factory Cloth Yesterday's market was due to the rebound of military tickets, and the hoarding of households was strong again, and the price of coarse and fine cloth continued to shout three or four yuan per piece, but the actual customer sales were still silent, so the transaction was not strong, 16 pound Flying Hong coarse cloth was 156 yuan, Globe was 165 yuan, 16 Great Peng fine cloth was 151 yuan, Fugui was 149 yuan, Fugui fine twill was 135 yuan, Chickey Shirting was 23 yuan, Anan Blue cloth was 180 yuan, Longevity Fuchou was 5 yuan, 70 cents, Wanmuli was 5 yuan, 45 cents, and White Cat printed cloth was 125 yuan, all of which were being made.</p>
+<p>East Cloth Yesterday was Saturday, and there was only half a day of trading in the morning, and the industry was in a slump, because the mobile certificate will be implemented from April 1, and before the control measures are announced, everyone is holding a wait-and-see attitude, so although the prices of the various cloth markets are constantly searched by non-industry hoarding households, the rise is very slow, and the new single of the leading fine cloth opened at 192 to 3 yuan in the morning, and it revolved for a long time, and it was heard at the close of noon that the military tickets and the variable horse yarn were both expensive, pulling up to 194 yuan and 50 cents, a relatively large increase of 1 yuan and 50 cents per piece, and the spot price was 168 yuan and 50 cents, the same trademark, with a difference of 26 yuan per piece, which is really shocking. The color ball flying fish fine cloth was opened at 173 yuan and 50 cents, Yanghe was 172 yuan, and Trumpet was 170 yuan, which also increased by one or two yuan per piece. The price of the Four Gentlemen Serge was 5 yuan and 85 cents for the factory single from October to December, 5 yuan, 56 cents for the red single new tax, and the spot price was only 5 yuan and 30 cents, which is 55 cents per yard lower than the old single from October to December, which is enough to prove that the actual sales are not moving.</p>
+<h3>Woolen Fabrics Only Rise and Do Not Fall</h3>
+<p>The prices of various goods in the woolen fabrics market yesterday still only rose and did not fall, and were still like kites, getting higher and higher. Summer goods such as feather yarn woolen fabrics, flannel, palette cloth, fat Belch, Faner Top, Pliss, yarn linen glue cloth, white serge, white straight tribute, etc. The rising trend is even sharper. Spring sales of Western-style thin flower woolen fabrics, grass green twill, thin plain serge, etc. are also quite firm for a while, because actual sales have started, and buyers need to pick up goods early, and there is an unusual lack of goods at the bottom. The industry is hoarding and unwilling to sell, and non-industry hoarding households are searching. Factory goods of flannel are out of stock, and imported goods must be sold for 140 yuan per yard for the first number, 115 yuan for the second number, and 100 yuan for the second number. Feather yarn, palette cloth, and fan Top all offer more than 100 yuan. Most of the Shenzhi local factory goods must also be sold for more than seventy yuan.</p>
+<h3>Public Bonds Turn Weak Again; Stock Market Rebounds</h3>
+<p>The public bond dark market turned weak again yesterday, and sellers sought to sell, but those who accepted were few and far between, and the general public had no intention of doing so. On the one hand, the winterers are anxious to come out of the cage, and they have to depreciate the price to seek to escape the market price, which is still a little more than one yuan, but it is still the usual practice to go elsewhere, and it is also a special and deformed situation created by the environment for a while. Yesterday, the largest number of purchases and sales was no more than 30,000, so the total turnover was no more than 200,000 yuan, and the market price has fallen by as much as six corners to one yuan and four corners. A brief table is listed below:</p>
+<p>Yesterday, foreign stocks were stable, and the turnover was sparse, with 7,200 shares. Jardine Spinning retreated to 25.1.25 yuan and returned to 25.5 yuan, Shanghai Plush 6 yuan 45 cents, Jardine Beer 6 yuan 23 cents, British United 21 yuan, Kaiping 137 yuan, Yeguang 17 yuan 45 cents, Paper One Industry 6 yuan 25 cents and 6 yuan 30 cents, Electricity One Car 35 yuan 75 cents and 40 yuan, Yang Yizi 10 yuan and 9 cents, and 10,000 yuan of power bonds, priced at 75 yuan. The rest, such as Navigation One Industry, had a purchase price of 7 yuan and a sale price of 7 yuan and 9 cents, China One Spinning 10 yuan 35 cents, China Camp 10 yuan and 51 cents and 11 yuan, Xiangtai Timber 245 yuan, Reclamation 25 yuan, Steel Industry 12 yuan, Telephone 25 yuan, Xinho Spinning 7 yuan, Telephone Bonds 72 yuan, British Zhahua 15 yuan and 50 cents, Langerzhi 14 yuan, and Kelohua 1.5 yuan.</p>
+<p>Yesterday, the Hua stock market was also affected by the rise in military tickets, and people's hearts were optimistic. The market was firm, Yong'an Company was 74 yuan, Xinxin was 75 yuan, and each rose by one or two yuan. China Underwear rose from 18 yuan to 18 yuan and 75 cents (old), 18.15 yuan rose to 19 yuan. Great China Match 112 yuan and 50 cents, Nanyang Tobacco Company 55 yuan and 50 cents, New Asia (new) book 2 yuan and 50 cents, and Sino-French (new) 45 yuan, all of which had transactions. World Bookstore 50 yuan and 5 cents, the public utilities stock was stable, and the textile industry was sparsely traded.</p>
+<h3>Grain Merchants Gradually Become Aware</h3>
+<p>Yesterday, amidst the rising prices of various goods, the market for miscellaneous grains remained flat. Because of the lessons learned from wheat bran, speculators have gradually restrained themselves, and only the shops on the street are scattered, and the results are mixed. Yellow beans fell by two or three yuan, barnyard beans rose by three or five yuan, red beans were flat, and bean cake rose by one or two yuan. It is estimated that 90 bags of Tianjin Jinyuan were sold, priced at 210 yuan to 208 yuan, 50 bags of South Bridge yellow beans, priced at 188 yuan, 200 bags of Chongming sand barnyard beans, priced at 230 yuan to 240 yuan, and 100 bags of sand red beans, priced at 189 yuan to 190 yuan, 20 bags of Tianjin red beans, priced at 185 yuan, and 60 bags of Benniu red beans, priced at 175 yuan to 173 yuan, 1,000 pieces of Han" bean cake, priced at 38 yuan, two vehicles of Feizi bean cake, 47 yuan and 80 cents for the November warehouse order, and 54 yuan and 50 cents for the new warehouse order, and 2,000 pieces of Shengji bean cake, 53 yuan for the May warehouse order, and 53 yuan and 25 cents to 54 yuan for the June warehouse order.</p>
+<h2>Page 5</h2>
+<p>Family</p>
+<h3>Family Happiness Depends on Mutual Effort</h3>
+<p>— Hefeng</p>
+<p>People are always dissatisfied with reality. A married man often complains about the heavy burden of the family and has no smile all day long. A lively girl suddenly steps into the family circle and only feels lonely and uncomfortable. Before my marriage, a classmate came to talk to me about a college graduate couple. After marriage, the man went home. Because he had socialized enough outside, he was too lazy to talk when he got home, and he didn't want to go out to play anymore. The woman waited at home all day, thinking about this and that, thinking about the past and the future, and she already felt extremely bored in her heart. When her husband came back, seeing that her husband's face was serious, she couldn't say a word, and the loneliness in her heart expanded even more, so she recalled the husband's various considerations and tenderness towards herself before marriage, and felt that marriage was simply the tomb of love. From then on, she told people she met, "Don't marry. After marriage, love will disappear." So the feelings between the couple gradually became cold.</p>
+<p>I told him my meaning: "Marriage is originally a very ordinary thing, and it will never be as enthusiastic as when you are in love. People who are together every day cannot be compared with those who are hard to meet. The previous husband was your lover. Because of various obstacles, of course, you felt sweet and rare when you met, but the sweetness of marriage should be thought of as the completion of previous hopes. Who doesn't want to be together forever after falling in love? Only marriage can fulfill your wish. Therefore, after marriage, you should not only use the brief moment of the past to compare this life with permanent common significance. That kind of comparison is not only a bit nitpicking, but also abnormal, because that kind of too sweet and too painful love life is fundamentally abnormal and cannot last long. Only marriage is a long-lasting, normal, common, and praiseworthy life.</p>
+<p>"After marriage, men have the burden of the family, and the wife should share the fatigue and pain caused by this burden. If a wife cannot share this burden, but instead complains and is full of jealousy, that is the wife's responsibility. If every wife can understand her husband and maintain a calm attitude when her husband is tired, I think the husband's fatigue will disappear more easily." My friend thought about my meaning and smiled and said, "Look at you."</p>
+<p>"I can do this," I always tell him.</p>
+<h3>Home Massage for Spring in the Corners of the Eyes</h3>
+<p>— Wang Yizhi</p>
+<p>I used to see young women in poor families in China with dark circles under their eyes and deeply sunken lower eyelids, which harmed their appearance, affected their own destiny, and the future of their families. I wished I could lend a hand to help and save this silver wave at the bottom of the curtain and this spiritual quagmire.</p>
+<p>It has been found that wrinkles on the lower eyelids are not only caused by old age. Some people are troubled by sorrow, misguided by abnormal life, or cry too much or suffer from insomnia, even though they are not old. This is because the lower eyelids contain many veins that communicate blood circulation, and there are inner secretory light yellow lymph glands. When people are sad, angry, decadent, and tired, their internal bodies are often deficient in blood and lymph. The skin outside the eyes is caused by the sudden expansion and contraction of the veins and glands. The skin outside the eyes is concave and convex, and wrinkles appear from time to time. To eliminate this pain, there are three ways:</p>
+<p>We should eliminate the long nights of gambling that reduce sleep and tire the spirit, and instead engage in normal entertainment that helps the body, benefits knowledge, grows experience, and benefits the group.</p>
+<p>Try simple massage. Both the upper and lower eyelids are delicate, and the lower eyelids are especially important. It is sufficient for the practitioner to perform it twice a day. It is advisable to rely only on the fingertips of the left and right index and middle fingers, gently touch the eyelids, and carefully massage. First, gently touch the upper eyelid between the eyebrows and eyelashes with the fingertips of the two fingers, starting from the upper end of the bridge of the nose and spreading to the left and right. Then, gently touch the lower eyelid with the fingertips of the two fingers, and change the direction from the left and right sides to the center of the bridge of the nose. Do not use too much force when wiping, and do not squeeze the eyelids.</p>
+<p>Therefore, people should not turn small accidents into great tragedies. In the autumn of material hardship, the value of "optimism" can buy "achievements" and "happiness" that are not easily achieved with ten thousand taels of gold. The above example is just one aspect of this.</p>
+<h3>The Psychology of Food: How to Satisfy Your Husband's Hunger?</h3>
+<p>— Paul</p>
+<p>Everything is very advanced in America, and therefore, psychological research on all aspects of family life is emerging endlessly. It is said that if a husband has a casual attitude towards meals, it indicates that he is not very interested in food. According to psychologists, the food a person consumes has a significant relationship with their emotions. In recent years, although the theories of food nutrition have become increasingly advanced, the increasing divorce rate is alarming. The root cause is the improper cooking of food.</p>
+<p>Vitamins and calories (the body heat generated by food) are the two main points that determine the nutritional value of food. However, American women have overlooked the following two points:</p>
+<p>Men expend more heat daily than women due to their work.</p>
+<p>Vitamins and calories are certainly essential for the body, but they do not have the power to stimulate appetite.</p>
+<p>Not long ago, a gourmet association in New York held a test to investigate what men ultimately like to eat. The results showed that men love to eat meat, eggs, ham, beans, beef, cabbage, chicken, meatloaf, and stews.</p>
+<p>American women, who constantly pay attention to their figure and strive to maintain a fixed weight, will naturally pale in comparison when they see this menu. Moreover, eating these expensive foods every day also poses a significant threat to the family budget. However, the truth is not that simple and difficult. There are several price points for meat, with some parts being cheaper than others. As long as it meets sanitary conditions, it is okay to buy the cheaper parts.</p>
+<p>Some Americans believe that American men do not like their dishes to be too flavorful. In fact, that is not the case, because men often pick up their condiments—tomato paste—as soon as they sit down at the table. (Naturally, there is no need to worry about this in China, because Chinese cuisine is not as bland as Western cuisine.)</p>
+<p>American women also have a concern that their husbands often do not like to eat vegetables. In fact, this is also a cooking problem. If cooked properly, even the most common vegetables can be very delicious.</p>
+<p>American food experts have also discussed the issue of food temperature. It is said that the temperature of food has a great relationship with appetite. Foods that are suitable for hot eating should not be allowed to cool down before eating. Many women, in order to make the color of the dishes very appealing, spend a lot of effort decorating them with lemon slices and tomato slices after cooking. Although the color is beautiful, the taste of the food has been greatly damaged. In fact, for men, deliciousness is the first condition when eating, and aesthetic appearance is secondary.</p>
+<p>Finally, American psychologists say that if a wife can attract her husband's attention through food, then he will pay attention to everything about his wife, indirectly leading to marital happiness. This is not only true in America, but also Chinese housewives should pay attention to this point.</p>
+<h3>A Week of Home-Style Recipes</h3>
+<p>— Ms. Hua Ying</p>
+<p>In the past half month, it has been difficult to buy foreign rice, and the price of local rice has soared. "It is difficult for a clever woman to cook without rice," which is really driving us housewives crazy. Not to mention rice, even cooking oil has become a problem, reaching ten yuan per catty, and we still have to queue up to buy it. Therefore, I am advocating a "save oil movement." When cooking, whether it is meat or vegetarian dishes, saving oil is the most important thing. Dishes that can be simply stir-fried should be changed to simple stir-frying, and avoid braising with oil and soy sauce. The recipes for the seven days of this week will be based on the principle of saving oil, with more simple stir-fries and clear stews included. Housewives, please pay attention.</p>
+<p>Monday</p>
+<p>Stuffed Meat Tofu Puffs</p>
+<p>Clear Stewed Small Flatfish</p>
+<p>Spinach Stir-fried with Vermicelli</p>
+<p>Scallion Bean Curd Paste</p>
+<p>Tuesday</p>
+<p>Sweet Potato Beef Soup</p>
+<p>Braised Tofu</p>
+<p>Pea Shoots Stir-fried with Bamboo Shoots</p>
+<p>Sesame Paste Mixed with Water Celery</p>
+<p>Wednesday</p>
+<p>Celery Stir-fried with Shredded Pork</p>
+<p>Dried Shrimp Egg Drop Soup</p>
+<p>Stir-fried Baby Bok Choy</p>
+<p>Pickled Cabbage Mung Bean Sprouts</p>
+<p>Thursday</p>
+<p>Onion Beef Shreds</p>
+<p>Clear Steamed Fish Soup</p>
+<p>Scallion Braised Tofu</p>
+<p>Jellyfish Radish Shreds</p>
+<p>Thursday</p>
+<p>Meat Tofu Soup</p>
+<p>Shredded Squid Stir-fried with Chives</p>
+<p>Plain Stir-fried Cabbage</p>
+<p>Preserved Tianjin Cabbage Vermicelli</p>
+<p>Saturday</p>
+<p>Radish Duck Gizzard Soup</p>
+<p>Red Braised Lees Green Fish</p>
+<p>Dried Tofu Shreds Stir-fried with Preserved Cabbage</p>
+<p>Dried Shrimp Stir-fried Wheat Gluten</p>
+<p>Sunday</p>
+<p>Seafood Platter</p>
+<p>Pan-fried Yellow Croaker</p>
+<p>Vegetarian Assortment</p>
+<p>Cold Tossed Horsebean</p>
+<p>Tianchu Recipes (94)</p>
+<h3>(165) Powdered Silver Fish (Dish)</h3>
+<p>— Draft by Liu Xian</p>
+<p>Preparation... Corn Flour Glutinous Rice Flour (or Wheat Flour) Vegetables Dried Shrimp Salt MSG Soy Sauce Cooking Wine Preparation... Finely chop the vegetables, stir-fry them in oil, soak the dried shrimp in wine, add salt and MSG to make a fresh soup. Then, mix the corn flour with a portion of the glutinous rice flour, add water and a little salt, and mix into a paste (should be dry). Use chopsticks to put the paste into the boiling fresh soup. The paste solidifies into silver fish shapes when it enters the water. Wait until cooked, then serve.</p>
+<h3>(166) Corn Steamed Meat Patty (Dim Sum)</h3>
+<p>Preparation... Pork Ribs Corn or Corn Flour Bean Curd Sheets Cooking Wine Tianchu Household Tapioca Starch Salt Tianchu Soy Sauce Essence</p>
+<p>Preparation... Cut the bean curd sheets into diamond shapes with an area of one square inch, add salt and knead slightly, and place them on the bottom of the bowl. Separately, wash the pork ribs and chop them into small pieces, add them to the corn or corn flour, then mix in an appropriate amount of salt, cooking wine, and soy sauce essence, mix thoroughly, and finally add a little tapioca starch, spread it on the surface of the bowl, and steam it in the rice cooker until cooked. Eat it hot, and it is extremely delicious.</p>
+<p>Notice (1) This recipe series is scheduled to end temporarily at the end of this month. All contributors who have not received rewards due to address changes, please notify us before the end of this month so that we can send them separately. Notice (2) "MSG", "Wei Zong", "Tianchu Medical Oil Essence", and "Tianchu Household Tapioca Starch" produced by Tianchu MSG Factory are available in major companies and South-North food stores in this city.</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.03.21.html", "next": "1942.03.23.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

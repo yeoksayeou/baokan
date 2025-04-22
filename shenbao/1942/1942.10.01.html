@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.10.01 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 477 - 4924616</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>德決不惜任何犧牲奪取斯達林格勒城北工廠區在激戰中高加索德軍亦獲進展</h3>
+<p>德元首行營三十日海通社電</p>
+<p>今午德軍戰報稱高加索之西南及泰雷克迤南之德軍與友軍奮勇作戰又獲進展斯達林格勒城內北區又有數處被德軍佔領蘇聯生力軍損失坦克車三十四輛頓河方面德義聯軍摧毀敵軍渡河之企圖昨夜我機又猛炸阿堪傑爾斯克數處大火昨夜蘇轟炸機數架襲擊波羅的海區被擊落兩架</p>
+<p>莫斯科三十日同盟社電</p>
+<p>蘇情報局二十九日夜發表㈠蘇軍二十九日在這林格勒莫斯多克西尼亞潛心于伊諾各地區與德軍鏖戰㈡斯城激戰仍繼續進行本日德軍戰車步兵部隊於空軍掩護下迭次向斯城西北部猛攻但蘇軍仍嚴守陣地㈢伏爾加河蘇艦隊砲擊德軍蘇軍且於斯城西北方採取積極行動</p>
+<p>柏林三十日海通社電</p>
+<p>高加索德軍在都浦勘探這北向該港近郊疾進佔領堅強防禦下之工廠數所蘇黑海艦隊雖發砲阻止德軍之前進然亦未有效果高加索山地中德工兵續攻佔敵方據點多處泰雷克區空戰異常激烈德空軍大獲勝利斯達林格勒之戰工已近尾聲德軍續佔領北部之重要建築物數座此等建築物大多有地道相連接進攻之際殊為不易十月革命工人區亦已經德軍衝入</p>
+<h3>德軍擴大佔領區至伏爾加河西岸</h3>
+<p>瑞典京城二十九日同盟社電</p>
+<p>據倫敦人士之意見此番德國是否能攻陷斯達林格勒實為將來整個歐洲戰局之關鍵此一問題之答案已在目前惟英國觀察家仍作斯城終必陷落之想過去若干日因丁莫生柯將軍之反攻英人頗為樂觀其後德外長里賓特洛甫宣稱德國奪取斯城已下十分決心故英人相信德方將不惜任何犧牲在此十日內攻陷斯達林城</p>
+<p>蘇聯邊境某地二十九日哈瓦斯社電</p>
+<p>本日為德蘇戰爭第百六十四日束線戰事最惹人注意之發展厥為軸心軍已在斯達林城區獲有重大成就德軍及其聯軍於佔領斯達林城南郊後即向共產黨總部之防禦工程猛烈進攻終於將其攻佔同時德軍復在城北開始發動攻勢（該區有重要工廠多所）目下該城守軍業已喪失其主要根據地德軍擴大其佔領區至伏爾加河西岸足以阻止蘇聯渡過該河是以守軍接濟現亦有被截斷之虞惟丁莫生柯將軍所部仍在斯達林城北部賡續向德軍陣地猛攻紅軍在斯達林城南郊亦大法反攻企圖聲東擊西以牽制德軍前進但未能在軍略上發生重大變化至於高加索邦方面戰爭仍在進行中尤其在中部泰雷克流域及黑海都浦斯港附近地方戰況不詳僅知德方宣稱德軍續有進展而已</p>
+<h3>東條首相廣播感謝國民獻金</h3>
+<p>東京三十日同盟社電</p>
+<p>日本東條首相今晚廣播略謂過去五年日本人民於國家儲蓄之獻金已超過五○·○○○·○○○·○○○日元深表感奮全國當努力完成大東亞戰爭之重要工作同時對大東亞重行　設政府已決意完成此次戰事之目的由於生產之擴充國家精神之提高故能得此鉅款又因日本人民努力合作軍事上得赫赫戰果國內則鞏固內部陣線並啟發戰時財政及經濟泉源在東亞動員大規模人力與物力必需有大宗基金如此項基金作為消費不僅於戰事之進行受礙並且對人民之生活亦受影響結果上此項購買基金用作擴充生產頗屬必要希望人民認識目下之情有形在各人範圍內從事戰時生產節省消費增加國家儲蓄</p>
+<h3>林柏生昨飛日徐良同機返任</h3>
+<p>南京三十日中央社電</p>
+<p>新國民運動促進委員會常務委員兼秘書長林柏生氏奉派赴日視察青少年組織訓練業於三十日率同隨員一行六人由首都乘機出發逕飛東京是日上午八日新國民運動促進委員會代理秘書長馮節率該會高級職員宣傳部常務次長郭秀峯率該部高級人員及中日各方長官等數十人到機場歡送駐日大使徐良氏亦於是日同機返任又新國民中進委員會秘書長職務在林秘書長出國期間已由委員長令派該會委員馮節代理</p>
+<h3>三特使晉謁日皇</h3>
+<p>東京卅日中央社電</p>
+<p>完成訪華重大使命歸國之平沼有田永井三特使於本日上午十時晉宮拜謁大皇陛下旋即辭出</p>
+<p>東京三十日中央社電</p>
+<p>日青木國務大臣最近將赴南京觀謁國府汪主席致敬</p>
+<p>南京三十日中央社電</p>
+<p>日本答訪使節團特　大使附三重實義淺出龍男堀山省飯母清一等以在京一切事宜已辦理完畢於廿九日離京乘車赴滬侯輪返國</p>
+<h3>威爾基已抵渝立即進行重要會談</h3>
+<p>里斯本三十日同盟社電</p>
+<p>據重慶訊美總統羅斯福特使威爾基已自莫斯科抵渝高級官員及英美大使均在機場歡迎</p>
+<p>廣州三十日同盟社電</p>
+<p>此間得重慶息羅斯福總統特使威爾基二十九日由蘇抵渝後立即晤蔣介石氏會談威爾基在渝將訪主席林森陸軍總長何應欽及其他領袖並將參觀市內之工廠學校及其他建設</p>
+<p>瑞典京城三十日中央社電</p>
+<p>據倫敦方面消秘羅斯福總統特使威爾基抵渝後渝方將乘此時機就展開東亞第二戰線及英印軍司令官華維爾主張奪回緬甸重建其路線等問題向英美極為和呼籲但就事實而言奪還緬甸殊乏可能英渝間亦深感及此故正商議恢復以往之駱駝隊運輸由印度越過喜馬拉雅山經西藏而達四川以為對渝物資援助之新路線最近由印出發之英訪渝代表團一行現正在西茂之拉薩一帶進行調查中惟此項運輸方法勞人費力需地亦過久縱即恢復亦難收獲大效果故英渝當局雖正積極協議計劃但一般人士對此並不早視</p>
+<h3>東京各銀行戰時儲蓄激增</h3>
+<p>東京三十日同盟社電</p>
+<p>東京各銀行戰時儲蓄存款在九月二十六日前一星期內激增一二一·○○○·○○○圓共達一三·一三五·○○○·○○○圓</p>
+<h3>嘉興等五縣清鄉開始</h3>
+<p>嘉興三十日中央社電</p>
+<p>太湖東南二期清鄉工作明日即將展開所有二期清鄉地區嘉興嘉善平湖海寗海鹽五縣賦稅已由省府通令各縣即日一律停止微收辦理移交並將所收稅款解廳嘉興各稅收機關奉令後均於明日正式停止征收辦理結束準備移交</p>
+<p>中央社滬訊</p>
+<p>滬清鄉分會政工團為謀清鄉區內公文密件遞送之迅速便利特設蒙住綱其辦法以政工團所在地之周浦為總站各重要市鎭設立支站各鄉設分站支分長由區鄉鎭長義務兼任下設遞信員由該站　長於當地居民中遴派充任之該團另規訂有公文書交付遞送辦法不日即可通知各關係機關依照規定交遞信站遞送</p>
+<h3>維希將駐防軍</h3>
+<p>維希三十日海通社電</p>
+<p>此間昨日暈卝由維希將有防軍駐守不久即可開至</p>
+<h3>大東亞省展期成立</h3>
+<p>東京三十日中央社電</p>
+<p>日政府前所決定之行政簡素化及成立大東亞省二案原均定於十月一日成立茲以一切準備工作均已完竣僅待樞密院審議後即行正式決定惟樞密院以此二案極關重要故審議工作極為愼重因之十月一日之實現實不可能政府以行政簡素化與大東亞省之設立實不可分關於行政閣議亦已決定為五億一千四百萬圓又關於大東亞省之成立費十八日之閣議亦已決定為一各二百七十四萬圓由第二預備金項下支出該二案俟樞密院審議終了十月中旬即可見諸實施</p>
+<h3>古巴已與芬蘭匈羅絕交</h3>
+<p>里斯本三十日海通社電</p>
+<p>紐約電訊古巴向日德義宣戰後先後與芬蘭匈牙利及羅馬尼亞斷絕邦交</p>
+<h3>泰國洪水汜濫</h3>
+<p>盤谷三十日中央社電</p>
+<p>泰國北部自六月以來豪雨為患災情之重為三十年來所未有洪水沿湄南河向該國中北部汜濫更漸行南漫現距首都盤谷僅數十公里此次水患來勢之洶遠在三十五年前大水之上予料十月中旬湄南河之汜濫定將侵入盤谷市內泰國當局現正積極準備防水工作中但另就科學之觀點而言則此次之大水將對農田予以充分之肥料</p>
+<h3>墨西哥政府令徵青年入伍</h3>
+<p>墨西哥京城二十九日哈瓦斯社電</p>
+<p>官議定帆不十八歲男子均須於下月間實行登記第一批徵兵定於明年一月起實施訓練</p>
+<p>阿根廷京城三十日同盟社電</p>
+<p>墨西哥政府昨下令徵召全國十八歲壯丁於下月間入伍受訓</p>
+<p>阿根廷京城三十日海通社電</p>
+<p>昨夜消息哥斯德黎加之志願軍團在組織中團員係由　國軍官訓練一經訓練完畢即可派赴歐洲助協約國作</p>
+<h3>英屬巴多斯島移交委內瑞拉</h3>
+<p>委內瑞拉京城二十九日哈瓦斯社電</p>
+<p>委內瑞拉與英屬特里尼達島間之巴多斯島主權本日由英方正式移交委內瑞拉政府</p>
+<h3>印獨立同盟發言人駁結維爾</h3>
+<p>盤谷二十九日同盟社電</p>
+<p>印度方面總司令華維爾將軍曾在新德里向英美記者揚言彼於緬甸失守之時即擬有收復失地之計劃印度獨立同盟發言人今夜廣播稱華維爾除為俘虜或旅客外決無再見緬甸之望</p>
+<p>馬尼刺三十日同盟社電</p>
+<p>十月二日乃係印度聖雄甘地生辰屆時菲列賓印度聯合會擬舉行大規模反英示威運動</p>
+<h2>Page 3</h2>
+<h3>柏林舉行冬賑會希特勒發表演說郭培爾否認國社黨革命讕言</h3>
+<p>柏林三十日海通社急電</p>
+<p>希特勒元首今日下午六時（上海時間一日上午一時）偕宣傳部長郭培爾北非德軍總司令羅美爾戎裝步入柏林體育館主持冬賑大會首由郭培爾致詞語極簡單其要點在駁斥國外所宣傳德國國社黨發生革命之謠言力言國社黨領袖當中決無一人重病或遭受槍決放逐等情事外國種種造謠中傷之詞不值一辯德國今日無論政治上軍事上經濟上均為團結一致郭培爾又提及德國於歐戰爆發後之第四年開始時原料發食均甚為充足德國之重大困難業已克服國必能獲致最後勝利</p>
+<p>柏林三十日海通社急電</p>
+<p>希特勒元首今日在柏林體育館舉行之冬賑大會中發表演說首稱渠所討論者為目前急切之問題而非將來局勢之推演繼即對下列各項問題發抒意見㈠關於東線戰局希特勒宣稱我軍必將佔領斯達林格勒汝等可以信靠㈡關於大西洋憲章希特勒聲稱此種愚蠢具文僅能有數年之効力不久即將為鐵的事實使之消滅㈢關於第二戰線問題希特勒指陳當邱吉爾初次決定命英軍在歐洲作登陸企圖之時雖英國國內人士亦對其所選地點之是否適當意見紛歧希特勒力言無論邱吉爾決定在何處作第二次登陸之冒險倘英軍能在陸地上停留九小時則將為邱吉爾之幸運</p>
+<p>柏林三十日海通社電</p>
+<p>德元首希特勒今晚發表演說此為五月來第一次向德國民眾及世界各國發表之演說渠於一月三十日發表第一次演說時預料本年仍將獲得偉大之勝利二月十二日渠報告東線戰況三月十三日發表第三交亽四月二十六日復向國會發表演說檢討軍事與國際局勢此次發表演說為德軍發動夏季攻勢後之第一次</p>
+<h3>開闢第二戰線問題邱吉爾拒不討論謂此時發表聲明殊非所宜對未空襲羅馬事亦不作答</h3>
+<p>里斯本三十日同盟社電</p>
+<p>英下院昨日開會邱吉爾首相答復某議員質問稱關於開闢第二戰場之時間與地點公開討論或妄加揣測殊屬非是某議員問此言可傳達威爾基乎邱吉爾置之不答</p>
+<p>倫敦廿九日哈瓦斯電</p>
+<p>邱吉爾首相本日在下議院宣稱關於協約國開闢第二戰場之日期與地點此際答覆問話或發表任何聲明均非所宜至此議員雷特詢問何以羅馬從未遭協約國空襲邱吉爾首相當即答稱余對於此事業已發表聲明此際余不欲有所增益雷特又問英國避不轟炸羅馬是否不欲傷天主教許徒之感情首相對此依然拒不置答</p>
+<p>保衛北愛</p>
+<p>倫敦二十九日哈瓦斯社電</p>
+<p>下議院本日復會時各議員紛紛就愛爾蘭共和軍最近在愛爾蘭滋事情形提出質問其中某議員詢問保衛北愛是否為警察當局之急務當由內務部次官幃克答稱北愛當局已向英政府保證謂彼等力能控制全局解決一切</p>
+<p>解放印度</p>
+<p>倫敦二十九日哈瓦斯社電</p>
+<p>殖民大臣愛梅立本日在下議院發表演說時曾發生意外事件數起當其演說時輒為旁聽席上婦女高喊解放印度之呼聲所間斷迨演說完畢後又有若干議員相繼提出問話並詢問渠所提出之見解是否可由下議院公開討論愛梅立當即答稱此際辯論尚非其時當時有議員即高呼然則君不欲傾聽眞實之言矣</p>
+<p>通貨問題</p>
+<p>倫敦二十九日哈瓦斯社電</p>
+<p>財相伍特本日在下議院宣稱英政府不欲模仿羅斯福總統所採取之撒旦置以防止通貨膨脹綠我國政府於一九四一年七月發表白皮書時即已闡明穏定貨幣政策此項政策已足預防通貨膨脹之危機財政部於採取此項政策之際曾勸告人民自動減少購買貨物並請各顧主勿增加工人之薪給至如何調整物價與薪給仍得由私人方面發動之此外勞資糾紛與薪給問題交由仲裁法庭解決一項制度亦慶予以修正下議院諸君對於此一問題倘有高見余亟願提出討論</p>
+<h3>李希上將出任新職</h3>
+<p>華盛頓二十九日哈瓦斯社電</p>
+<p>戰時情報局本日發表消息稱前任駐法大使李希海軍上將已被任為美國戰爭努力指導委員會主席同時又為美國海陸空大元帥羅斯福總統之參謀長以資輔弼此外海軍總司令金上將陸軍參謀長馬歇爾空軍總司令亞爾諾三人所組成之海陸空三軍混合委員會每次開會時亦均由李希上將擔任主席是故關於開闢第二戰場之各項問題李希上將實居于一言九鼎之地位</p>
+<p>紐約二十九日哈瓦斯社電</p>
+<p>羅斯福總統特使威爾基在莫斯科發表之談話已引起此間各界紛紛討論就中軍界人士稱吾人必須明瞭德國為一強大之大陸國而英美則僅可稱為島國是以英美兩國不應自陸上進攻德國蓋其弱點即為英美強勁所在質言之即英美應自海空方面進攻德國是也紐約民聲講壇報特為文評論此項見解略謂開闢第一戰場問題並非為軍事領袖勇敢派與軟弱派爭論之焦點良以此舉並非堅強意志與敢作敢為之問題也吾　必須明瞭英美對於此事不論作何決定對於現行大戰之演變均為非常重大之因素德國方面對於有飛機濳水艇為其奧援之強大陸軍倚畀殷故過去在歐洲大陸之任何戰場均已證明德軍實為不可征服者準此而論協約國之主要問題厥為就下開三點決定態度即㈠是否先設法摧毀德國技術所造之強大武器㈡是否聽任德國本身選定某處為戰場而即在該處應戰㈢是否在協約國業已取得或可能取得優勢之戰區予以重大打擊要之開闢第二戰場一項問題應由陸空兩軍將領決定之</p>
+<p>巴黎二十日海通社電</p>
+<p>法國人士咸極注意英美在非洲之活動情形此間報章並恐英美有進攻達加爾之可能晨報著稱英美於攻佔馬達加斯加後或有進犯達加爾之可能曾于該地乃一重要根據地也某報則載有一文力言法國不應再對美國有所顧忌亟應立即充實達加爾之防務並接受外援切勿再蹈敘利亞與馬達加斯加之覆轍</p>
+<p>維希二十九日哈瓦斯社電</p>
+<p>殖民部頃宣布自本月二十五日以來馬達加斯加島登陸英軍其進展已大見遲緩昨日敵軍仍向距該島首府四十英里之盎巴泰倫進攻自倍恩越城陷落以來法軍退守森林地帶繼續抵抗並已搆成多數抵抗中心敵軍在崎嶇地面推進困難重重損失殊為重大英軍雖利用坦克車鐵甲車及重砲作戰迄無法突破法軍在叢林中建築之防線仍侷促於首府附近而已幃當元首昨致亞奈總督之電已於今晨向該島全體守軍宣讀</p>
+<h3>諾克斯飛抵巴西京城</h3>
+<p>阿根廷京城三十日同盟社電</p>
+<p>美國海軍部長諾克斯上校昨日午後飛抵巴西京城中途曾視穿巴拿馬河防</p>
+<p>阿根廷京城三十日海通社電</p>
+<p>美帝國部長諾克斯上校昨在巴西首都向新聞記者記者聲稱巴西一向為美國之與國本人蒞臨貴國之目的無他增強兩國間之聯繫而已傳說軸心國潛艇以馬丁尼克及法屬幾亞那為基地事實上殊不可能眾信諾氏將與巴西當局討論調用巴西海軍作戰之問題巴西或將擔任巡弋大關南岸及加利比安海一大部之職務</p>
+<p>里約熱內盧二十九日哈瓦斯社電</p>
+<p>巴西總統伐爾加斯頃下令著前任駐加拿大公使巴洛斯主持經濟勱員事宜</p>
+<h3>阿根廷眾院通過與軸心絕交採納泛美會議建議</h3>
+<p>阿根廷京城三十日海通社電</p>
+<p>阿根廷眾議院昨日通過取消戒嚴令及採納巴西首都會議（即泛美會議）決議之兩項議案前者乏美會議建議與軸心國絕交阿根廷眾院以六十七票對六十四票之多數可決採納之但眾信阿根廷政府堅持之中立政策不至變動</p>
+<p>阿根廷京城二十九日哈斯社電</p>
+<p>賈斯蒂洛總統今晨率同陸軍部長多那齊參觀本市經區防空演習據悉十月初間尚擬法行燈火管制及高射砲聯合演習</p>
+<p>阿根廷京城三十日海通社電</p>
+<p>阿根廷總統行命德巴樂斯為經濟動員監督直接向總統負責</p>
+<h3>達加爾實行疏散人口馬達加斯加法軍在叢林中建防線</h3>
+<p>達加港二十九日哈瓦斯社電</p>
+<p>法屬西非總督鮑伊松頃決定將無留居達加港必要之歐洲婦孺開始疏散其動機有二㈠英軍在馬達加斯加島登陸後達加港再度遭受侵略之可能性益見增強㈡港內人品過剩一旦時局緊急守軍因家室之累或不能活動自如總督並下令調查全港法國公民及士兵家屬人數凡有兒童二人以上之家庭均當疏散至法國本部</p>
+<h2>Page 4</h2>
+<h3>全上海自今晚起舉行防空演習十天嚴格限制燈火並組消防及救護隊自警全體出動行路概須遵守規則</h3>
+<p>經數星期之準備及多次之燈火管制練習後本埠定期一句之大規模防空演習即將於今日展開據警務處某於昨日宣佈在此一旬期內上海每晚將施行燈火管制演習數小時其時間並未一定而於此時間中任何住宅及商店均不準其有燈光透露出外</p>
+<p>住宅燈光限定強度</p>
+<p>據大通社記者探悉本埠兩租界市民由各區當局之指導對燈火管制演習時之應有準備均已裝置妥善如防空燈罩及窗簾等而各區保甲機關並多於昨召開會議商討進行方法日派員分赴各戶實行調查法租界各區保甲部曾發表通告大意如下㈠所有里弄住宅之電燈以五支光燈泡為限並用黑罩罩住㈡居民商店之電燈最多以十一支光度為限並須加蓋黑罩不燈光外洩</p>
+<p>聯保奉令組織三隊</p>
+<p>㈢各聯保應備救護抯牀二隻人口較多之聯保須五隻㈣各保甲應組織警務救火清除三隊各司其職務聽候聯保處調用㈤防空敬報施放後各聯保所派人員必須全體出動負責工作若有事故發生須待當局公務人員到達後方準離開同時又據記者探悉昨日（三十）下午捕房並以電話通知各聯保長轉飭各店戶須裝備鉛桶二隻一貯黃沙一貯清水以防火災不得違誤</p>
+<p>各項組織亦已告成</p>
+<p>兩租界警務當局已拆除路燈總數十分之九與塗漆馬路人行道交通標線所有工役及司閽捕業已組織防空隊作署急時之救護本埠救火會亦已獲得通知準備隨時出動而衛生處之救護隊亦已成立組織俾於必要時作緊急之救護至於前傳公共租界將於主要地點設立偵察燃燒彈擲落地點之瞭望臺之說則迄今尚未獲得證實</p>
+<p>醫師指導救護工作</p>
+<p>又據公共租界中央區保甲部某要員告記者稱該區於十月一日起將加派自警團員站崗以加強防空警力並命令該區四聯保組織救護隊四班而聘請同仁醫院醫師王以敬負責指　導至於老閘區自十月一日起除自警團員照常值崗外並派遣巡邏隊分隊巡查各處又該區五聯保亦已分別組成衛生隊五班其領導救護者則係姜振勛醫師另據記者探悉兩租界其他各區之救護隊其負責指導者亦業已聘就各著名醫師擔任</p>
+<p>分區演習今起停止</p>
+<p>昨日為模範區舉行預期防空演習之最後一天其舉行之地點僅有公共租界普陀區及戈登區兩處其開始之時間為七時三直分們法租界方面則昨晚業已停止舉行分區預期演習另據記者探悉法租界幃當區民警團將於今日起繼福煦麥蘭兩區執行守崗職務至於小東門等區則定於三日起站崗現時捕房正督促各所屬保甲團從速成立民警團以便防空演習期間加強警力</p>
+<p>人力車商昨獲通知</p>
+<p>上海市人力車業同業公會特區辦事處昨通告各車商云為通告事案奉工部局來函為實施防空燈火管制事宜公用人力車應注意下列二事（甲）公用人力車之車燈應裝置固定不得隨車輛之行動而動蕩燈應塗漆黑色留剩自燈之底盤起算三分之一之半英寸橫地位塗漆白色（乙）公用人力車均應將其後面擋泥板（即兩旁之一字板）之六英寸地位塗漆白色或粘貼白紙上開二點囑轉飭知照等因奉此合亟通行務希各會員一體知照切實遵守為盼</p>
+<p>下列數點更宜注意</p>
+<p>一聞防空警報須力持鎭靜照常工作二每家應遵照當局規定準備防空消防工具三不燃當燈家庭亦須實行燈火管制四夜間切勿焚燒紙錢冥錠或點燃香蜀五不可在馬路上游蕩佇立逗留觀望六行人必須在人行道上行走（無人行道時應在馬路極邊處行走）七行路須靠左邊走八穿越馬路必須在指定地點不可於任何地段橫越馬路九晚行衣服最好採用白色或淡色十每人至少備一種令人明顯之票房如白色手套或白色手杖十一使用手電筒應在玻璃鏡頭上覆以深色紙布或塗漆顏料</p>
+<h3>公共租界電車公司開始清除扒手</h3>
+<p>上海電車公司於今日起決與工部局敬務處聯合於公共租界中發起大規模之定期一月之清除扒竊運動茲悉該公司一內及車站將張貼各種宣傳圖畫與愼隻手等標語並派遣大批講演員於車內或車站講演扒手之各種偷竊方法而捕房亦將派員隨時偵查協助逮捕扒手並通告市民希望隨時檢舉</p>
+<h3>保甲經費昨工勸募大會</h3>
+<p>總額為二百萬元</p>
+<p>公共租界組織保甲自警已有顯著之成就對於界內治安厥功甚偉至於保甲經費過去無端上各聯保負責個別籌劃以致致財政頗為困難工部局雖有擔負保甲經費之議然亦因行政經費浩繁超出預算無從兼顧茲保甲當局為社會治安及保甲未來計劃計爰有保甲自警勸募運動之舉辦特夜間和日下午三時假認虞洽卿路寗波同鄉會舉行保甲經費勸募大會決定勸募目的現款二百萬元由各業勸募委員分頭籌募指定金城墾業大陸三銀行代收勸募開始及截止日期尚待決定</p>
+<h3>各米店今日起發售十三期戶口糧</h3>
+<p>兩租界米糧管理當局自實行計口授糧後第十二號聯票購產昨日截止今日起至十日止之十天內各米店憑第四批購米證第十三期聯票辦理授糧其配給數量及價格仍為白米一升半碎米半升售價五元此外購戶得憑票隨意兼購麺粉一市斤價二元三角自授糧日期變更為每期直天後各米店於每星期日休假問題茲悉當局已規定此後星期日各立絕跡主店應照常營業如遇月終有三十一日者當以三十一日作為休假日如新年以及紀念日休假則由當局臨地另行通告</p>
+<h3>天平保險公司開業</h3>
+<p>天平保險公司係丁厚卿金觀賢陸東生等所發起資本二百萬元一次收足昨日在南京路哈同大樓舉行開業來賓三百餘人由總副經理金觀賢陸東生兩君及滬公司經副理一開盧來復等殷勤執行盛極一時</p>
+<h3>水上保甲今日成立外僑自警開始站崗襄助警方履行空襲條例</h3>
+<p>上海泰晤士報云討論多時之上海水上保甲制將於明（一日）晨十一時在日本俱樂部舉行正式成立儀式在此組織之管轄下者共有生息於上及近郊河道上之華人二十餘萬人保長二十人及甲長一百三十三人業已派定又蘇州河以北之外人保甲自警團將於明午在浜北五個警區中開始站崗聞猶太人聯合會正副會長將首先站崗半小時表示猶太人均願儘力協助警務處維持治安白俄自警團員亦定明午開始站崗每班均為三小時聞浜北外人自警團員共逾二千人均已接獲服務通知浜北五區共四十三保平均每保約四十人關於燈火管制期間之戒備辦法外人各保長已獲通知轉告各團員襄助警方履行空襲條例</p>
+<h2>Page 5</h2>
+<p>雖然天天刷牙·還要月月齒</p>
+<p>趣味</p>
+<p>— 張令濤、張令淇主編</p>
+<h3>趣味徵答揭曉陳雲冥齒如編貝</h3>
+<p>上期本攔舉行趣味徵答中聯四大美人誰的臣子齒最美承讀者踴躍參加共計收到來信四千八百四十七封經統計後陳雲裳獲得冠軍茲將選舉成績發表於後</p>
+<p>第一名陳雲裳一八八九封</p>
+<p>第二名陳燕燕一一一二封</p>
+<p>第三名顧蘭君一一○四封</p>
+<p>第四名袁美雲七四二封</p>
+<p>茲將答中諸君經抽籤得獎者之姓氏列後</p>
+<p>余琳周公潛心于貝文龍鄭德海歐英藩沈憑茲唐明我應傑朱章每胡俊</p>
+<p>以上十名每人贈送免費潔齒券各一張準於明日交郵寄奉</p>
+<h3>對於齒石的誤解</h3>
+<p>我的弟弟讀見潔齒廣告上有一句標語剔除齒石他不懂齒石的意義便誤解那是牙齒本身的東西便問剔除齒石不會把牙齒損壞嗎</p>
+<p>我便告訴他所謂齒石是遺留在齒縫的食物屑和唾液結合而成的廢物非但不和牙齒是本家而且是有害牙齒的東西所以要剔除它</p>
+<p>由此我便覺得譯名很難齒石這個名詞大概是從西洋書上譯來的雖然譯得並不錯但欠顯豁所以望文生義的人看了便會誤解（新源）</p>
+<h3>徐風潔齒</h3>
+<p>電影小生筆風昨日參觀上海潔齒院並在該院潔齒徐君對於科學潔齒認為在今日情形之下實屬非常需要云</p>
+<h3>沉醉在美的誘惑力下</h3>
+<p>唐人白居易寫長恨歌為記唐玄宗與楊貴妃戀愛史的不朽文藝之和詞句之美使人迷惘沉醉在美的誘惑力下可歌可泣</p>
+<p>待兒扶起嬌無力楚楚動人的詞句冠冕地形容了她但終不及回眸一笑百媚生六宮粉黛無顏色來得透澈佳麗三千皆稱國色都為了她回眸一笑顯露了晶瑩似玉的皓齒而自慚莫如無怪乎要一笑傾城再笑傾國了</p>
+<p>明眸皓齒今何在血污遊魂歸不得可知明眸與皓齒同是美人所必具的條件（曾道）</p>
+<h3>丹麥人的迷信</h3>
+<p>據一本書上說丹麥人有一種很可笑的迷信就是他們假使晚上夢見自己落掉一只牙齒便相信有一個親友要死去了</p>
+<p>這實在太覺得好笑了其實夢原是假的夢中落掉一個牙齒有什麼要緊要是發覺自己眞的牙齒搖動或落下了那才是可怕的衰老之象所以每個人平時對於齒牙衛生倒要特別注意（遠）</p>
+<h3>去年今日開始訓練潔齒女醫士</h3>
+<p>上海潔齒院去年招考潔齒女醫士為愼重起見招考手續委托上海職業指導所代辦當時該院特派主考人張令淇氏對於應考者資格審查甚嚴規定高中程度或有同等學力思想純潔個性優美容貌端正儀態大方一時報名投考者不下三百餘人經嚴格甄雖後錄取二十名由院長黃秉瑜牙醫師暨醫務主任丁憲德牙醫師授以全部牙科學識及潔齒技術經長時間之訓練然後開始服務故各位潔齒女醫士個個學識深湛經騐豐富云（雨）</p>
+<h3>趣事趣話牙齒蒙不潔（淇）</h3>
+<p>人揩掩鼻而過之</p>
+<p>時髦朋友講究打扮其實打扮倒是一種美德因為一個人對於儀表確是非常緊要的事時髦朋友出入於交際場中要受人歡迎不能不有良好的儀表所以講究打扮就是講究儀表講究儀表的人第一須注意自己的牙齒是否污黃焦黑否則牙齒蒙不潔人皆掩鼻而過之結果還是得不到人家的歡迎</p>
+<h3>工部局物品編制課重訂公正物價調整生產批發零售價格請領事團授權管轄各業</h3>
+<p>英文大美晚報云同盟社今日（三十日）探悉工部局物品編制課即將以刻正進行之研究所得為根據採取辦法以消除公共租界內零售價格之差異本市永安先施大新新新與國貨五大百貨公司昨（二十九日）以千餘種貨品之公允價格估計表遞交物品編制課該項價格乃根據八月杪各該貨品之進本另加公司利潤什一而計算者物品編制課對此正加研究中並將據此編成公平之物價表負責方面且表示工部局將獲取商會方面之意見與合作以處理重行調整生產批發與零售價之整個問題物品編制課為便利物價平衡計劃之實行起見業已申請領事團授予管轄各業公會之權藉領照與登記制度以行施之物品編制課茍獲此權即可管轄現已存在於公共租界之五十餘個公會屆時工部局當道料將在物品編制課內設立公會指導科以限制會員之辦法編制各業公會</p>
+<h3>女青年會設立簡使飯食</h3>
+<p>女青年會為繼續推動婦孺衛生展覽工作實施指導經濟營養品如何選擇分配烹調起見特在該會所創設簡便食所每日按照醫師鑒定之菜單（每人應得營養）煮成飯食在中午及下午公開設座廉價分客出售凡研究營養者均可前往嘗試聞該所現正著手籌備一俟就緒即當開始又該會鑒於天氣漸寒普通家庭無浴室設備乃在該會所設立浴室專供愛好清潔之婦女之用該會並設有玩具及廉價日用品以備選購欲知詳細情形請往威海衛路六三八號該會所接洽</p>
+<h3>青年會設宗教學會</h3>
+<p>八仙橋青年會宗教部為研究基督之眞精神提倡積極的人生觀並予社會人士以業餘之修養機會起見特創辦宗教學會定於十月七日開學課程計分完人的模範基督與人生問題及名人的信仰三種任擇一種學費每人二元不拘性別年齡程度信仰均得報名參加上課時間為每星期三下午五時至七時至十二月三十日為學期終了並有考試及格者由該會發給紀念憑證書籍概由文人地供給欲參加者可向該會問訊處索取章程</p>
+<h3>許祖廉德高人壽</h3>
+<p>海寗許祖廉行彬為兩浙名記者迭參浙省議會歷屆無不當選好為公論不憚勢要屢以文字賈禍嘗為正意見囚然為地方興利除害代鳴疾苦深得兩浙之物望近年息影滬濱消閒歲月殫心著述分意經營比以七秩高壽其門弟子謀為稱觴許君以物力維艱雅所弗欲聞其旅滬同鄉及其知好戚友擬醵發為之作興學基金以宏造就正在發起中</p>
+<h3>法租界保甲義捐</h3>
+<p>姜守堂二百元黃文珍一百元良心堂五十元王家徵五百元蔣廷芳五百元王順發五百元趙玉深四百二十五元方純正二百五十元葛文星二百五十元吳成裕六百元蕭元昌一百二十五元襲茂興一百元戎家濤一百元茅長林一百元賢泰米號一百元杜柏英一百七十五元杜子良一百二十五元顧震康一百二十五元陸善榮二百五十元項福康一百五十元王阿林一百元胡士成四百四十八元五角施錦生四百三十五元凌來儀一各五百元姚子惠一百二十五元姚筱清一百元潘家銘七百五十元韓鳴崗三百元周秉仁二百五十元</p>
+<h3>各界雜訉</h3>
+<p>中聯股票堅挺</p>
+<p>中華聯合制衣片公司為目前唯一影片公司擁有三廠及三分攝影場二十餘導演二百餘演員且享有攝製特權及營業專利最近三個月中出片三十餘部之多營業成績均創未有之新紀錄該公司自本月初旬增資招股後羣情踴躍即在市場流通坐價格頻頻上升但買戶吸收仍旺日來更見勢俏</p>
+<p>一大保險公司</p>
+<p>為金融界兼保險業巨子胡養吾等所發起創辦自經組織就緒開始營業以來各界投保者甚為踴躍行見業務必蒸蒸日上發達楞操左券</p>
+<p>昨日本報發報時間六點二十分</p>
+<p>體育新聞</p>
+<h3>足球試賽最後一幕東華聖芳濟今決賽下午五時在跑馬廳</h3>
+<p>足球試探賽最後一幕東華聖芳濟第三度會師定今日下午五時起在靜安寺路跑馬廳舉行二隊曾二度會戰結果均勝負不分聖芳濟為上屆史高塔盃冠軍實力之雄厚駕諸西隊之上東華近大事招兵名將來歸頗不乏人昔日暨南名左翼劉祖儒毅然登場及宿　李寗亦東山再起効勞助戰餘如戴麟經賈幼良張邦綸莊友仁袁錕田韓龍海輩均嚴陣以待聖芳濟近邀得埠際代表威利華達把守大關加以名將福恩潘脫遜昆仲韓尼波格林堡傑姆華達等兩隊實力各有千秋將各出全力以博最後之勝利今日門票五元場中特設座椅四百</p>
+<p>東華會</p>
+<p>張邦綸李寗莊友仁張昭鵬韓龍海梁樹棠袁錕田劉祖儒戴齊眉經賈幼良張銘生</p>
+<p>（預備員）舒士耕周光中曹琴芳潘鴻海</p>
+<p>聖芳濟</p>
+<p>特威利華許而茲雷米迪愛德華韓尼波格林堡Ｈ潘脫遜Ｗ潘脫遜傑媾華達格利菲福恩</p>
+<p>（預備員）伊維諾夫馬達華達脫</p>
+<h3>一星盃小球賽展幕強華小勝混合</h3>
+<p>一星盃小球聯賽昨在光夏中華球場展幕首幕百騫以二對一克服劍星壓軸強華對混合上半時強華二對○佔先再戰聲中混合以全部精銳上場蔡聲森瞿永福李義臣孟義良江潮均為混事助陣結果強華三對二小勝混合</p>
+<h3>體育世界社編印足球世界</h3>
+<p>定十一日中旬出版</p>
+<p>李季之上海球壇自港星來滬聯誼體育會重整旗鼓東華體育會恢復組織後其蓬勃氣象為大觀一俟西聯正式開賽熱市情形將不亞於戰前上海體育世界社為作進一步之提倡特著手籌輯足球世界除請專家編輯撰述外並搜集各種珍貴足球照片歡迎滬上各體育會球隊供給照片材料俾增精彩預定十一月中旬出版按該社曾編印體育年鑑二年頗為體育界所贊許</p>
+<h3>合眾盃小型足球賽週六開始角逐</h3>
+<p>合眾冷氣上程公司體育會主辦之合眾盃小型足球賽報名加入共五十六隊分成合眾冷氣工程盃等七組競賽定於週六下午二時在西愛咸斯路通樂球場開始角逐十月三日（星期六）秩序如下Ｗ隊對勤昌（合組）二時慧金對天禮（程組）三時鼓浪對西西（眾組）四時三星對合眾（表演）五時</p>
+<p>商業新聞</p>
+<h3>公債交易清淡</h3>
+<p>公債暗盤場外交易略見清減買戶除少數補空外新收者極少賣戶則仍見踴躍觀近日大戶多頭逐有出籠已無前之興趣故投資者縮手人心恍惚不寗謠言不息浮多紛紛出脫籌碼乃又鬆懈昨丙種仍有一元上落初做時見過三元五角中間因多頭出脫小價為二元三角後又因補空抬至三元八角最後約三元五六角續小六七角甲種仍未能超過丙種其價祗三元五角續小五角乙種比丙小九角祇二元七角又小九角丁種為零九角小一元一角戊種為一元七角續小八角成交大約一百數十萬元</p>
+<h3>華股盛極而衰</h3>
+<p>昨華商股票市況承上日由漲轉跌之疲風續見下挫乃連升十六天後之應有反動也獲利者吐售益殷致價多見下低惟文化業異幟獨舉商務書館見三百元高價後回下終與前日價軋平中華曾達二百元關口後亦稍低尚獨軋升五元世界票面改為廿五元後已升九天昨始見回小二元至六十一二元永祥在二十五元半左右標準紙品十四元半均軋上五角新藥業中信誼藥廠飛升七十五元達一千一百元五洲三百元關未易穿出回小五元新業由四十七元半退至四十六元軋小一元民誼低二元中法小四元降為八十二三元百貨業永安與國貨均已破入一百二十元內小六元至四元新新一百廿元低二元半有限價買戶也狂騰最厲之南洋煙公司由一百○九元瀉至一百○二元半軋小三元大中華火柴仍堅站二百十五元左右紡織業內衣當日由三十四元半遜至三十二元半有二元跌風最後三十三元二五軋小一元二五小額票面之宏牲與大中華兩織造及上海棉織安大襯衫各小五角孚昌染織跌落一元其他各股亦多疲落閘北水電小五角華商電氣低一元一元織造廠股票於前日上市由十二元升至十三元半昨逼近十五元購者踴躍今記股市表於後</p>
+<p>股名最高最低</p>
+<p>商務書館三○○·○○二九○·○○</p>
+<p>中華書局三○○·○○一九○·○○</p>
+<p>世界書局六四·○○六一·○○</p>
+<p>大中華火柴三八·五○二一○·○○</p>
+<p>閘北水電四○·○○三六·五○</p>
+<p>華商電氣三三·五○三二·○○</p>
+<p>永安公司一二·六○○二九·○○</p>
+<p>新新公司二三·五○二七·○○</p>
+<p>一元織造一四·七五一三·五○</p>
+<p>中國內衣二四·七五三二·五○</p>
+<p>宏牲織造三·○○二·○○</p>
+<p>大中華織造三·○○二·二五</p>
+<p>孚昌染織一八·二一一七·○○</p>
+<p>上海棉織一五·七五一四·五○</p>
+<p>安大襯衫二八·○○二六·○○</p>
+<p>新亞藥廠四七·五○四五·○○</p>
+<p>中法藥房八五·○○八二·○○</p>
+<p>民誼藥廠六七·五○六四·○○</p>
+<p>中聯影業四○·○○三八·○○</p>
+<p>三輪客車三·五○二○·○○</p>
+<p>中國磚瓦一二·五○三·五○</p>
+<h3>金銀外幣均平穏</h3>
+<p>昨本市銀樓業大新同行首飾金門市每兩兌出掛牌仍二千四百五十元（收進減三百元以上）同業互做價續跌更銳已退入二千二百元關內晨低五元計二千二百四十五元不久在賣勢中步瀉五十五元午刻二千一百九十元軋小六十元有五十五元差度成交清稀人心軟化</p>
+<p>至首飾紋銀每兩仍掛十四元同業互做價十三元六七角錢業公會拆息仍掛一角四分勿更</p>
+<p>外幣市況日軍票更呆定同業互做價五元五角五分六八厘銀號與小錢莊門市售出五元五角六分半收進四分半均與上日價同</p>
+<h3>銀準會八月份同業存款激增</h3>
+<p>安泰莊加入錢庫</p>
+<p>本市銀行業聯合準備委員會八月份同業存款每日平均金額劇增為六萬八千七百七十六萬五千八百六十五元二角七分與七月份五萬七千七百九十三萬四千工百四直元○○四分比較計增一萬一各○十三萬一千一百二十五元二角三分若與去年十二月份比較計增三萬四千三百七十三萬六千四百六十在元六角七分</p>
+<p>本市銀行業聯合準備委員會昨日通函各行莊略云準錢庫函開安泰錢莊已於本月二十二日加入該庫為會員自十月一日起各行莊收入該莊付款票據委托本會代收請依照其他會員莊辦法同樣辦理</p>
+<h3>棉布雖疲不願廉售</h3>
+<p>廠布</p>
+<p>昨市因東疋續跌疲滯無生氣但同業大戶亦殊不願鬆售故如重磅粗布反以貨缺轉堅十六磅地球粗布須一八八元飛鴻一八五元半輕磅則跌落五角九磅新字一一○元八磅振中一○七元均有人賣出其他十二磅細布散額手貨亦肯鬆廉續降一二元不行裝下二磅地球細布一六一元大鵬一五四元富貴銀行單喊價尤參差不一一五○元至一五二元桃花女士林自二五一元半降至二五○元五角後市更乏人顧問較跌一元半之譜</p>
+<p>東布</p>
+<p>市勢萎靡繼續下游十二磅龍頭細布新新單跌至一六六元半銀行單龍頭一五六元彩球一五元二角半飛魚一五四元陽鶴一五二半喇叭一五一元五福一五○元各牌細布扯跌每疋二元至三元半四君子嗶嘰紅軍單最小價見六元八角午收為六元八角六分續跌八分銀行單六元六角六分跌二分</p>
+<h3>大廣皮奇缺</h3>
+<p>欲購買到處碰臂</p>
+<p>三六尺正號貨大廣皮市上流通貨十分軋缺前昨以來受北路幫客商羣起問津影響岑寂之市況重見熱烈惜大廣皮花色不充問津者屢遭碰壁故本街印刷廠水瓶廠以及散用戶等亦有改辦頭子貨及黑鐵坯子者而採辦正號花色則殊感困難且執貨者人心高昂行情穏中帶堅刻正號貨每噸二萬元二十號頭子貨一萬六千元十二號至十四號花色一萬四千元二千磅黑鐵坯子一萬五千元</p>
+<h3>豆類堅穏之局</h3>
+<p>豆類市況昨呈堅昂蓋以零到有限實銷不寂故市勢頗感求多供少計開天津赤豆三十包價一百六十五元崇明沙赤五十包價一百六十四元又沙蠶三十餘包價一百五十元紅糧到銷均少市勢帶穏計開明光紅糧一車價一百十四元七角</p>
+<p>山芋乾供求不多市勢轉平昨開江北山芋乾單絲袋六十包價一百二十六元</p>
+<p>豆餅昨由本鄉近郊點綴牲記豆餅為六十一元三角</p>
+<h3>食沒同業批發處力謀增加產量</h3>
+<p>本市食油同業批發處近為維持民食起見除竭力疏通來源外並力求增加本廠產量迄今申存已有二萬多擔足敷全市消耗並為顧全平民再度警告各零售店生油每斤不得超過七元二角豆油及蔴油不得過六元九角半之規定價否則決將嚴究不貸同時在山西路三十一弄二十號添設登記業戶指定給油處凡熱貨酒菜茶食團體等若購不到食油時可持證直接往該處領購云</p>
+<h2>Page 6</h2>
+<p>自由談</p>
+<p>小談</p>
+<h3>神學家與哲學家</h3>
+<p>— 唐牧</p>
+<p>據說有一次有一位神學家和一位哲學家發生了劇烈的辯論神學家就議諷哲學家說哲學家像一個瞎子在暗室裹找黑貓而其實並沒有黑貓在房裹那閏哲學家反駁道也許是這樣的但是神學家竟然在一無所有的房裹找到了貓了</p>
+<p>社會上不知有多少人紥起眼睛來在暗室裹團團轉地在找不在房裹的黑貓又不知道有多少人自以為已經找到了無中生有的黑貓</p>
+<p>修養</p>
+<h3>小缺點</h3>
+<p>— 倪秀霞譯</p>
+<p>不要疏忽小缺點最小的敵人在長時間內就會變成有害在中國北部蹂躪農作物造成災禍的不是什麼大眾而是些蝗蟲和小蝶蛹</p>
+<p>再則一個小缺點決不是一件小事最小的缺點會影響一篇傑作而小往往是大的開始沒有比一個小缺點的生長和增大來得更快的也沒有比它的繁殖來得再迅速的牙齒上有一小點的黑這是小事但如果你不立刻去給牙醫生診治不久整隻的牙齒便會發蛀而一旦一隻牙齒發蛀你仍不將牠拔去那麼相隣的牙齒也就會各各發蛀起來接著相隣的又相隣的全口都是蛀牙了</p>
+<p>那種犯小缺點的意願也絕對不是無關重要的這足以引起更大的損害總結一句沒有改除的小缺點可以阻礙我們為善最細小的一根刺留在獅子腳裹可以使這萬獸之王不能飛跑一粒砂石落在你的鞋子裹而當你去參加田徑賽時可以使你半路停下步來所以最小的缺點是比獅子厲害的輕刺是一粒打敗最有聲譽的賽跑選手和奪去他錦標的微小的砂石</p>
+<p>這些小缺點所以能造成大危險也許就因為它們的小它們無足輕重的外貌放多輕看小缺點的人往往把它們列作不必憂慮留著好玩的東西這種看法眞是一種極危險的錯誤犭在起初不過是光耀的金屬面上的一點褐色但如果不迅速除去它它便會侵透全塊的鋼食木蟲初見不過是一條小得可憐的小蟲荷蘭人很知道牠雖然牠的身體小得可憐但牠卻能鑿穿世界上最堅固的海堤而造成極大的災禍這小蟲象徵了許多不曾克服的小缺點造成人生的大災禍的</p>
+<p>不要輕視你們的小缺點吧用著謹愼而感恩的耳朵去接受好的勸告從現在起廣泛性主除它在年青時候這些小缺點往往還只是害物的幼蟲在它們生長之前去捕捉或弄死它們來得更容易不然它們便將攻擊我們致我們於死命</p>
+<p>立刻就改起來吧再遲些時也許是太遲了</p>
+<h3>衣食與榮辱</h3>
+<p>— 杜柏青</p>
+<p>世界上有三種人第一種人是衣食足而後知榮辱第二種人是衣食不足而知榮辱第三種人是衣食足而不知榮辰</p>
+<p>就生活言第二種人痛苦第三種人快樂</p>
+<p>就道德言第二種人高尚第三種人卑鄙</p>
+<p>就國法言第二種人應褒第三種人當葅醢</p>
+<p>社會</p>
+<h3>一封贊助募款助膳的信</h3>
+<p>— 倪祥生</p>
+<p>男女青年會為了幫助窮學生解決吃飯問題起見特發起清寒學生膳食濟助運動這消息發表了以後我們接到下面這位熱心讀者的來函並附來節省的飯錢五元以示對這運動的熱烈贊助我們除已把捐款轉交男女青年會的學生救濟委員會以外特把這封感人甚深的來函表出來希望其他的讀者也會繼起響應以竟助學之全功捐款請直接送交八仙橋青年會或威海衛路六三八號女青年會以免多費轉交手續——編者主筆先生</p>
+<p>今天早晨在寫字間里偷看了幾分鐘報我在無意中看到了男女青年會發起濟助清寒學生膳食的新聞這新聞使我非常的感動</p>
+<p>我是一個在猶太醫生那里當差役的或者如一般人所稱呼的是當boy的但這之前我卻也是個讀書沒有學費湊齊了學費又沒有車錢飯資的窮學生也因為如此我對於窮學生的遭遇不但知道得很詳細而日還是親身經歷的每學期開學我終夢跑幾次當舖訪幾個可以給我一些經濟上幫助的親戚但這也祗是每學期一回每一年二回而已使我在苦讀窮讀的生活中感到眞正的為難的還是喫飯</p>
+<p>眞的是清寒的甚至是不清寒的同學也許都會有過我曾經的過的感覺的我們也許都曾有過在飯舖面前徘徊躊躇而不敢跨進門去的窘態清寒的同學固然是為了口袋里錢的有限而怕喫不到東西付不出賬就是不清寒的學生也有怕喫不到衛生的食物以及忍受不了一般飯店里的車價習氣的苦惱</p>
+<p>我現在雖然不再是學生了也不必一年去跑兩次當舖繳付學費了但我還是一個工資細微的地位又低下的boy喫飯的問題卻仍舊每天在威脅著我在求學時代那種痛苦的感覺我沒有忘記也不能忘記而且更因為飯漲到了四五元錢一客而記得更清楚了這就是為什麼男女青年會濟助學生膳食的新聞使我特別高興注意</p>
+<p>這里送上儲幣五地這是我在今天一天省下來的飯錢請先生轉送給男女青年會負責當局算是表示我對於他們這個濟助學生膳食運動的贊同和響應我明知我這五元錢是決不能補助一個清寒學生一天的用資的但在上海還有著能夠餘得出比我多幾千百倍的樂善的慷慨人士這樣的善舉是會由他們為完成的吧我這樣希望著我相信成千萬的清寒學生產也一定對他們這樣的希望著祝</p>
+<p>撰安倪祥生敬上卅一年九月五日</p>
+<p>話匣</p>
+<h3>錢業管窺</h3>
+<p>— 小葦</p>
+<p>（三）銀飯碗與錢莊佬</p>
+<p>有人羨慕吃銀行錢莊飯的朋友是捧的銀飯碗誠然待遇方面銀錢業在各業中算是較為優厚的以錢莊而論起碼職員的薪貼總在新幣百元以上供給膳宿年終還有花紅派但在如今鈔票不值錢的年頭一百元也只能當十塊錢用光棍漢子自糊自未嘗不夠若是有了家累的朋友便感到入不敷出於是預支月薪者有之在外面找外快者有之甚至於虧空太多無法　補而出屁漏走路者也有之這種種苦悶外界人又那裹知道要說到在工作上巴結些希望上升跑街或錢房的優缺那或許得瞧你和經理協理有沒有密切關係如果你不是他們的同幫上海錢莊有寧紹幫鎭江幫等以吸引同鄉而成勢力馬屁功夫又不行那也得準備坐冷板凳坐上幾年其他的職業領域固然亦有如此的</p>
+<p>至於舊式錢莊的日常工作並不怎樣繁駐只要會寫老式數目字會敲算盤小學畢業生也可以應付不像銀行職員必須懂得新式薄記和會計學等專門知識但利之所在弊亦隨之因此養成許多無專門學識和一技之長的一旦失業找別的事做非常困難結果不但自己吃虧社會上也多了個廢物再說一班意志未堅的青年投入舊式的錢號服務每天眼所見手所觸的無非是錢他們生活在錢的氛圍中少有其他思想工作之餘上焉者便去打聽行情市面聯絡親友嘗試買空賣空的黃金夢下焉者則結交損友打牌看戲狂嫖濫賭因此而負債虧空舞弊吃官的也大有人在試瞧報紙上這類新聞的主角多半是拜銀飯碗的青年抖上去固然容易損下來也並不困難因為他們工作活動既完全受金錢指揮而經騐增多之後不免常為牠的俘虜</p>
+<p>所以最後我得勸告一班青年學生不要無準備地狙擊進來同時經捧了這個銀飯碗的也應當居安思危時時警惕利用業餘時間進修專門學識而免為時代的巨輪所淘汰（全篇完）</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（九）人間地獄</p>
+<p>這有些像天氣一樣的一會兒晴一會兒雨剛才是狂風暴雨現在倒又天朗氣清翠珍拚著好半死的生命癱瘓在牀上看守的人是不斷的在屋子內外一會兒是端進熱騰騰的飯和菜來了阿英露了笑容把衣袖反捲著走到牀前對翠珍說道你以前沒有想明白累我們弟弟受苦你自己也是受苦現在我總該明白過來了坐起來吃飯菜是沒有什麼菜膠菜炒肉線內餅子燒菜心白肉蘿蔔湯還有一個菜肉片炒薺菜一會兒就端進來我們生在鄉裹的全是歡喜吃肉你總是一樣的吧起來起來阿英算和翠珍親熱了一邊說一邊扯翠珍起惡心歟有並不接受佳餚的誘惑扯了起來又倒了下去阿英譜子幾十聲她才說一聲我不要吃飯阿英笑道這麼說你還不明白我請你吃飯是瞧得起你我們打的時候就打罵的時候就罵打過了罵過了我和弟弟是一樣的脾氣你起為自己起來吧</p>
+<p>翠珍那裹會聽阿英的話阿英暗暗的罵了一聲不識抬舉吩咐外邊道那肉片炒薺菜不用端上來了在房裹的菜來端了出去外邊高聲答應了拿了個空盤把菜一樣樣端出去阿英還想盡她最後的努力把雙手插在腰裹免強笑道你不知道我弟弟待女人的好處便是在家裹的一個要比你差得多我弟弟待她怎樣一桌子上吃飯一牀上睡覺天氣冷了自地摸摸她的衣服問冷了吧你想待家裹的一個尚且這樣你自然更把你抬到天上了說到這裹衛少雲帶著一羣人走進來說道姊姊你跟翠珍說話嗎快吃飯去哦你是陪了她吃飯的吃了多少阿英把翠珍拒絕吃飯的經過一說衛少雲道沒關係不吃飯不會得死我們在外邊已經商量了一個辦法出來（一九一）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.10.01</h1>
+<h3>Germany Determined to Seize the Northern Industrial Area of Stalingrad at All Costs; German Forces in Caucasus Also Made Progress in Fierce Battles</h3>
+<p>Haito News Agency Telegram from the German Führer's Headquarters, 30th</p>
+<p>This afternoon's German military report stated that German and allied forces in the southwest of the Caucasus and south of the Terek River fought bravely and made further progress. German forces occupied several more areas in the northern district of Stalingrad. The Soviet reinforcements lost 34 tanks. On the Don River front, German-Italian allied forces destroyed the enemy's attempt to cross the river. Last night, our planes heavily bombed several locations in Arkhangelsk, causing large fires. Several Soviet bombers attacked the Baltic region last night and two were shot down.</p>
+<p>Allied News Agency Telegram from Moscow, 30th</p>
+<p>The Soviet Information Bureau issued a statement on the night of the 29th: (1) Soviet forces fought fiercely with German forces in the areas of Stalingrad, Mostdok, Siniya, and Yino on the 29th. (2) Fierce battles continued in Stalingrad. Today, German tank and infantry units, under the cover of the air force, launched repeated fierce attacks on the northwestern part of Stalingrad, but the Soviet forces still firmly defended their positions. (3) The Volga River Soviet fleet shelled German forces, and Soviet forces took active actions in the northwest of Stalingrad.</p>
+<p>Haito News Agency Telegram from Berlin, 30th</p>
+<p>German forces in the Caucasus advanced rapidly in the direction of Tuapse, near the suburbs of the port, occupying several factories under strong defense. Although the Soviet Black Sea Fleet fired artillery to prevent the German advance, it was ineffective. In the Caucasus mountains, German engineers continued to occupy many enemy strongholds. Air battles in the Terek region were extremely fierce, and the German air force won a major victory. The battle of Stalingrad is nearing its end. German forces continued to occupy several important buildings in the north. Most of these buildings are connected by underground passages, making the attack particularly difficult. The German forces have also broken into the October Revolution Workers' District.</p>
+<h3>German Forces Expand Their Occupied Area to the West Bank of the Volga River</h3>
+<p>Allied News Agency Telegram from Stockholm, Sweden, 29th</p>
+<p>According to London sources, whether Germany can capture Stalingrad is the key to the entire European war situation in the future. The answer to this question is already apparent. However, British observers still believe that the city will eventually fall. In the past few days, the British were quite optimistic due to General Timoshenko's counterattack. Later, German Foreign Minister Ribbentrop declared that Germany was fully determined to seize Stalingrad. Therefore, the British believe that the German side will spare no sacrifice to capture Stalingrad within these ten days.</p>
+<p>Havas News Agency Telegram from Somewhere on the Soviet Border, 29th</p>
+<p>Today is the 164th day of the German-Soviet war. The most noteworthy development of the battle line is that the Axis forces have made significant achievements in the Stalingrad area. After occupying the southern suburbs of Stalingrad, German forces and their allies launched a fierce attack on the defense works of the Communist Party headquarters and finally captured it. At the same time, German forces launched an offensive in the north of the city (where there are many important factories). Currently, the defending forces of the city have lost their main base. German forces have expanded their occupied area to the west bank of the Volga River, which is enough to prevent the Soviets from crossing the river. Therefore, the supply of the defending forces is now in danger of being cut off. However, General Timoshenko's troops are still continuing to launch fierce attacks on the German positions in the north of Stalingrad. The Red Army also launched a major counterattack in the southern suburbs of Stalingrad, attempting to feint to the east and attack the west to contain the German advance, but it did not have a major impact on the military strategy. As for the Caucasus region, the war is still ongoing, especially in the central Terek basin and near the Black Sea port of Tuapse. The battle situation is unknown, but it is only known that the German side claims that the German forces continue to make progress.</p>
+<h3>Prime Minister Tojo Broadcasts Gratitude for National Contributions</h3>
+<p>Allied News Agency Telegram from Tokyo, 30th</p>
+<p>Japanese Prime Minister Tojo broadcasted tonight, briefly stating that in the past five years, the Japanese people's contributions to national savings have exceeded ¥50,000,000,000, expressing deep gratitude. The entire nation should strive to complete the important work of the Greater East Asia War. At the same time, the government is determined to complete the purpose of this war by re-establishing governments in Greater East Asia. Due to the expansion of production and the improvement of the national spirit, it is possible to obtain such a large sum of money. Also, because the Japanese people are working hard together, they have achieved brilliant military results domestically, consolidated the internal front, and inspired wartime financial and economic resources. Mobilizing large-scale manpower and material resources in East Asia requires a large amount of funds. If such funds are used for consumption, it will not only hinder the progress of the war but also affect the people's lives. As a result, it is necessary to use this purchasing fund to expand production. I hope that the people will recognize the current situation and engage in wartime production, save consumption, and increase national savings within their respective capacities.</p>
+<h3>Lin Bosheng Flies to Japan Yesterday, Xu Liang Returns to His Post on the Same Plane</h3>
+<p>Central News Agency Telegram from Nanjing, 30th</p>
+<p>Lin Bosheng, Standing Committee Member and Secretary-General of the New National Movement Promotion Committee, was dispatched to Japan to inspect the training of youth organizations. He departed from the capital by plane on the 30th with his entourage of six people and flew directly to Tokyo. In the morning of the 8th, Feng Jie, Acting Secretary-General of the New National Movement Promotion Committee, led senior officials of the committee, Guo Xiufeng, Executive Deputy Director of the Propaganda Department, led senior personnel of the department, and dozens of Chinese and Japanese officials to the airport to see him off. Ambassador to Japan Xu Liang also returned to his post on the same plane that day. In addition, during Secretary-General Lin's absence abroad, the position of Secretary-General of the New National Movement Promotion Committee was delegated by the Chairman to Feng Jie, a member of the committee, to act on his behalf.</p>
+<h3>Three Special Envoys Meet the Japanese Emperor</h3>
+<p>Central News Agency Telegram from Tokyo, 30th</p>
+<p>The three special envoys, Hiranuma, Arida, and Nagai, who completed their important mission of visiting China, paid a visit to His Majesty the Emperor at the Palace at 10:00 a.m. today and then departed.</p>
+<p>Central News Agency Telegram from Tokyo, 30th</p>
+<p>Japanese Minister of State Aoki will soon go to Nanjing to visit Chairman Wang of the National Government to pay his respects.</p>
+<p>Central News Agency Telegram from Nanjing, 30th</p>
+<p>The Japanese delegation of return envoys, including special ambassador Mie Saneyoshi, Asahi Tatsuo, Hori Yamao, and Inohaha Seiichi, etc., completed all their affairs in Nanjing on the 29th, left Nanjing by train for Shanghai, and waited for a ship to return home.</p>
+<h3>Willkie Arrives in Chongqing and Immediately Conducts Important Talks</h3>
+<p>Allied News Agency Telegram from Lisbon, 30th</p>
+<p>According to a report from Chongqing, U.S. President Roosevelt's special envoy, Willkie, has arrived in Chongqing from Moscow. Senior officials and British and American ambassadors welcomed him at the airport.</p>
+<p>Allied News Agency Telegram from Guangzhou, 30th</p>
+<p>According to a report from Chongqing, President Roosevelt's special envoy, Willkie, met with Chiang Kai-shek immediately after arriving in Chongqing from the Soviet Union on the 29th. Willkie will visit Chairman Lin Sen, Army Chief of Staff He Yingqin, and other leaders in Chongqing, and will also visit factories, schools, and other constructions in the city.</p>
+<p>Central News Agency Telegram from Stockholm, Sweden, 30th</p>
+<p>According to news from London, after President Roosevelt's special envoy, Willkie, arrived in Chongqing, Chongqing will take this opportunity to launch a second front in East Asia and to request and appeal to the United States and Britain regarding the issues such as the Commander of the British-Indian Army Wavell's advocacy of recapturing Burma and rebuilding its route. However, in fact, it is very unlikely to recapture Burma. Both the British and Chongqing are deeply aware of this, so they are discussing restoring the previous camel caravan transportation route, crossing the Himalayas from India, passing through Tibet, and reaching Sichuan, as a new route for material assistance to Chongqing. A British delegation to Chongqing that recently departed from India is currently conducting investigations in the Lhasa area of Xizang. However, this transportation method is labor-intensive and time-consuming, and requires too much land. Even if it is restored immediately, it is difficult to achieve great results. Therefore, although the British and Chongqing authorities are actively negotiating and planning, the general public does not view this optimistically.</p>
+<h3>War Savings in Tokyo Banks Surge</h3>
+<p>Allied News Agency Telegram from Tokyo, 30th</p>
+<p>War savings deposits in Tokyo banks surged by ¥121,000,000 in the week before September 26, reaching a total of ¥13,135,000,000.</p>
+<h3>Purge Begins in Five Counties Including Jiaxing</h3>
+<p>Central News Agency Telegram from Jiaxing, 30th</p>
+<p>The second phase of the purge work in the southeast of Taihu Lake will begin tomorrow. The provincial government has issued an order to all counties in the second phase of the purge area, including Jiaxing, Jiashan, Pinghu, Haiyan, and Haining, to uniformly stop collecting taxes from today, handle the handover, and remit the collected taxes to the department. After receiving the order, all tax collection agencies in Jiaxing will officially stop collecting taxes tomorrow, handle the closure, and prepare for the handover.</p>
+<p>Central News Agency Report from Shanghai</p>
+<p>In order to expedite the delivery of official documents and confidential documents in the purge area, the Shanghai Purge Branch Political Work Group has specially established a delivery network. The method is to establish Zhoupu, where the Political Work Group is located, as the main station, establish branch stations in important cities and towns, and establish sub-stations in various villages. The branch and sub-station chiefs are concurrently held by the district, township, and town chiefs on a voluntary basis. The group will select and appoint delivery personnel from local residents. The group has also formulated methods for the delivery of official documents and will notify the relevant agencies to deliver the documents to the delivery stations in accordance with the regulations in the near future.</p>
+<h3>Vichy to Station Troops</h3>
+<p>Haito News Agency Telegram from Vichy, 30th</p>
+<p>It was vaguely heard here yesterday that Vichy will station troops and will be dispatched soon.</p>
+<h3>Establishment of the Greater East Asia Ministry Postponed</h3>
+<p>Central News Agency Telegram from Tokyo, 30th</p>
+<p>The Japanese government's previously decided plans for administrative simplification and the establishment of the Greater East Asia Ministry were originally scheduled to be established on October 1. Now, all preparations have been completed and are awaiting formal decision by the Privy Council. However, the Privy Council considers these two cases to be extremely important, so the deliberation work is extremely cautious. Therefore, the realization on October 1 is impossible. The government believes that the administrative simplification and the establishment of the Greater East Asia Ministry are inseparable. The cabinet has also decided on 514 million yen for the administrative simplification, and the cabinet meeting on the 18th has also decided on 1.274 million yen for the establishment fee of the Greater East Asia Ministry, which will be paid from the second reserve fund item. These two cases can be implemented in mid-October after the deliberation by the Privy Council is completed.</p>
+<h3>Cuba Severs Diplomatic Relations with Finland, Hungary, and Romania</h3>
+<p>Haito News Agency Telegram from Lisbon, 30th</p>
+<p>New York telegram: After Cuba declared war on Germany, Japan, and Italy, it successively severed diplomatic relations with Finland, Hungary, and Romania.</p>
+<h3>Floods in Thailand</h3>
+<p>Central News Agency Telegram from Bangkok, 30th</p>
+<p>Northern Thailand has been suffering from heavy rainfall since June. The severity of the disaster is unprecedented in the past 30 years. Floods have spread along the Chao Phraya River to the central and northern parts of the country and are gradually spreading south, now only tens of kilometers away from the capital, Bangkok. The momentum of this flood is far greater than the flood of 35 years ago. It is expected that the Chao Phraya River will definitely flood into Bangkok in mid-October. The Thai authorities are now actively preparing for flood prevention work. However, from a scientific point of view, this flood will provide sufficient fertilizer to the farmland.</p>
+<h3>Mexican Government Orders Youth Conscription</h3>
+<p>Havas News Agency Telegram from Mexico City, 29th</p>
+<p>Officials decided that all men aged 18 must register next month, and the first batch of conscripts will be implemented in January next year for training.</p>
+<p>Allied News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>The Mexican government yesterday ordered the conscription of all 18-year-old men in the country to enlist and receive training next month.</p>
+<p>Haito News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>News last night: Costa Rica's volunteer corps is being organized. The members are trained by U.S. military officers. Once the training is completed, they can be sent to Europe to assist the Allied countries in combat.</p>
+<h3>Barbados Island Transferred by Britain to Venezuela</h3>
+<p>Havas News Agency Telegram from Caracas, Venezuela, 29th</p>
+<p>The sovereignty of Barbados Island between Venezuela and British Trinidad Island was officially transferred by the British to the Venezuelan government today.</p>
+<h3>Indian Independence League Spokesperson Refutes Wavell</h3>
+<p>Allied News Agency Telegram from Bangkok, 29th</p>
+<p>General Wavell, Commander-in-Chief of the Indian Army, boasted to British and American reporters in New Delhi that he had a plan to recover lost territory when Burma fell. A spokesman for the Indian Independence League broadcasted tonight that Wavell would never see Burma again except as a prisoner or a tourist.</p>
+<p>Allied News Agency Telegram from Manila, 30th</p>
+<p>October 2nd is the birthday of Mahatma Gandhi, the Indian saint. The Philippine-Indian Federation plans to hold a large-scale anti-British demonstration at that time.</p>
+<h2>Page 3</h2>
+<h3>Berlin Holds Winter Relief Meeting, Hitler Delivers Speech, Goebbels Denies National Socialist Revolution Rumors</h3>
+<p>Haito News Agency Urgent Telegram from Berlin, 30th</p>
+<p>Führer Hitler, accompanied by Propaganda Minister Goebbels and North African German Army Commander Rommel in military uniform, stepped into the Berlin Sports Hall at 6:00 p.m. today (1:00 a.m. on the 1st, Shanghai time) to preside over the Winter Relief Meeting. Goebbels delivered a very simple speech, the main point of which was to refute the rumors propagated abroad that a revolution had taken place in the German National Socialist Party, and to strongly argue that none of the leaders of the National Socialist Party were seriously ill, shot, or exiled. Foreign rumors and slanders are not worth refuting. Germany today is united in politics, military, and economy. Goebbels also mentioned that Germany was very sufficient in raw materials and food when it started in the fourth year after the outbreak of the European War. Germany's major difficulties have already been overcome, and Germany will surely achieve final victory.</p>
+<p>Haito News Agency Urgent Telegram from Berlin, 30th</p>
+<p>Führer Hitler delivered a speech at the Winter Relief Meeting held in the Berlin Sports Hall today, stating that what he discussed was the current urgent issue rather than the future situation. Then he expressed his opinions on the following issues: (1) Regarding the Eastern Front war situation, Hitler declared that our army will surely occupy Stalingrad and you can rely on it. (2) Regarding the Atlantic Charter, Hitler stated that this kind of foolish document can only be effective for a few years, and will soon be eliminated by the iron facts. (3) Regarding the second front issue, Hitler pointed out that when Churchill first decided to order the British army to attempt a landing in Europe, even people in Britain had differing opinions on whether the location he chose was appropriate. Hitler strongly argued that no matter where Churchill decided to take the risk of a second landing, it would be Churchill's luck if the British army could stay on land for nine hours.</p>
+<p>Haito News Agency Telegram from Berlin, 30th</p>
+<p>German Führer Hitler delivered a speech tonight, the first speech to the German people and countries around the world since May. When he delivered his first speech on January 30, he predicted that he would still win a great victory this year. On February 12, he reported on the Eastern Front war situation. On March 13, he delivered the third speech. On April 26, he delivered another speech to the National Assembly, reviewing the military and international situation. This speech was the first after the German army launched its summer offensive.</p>
+<h3>Churchill Refuses to Discuss the Issue of Opening a Second Front, Saying That Making a Statement at This Time Is Not Appropriate, and Also Does Not Answer Questions About Not Bombing Rome</h3>
+<p>Allied News Agency Telegram from Lisbon, 30th</p>
+<p>The British House of Commons met yesterday. Prime Minister Churchill replied to a question from a member, saying that it is not appropriate to discuss or speculate publicly about the time and place of opening a second battlefield. A member asked if this statement could be conveyed to Willkie. Churchill did not answer.</p>
+<p>Havas News Agency Telegram from London, 29th</p>
+<p>Prime Minister Churchill declared in the House of Commons today that it is not appropriate to answer questions or make any statements at this time regarding the date and location of the Allies opening a second battlefield. When this member, Lette, asked why Rome had never been bombed by the Allies, Churchill immediately replied that he had made a statement on this matter and did not want to add anything at this time. Lette also asked whether Britain's avoidance of bombing Rome was because it did not want to hurt the feelings of Catholic believers. The Prime Minister still refused to answer.</p>
+<p>Protecting Northern Ireland</p>
+<p>Havas News Agency Telegram from London, 29th</p>
+<p>When the House of Commons reconvened today, members raised questions about the recent incidents caused by the Irish Republican Army in Ireland. One member asked whether protecting Northern Ireland was an urgent task for the police authorities. The Deputy Minister of the Interior, Wick, replied that the Northern Ireland authorities had assured the British government that they were capable of controlling the overall situation and resolving everything.</p>
+<p>Liberating India</p>
+<p>Havas News Agency Telegram from London, 29th</p>
+<p>An accident occurred during Colonial Secretary Aimerili's speech in the House of Commons today. During his speech, women in the audience interrupted his speech by shouting slogans for the liberation of India. After the speech, several members successively raised questions and asked whether the views he put forward could be discussed publicly by the House of Commons. Aimerili immediately replied that it was not the time for debate at this time. A member immediately shouted, "Then you don't want to hear the truth!"</p>
+<p>Currency Issues</p>
+<p>Havas News Agency Telegram from London, 29th</p>
+<p>Finance Minister Wood declared in the House of Commons today that the British government did not want to imitate President Roosevelt's measures to prevent inflation. The government had already clarified its monetary policy in a white paper published in July 1941. This policy was sufficient to prevent the crisis of inflation. When adopting this policy, the Ministry of Finance advised the people to voluntarily reduce the purchase of goods and asked employers not to increase the wages of workers. How to adjust prices and wages still needs to be initiated by private parties. In addition, the system of resolving labor disputes and wage issues by arbitration tribunals is also subject to revision. If the gentlemen of the House of Commons have high opinions on this issue, I am willing to submit them for discussion.</p>
+<h3>Admiral Leahy Takes New Post</h3>
+<p>Havas News Agency Telegram from Washington, 29th</p>
+<p>The War Information Bureau announced today that former Ambassador to France, Admiral Leahy, has been appointed Chairman of the U.S. War Effort Guidance Committee and also Chief of Staff to U.S. Marshal of the Sea, Land, and Air Force, President Roosevelt, to assist him. In addition, Admiral Leahy also serves as the chairman of the Mixed Committee of the Sea, Land, and Air Forces, composed of Navy Commander-in-Chief King, Army Chief of Staff Marshall, and Air Force Commander-in-Chief Arnold, each time it meets. Therefore, Admiral Leahy is in a position of great influence regarding the various issues of opening a second battlefield.</p>
+<p>Havas News Agency Telegram from New York, 29th</p>
+<p>U.S. President Roosevelt's special envoy Willkie's remarks in Moscow have aroused widespread discussion in various circles here. Military personnel among them said that we must understand that Germany is a strong continental country, while Britain and the United States can only be called island countries. Therefore, Britain and the United States should not attack Germany from the land, because its weakness is where Britain and the United States are strong. In other words, Britain and the United States should attack Germany from the sea and air. The New York People's Forum newspaper specifically wrote an article commenting on this view, briefly stating that the issue of opening the first battlefield is not the focus of the debate between military leaders, the brave faction, and the weak faction. This move is not a matter of strong will and daring to act. We must understand that whatever decision Britain and the United States make on this matter, it will be a very important factor in the evolution of the current war. The German side relies on a strong continental army with airplanes and submarines as its support. Therefore, any battlefield in Europe in the past has proven that the German army is invincible. Based on this, the main issue for the Allied countries is to decide their attitude on the following three points: (1) Whether to first find a way to destroy the powerful weapons made by German technology (2) Whether to let Germany choose a certain place as the battlefield and immediately fight in that place (3) Whether to give a major blow in the war zone where the Allied countries have already gained or may gain an advantage. In short, the issue of opening a second battlefield should be decided by the army and air force generals.</p>
+<p>Haito News Agency Telegram from Paris, 20th</p>
+<p>French people are paying close attention to the activities of the British and Americans in Africa. Newspapers here are also afraid that the British and Americans may attack Dakar. The Morning Post stated that the British and Americans may invade Dakar after occupying Madagascar, which is an important base. A certain newspaper published an article strongly arguing that France should no longer be concerned about the United States and should immediately strengthen the defense of Dakar and accept foreign aid, and should never repeat the mistakes of Syria and Madagascar.</p>
+<p>Havas News Agency Telegram from Vichy, 29th</p>
+<p>The Colonial Department recently announced that since the British troops landed on Madagascar Island on the 25th of this month, their progress has slowed down significantly. Yesterday, the enemy army still attacked Ambataeren, 40 miles away from the capital of the island. Since the fall of Fort Bien, the French army has retreated to the forest area to continue resisting and has formed a number of resistance centers. The enemy army has difficulty advancing on rugged ground and has suffered heavy losses. Although the British army uses tanks, armored vehicles, and heavy artillery in combat, it has not been able to break through the defense line built by the French army in the jungle and is still confined near the capital. Commander Weygand's telegram to Governor Anet yesterday was read to the entire defending army on the island this morning.</p>
+<h3>Knox Flies to Brazilian Capital</h3>
+<p>Allied News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>U.S. Secretary of the Navy Colonel Knox flew to the Brazilian capital yesterday afternoon and inspected the Panama River Defense on the way.</p>
+<p>Haito News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>U.S. Imperial Minister Colonel Knox told reporters in the Brazilian capital yesterday that Brazil has always been an ally of the United States and that the purpose of his visit to your country is only to strengthen the connection between the two countries. It is said that it is unlikely that Axis submarines would use Martinique and French Guiana as bases. It is believed that Knox will discuss the issue of calling up the Brazilian navy for combat with the Brazilian authorities. Brazil may be responsible for patrolling most of the South American coast and the Caribbean Sea.</p>
+<p>Havas News Agency Telegram from Rio de Janeiro, 29th</p>
+<p>Brazilian President Vargas recently issued an order appointing former Minister to Canada Barros to preside over economic mobilization matters.</p>
+<h3>Argentine House of Representatives Approves Severing Relations with the Axis Powers and Adopting the Recommendations of the Pan-American Conference</h3>
+<p>Haito News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>The Argentine House of Representatives yesterday passed two bills to abolish martial law and adopt the resolutions of the capital meeting of Brazil (ie, the Pan-American Conference). The former recommended at the America conference to sever diplomatic ties with the Axis countries. The Argentine House of Representatives voted to adopt it with a majority of 67 votes to 64. However, it is believed that the Argentine government's adherence to its neutral policy will not change.</p>
+<p>Havas News Agency Telegram from Buenos Aires, Argentina, 29th</p>
+<p>President Castillo, accompanied by Army Minister Donaci, inspected the air defense exercises in the city's economic zone this morning. It is reported that joint exercises of lighting control and anti-aircraft artillery are also planned to be carried out in early October.</p>
+<p>Haito News Agency Telegram from Buenos Aires, Argentina, 30th</p>
+<p>Argentine President issued a decree appointing Deballes as the economic mobilization supervisor, directly responsible to the President.</p>
+<h3>Dakar Implements Evacuation of Population, French Forces in Madagascar Build Defenses in the Jungle</h3>
+<p>Havas News Agency Telegram from Dakar Port, 29th</p>
+<p>French West African Governor Boisson recently decided to begin evacuating European women and children who do not need to stay in Dakar Port. There are two motives: (1) After the British troops landed on Madagascar Island, the possibility of Dakar Port being invaded again has become increasingly apparent. (2) There is a surplus of people in the port. Once the situation is urgent, the defending army may not be able to move freely due to the burden of their families. The Governor also ordered an investigation into the number of French citizens and soldiers' families in the port. Families with more than two children should be evacuated to France.</p>
+<h2>Page 4</h2>
+<h3>Shanghai to Hold Air Defense Drills for Ten Days Starting Tonight, Strictly Restricting Lights, Forming Fire Fighting and First Aid Teams, Self-Defense Forces Fully Mobilized, Walking Must Follow Rules</h3>
+<p>After weeks of preparation and several light control exercises, a large-scale air defense drill, scheduled as a periodic phrase in this city, is about to begin today. According to a police source who announced yesterday, Shanghai will implement light control exercises every night for several hours within this ten-day period. The time is not fixed, and during this time, no residence or store is allowed to have light shining outwards.</p>
+<p>Residential Lights Limited in Intensity</p>
+<p>According to reports from the Datong News Agency, citizens in the two concession areas have, under the guidance of the local authorities, properly installed preparations for light control drills, such as air raid lampshades and curtains. The Baojia organizations in each district also convened meetings yesterday to discuss implementation methods, dispatching personnel to each household to conduct investigations. The Baojia department of the French Concession issued a notice, the main points of which are as follows: 1) All electric lights in alleyway residences are limited to five-candlepower bulbs and must be covered with black shades. 2) The electric lights in residents' stores are limited to a maximum of eleven-candlepower and must be covered with black shades to prevent light leakage.</p>
+<p>Lianbao Ordered to Organize Three Teams</p>
+<p>3) Each Lianbao should prepare two rescue stretchers. Lianbao with a larger population should prepare five. 4) Each Baojia should organize police, fire fighting, and clearing teams, each performing its duties and awaiting dispatch by the Lianbao office. 5) After the air raid warning is issued, all personnel dispatched by each Lianbao must be fully mobilized to take responsibility for their work. In the event of an accident, they must wait for the arrival of public officials before leaving. According to reporters, the police also notified each Lianbao chief by telephone yesterday (the 30th) to instruct each store to equip two lead buckets, one filled with yellow sand and one filled with clear water, to prevent fires and must not be negligent.</p>
+<p>Various Organizations Have Also Been Completed</p>
+<p>The police authorities of the two concession areas have dismantled nine-tenths of the total number of street lights and painted traffic markings on roads and sidewalks. All workers and doormen have organized air defense teams for emergency rescue. The Shanghai Fire Brigade has also been notified to prepare for immediate dispatch, and the first aid team of the Health Department has also been established to provide emergency rescue when necessary. As for the previous rumor that the Public Concession would set up observation posts at key locations to detect the landing points of incendiary bombs, this has not yet been confirmed.</p>
+<p>Doctors Guide First Aid Work</p>
+<p>According to a key member of the Baojia Department of the Central District of the Public Concession, the district will assign more self-defense team members to stand guard from October 1st to strengthen air defense forces, and order the four Lianbao in the district to organize four first aid teams, and hire Dr. Wang Yijing of Tongren Hospital to be responsible for guidance. As for the Old Zha District, in addition to the self-defense team members standing guard as usual from October 1st, patrol teams will be dispatched to patrol various places. The five Lianbao in the district have also formed five health teams, whose leaders in first aid are Dr. Jiang Zhenxun. According to reporters, the persons responsible for guiding the first aid teams in other districts of the two concessions have also been hired and are all well-known doctors.</p>
+<p>Zoning Drills to Stop Starting Today</p>
+<p>Yesterday was the last day of the preliminary air defense drills held in the Model District. The only locations where they were held were the Putuo District and Gordon District of the Public Concession. The starting time was 7:30. The French Concession stopped holding preliminary zoning drills last night. According to reporters, the French Concession's Weidang District Civil Police Corps will take over the guarding duties from the Fuxu and Mailan Districts starting today. As for the Xiaodongmen and other districts, they are scheduled to stand guard from the 3rd. The police are now urging all subordinate Baojia groups to quickly establish civil police corps to strengthen police force during air defense drills.</p>
+<p>Rickshaw Merchants Notified Yesterday</p>
+<p>The Shanghai Rickshaw Industry Association's Special Zone Office notified all car merchants yesterday that, regarding the implementation of air defense light control, public rickshaws should pay attention to the following two matters (A) The car lights of public rickshaws should be fixed and should not move with the vehicle's movements. The light should be painted black, leaving a half-inch horizontal position from one-third of the bottom of the light painted white. (B) All public rickshaws should paint the six-inch position of their rear mudguards (that is, the one-character boards on both sides) white or paste white paper on them, with two points open. The notice was transferred and informed, hoping that all members would know and abide by it.</p>
+<p>The Following Points Should Be Paid More Attention To</p>
+<p>1. Upon hearing the air raid siren, remain calm and continue working as usual. 2. Each household should prepare air defense and fire fighting tools in accordance with the regulations of the authorities. 3. Even families that do not use incandescent lights must implement light control. 4. Do not burn paper money or light incense candles at night. 5. Do not wander, stand, or linger on the road to watch. 6. Pedestrians must walk on the sidewalk (if there is no sidewalk, walk on the edge of the road). 7. Walk on the left side of the road. 8. Cross the road only at designated locations and do not cross the road in any section. 9. It is best to wear white or light-colored clothing when walking at night. 10. Each person should have at least one obvious box office item, such as white gloves or a white cane. 11. When using a flashlight, cover the glass lens with dark paper or paint.</p>
+<h3>Public Concession Tram Company Begins to Clear Pickpockets</h3>
+<p>The Shanghai Tram Company has decided to launch a large-scale, one-month-long campaign to eliminate pickpocketing in the Public Concession in conjunction with the Public Works Department's Police Department starting today. It is understood that the company's internal and station areas will post various promotional pictures and slogans such as "Be Careful of Pilferers," and dispatch a large number of speakers to lecture on various pickpocketing methods inside the cars or at the stations. The police will also send personnel to investigate at any time to assist in the arrest of pickpockets and notify citizens to report them at any time.</p>
+<h3>Baojia Funding Solicitation Conference Yesterday</h3>
+<p>Total Amount is Two Million Yuan</p>
+<p>The Public Concession's organization of Baojia self-defense has achieved remarkable success and has made great contributions to the security within the concession. As for Baojia funding, in the past, each Lianbao was responsible for raising funds individually, which caused financial difficulties. Although the Public Works Department had considered bearing the Baojia funding, it was also unable to balance it due to the huge administrative expenses exceeding the budget. The Baojia authorities, for the sake of social security and the Baojia's future plans, have organized a Baojia self-defense fundraising campaign. A Baojia funding solicitation conference was held at the Ningbo Fellow Villagers Association on Ren Yuqing Road at 3 PM both at night and in the afternoon, deciding to raise 2 million yuan in current funds. Fundraising committee members from various industries will be responsible for raising funds separately, and JinCheng, Kenye, and Continental Three Banks are designated to collect the funds. The start and end dates of the fundraising are yet to be determined.</p>
+<h3>Rice Shops to Start Selling the Thirteenth Installment of Household Grain Rations Today</h3>
+<p>After the rice and grain management authorities of the two concession areas implemented the grain rationing system, the twelfth coupon purchase ended yesterday. From today until the 10th, for ten days, each rice shop will handle the grain rationing with the thirteenth coupon of the fourth batch of rice purchase certificates. The allocation quantity and price are still 1.5 liters of white rice and 0.5 liters of broken rice, priced at 5 yuan. In addition, purchasers can purchase one catty of flour at will for 2.3 yuan per ticket. After the grain rationing date is changed to ten days per installment, the issue of each rice shop taking a break on Sundays has been resolved. It is understood that the authorities have stipulated that all main stores should operate as usual on Sundays. If there is a 31st day at the end of the month, the 31st day will be used as a holiday. Holidays such as New Year's Day and commemorative days will be notified separately by the authorities.</p>
+<h3>Tianping Insurance Company Opens</h3>
+<p>Tianping Insurance Company was founded by Ding Houqing, Jin Guanxian, Lu Dongsheng, etc., with a capital of 2 million yuan, fully paid up at once. The opening ceremony was held in the Hardoon Building on Nanjing Road yesterday, with more than 300 guests. The general and deputy managers, Jin Guanxian and Lu Dongsheng, and the manager and deputy manager of the Shanghai company, Lu Laifu, etc., were diligently executing the ceremony and it was extremely grand.</p>
+<h3>Water Baojia Established Today, Foreign Self-Defense Forces Begin Standing Guard to Assist Police in Implementing Air Raid Regulations</h3>
+<p>The Shanghai Times reported that the Shanghai Water Baojia system, which has been discussed for a long time, will hold a formal establishment ceremony at the Japanese Club at 11:00 AM tomorrow (the 1st). Under the jurisdiction of this organization, there are more than 200,000 Chinese people living on the upper and near suburban rivers. Twenty Bao chiefs and 133 Jia chiefs have been appointed. In addition, the foreign Baojia self-defense group north of the Suzhou River will begin standing guard in the five police districts north of the Bund tomorrow afternoon. It is reported that the chairman and vice-chairman of the Jewish Union will first stand guard for half an hour, indicating that all Jews are willing to do their best to assist the police in maintaining law and order. White Russian self-defense team members are also scheduled to begin standing guard tomorrow afternoon, each shift lasting three hours. It is reported that there are more than 2,000 foreign self-defense team members in the five districts north of the Bund, and all have received service notices. Regarding the precautionary measures during the light control period, foreign Bao chiefs have been notified to inform all team members to assist the police in implementing air raid regulations.</p>
+<h2>Page 5</h2>
+<p>Even if You Brush Your Teeth Every Day, You Still Need Monthly Teeth Cleaning</p>
+<p>Fun</p>
+<p>— Edited by Zhang Lingtao and Zhang Lingqi</p>
+<h3>Fun Quiz Answers Revealed: Chen Yunshang's Teeth Are Like Shells</h3>
+<p>In the fun quiz held in the last issue of this column, readers were asked which of the Four Great Beauties had the most beautiful teeth. Readers enthusiastically participated, and a total of 4,847 letters were received. After statistics, Chen Yunshang won the championship. The election results are published below:</p>
+<p>First place: Chen Yunshang - 1,889 votes</p>
+<p>Second place: Chen Yanyan - 1,112 votes</p>
+<p>Third place: Gu Lanjun - 1,104 votes</p>
+<p>Fourth place: Yuan Meiyun - 742 votes</p>
+<p>The surnames of the winners drawn from the respondents are listed below:</p>
+<p>Yu, Lin, Zhou, Gong, Qian, Xin, Yu, Bei, Wen, Long, Zheng, Dehai, Ou, Ying, Fan, Shen, Ping, Zi, Tang, Ming, Wo, Ying, Jie, Zhu, Zhang, Mei, Hu, Jun</p>
+<p>The above ten people will each receive a free teeth cleaning voucher, which will be mailed tomorrow.</p>
+<h3>Misunderstanding of Tartar</h3>
+<p>My younger brother saw a slogan on a teeth cleaning advertisement, "Remove tartar." He didn't understand the meaning of tartar and mistakenly thought it was part of the teeth themselves, so he asked, "Won't removing tartar damage the teeth?"</p>
+<p>I told him that tartar is waste matter formed by the combination of food debris and saliva left in the gaps between the teeth. It is not part of the teeth at all and is actually harmful to the teeth, so it must be removed.</p>
+<p>From this, I feel that translation is very difficult. The term "tartar" is probably translated from Western books. Although the translation is not bad, it is not clear enough, so people who interpret the meaning literally will misunderstand. (Xin Yuan)</p>
+<h3>Xu Feng Cleans His Teeth</h3>
+<p>Movie star Bi Feng visited the Shanghai Teeth Cleaning Institute yesterday and cleaned his teeth at the institute. Mr. Xu believes that scientific teeth cleaning is very necessary in today's situation.</p>
+<h3>Immersed in the Allure of Beauty</h3>
+<p>The Tang Dynasty poet Bai Juyi wrote the Song of Everlasting Regret to record the immortal literary love story of Emperor Xuanzong of Tang and Yang Guifei. The beauty of the words makes people fascinated and immersed in the allure of beauty, which is both song-worthy and tearful.</p>
+<p>"The maid helped her up, delicate and weak," the touching words aptly describe her, but they are not as clear as "A smile that turns heads, enchanting all; the beauties of the six palaces pale in comparison." The three thousand beauties all called her a national treasure, all because her smile revealed crystal-clear white teeth and were ashamed of their inferiority. It is no wonder that she could bring down a city with one smile and a nation with another.</p>
+<p>"Where are the bright eyes and white teeth now? The blood-stained wandering soul cannot return." It can be seen that bright eyes and white teeth are both essential conditions for a beauty. (Zeng Dao)</p>
+<h3>Danish Superstition</h3>
+<p>According to a book, the Danish have a ridiculous superstition that if they dream of losing a tooth at night, they believe that a relative or friend will die.</p>
+<p>This is really too funny. In fact, dreams are false. What does it matter if a tooth falls out in a dream? It is terrible if you find that your real teeth are shaking or falling out, which is a sign of old age. Therefore, everyone should pay special attention to dental hygiene at ordinary times. (Yuan)</p>
+<h3>Last Year Today, Training of Female Dental Hygienists Began</h3>
+<p>The Shanghai Teeth Cleaning Institute recruited female dental hygienists last year. To be cautious, the recruitment procedures were entrusted to the Shanghai Vocational Guidance Institute. At that time, the institute specially appointed the chief examiner, Ms. Zhang Lingqi, to strictly review the qualifications of the candidates, stipulating that they should have a high school education or equivalent academic ability, pure thoughts, good personality, beautiful appearance, and elegant demeanor. At one time, no less than 300 people signed up to apply for the exam. After strict screening, 20 people were admitted and taught all dental knowledge and teeth cleaning techniques by the president, dentist Huang Bingyu, and the director of medical affairs, dentist Ding Xiande. After a long period of training, they began to serve, so each female dental hygienist has deep academic knowledge and rich experience. (Yu)</p>
+<h3>Funny Stories and Anecdotes: Teeth Covered with Impurities (Qi)</h3>
+<p>People Cover Their Noses and Pass By</p>
+<p>Fashionable friends pay attention to dressing up. In fact, dressing up is a virtue because a person's appearance is very important. Fashionable friends who enter and exit social occasions need to be well-received, so they must have a good appearance. People who pay attention to appearance must first pay attention to whether their teeth are stained yellow, charred black, or covered with impurities. Otherwise, people will cover their noses and pass by, and they will still not be welcomed.</p>
+<h3>Public Works Department's Goods Compilation Section Re-Establishes Fair Prices, Adjusts Production, Wholesale, and Retail Prices, and Asks the Consular Body to Authorize the Management of Various Industries</h3>
+<p>The English Great Beauty Evening News said that the Allied Press learned today (the 30th) that the Public Works Department's Goods Compilation Section will take measures based on the research currently underway to eliminate differences in retail prices within the Public Concession. The five major department stores in the city, Wing On, Sincere, The Sun, Sun Sun, and China Emporium, submitted a fair price estimate table for more than 1,000 kinds of goods to the Goods Compilation Section yesterday (the 29th). The prices are based on the cost of each item at the end of August plus the company's 11% profit. The Goods Compilation Section is studying this and will compile a fair price list based on this. The person in charge also said that the Public Works Department will seek the opinions and cooperation of the Chamber of Commerce to deal with the entire issue of re-adjusting production, wholesale, and retail prices. For the convenience of the implementation of the price balance plan, the Goods Compilation Section has applied to the Consular Body for authorization to manage various industry associations, so that it can implement the license and registration system. If the Goods Compilation Section obtains this authority, it can manage the more than 50 industry associations that currently exist in the Public Concession. At that time, the Public Works Department will establish an industry association guidance section within the Goods Compilation Section to organize various industry associations by restricting membership methods.</p>
+<h3>YWCA Establishes Simple Meals</h3>
+<p>In order to continue to promote women and children's health exhibition work and implement guidance on how to choose, distribute, and cook economical and nutritious foods, the YWCA has established a convenient dining place in its premises. Every day, meals are cooked according to the menu (nutrition per person) identified by the doctor, and seats are opened to the public at noon and in the afternoon for cheap distribution to customers. All those who study nutrition can go to try it. It is said that the institute is now preparing and will start as soon as it is ready. Also, the YWCA, in view of the gradually cold weather and the lack of bathroom facilities in ordinary families, has set up a bathroom in its premises for women who love cleanliness. The association also has toys and cheap daily necessities for selection. For details, please contact the association at 638 Weihaiwei Road.</p>
+<h3>YMCA Establishes Religious Society</h3>
+<p>The Religious Department of the Eight Immortals Bridge YMCA has established a Religious Society to study the true spirit of Christ, promote a positive outlook on life, and provide social people with amateur cultivation opportunities. The course will begin on October 7 and will be divided into three types: the model of a perfect person, Christ, and life issues, and the beliefs of celebrities. The tuition fee is 2 yuan per person. Regardless of gender, age, level, or belief, you can register to participate. The class time is from 5 pm to 7 pm every Wednesday until December 30, which is the end of the semester. Those who pass the exam will be issued a commemorative certificate by the association. Books are generally provided by the literary community. Those who wish to participate can ask the inquiry office of the association for the rules.</p>
+<h3>Xu Zuliande is a High-Ranking and Long-Lived Person</h3>
+<p>Xu Zulian Xingbin of Haining is a famous reporter from Liangzhe. He has been elected to the Zhejiang Provincial Assembly in every session. He is good at public opinion and is not afraid of power. He has repeatedly suffered disaster for his writing. He has often been imprisoned for his opinions, but he has been deeply admired by the people of Liangzhe for promoting local interests and eliminating harm, and for speaking out for the suffering. In recent years, he has been retired in Shanghai, spending his leisure years and devoting himself to writing, sharing his intentions in management. He is now 70 years old. His disciples are planning to celebrate his birthday. Mr. Xu does not want to do so because of the difficulty of material resources. His fellow villagers in Shanghai and his close friends and relatives are planning to raise funds to establish an education fund to create a greater achievement. This is currently being launched.</p>
+<h3>French Concession Baojia Donation</h3>
+<p>Jiang Shoutang 200 yuan, Huang Wenzhen 100 yuan, Liangxintang 50 yuan, Wang Jiaozheng 500 yuan, Jiang Tingfang 500 yuan, Wang Shunfa 500 yuan, Zhao Yushen 425 yuan, Fang Chunzheng 250 yuan, Ge Wenxing 250 yuan, Wu Chengyu 600 yuan, Xiao Yuanchang 125 yuan, Xi Maoxing 100 yuan, Rong Jatao 100 yuan, Mao Changlin 100 yuan, Xiantai Rice Shop 100 yuan, Du Boying 175 yuan, Du Ziliang 125 yuan, Gu Zhenkang 125 yuan, Lu Shanrong 250 yuan, Xiang Fukang 150 yuan, Wang Alin 100 yuan, Hu Shicheng 448.5 yuan, Shi Jinsheng 435 yuan, Ling Laiyi 1500 yuan, Yao Zihui 125 yuan, Yao Xiaoqing 100 yuan, Pan Jiaming 750 yuan, Han Minggang 300 yuan, Zhou Bingren 250 yuan</p>
+<h3>Miscellaneous News from All Walks of Life</h3>
+<p>China United Shares are Firm</p>
+<p>China United Garment Film Company is currently the only film company with three factories and three filming studios, more than 200 directors, and more than 200 actors. It also enjoys special production rights and business patents. In the past three months, it has produced more than 30 films, and its business performance has created unprecedented new records. Since the company increased its capital and recruited shareholders at the beginning of this month, the public has been enthusiastic. The price in the market has risen frequently, but buyers are still absorbing it strongly. The trend has become more popular in recent days.</p>
+<p>A Big Insurance Company</p>
+<p>It was founded by Hu Yangwu and other giants in the financial and insurance industries. Since its organization was completed and business started, people from all walks of life have been enthusiastic about insuring, and the business will surely flourish.</p>
+<p>Yesterday, the newspaper was published at 6:20 PM</p>
+<p>Sports News</p>
+<h3>The Last Act of the Football Trial Match, Dunhua and St. Francis to Finalize Today at 5 PM at the Racecourse</h3>
+<p>The last act of the football trial match, Dunhua and St. Francis to meet for the third time is scheduled to be held at 5 PM today at the Racecourse on Jing'an Temple Road. The two teams have fought twice and the results have been undecided. St. Francis is the champion of the last Scott Cup, and its strength is stronger than that of the Western teams. Dunhua has recently recruited famous players, and there is no lack of people returning. The former Jinan famous left-wing Liu Zuruan resolutely appeared, and the veteran Li Ning also made a comeback to help. The rest, such as Dai Linjing, Jia Youliang, Zhang Banglun, Zhuang Youren, Yuan Kun, Tian Hanlonghai, etc., are all waiting in battle. St. Francis recently invited Wiley Huada, a representative of the port, to guard the checkpoint, plus the famous generals Fu En, Pantoson brothers, Hanni Boge Linberg, Gem Huada, etc. The strength of the two teams is different, and each will do their best to win the final victory. Tickets today are 5 yuan, and 400 seats are specially set up in the field.</p>
+<p>Dunhua Association</p>
+<p>Zhang Banglun, Li Ning, Zhuang Youren, Zhang Zhaopeng, Han Longhai, Liang Shutang, Yuan Kun, Tian, Liu Zuruan, Dai Qimei, Jing Jia Youliang, Zhang Mingsheng</p>
+<p>(Reserves) Shu Shigeng, Zhou Guangzhong, Cao Qinfang, Pan Honghai</p>
+<p>St. Francis</p>
+<p>Tewili Huaxueerzi, Leimidi, Edward, Hanni Boge, Linberg, H Pantoson, W Pantoson, Jie Gouhuada, Gelifei, Fu En</p>
+<p>(Reserves) Yi Weinov, Mada Huada Tuo</p>
+<h3>One Star Cup Small Ball Tournament Opens, Qianghua Narrowly Wins Mixed</h3>
+<p>The One Star Cup Small Ball League opened yesterday at the Guangxia China Stadium. In the first act, Bai Qian defeated Jianxing 2-1. In the finale, Qianghua faced Mixed. In the first half, Qianghua took the lead 2-0. In the second battle, Mixed came on with all the elite. Cai Shengsen, Qu Yongfu, Li Yichen, Meng Yiliang, and Jiang Chao all helped Mixed. As a result, Qianghua narrowly won Mixed 3-2.</p>
+<h3>Sports World Publishing House Compiles and Prints Football World</h3>
+<p>Scheduled to be published in mid-November</p>
+<p>Since Li Jizhi's Shanghai football scene invited Hong Kong stars to Shanghai to promote friendship, the sports association reorganized, and the Dunhua Sports Association restored its organization, its vigorous atmosphere is a spectacle. Once the West League officially starts, the hot market situation will be no less than before the war. The Shanghai Sports World Publishing House is preparing to compile and print Football World to further promote it. In addition to inviting experts to edit and write, it also collects various precious football photos. All sports associations and teams in Shanghai are welcome to provide photo materials to increase the excitement. It is scheduled to be published in mid-November. According to the publishing house, it has compiled and printed the Sports Yearbook for two years, which has been praised by the sports community.</p>
+<h3>United Cup Mini-Football Tournament Starts on Saturday</h3>
+<p>The United Air Conditioning Engineering Company Sports Association is hosting the United Cup Mini-Football Tournament. A total of 56 teams have signed up to join and are divided into seven groups including the United Air Conditioning Engineering Cup. The competition is scheduled to start at 2 PM on Saturday at the Tongle Stadium on West Athams Road. The schedule for October 3 (Saturday) is as follows: W Team vs. Qinchang (Combined Group) 2 PM, Huijin vs. Tianli (Cheng Group) 3 PM, Gulang vs. Xixi (Public Group) 4 PM, Samsung vs. United (Performance) 5 PM</p>
+<p>Commercial News</p>
+<h3>Public Debt Trading is Light</h3>
+<p>The off-exchange trading of public debt in the black market has slightly decreased. Except for a few shorts covering their positions, there are very few new buyers. Sellers are still enthusiastic. Recently, large long positions have mostly emerged and are no longer as interested as before. Therefore, investors are shrinking their hands, people's hearts are flustered, rumors are endless, and floating positions are selling off their chips one after another, so the pressure is easing again. Yesterday, the C bond still had a fluctuation of one yuan. It was seen at 3.5 yuan at the beginning. Because of the short covering by the bulls, the price was 2.3 yuan, and then it was raised to 3.8 yuan due to the short covering. Finally, it continued to fall by 60-70 cents to about 3.5-6 yuan. The A bond still failed to exceed the C bond, and its price was only 3.5 yuan, continuing to fall by 50 cents. The B bond was 90 cents smaller than the C bond, only 2.7 yuan, and also 90 cents smaller. The D bond was 0.9 yuan, 1.1 yuan smaller. The E bond was 1.7 yuan, and continued to fall by 80 cents. The turnover was about 1 million yuan.</p>
+<h3>The Rise and Fall of Chinese Stocks</h3>
+<p>Yesterday, the Chinese stock market continued its downward trend from the previous day's shift from rising to falling. This was a natural correction after sixteen consecutive days of gains. Profit-takers sold aggressively, causing most prices to decline. However, the cultural sector bucked the trend. The Commercial Press reached a high of 300 yuan before falling back, eventually closing at the same price as the previous day. The China Bookstore once reached the 200 yuan mark before slightly declining, still closing up 5 yuan. After changing its face value to 25 yuan, the World Bookstore had risen for nine consecutive days. Yesterday, it finally fell back slightly by 2 yuan to 61.5 yuan. Yongxiang was around 25.5 yuan, and Standard Paper Products was at 14.5 yuan, both up 5 jiao. In the pharmaceutical sector, Sin Sin Yi Pharmaceutical soared 75 yuan to reach 1,100 yuan. Wuzhou failed to break through the 300 yuan mark, falling back slightly by 5 yuan. New Industries retreated from 47.5 yuan to 46 yuan, down slightly by 1 yuan. Minyi was down 2 yuan, and Sino-French was down slightly by 4 yuan to 82.3 yuan. In the department store sector, both Wing On and National Goods had fallen below 120 yuan, down 6 yuan to 4 yuan. Sincere was at 120 yuan, down 2.5 yuan. There were limited buyers. The Nanyang Brothers Tobacco Company, which had been soaring most dramatically, plunged from 109 yuan to 102.5 yuan, down slightly by 3 yuan. The Great China Match remained firmly at around 215 yuan. In the textile sector, China National Knitting dropped from 34.5 yuan to 32.5 yuan on the day, a drop of 2 yuan. It finally closed at 33.25 yuan, up slightly by 1.25 yuan. Small-denomination shares of Hong Sheng and Great China Weaving, as well as Shanghai Cotton Weaving and An Dah Shirt, were all down 5 jiao. Foo Chong Dyeing and Weaving fell by 1 yuan. Other stocks also mostly declined. Zhabei Water &amp; Electricity was down 5 jiao, and China General Edison was down 1 yuan. Shares of Yiyuan Weaving Factory, which were listed the day before yesterday, rose from 12 yuan to 13.5 yuan. Yesterday, they approached 15 yuan, and buyers were enthusiastic. The stock market table is recorded below:</p>
+<p>Stock Name Highest Lowest</p>
+<p>The Commercial Press 300.00 290.00</p>
+<p>China Bookstore 300.00 190.00</p>
+<p>World Bookstore 64.00 61.00</p>
+<p>Great China Match 38.50 210.00</p>
+<p>Zhabei Water &amp; Electricity 40.00 36.50</p>
+<p>China General Edison 33.50 32.00</p>
+<p>Wing On Company 12.600 29.00</p>
+<p>Sincere Company 23.50 27.00</p>
+<p>Yiyuan Weaving 14.75 13.50</p>
+<p>China National Knitting 24.75 32.50</p>
+<p>Hong Sheng Weaving 3.00 2.00</p>
+<p>Great China Weaving 3.00 2.25</p>
+<p>Foo Chong Dyeing and Weaving 18.21 17.00</p>
+<p>Shanghai Cotton Weaving 15.75 14.50</p>
+<p>An Dah Shirt 28.00 26.00</p>
+<p>New Asia Pharmaceutical 47.50 45.00</p>
+<p>Sino-French Pharmacy 85.00 82.00</p>
+<p>Minyi Pharmaceutical 67.50 64.00</p>
+<p>China United Film 40.00 38.00</p>
+<p>Three-Wheel Taxi 3.50 20.00</p>
+<p>China Brick &amp; Tile 12.50 3.50</p>
+<h3>Gold, Silver, and Foreign Currencies Remain Stable</h3>
+<p>Yesterday, the Shanghai gold shops, including Da Hsin Tong Hang Jewelry Gold, continued to list the selling price of gold bars at 2,450 yuan per tael (with a deduction of 300 yuan or more for purchases). The inter-dealer price continued to fall sharply, retreating into the 2,200 yuan range. It opened 5 yuan lower in the morning at 2,245 yuan and soon declined 55 yuan amid selling pressure. At noon, it closed at 2,190 yuan, up slightly by 60 yuan, with a difference of 55 yuan. Trading was thin, and sentiment softened.</p>
+<p>The listed price for ornamental silver remained at 14 yuan per tael. The inter-dealer price was 13.67 yuan. The interest rate set by the industry association remained unchanged at 1 jiao 4 fen.</p>
+<p>The market for foreign currencies remained stable for Japanese military scrip. The inter-dealer price was 5.5568 yuan. Money shops and small private banks sold at 5.565 yuan and bought at 5.545 yuan, the same prices as the previous day.</p>
+<h3>Sharp Increase in August Deposits by Fellow Firms at the Silver Standard Association</h3>
+<p>An Tai Bank Joins the Money Depository</p>
+<p>The average daily amount of deposits from fellow firms at the Shanghai Banking Association Joint Reserve Committee increased sharply in August to 68,776,586.27 yuan. Compared to 57,793,400.04 yuan in July, this is an increase of 11,013,125.23 yuan. Compared to December of last year, this is an increase of 34,373,646.67 yuan.</p>
+<p>The Shanghai Banking Association Joint Reserve Committee issued a circular to various banks and firms yesterday, stating that An Tai Bank had joined the depository as a member on the 22nd of this month. Starting from October 1st, various banks and firms should handle the collection of payment instruments issued by the bank entrusted to the association in the same manner as with other member firms.</p>
+<h3>Despite Weakness, Cotton Cloth Dealers Reluctant to Lower Prices</h3>
+<p>Factory Cloth</p>
+<p>Yesterday, the market lacked vitality due to the continued decline of Dong cloth. However, major dealers were reluctant to lower prices. As a result, heavy coarse cloth became scarce and prices rose. 16-pound Globe coarse cloth required 188 yuan, and Flying Swan required 185.5 yuan. Light cloth fell by 5 jiao. 9-pound New Character was offered for sale at 110 yuan, and 8-pound Zhenzhong at 107 yuan. Small quantities of 12-pound fine cloth were also willing to be sold at lower prices, continuing to decline by 1-2 yuan. Unpackaged 2-pound Globe fine cloth was 161 yuan, and Da Peng was 154 yuan. Wealthy Bank's bid prices were particularly inconsistent, ranging from 150 yuan to 152 yuan. Peach Blossom Lady Lin fell from 251.5 yuan to 250.5 yuan, and the market lacked advisors, falling by 1.5 yuan.</p>
+<p>Dong Cloth</p>
+<p>The market was sluggish and continued to decline. 12-pound Leading fine cloth from New Sincere fell to 166.5 yuan. Leading from the bank was 156 yuan, Rainbow Ball was 15.25 yuan, Flying Fish was 154 yuan, Yanghe was 152.5 yuan, Trumpet was 151 yuan, and Five Fortunes was 150 yuan. Various brands of fine cloth fell by 2-3.5 yuan per bolt. Four Gentlemen Serge, single Red Army, saw a minimum price of 6.8 jiao and closed at 6.86 jiao in the afternoon, down another 8 fen. The bank single was 6.66 jiao, down 2 fen.</p>
+<h3>Extreme Scarcity of Da Guang Leather</h3>
+<p>Eager Buyers Meet Everywhere</p>
+<p>The market for standard-grade, 36-foot Da Guang leather is extremely short in circulation. Since yesterday, influenced by the influx of Northbound merchants, the quiet market has regained its enthusiasm. Unfortunately, the varieties of Da Guang leather are insufficient, and buyers frequently encounter obstacles. Therefore, printing factories, water bottle factories, and scattered users have switched to using Touzi goods and black iron blanks. However, purchasing standard-grade varieties is particularly difficult, and those holding goods have high expectations. The market is stable and firm. Standard-grade goods are priced at 20,000 yuan per ton, 20-grade Touzi goods at 16,000 yuan, 12-14 grade varieties at 14,000 yuan, and 2,000-pound black iron blanks at 15,000 yuan.</p>
+<h3>Stable and Firm Situation for Beans</h3>
+<p>The bean market was firm yesterday, with limited arrivals and brisk sales, resulting in more demand than supply. 30 bags of Tianjin red beans were priced at 165 yuan, and 50 bags of Chongming sandy red beans were priced at 164 yuan. More than 30 bags of sandy silkworm beans were priced at 150 yuan. Arrivals and sales of red sorghum were low, and the market was stable. One truckload of Mingguang red sorghum was priced at 114.7 jiao.</p>
+<p>The supply and demand for dried sweet potatoes were balanced, and the market was stable. Yesterday, a single silk bag of 60 bags of Jiangbei dried sweet potatoes was priced at 126 yuan.</p>
+<p>Yesterday, bean cakes from nearby suburban areas of this town were priced at 61.3 jiao.</p>
+<h3>The Edible Oil Trade Wholesale Bureau Strives to Increase Production</h3>
+<p>To maintain the people's food supply, the Shanghai Edible Oil Trade Wholesale Bureau has not only made every effort to dredge the source but also strived to increase the production of its own factories. To date, there are more than 20,000 dan in storage, which is sufficient for the consumption of the entire city. In order to take care of the common people, it has once again warned all retail stores that the price of raw oil must not exceed 7.2 yuan per catty, and the price of soybean oil and sesame oil must not exceed 6.95 yuan. Otherwise, they will be severely investigated. At the same time, a designated oil supply point for registered businesses has been added at No. 20, Lane 31, Shanxi Road. If hot food, wine, dishes, tea, food groups, etc. cannot purchase edible oil, they can go directly to the location with a certificate to purchase it.</p>
+<h2>Page 6</h2>
+<p>Free Talk</p>
+<p>Small Talk</p>
+<h3>Theologians and Philosophers</h3>
+<p>— Tang Mu</p>
+<p>It is said that once a theologian and a philosopher had a fierce debate. The theologian satirized the philosopher, saying that a philosopher is like a blind man looking for a black cat in a dark room, but there is actually no black cat in the room. The philosopher retorted, "Perhaps that's the case, but the theologian actually found a cat in an empty room."</p>
+<p>I don't know how many people in society are blindfolded, turning around in dark rooms looking for black cats that aren't in the room. And I don't know how many people think they have found black cats that don't exist.</p>
+<p>Cultivation</p>
+<h3>Small Shortcomings</h3>
+<p>— Translated by Ni Xiuxia</p>
+<p>Don't neglect small shortcomings. The smallest enemies will become harmful in the long run. It is not the masses that ravaged crops and caused disasters in northern China, but locusts and small butterfly pupae.</p>
+<p>Furthermore, a small shortcoming is definitely not a small matter. The smallest shortcoming can affect a masterpiece, and small is often the beginning of big. Nothing grows and increases faster than a small shortcoming, and nothing reproduces faster. A small black spot on a tooth is a small matter, but if you don't go to the dentist immediately, the entire tooth will soon be decayed. And once a tooth is decayed, if you still don't pull it out, then the adjacent teeth will also decay, and then the adjacent teeth will also decay, and the entire mouth will be full of decayed teeth.</p>
+<p>The willingness to commit small shortcomings is also absolutely not irrelevant. This is enough to cause greater damage. In conclusion, a small shortcoming that is not corrected can prevent us from doing good. The thinnest thorn left in a lion's foot can prevent the king of beasts from flying. A grain of sand in your shoe can cause you to stop halfway when you participate in a track and field competition. So the smallest shortcoming is more terrible than a lion. A light thorn is a small grain of sand that defeats the most reputable runners and takes away his championship.</p>
+<p>These small shortcomings can cause great danger, perhaps because of their smallness. Their insignificant appearance makes people often regard small shortcomings as things that don't need to be worried about and are fun to keep. This kind of view is a very dangerous mistake. Rust is just a brown spot on a shiny metal surface at first, but if it is not removed quickly, it will penetrate the entire piece of steel. The woodworm is just a small, pitiful worm at first. The Dutch know very well that although its body is small and pitiful, it can penetrate the strongest seawall in the world and cause great disasters. This small worm symbolizes many uncorrected small shortcomings that cause great disasters in life.</p>
+<p>Don't underestimate your small shortcomings. Accept good advice with careful and grateful ears. From now on, comprehensively remove them. In youth, these small shortcomings are often just the larvae of harmful things. It is easier to catch or kill them before they grow, otherwise they will attack us and cause us to die.</p>
+<p>Change immediately. It may be too late if you delay.</p>
+<h3>Clothing, Food, and Honor and Disgrace</h3>
+<p>— Du Boqing</p>
+<p>There are three kinds of people in the world. The first kind of person knows honor and disgrace after having enough clothing and food. The second kind of person knows honor and disgrace even without enough clothing and food. The third kind of person knows nothing of honor or disgrace even when they are clothed and fed.</p>
+<p>In terms of life, the second kind of person is miserable, and the third kind of person is happy.</p>
+<p>In terms of morality, the second kind of person is noble, and the third kind of person is base.</p>
+<p>In terms of national law, the second kind of person should be praised, and the third kind of person should be pickled in brine.</p>
+<p>Society</p>
+<h3>A Letter Sponsoring Fundraising to Help with Meals</h3>
+<p>— Ni Xiang Sheng</p>
+<p>The YMCA specially launched a campaign to help poor students with meals in order to solve the problem of eating for poor students. After the news was published, we received a letter from this enthusiastic reader and attached five yuan of savings from meals to show their warm support for this campaign. In addition to having transferred the donation to the Student Relief Committee of the YMCA, we specially publish this deeply moving letter in the hope that other readers will also continue to respond in order to accomplish the full success of helping students. Please send donations directly to the YMCA at Eight Immortals Bridge or the YWCA at No. 638 Weihaiwei Road to avoid additional transfer procedures - Editor</p>
+<p>This morning, I stole a few minutes to read the newspaper in the writing room. I accidentally saw the news that the YMCA launched a campaign to help poor students with meals. This news moved me very much.</p>
+<p>I am a servant at a Jewish doctor's office, or as most people call it, a "boy." But before that, I was also a poor student who didn't have enough tuition fees, and when I did, I didn't have enough money for transportation or meals. Because of this, not only do I know the situation of poor students in detail, but I have also experienced it myself. At the beginning of each semester, I always ran to the pawnshop several times and visited several relatives who could give me some financial help. But this was only once per semester, twice a year. What made me feel really difficult in the life of studying hard and studying poorly was still eating.</p>
+<p>It's really a feeling that poor, or even not so poor, classmates may have experienced. We may all have had the embarrassment of lingering in front of a restaurant and hesitating to step in. Poor students are certainly afraid that they won't be able to eat or pay the bill because of the limited money in their pockets. Even students who are not so poor are afraid of not being able to eat hygienic food and of not being able to bear the price of the car and the habits of ordinary restaurants.</p>
+<p>Although I am no longer a student and I no longer have to run to the pawnshop twice a year to pay tuition, I am still a boy with a meager salary and a low status. The problem of eating is still threatening me every day. I have not forgotten, and cannot forget, the painful feeling I had when I was studying. Moreover, I remember it even more clearly because meals have risen to four or five yuan a serving. This is why I was particularly happy to pay attention to the news of the YMCA helping students with meals.</p>
+<p>Here is a deposit of five yuan. This is the money I saved from meals today. Please send it to the authorities in charge of the YMCA as a sign of my agreement with and response to their campaign to help students with meals. I know very well that my five yuan will definitely not be able to subsidize a poor student's expenses for a day. But in Shanghai, there are still benevolent and generous people who can spare thousands of times more than me. Such good deeds will be completed by them, I hope so. I believe that tens of millions of poor students also hope so for them. I wish</p>
+<p>Written respectfully by Ni Xiang Sheng, September 5, Year 31</p>
+<p>Chatterbox</p>
+<h3>A Glimpse into the Money Industry</h3>
+<p>— Xiao Wei</p>
+<p>(3) The Silver Rice Bowl and the Money Shop Fellows</p>
+<p>Some people envy friends who eat from the bank and money shops, because they hold a silver rice bowl. It is true that in terms of treatment, the money industry is considered to be more generous than other industries. Taking money shops as an example, the salary of at least the staff is always above 100 new yuan. In addition to providing meals and accommodation, there are also bonuses at the end of the year. But in today's era when banknotes are worthless, 100 yuan can only be used as 10 yuan. It may be enough for a bachelor to support himself, but friends with families feel that they can't make ends meet. Therefore, there are those who pre-pay their monthly salary, those who find side jobs outside, and even those who have too much debt to make up for and run away. How would outsiders know about these kinds of depression? To talk about ingratiating oneself to hope for promotion to runner or money room positions, it may depend on whether you have a close relationship with the manager or assistant manager. If you are not from their gang (Shanghai money shops have Ningbo gangs, Zhenjiang gangs, etc., which attract fellow villagers and form forces) and you are not good at flattering, then you have to be prepared to sit on the bench for a few years. Other professional fields certainly have this as well.</p>
+<p>As for the daily work of old-fashioned money shops, it is not very complicated. As long as you can write old-style numbers and know how to use an abacus, elementary school graduates can cope. Unlike bank staff, who must understand new-style bookkeeping and accounting, etc., special knowledge. But where there is benefit, there is also harm. Therefore, many people are trained without specialized knowledge and skills. Once unemployed, it is very difficult to find other jobs. As a result, not only do they suffer themselves, but society also has one more useless person. Furthermore, a group of young people with unstable wills join old-fashioned money shops. All they see and touch every day is money. They live in an atmosphere of money and have few other thoughts. After work, those who go up go to inquire about market conditions and contact relatives and friends to try to fulfill their gold dream of buying and selling short. Those who go down associate with bad friends, play cards, watch plays, and gamble wildly. Therefore, there are also many people who are in debt, lose money, commit fraud, and eat officials. Just look at the protagonists of this type of news in the newspaper, most of them are young people who worship the silver rice bowl. It is easy to shake it up, but it is not difficult to lose it, because their work activities are completely directed by money. After their experience increases, they often become its prisoners.</p>
+<p>So in the end, I have to advise a group of young students not to snipe in without preparation. At the same time, those who have held this silver rice bowl should be vigilant in times of peace, and use their spare time to study specialized knowledge in order to avoid being eliminated by the giant wheel of the times. (End of the article)</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(9) Hell on Earth</p>
+<p>This is a bit like the weather, sometimes sunny and sometimes rainy. Just now it was a storm, but now the sky is clear. Cui Zhen is paralyzed on the bed with half her life left. The person watching over her is constantly in and out of the house. Sometimes she brings in hot meals and dishes. A-ying reveals a smile, rolls up her sleeves, walks to the bed and says to Cui Zhen, "You didn't understand before, causing our younger brother to suffer and yourself to suffer. Now you should understand. Sit up and eat. There's not much in the way of dishes. There's vegetable glue stir-fried meat shreds, stuffed flatbread, stir-fried vegetables, white pork radish soup, and a dish of meat slices stir-fried with shepherd's purse. We who were born in the countryside all like to eat meat. You're the same, right? Get up, get up." A-ying is considered close to Cui Zhen. While she speaks, she pulls Cui Zhen up. Cui Zhen feels nauseous and doesn't accept the temptation of the delicacies. She is pulled up and falls back down again. A-ying curses a few dozen times before she says, "I don't want to eat." A-ying laughs, "So you still don't understand that I'm inviting you to eat because I think highly of you. When we hit, we hit, and when we scolded, we scolded. After hitting and scolding, my younger brother and I have the same temper. Get up for yourself."</p>
+<p>How could Cui Zhen listen to A-ying's words? A-ying secretly cursed "doesn't know how to appreciate favors," and instructed outside, "The meat slices stir-fried with shepherd's purse don't need to be brought up." The dishes in the room were taken out. The person outside responded loudly, took an empty plate, and took the dishes out one by one. A-ying still wanted to make her last effort. She put her hands on her waist and forced a smile, "You don't know how good my younger brother is to women. The one at home is much worse than you. How does my younger brother treat her? They eat at the same table and sleep in the same bed. When the weather is cold, he naturally touches her clothes and asks, 'Are you cold?' Since you're the one at home who is still treated like this, he'll naturally raise you to the sky." As she said this, Wei Shaoyun walked in with a group of people and said, "Sister, are you talking to Cui Zhen? Hurry up and eat, oh. Did you accompany her to eat? How much did you eat?" A-ying explained the process of Cui Zhen refusing to eat. Wei Shaoyun said, "It doesn't matter, not eating won't kill you. We've already discussed a solution outside." (191)</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.09.30.html", "next": "1942.10.02.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.11.08 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 515 - 4924654</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日大本營公布　最近海軍戰果　擊沉敵船二十五萬餘噸</h3>
+<p>東京七日同盟社電　日大本營今日午後三時三十分宣布、日艦於七月下旬至十月下旬期間、已擊沉敵潛艇二十一艘、同期內、日海軍擊沉敵船三十四艘、共二五二·四〇〇噸、日方僅損失潛艇兩艘、日大本營又承認日方在該三閱月內、損失商船二十九艘、共一二二五〇〇噸、東京七日同盟社電據此間軍事觀察家談、大本營本日下午所公布之日軍戰果中、共擊沉敵潛艇二十一艘、又擊沉敵船舶二十四艘、共計二五二四〇〇噸、以此與開戰以來日海軍所獲戰果合計、則共擊沉英美潛艇八十九艘、擊毀三十九艘、共計一二八艘、又擊沉或擊毀之船舶共三九一艘、約二二〇〇〇噸、此次發表中所擊沉之敵潛艇預料大部爲美國所有、因此可推定美潛艇自開戰以後、已損失約六十艘、故美海軍在太平洋中之潛艇、業已大半損失、其所存者亦被厜於日海軍之制海權下、故美國在大東惡海域中欲實施通商破壞戰將不可能、至日本所損失之船舶多數爲作戰中之道輸船雙、其從事通商任務之船舶損失極微、於此可知日軍於大東惡海域中、對敵人潛艇攻擊、已佈成堅強完整之防禦陣綫、今後美海軍潛艇在日海軍之威力下、已無活躍餘地、此外敵船舶被日海軍擊沉者、自開戰以來共達三九一艘、約二二〇〇〇噸、此與德義海軍之戰果相比、雖爲數尙少、但日海軍作戰之水域、寳遠較德義海軍作戰之水域爲廣大、而上海軍作戰之目的、係以擊滅英美之海上兵力爲主、通商破壞戰無重要地位、故日海軍與德義海軍作戰目標之重點完全不同、日潛艇自開戰以來、總觀所獲戰果甚爲鉅人、允以潛航艇對珍珠灣、雪黎港及馬達加斯加島等地之奇襲、以及華茲普號來　辛頓號空母之遭日潛艇擊沉等固皆爲重要之戰果也、</p>
+<h3>首都中日聯歡夜會　林部長演說詞</h3>
+<p>南京七日中央社電　宣傳部與日本大使館主辦之中日聯歡夜會、今日下午七時三十分、假座大華戲院舉行、林部長親蒞致詞、大意略謂、今天晚上日本大使館和宣傳部在這裏舉行聯歡會、承各位長官及各界人士熱烈參加、至深感謝、本來在戰爭期間、正是我們流血流汗的時候、不是歌舞昇平的時候、我們今天所以聯歡、絕不是什麼歌舞昇平、而另有其重人的意義、第一、今天是大東亞戰爭將到八週年、這一年來友邦將士的奮鬬、在大東亞戰爭中已獲得了絕對的勝利、這種勝利、不只是友邦的光榮、同是整個東亞的光榮、我們爲對兩國民衆顯示東亞前途的光明、而有今天的聯歡、第二、隨着大東亞戰爭的進展、英美侵略勢力的崩潰、和平運動的成功、是決定了的、然而爲爭取澈底的勝利、還有待於中日兩大民族不斷的努力、和共同的協力、我們爲賡續過去的努力、而有今天的聯歡、我們爲加緊今後的協力、而有今天的聯歡、第三、主席常常吿訴我們、要協力大東亞戰爭必須要東亞民挨同甘共苦、要完成大東亞共榮圈、必須要東亞民族相親相愛、在戰爭期間、不必問將來怎樣同甘只要問現在怎樣共苦、要能够共苦、才說得到同甘、我們是拿這個精神而有今天的聯歡、基於上述三點、我們要對大東亞戰爭的英勇將士表示無限之敬意、我們要對大多數刻苦耐勞的民衆寄予無限之同情、我們要有將士們一樣勇猛精進的精神來鬬爭、我們要有民衆一樣刻苦耐勞的精神來努力、我們要在不斷的努力、不斷的鬬爭中、擴大今天的聯歡會、使之成爲中日兩國五萬五千萬人同時舉行的聯歡大會、</p>
+<h3>日駐義新大使日高　在京舉行才會</h3>
+<p>南京七日中央社電　日本新任駐義大使日高信六郎氏、日前北上、與華北中日各機關當局作離任之酬酢、業於六日遄返南京、茲以任內一切事務、均已辦理清、爲與各方表示惜別特於昨（七日）下午四時假國、際俱樂部、舉行茶會、招待中日各機關長官各界代表等、計到有國　　院部長及日本總司令部河邊總參謀長·野田副長·憲兵隊大木少將軍事顧問中村氏·大使館高木參事、宅伏平書記官·落合武官·代谷少將·冲野少將·好富總領事·志信譯警署長·同仁會梅田博士·前田居留民幽參事會長·等代表多人、德義滿大使館代表等、均被邀參加、一時觥籌交錯、極一時之一盛、至六時許、始盡歡而散、</p>
+<h3>重光大使　謁日首相</h3>
+<p>東京七日同盟社電　常日駐華大使重光葵氏、爲協商關於大東亞省成立後之事務、日前返國、今日下午一時、特赴首相官邸、謁晤東條首相、會談的二小時、</p>
+<h3>上海方面日陸軍最高指揮　下村中將繼任</h3>
+<p>上海方面日陸軍最高指揮官澤田茂中將、業　調任某方面要職、頃華中日軍當局發表、已特任下村定中將繼其後任、按下村中將高知縣人、日本陸軍十官學校第二十期生、與木村陸軍次官·緬甸方面飯田日軍最高指揮官等係同期生、畢業陸軍大學後、歷在參謀本部及國外服務、九一八事變時、會任帝國全權隨員駐於日內瓦、此次中日事變爆發、當初、任職大本營、昭和十四年授中將銜、迄最近任陸軍大學校長、又前任上海方面陸軍最高指揮官澤田茂中將、自前年蒞任以來、對揚子江下游地區作戰及協力清鄉工作、頗著功動、此次榮任某方面要職離滬、中日各界、殊表惋惜、</p>
+<h2>Page 3</h2>
+<h3>瑪薩瑪特魯迤　東德義軍數度反攻　雙方裝甲軍廝殺方酣　義熱那亞港前晚被炸</h3>
+<p>柏林七日同盟社電　埃及境內瑪薩瑪特魯以東續有激戰、德將羅美　與英將亞力山大之裝甲軍廝殺方酣、軸心軍雖遭英方坦克車與步兵之猛攻、現仍保持未破之陣綫、英方以軸心軍被逐退爲言、此間則宣布軸心方面重轟炸機隊不斷猛炸瑪薩瑪特魯與阿拉眠兩地間之英軍摩托化部隊、予以重創、此問消息靈通人士稱，英方所傳已摧毀與奪獲德義軍之大量戰具一節、實屬荒謬、蓋羅美爾將軍乃照項定計劃、撤離阿拉眠之陣地也、德軍於十一月三日與四日之夜間撤離舊陣地時、僅遺下不能使用之戰具、重砲等軍器、則已移至新陣地轟擊英軍、軸心軍在陸上與空中、現仍衆寡不敵、故已開始增援、目下之前綫上、並無連綿之陣綫、戰事刻沿由北至南、長六十哩之前綫進行、</p>
+<p>德元首行營七日海通社電　今午德軍戰報稱、埃及仍在繼續激戰中、德義軍隊反攻、敵坦克車隊損失慘重、德義空軍分批襲擊瑪薩瑪特魯與阿拉眠間之敵機械化部隊、德軍艦之高射砲、於最近數日內、在地中海擊落敵機五架、英機數架藉浮雲之掩蔽、昨日白畫飛入德西部及港灣、人民損失甚小、敵機被擊落六架、</p>
+<p>羅馬七日海通社電　義軍司令部今午文吿稱、瑪薩瑪將魯迤東、昨日繼續作戰、軸心軍數度反攻、敵坦克車大受損大、我機數度夜襲馬爾太島之飛機塲、英機昨夜轟炸熱那亞、城內東區損失較大、貧民二十名殞命、五十名受傷、但一般人民遵守紀律、秩序頗佳、敵轟炸機、祇少被擊落一架、</p>
+<p>瑞士京城六日同盟社電　關於北非方面戰事、倫教軍界以爲、亞力山大將軍所發動之大規模攻勢、第一階段已吿結束、此後發展如何、須俟相當時日始見分曉、戰局旣自壕溝戰變爲運動戰、在軸心國方面、羅美爾將軍曾以流動戰能手見稱、則最後戰果如何、自當出之審愼、未便遽作樂觀、又况英軍雖已獲勝、但埃及前綫德義聯軍尙未總崩潰、其退卻且係預定計劃、</p>
+<h3>德軍增援北非　搆築兩道防綫</h3>
+<p>倫敦六日哈瓦斯社電　頃據半官方面談稱、軸心國刻正派遣大批援軍前往北非、除希臘境內曾見滿載軍隊之火車多列外、另有軍隊殆將自義國西西里及熱諾亞開拔、估計全部援軍實力、至少當有四師之衆、</p>
+<p>柏林七日海通社電　德國軍界人士指陳、德義空軍在北非旣能不斷轟炸、足證已有生力軍飛到助援、但吾人不可武斷德義空軍在埃及方面已佔上風、蓋以此次該方英機之多、實爲前所未有、　人估計，英第八軍較一九四〇年赴法作戰之英軍爲多、但英人謂北非方面之協約軍不下一百萬人之說、尙有可疑、</p>
+<p>瑞典京城七日海通社電　據倫敦英方息、埃爾達巴區之戰事仍在進行中、開羅今晨息、英軍業已佔領富加之登陸處、埃爾達巴之登陸處傳亦已佔領、英軍並已越過埃爾達巴防綫，開羅軍界方面信、羅美爾元帥於過去兩月內業已築就防綫二道、以保里比亞、其第一道防綫起於瑪薩瑪特魯之東、經里比亞平原以迄西伐綠州、其第二道防綫以哈爾發雅要隘爲根據地、以迄於西伐綠洲之南、</p>
+<h3>高加索西部　德軍冒雨作戰　泰雷克方面蘇軍增援　斯達林城巷戰仍猛烈</h3>
+<p>德元首行營七日海通社電今午德軍戰報稱、高加索西區、我軍突出奇兵、擊退某高地之敵軍、都浦斯迤北之德步兵、冒大雨作戰、獲得進展、阿拉及爾迤東、敵軍數度反攻、德機擊毀蘇軍坦克車三十輛、鐵甲火車一列、德偵察轟炸沿喬治亞軍用路前進之蘇軍、斯達林格勒區內、祗有局部之戰事、我急降轟炸機襲擊伏爾加河東敵砲軍陣地、我敢死隊擊毀中路敵軍碉堡多處、德機轟炸伏雨加河及維納河區中敵軍集中之地、</p>
+<p>羅馬七日哈瓦斯社電　據此間報載、高加索泰雷克方面、蘇聯軍隊抵抗力業已加强、生力軍正源源開到、特種部隊則正夜忙於趕築防禦工事、</p>
+<p>瑞典京城七日哈瓦斯社電德蘇戰爭已七十二星期、現無重大變化、斯達林城方面、日來德軍開到大批援軍、空軍亦已加緊轟炸、城內巷戰仍甚猛烈、但雙方均無大規模戰鬥、</p>
+<h3>汪兼團長設宴　各地受訓將校</h3>
+<p>南京七日中央社電　中央陸軍將校訓練團在兼團長以第三期將校班開學已久、海軍高級講習學員亦來京請訓、特於今日中午、在國際俱樂部設宴招待、並邀劉總參謀長·鮑部長·任部長·姚航空署長·及友邦軍事顧問寺岡少將·中森大佐·冲野大佐·林少佐等高級軍事長官作陪藉致慰勉之意、</p>
+<h3>松井晤王揖唐</h3>
+<p>北京七日中央社電　大日本興亞同盟副總裁松井石根大將、本日上午訪問華北政委會王委員長、懇談多時、下午一時王委員長在外交大樓設宴招待、下午二時卅分、松井大將並訪問新民會鈴木顧問、就强化新民會及與興亞同盟之聯絡問題、交換意見、</p>
+<h3>日通常議會　下月召集</h3>
+<p>東京七日中央社電　日政府頃公布日皇詔書稱、第八十一屆通常議會、決定於十二月廿四日召集云、按此次通常議會、為今春日本院議員總選舉後之首次議會、</p>
+<h3>谷外相　覲見日皇</h3>
+<p>東京七日同盟社電　外相谷正之今日午後三時覲見日皇、奏報國際事務之最近發展、</p>
+<h3>馬達加斯加島　戰事已告結束　雙方正談判簽訂協定</h3>
+<p>瑞典京城七日海通社電　倫敦昨正式宜布、英總司令部已與馬島法總督協議停戰、官方於此所發文吿稱、陸軍部宜稱、徇馬達加斯加法總督之請、戰事已於十一月五日下午二時停止、停戰協定、已由雙方簽字、馬島戰役於焉順利結束、</p>
+<p>維希六日哈瓦斯社電　法國內閣本日舉行國務會議、由貝當元首親任主席、當即由政府首長賴伐爾報吿馬達加斯加島戰事經過、並說明該島守軍所處地位之困難、略謂、該島法軍現已戰至最後一息、但其犧牲精神之偉大、已表現無遺、値得全國人民之敬佩與愛戴、散會後、官方證實馬達加斯加島戰事業已停止、並已開始談判停戰協定、</p>
+<p>維希六日哈瓦斯社電　馬達加斯加島法國守軍陷於絕境、不得已要求停戰、貝當元首聞訊後、當即致電該島總督亞奈稱、「政府對於閣一完全信任、閣下所爲、猶如光榮抗戰之勇士、切勿接受任何具有政治性質之條件、」政府並決定將戰爭十字勳章分別頒給亞奈與守軍司令季亦梅將軍、</p>
+<h3>英艦一隊　駛地中海</h3>
+<p>瑞士京城六日哈瓦斯電　頃據柏林消息、英國艦隊一大隊、包括航空母艦數艘、昨夜自直布羅陀港駛往地中海、</p>
+<p>阿爾及西拉斯七日海通社電　昨有懸掛英·美旗之巨大護航隊一隊、於下午五時自大西洋經直布羅陀海峽駛入地中海、該隊包括商船二十四艘、中有油船、運兵船各數艘、至該港復有油船兩艘、驅逐艦三艘、平底戰艦四　加入、又主力艦羅尼號、於昨日侵晨在戰鬥機保護下駛離該港、未幾、又有戰鬥機十六架自大西洋飛抵該港、</p>
+<p>阿合西勒七日海通社電　據此間接獲消息、直布雜陀當局已玉令扣留輪船、汽艇及帆船、直布羅陀昨午舉行海軍演習目前有航空母艦四艘、停泊港內、</p>
+<h3>蘇聯十月革命紀念　斯達林廣播演說　力言英美應開闢第二戰場　並闡明此次對德作戰目標</h3>
+<p>莫斯科七日同盟社電　斯達林昨於蘇聯革命二十五週年紀念向全國廣播演說、仍以英美應在歐洲開闢第二戰塲爲言、據稱、英美若能於年內在歐陸發動第二戰塲、必可使德國自蘇聯方面抽調六十師、並可使其同盟國抽調二十師、因而阻止德軍在東綫獲勝、埃及方面戰事、德軍被牽制者僅四師、義大利軍被牽制者十一師、蘇聯方面則有軸心軍二百四十師之衆、在上次世界大戰中、歐洲有東西二戰綫、但在此次歐戰、因無第二戰綫之故、敵我兵力成二與一之比、紅軍作戰之苦、犧牲之大、自可想像、總之、第二戰綫必須實現、此非出於我人需要之故、即在吾盟國方面亦屬必要也、至於德軍在蘇聯南部作戰計劃、目的原在包抄蘇聯軍隊、使與莫斯科隔絕、德軍向蘇聯產油區進攻、並非其主要目的、不過一種副作用而已、德軍因無後顧之憂、得以集中全力、在東綫取得一重大勝利、英美若能如上次世界大戰情形、開闢第二戰綫、則蘇聯方面戰局必能急轉直下、德在上次世界大戰、共有陸軍二百二十師、其用以對俄作戰者不過八十五師、外加匈奧聯軍二十七師、保加利亞軍三師及土耳其軍三師、今年九月、據確實紀錄德軍二百五十六師中、用以對付蘇聯者一百七十九師，外加羅馬尼亞軍二十師、芬蘭軍十四師、義大利軍十師、匈牙利軍十三師、斯洛伐克軍一師、西班牙軍一師、共計二百四十師之衆、若與拿破崙攻俄戰事相較、兵力相差亦甚遠、拿破崙攻俄大軍六十萬人、開到鮑洛定諾者不通三四萬人、開到莫斯科者亦不過此數而已、現在紅軍所與周旋者在三百萬以一、且備有最新式兵器、斯達林精論云、此次大戰中、敵我兩軍作戰目標完全相反、我人作戰方針、厥在粉碎歐洲新秩序、</p>
+<p>莫斯科六日中央社電　斯達林於六日晚在此間赤色廣塲向全國發表廣播說、首先檢討過去一年間蘇聯在前綫方之成績、其言有曰、蘇維埃政府於過法一年內之活動、集中於組織國內戰綫與紅軍作戰兩方面、以言國內工業、則已遷至東部、耕種面積亦予擴大、後方勞工規律亦已強化、因內之組織可稱已臻健全、</p>
+<h3>風雲變幻中之非洲　八十名黑奴手創的里比利亞獨立國（二）</h3>
+<p>這地方原是英國西非的一塊小屬地，名叫塞拉勒窩內。冒險隊派了幾名代表上岸一看，覺得不對勁。一方面由於他們老鄉們太不文明，連褲子都不肯穿；一方面岸上幾位白人地主，把當地黑人牛馬不如的使喚着；想已經恢復了自由的人那裏肯再去受人鞭策？他們寗可死在海裏。</p>
+<p>八十人一番討論之後，決定再往南行，情願跑到人跡不到的所在去同獅子鱷魚拚命。果然天從人願，居然被他我到了曼挪河口的一個小島，上面各種樹木花果都有，就只差人料理。八十老小就在這裏登陸，把這島題了一個名稱，叫作天堂島。</p>
+<p>在這小島一面生活，一面又到對岸的大陸上去探險，於是發現曼挪河流域，確實可以大展宏圖，便遷移了一部分人過去。這裏就是密蘇拉多角，也就是現在里比利亞的首都滿羅維亞。第二年美國的黑奴聽了這個消息，心下活動了不少，一下就有男女老小二千名渡洋而來。二千名確實是個大數目，新發現的地方已經開闢的，還容納不下，於是另外組織一個團體沿海邊南下，希望找到一片足以安身立命的所在。</p>
+<p>這一部分人沿路走走住住，費了十一二年光陰，（一八三三），大槪走了三百多哩，又在巴馬角的地方發現了一塊好地，就定名「非洲自立邦美麗鄕」，這塊自由區後來很興旺，到了一八五七年，方才決定歸併到里比利亞，稱爲美麗省。</p>
+<p>里比利亞的名稱，是個什麼來由呢？原來在八十人發現首都滿羅維亞的第二年（一八二四）有一位傳敎師格爾雷，見道裏一片翠綠，滿地花菓，靈感一到，於是就定了這個名稱Liberia，這字的前五個字母拼合起來，就是法語「自由」的意思。（照音讀，應譯爲「徠貝利亞」，亦可免與義國屬地里比亞混淆）。</p>
+<p>其實，這塊地也並不算自由黑奴的新發現。在十四世紀就有一個葡萄牙的探險家到過這裏，並且繪了一張地圖，所以到現在沿用的許多老地名都是葡萄牙字音。十五世紀也有葡萄商人來過，到了十六世紀，英，荷，德，法，的探險團，接踵而來，反而把最初發現此地的葡人趕跑了。</p>
+<p>自從自由黑人到了里比利亞後，每年都陸續有黑人從美國移來，最多的一次有三千多名。二十五年之內，在天堂島和首都道一方面的人大都受着英人的管理，在美麗自由鄕的，才是眞正自治團體。</p>
+<p>到了一八四一年最後一任的白人官死了，就有一位傑出人才，是一個道地的黑種，名叫羅伯茲，登台上任。這時里比利亞還不算一個國，又不是任何國的正式殖民地，就算一個黑奴自由區罷。可是因爲沒有一個正式名義，一切事務都不好辦理。尤其可惡的，是區界邊境上，常常有英法殖民地的衝突，常常有交涉，也常常鬧一回大打出手。此外，本自由區內，有不少的土人種族，常常也要給他們找麻煩。一年到頭，天天有這一類的事悄發生。</p>
+<p>黑人領袖羅伯茲，雖說不是那先驅八十人中的一份子，但確實是八十八中之一的家屬。他在美國烟葉最馳名的維金尼亞省黑人大學讀書卒業；雖說不是專門人才，著名的學者，但在學問和知識上，確不愧爲自由區全區的領袖人物。至於精神魄力，雄才大略，確是超人一等。</p>
+<p>自由區有了這樣一位了不得的人物，又抓住了適當的機會，上了政治舞台，當然是要天大發揮一下。起首六個年頭之內，所有的精力，完全是安內攘外。安內，是降服了好幾個爲首的大部落蠻族，叫他們歸順。攘外，完全是向英法屬地的宗國直接交涉。</p>
+<p>到了一八四七年，一切政務和外交部辦得不差什麼了，於是平地一聲雷，宣佈自由區正式成立里比利亞公和國。一切的政務組織和法度，都仿照美國辦理；同時起草了一篇慷慨激昂的立國宣言；大意譯述如后：</p>
+<p>吾等里比利亞國民俱係原先北美合衆國之國民。</p>
+<p>吾等在該國爲民時期，在某地區內，乃不能獲人類應有之權益；在其他某地區，其較法律尤有權威之民情，乃劣視吾人至於極度。</p>
+<p>各地凡稱爲文明之塲所，乃將吾人擯諸門外。</p>
+<p>一切行政，乃無吾人參加餘地。</p>
+<p>抽稅納糧，不容吾人置喙。</p>
+<p>吾人橫被壓迫，納獻出產，乃無絲毫國家的保護。</p>
+<p>吾人被區別成一特殊民族，所有之改進，吾人無權享受，而其他外來民族與吾人膚色不同者，反得事事優先。</p>
+<p>吾人一再伸訴，乃不予理會，或竟以特殊組織爲托辭。</p>
+<p>吾人工切希望，終乃幻滅；懸於吾人前途者，惟有墮落。</p>
+<p>自登非洲海岸以來，吾人乃得自由欣賞一綫光明之前途，希望吾人能發揮天賦人類之人格；懷育吾人誠意向上之一腔烈火：發展創造者賦予吾人之靈感；向素日卑視，蔑笑，壓迫吾人者，表示吾人與彼等乃同一圓顱方趾，同一天賦；同樣能獲得文質彬彬之休養，同樣能獲得裝飾所謂高尙人類之進化……。</p>
+<p>發現了天堂島</p>
+<h2>Page 4</h2>
+<h3>當局決心抑低物價　發表告市民書　穏定物價籲請市民合作鼓勵生產勿事投機暴利</h3>
+<p>公共租界工部局及法租界公董局昨爲統制物價事聯合發表吿市民書、內稱、茲爲穩定物價、以安民生、特籲請市民合作、查當局雖能設法統制物價、但此事需要市民之合作與了解、始能奏效、物價高漲之弊害、爲公衆所熟稔、物價漲風、倘不加以戢止、不特薪工階級、感受莫大困難、即本市經濟基礎、亦將發生動搖、蓋每逢物價高漲超出一般薪工階級之負担時、社會及人體之弊害、即隨之發生、其應饗實顯而易見、故物價之上漲、若不加以制止、恒爲社會不安之母因、</p>
+<p>信用貸款　鼓勵生產</p>
+<p>吾儕研究經濟問題之眞正要點、厥爲貨幣之購買力、因此吾人之舉動、必須視其反響是否能增加抑或减低、貨幣之購買力而定、物價高漲、貨幣購買力即下降、例如一人有款一千元、用以購買貨物、因貨價倍漲而其款額亦倍增至二千元、但此時所獲之二千元、其購買力等於以前所有之一千元、或且較此數爲少、在當局方面、現正計劃多種方法、如信用貸款、祇限於生產事業、以及鼓勵主要工業等等、使情形好轉、</p>
+<p>注重投資　勿事投機</p>
+<p>在市民方面、亦可實行下列各項以資合作、（一）注重生產事業之經營、（二）個人購買、祇限於實用之主要物品、（三）勿事囤積任何貨物、（四）與其從事於製成品之分配、不如注重於眞正生產企業之投資、（五）勿事物品及股票之投機、以圖暴利、（六）根據以前股息乃利潤之百比、愼重研究各種投資、而勿以印象與謠言爲依據、在投資以前、並應詳查該公司之資產負債表與損益計算書、市民果能實行以上各項辦法、不特物價高漲得以抑止、且現已擁有與　來所獲之資財、亦得保障、</p>
+<h3>酒菜業購證　暫緩簽發</h3>
+<p>本埠食油同業批發處、定貨五百噸（合一萬担）、業已正式簽字、另售店方面、復於昨日起、已將存貨發售、厦門路·福建路·天潼路·白克路·各食油出售商店、均可見到此種行列、是以市民對食油一項、目前似已可無需過分憂慮、</p>
+<p>領購油證　本月暫停</p>
+<p>食油同業批為處、對於昨日各報所載「酒菜業領購油證」一項、以與事實有不符處、恐外界發生誤會起見、特向大通社記者鄭重聲明、按酒菜業購油證、數月前巳開始簽發、本月份起、因食油配給量之不充、批發處當局、曾出有通吿、暫緩發給、</p>
+<p>五百噸油　配給有期</p>
+<p>又據食油同業批發處負責人稱、已簽字之五百噸食油、移動證接洽已有頭緒、下星期二或三、當可配給各零售店應市、惟爲避免囤積及造城黑市計、首次配給量暫定爲一千担至二千担、</p>
+<h3>防空演習　今日起繼續演習</h3>
+<p>自本埠防空最高當局發表、將於本月八日起再度舉行大規模燈火管制演習、本市各區、均寄以萬分注意、已先後舉行局部演習、昨日兩租界各聯保長爲愼重起見、再分別頒發通吿、其措詞大致相仿、查本埠再度大規模之防空演習、將於明日起舉行、或將於事前並不通知、隨時舉行警報演習、故居民須隨時留意警報聲、對於掩蔽一切燈火更須格外注意、蓋警署當局派有探捕分段巡邏居民如有違抗將予嚴厲處分、</p>
+<h3>工部局　繼續分配奶油</h3>
+<p>工部局頃發布吿、略稱、自本月九日至十四日止、奶油可憑分配證第十一號聯票、向經售店肆購領、澳洲奶油售價每磅卅元、靑島奶油每磅廿五元、</p>
+<h3>上海俄人　紀念十月革命　兩派姿態絕然不同</h3>
+<p>英文大美晚報云、上海之二千餘俄人、今日（七日）以逈然不同之方式、紀念蘇聯十月革命第二十五週年、蘇聯僑民固歡騰慶祝、白俄則禁止娛樂、並祈禱共產黨統治權之吿終、上海蘇方與白俄報紙今日均出特刊、前者滿載蘇聯領袖與該國戰爭努力之照相、及紀念此蘇方盛大節日之文字、白俄報紙則以「俄羅斯人悲痛之日」爲大標題、白俄上海柴拉報全頁圍以粗黑框、並載俄皇尼古拉二世與皇屬被殺等反蘇文字、</p>
+<h3>粵同鄉遣散會　末批今晨南下</h3>
+<p>廣東旅滬社團遣散會末批回籍同鄉、經該會迭次交涉、卒於今晨成行、至是該會業務、即宣吿全部結束、一俟賬目結算淸楚、經會計師審核後、即付梓刊印徵信錄、分發各同鄉、以資徵信、而昭大公、該會係於本年三月成立、八閱月內、共遣散九批失業同鄕回籍、爲數計共八百人、造福失業桑梓、誠不可謂不少、</p>
+<h3>違章商店繼續被罰</h3>
+<p>據公共租界及法租界當局聯合宣布、在過去兩星期內、對於抬價售貨或有其他違章情事之商店、均經處罰、受罰之店肆列後、</p>
+<p>（一）公共租界</p>
+<p>商店名稱　地址　停業日數　或改付罰金</p>
+<p>Siberian　Fnrriens　Stores　靜安寺路一一四一號　三天　五百元</p>
+<p>同生祥　東熙華德路三四五號　三天　五百元</p>
+<p>通餘　靜安寺路八三一號　四天　五百元</p>
+<p>益泰　河南路四一號　三天　五百元</p>
+<p>雲裳　靜安寺路六八〇號　四天　五百元</p>
+<p>恒康　四川路五六三號　三天　五百元</p>
+<p>裕泰生記　乍浦路一〇七事情　四天　六百元</p>
+<p>王瑞昌　威海衛路一九八號　五天　七百元</p>
+<p>鄭豐泰　愛文義路二四四號　四天　八百元</p>
+<p>老長生　福建路一三三號　三天　八百元</p>
+<p>恒心南貨號　廣西路二八九號　三天　八百元</p>
+<p>裕源號　齊物浦路三二二號　三天　八百元</p>
+<p>試試看　愛多亞路　五天　一千元</p>
+<p>北太源　北四川五〇二事情　三天　一千元</p>
+<p>維生　廣東路三二三號　六天　一千元</p>
+<p>大陸　成都路七七八號　四天　一千元</p>
+<p>開利　靜安寺路七六一號　五天　一千元</p>
+<p>竟成　天潼路八七四號　三天　一千五百元</p>
+<p>鴻霞　靜安寺路七三五事情　六天　二千元</p>
+<p>春華藥房　福煦路四六六號　七天</p>
+<p>此外尙有商店五十三家、因違章經分別處以五百元以下之罰金或停業若干天、　（待續）</p>
+<h2>Page 5</h2>
+<h3>黑市暴利迄未稍戢　亟應澈底掃除　須有迅速而嚴厲之行動　以防各物投機之風復熾</h3>
+<p>英文泰晤士報云、頃據記者調查所知、市政當局雖訂有各項條例、而貿易公會亦圖遏制囤積罪惡、然糖油米肉囤積居奇之風、仍未稍戢、故上海市民現要求當局立刻採取嚴厲行動、俾完全肅淸食物之黑市活動、</p>
+<p>囤積暴利　應予嚴懲</p>
+<p>上海各報、無論華文·日文·英文與俄文、均明瞭市民所遭遇情勢之嚴重、乃一致爲取締囤積暴利運動聲援、並指出當局須有迅速而嚴厲之行動、以防各物投機之風加熾、若干人士且主張對囤積暴利者、應處以極重之懲罰、同時改組目下之食物分配制度、使之適應現時需要、據一般意見、最重要之改組步驟、厥爲樹立計口授給制、以分配各種食品、警方刻正密切注視統制食品之問題、而當局有何統制食品之布告、公衆均表示歡迎、</p>
+<p>黑市活動　迄未稍戢</p>
+<p>查本年初、中外市民對當局計口授給米·麵粉·麵包與牛油之計劃、尚多猜疑、今則極望一切日用品俱以計口授給制度分配之、米糖油肉等物之買賣、發現黑市活動、已引起公衆之重大關切、當局雖竭力推行低價政策、然食品之黑市價、不斷高漲、且糖與油已感匱乏、迄今爲止、糖與油之配給、乃由上海糖商合作營業處與油商批發處分別辦理糖之情勢、自本月初以來、未見好轉、至於素油、則油商批發處現正採取强硬手段、以防素油交易、發生同樣情形、</p>
+<p>食油供應　何至缺乏</p>
+<p>據記者昨日（六日）所晤之各方人士聲稱、即使當局派給最低量之糖與油、亦較目下之食糖分配、必須列隊候購半磅之辦法爲佳、過去兩週來、華字報紙日載食物黑市價格之消息、例如滬寗鐵路一帶米價爲二百五十元、上海米價則增三倍（計口授計之米不在此例）、據消息靈通人士聲稱、素油每日分配一千擔、不特足應兩租界居民之需、且可供西區與浦東居民之合法需用、上海油店約二千家、內的四百家有從事投機之嫌疑、致油價提高、此輩黑市投機者、現已有若干家不　派得素油、</p>
+<p>澈底統制　計口授給</p>
+<p>至於食糖、上海糖商合作營業處雖屢次宣布存底充足、然囤積居奇者、賡續活動、公衆則未能獲得日常所需之糖、以言肉類、當局會於十月十一日發表限價、然伙食店與攤販售肉時遵守限價者、寥寥無幾、約六週前豬肉市况、頗形惡劣、嗣稍見改善、但未完全好轉、而牛羊肉之市價、亦公然高於限價、奸商旣蔑視官方條例、公衆乃更迫切要求對於一切食物、均施以澈底統制之計口授給制、</p>
+<h3>大衆再版出書</h3>
+<p>當代碩彥錢須彌氏創辦之一大衆」月刊、本月一日創刊後、不三日、行銷一空、本外埠經銷處紛紛要求添書、即趕印再版、業於昨日出版發售、內容精彩、有口皆碑、全書二百五十面、售洋五元、事務所白克路二二八弄四八號、電話九一一三一、　經售個、五洲畫報社、經　處滬西·百鎊春明·中西·求益諸大</p>
+<h3>訪夏敬觀先生記</h3>
+<p>士林老前輩，在現在，正像晨星一般的寥落，可　而數的，　（庚生）金（松岑）李（拔可）錢（名山）陳（鶴柴）五位老先生，或以古文稱，或以詩稱。但在詩文以外，能够書又能畫的，要推這位夏敬觀老先生了。</p>
+<p>在霞飛路的極西極西，地名叫「靜村」，我見到了二位蒼髯飄腹的老者，在我去的時候，大槪他一起早就靜靜地揮灑着烟嵐，藝事很忙，重新整衣裳後冉出見。那時，夏老先生停了筆，同我閒談，自政治社會科學以及一切學問，他都有獨特的見解，絕不似一般的迂固。他指我看辨一角明窗下已成的畫面，淡淡的峯巒，疏疏的樹林，題着一至治之世，民無往來，新有楝宇，倚山之隈，犬吠寥寥，鷄鳴喈喈」二十四個字。一種高不可及的古風，似乎把我一個剛吞滿「塵沙」的疲倦的靈魂淸醒了過來。他告訴我：一個整上午，總俯着這一角明窗前揮翰的。一張交了件，一張又接着來，眞有點應接不暇。他不是一個尋常的藝人，他是文壇的名宿，藝壇的斵輪。自十一月六日起，他老經朋知的敦促，假寗波同鄉會舉行畫展三天，今天是最後一天了。</p>
+<p>靜村，何幸而寓居着這高風古道的老先生。一惟淸　靜，游神之適，」這是楊子雲的「玄之意，也許他愛靜村就爲了這緣故吧！我想。（華子）</p>
+<p>昨日本報發報時間六點四十分</p>
+<p>體育新聞</p>
+<h3>體育大會今晨開幕　中日學生大遊行</h3>
+<p>大東亞親善體育大會主持、上海日陸軍報道部後援之大東亞親善大會、今（八）日上午十時起在靜安寺路跑馬廳盛大舉行、參加國籍計有中·日·滿·德·義·菲·印泰等八國、各國團體均以學校爲主、茲悉虹口方面參加大會之中日學校學生一萬名、定上午八時集合於外灘公園南側廣塲、八時卅分由南市警察局樂隊及其他樂隊前導、經黃浦灘·南京路·靜安寺路、茲定九時卅分至跑馬廳大會會塲、游行列隊次序爲日本中學校·商業學校·靑年學校·第一·第二高級女校·女子商校·第一至第九國民學校、以及各中國小學校等、屆時游行列隊所經過各路、一切車輛交通將暫告斷絕、茲將各詳細辦法誌後、、斷絕車輛交通預定時間」，自外灘往跑馬廳時、南京路及靜安寺路段約於八時十五分起「限制交通的歷時一小時半、學生返校時、第一班爲下午二時四十五分起約一小時半、第二班爲下午四時四十五分起約一小時、「東行電車」上午八時靜安寺路卡葆路一段停止通車、又下午二時四十五分、上述地點除載學生之電車外、東行電車暫予停止、「西行車」上午八時二十五分南京路黃浦灘電車停止行駛、下午二時卅分除載學生之電車外、其他各車輛停駛、下午四時卅分、上述地點停止西行電車行駛、「其他電車」、當學生列隊經過時、黃浦灘·南京路·及南京路江西路之向南北行電車停駛、南京路及南京路福建路浙江路之向南北行電車暫停通過南京路、又虞洽卿路南京路朝南北行電車暫時停駛、「華中公共汽車」當學生游行時、南京路四川路一般停止行駛、惟人行道上交通並無限制、</p>
+<h3>中學圓門球賽　展期啓賽</h3>
+<p>實業中學主辦之中學盃圓門球聯賽、本定於今日揭開戰幕、茲因參加隊數、尙不足預定計劃之數、及塲地修理未竣、由主辦當局公佈、決展至本月下旬在南陽路實業中學展幕、屆時邀請西聯男女混合隊參　表演、現已報名之學校計中法·實業·夏光·國强·光夏等九隊、業餘組報名者較衆、計南洋·中聯·新業·白隊等十隊、女子有鈴聲·維他富·友隊等、現各組均有餘額、報名從速、定本星期四截止、報名處　該校體育部、</p>
+<p>商業新聞</p>
+<h3>公債相持之局　上落有限</h3>
+<p>公債暗盤、昨市行市上落、仍極有限、多空雙方情形、仍在擯持、觀一貫賣戶之現貨仍在不斷流出、昨日市上抬價者、大多數爲檯面搶帽子者居多、丙種開做時、極爲紊亂、賣方喊價五元、幷有四四元半者、買戶則願出五元半、此種情勢、顯而易見、因本報前日曾述及之三四次未能穿出六元、故多方竭力拉抬、初由五元半開始後、隨即抬至六元一角、終以無力再抬、瞬即瀉至五元、市價結果、除丁種不動外、餘均微小一角至六角不等、成交約二百五六十萬元、茲列簡明表於後、</p>
+<h3>棉布交易大減</h3>
+<p>廠布　昨市交易奇淸、售盤亦參差不一、大致於疲滯中、尚稱平穩、十六磅地球粗布二二六元、飛鴻二二二元、九磅新字一二七元、八磅振中一二二元、十二磅地球細布一八〇元、富貴新單一七五元至六元、長壽府綢七元二角五分、美人魚元斜一六〇元、秦良玉漂布一七〇元、桃花女士林起伏雖大、結果價亦無大升降、爲二七九元左右、</p>
+<p>東布　先軟後堅、午收時又復平疲、十二磅龍頭細布新單一九一元、銀行單龍頭一八三元、彩球一八三元半、均續跌每疋二元、四君子嗶嘰紅單七元三角、開始升至七元四角、又回落至七元三角四分、較跌六分、</p>
+<h3>夏貨呢絨　有囤貨交易</h3>
+<p>昨呢絨市面、大有進展、蓋受竹馬行高價搜羅草綠呢及嗶嘰後、南京徐州蚌埠客幫極有點綴、同時利買消息頻傳、十底過去、收進者步起、零躉交易激增、人心又轉興奮、行情即呈升漲、法蘭絨·派立斯·白直貢·白嗶嘰·光貨正式春薄花呢·夏令之紗蔬膠布·凡而頂等、同業中大批發戶、先後均有羅致塌進、市氣因此大佳、價昂且見軋缺、昨光貨春薄花呢、來路貨普通齊售四百元左右、東貨三百元上下、本廠貨二百元、利興派立斯一百十五元、怡和上海五十元、聯新寶新蔴膠布八元、豐裕白嗶嘰二百四十元、好華白直貢二百八十元、來路斜花底法蘭絨二百八十元、板四底二百四十五元、</p>
+<h3>淡菜絕少鬆象</h3>
+<p>淡菜近市雖較平定、但比前爲高絕少鬆象、昨行盤如東淡大只、售三千八百元、小淡三千三百元、國產寗波子淡四千元、至三千九百五十元、三子貢三千六百元、元淡三千元至二千九百五十元、</p>
+<h3>豆類依然俏俐</h3>
+<p>豆類到貨久滯、派貨亦屬寥落、交稀價俏、計開浦東杜豆十餘包、價爲二百八十元、</p>
+<p>豆餅供求相埒、價無顯著變化計開昌記豆餅五百片、價為七十二元七角半、元隆豆餅一車七十六元、又二星期交二車、七十四元七角半至七十四元半、</p>
+<h3>金銀飾物仍帶疲勢</h3>
+<p>銀樓業大新同行首飾金、門市每兩兌出掛牌、初仍二千六百五十元、九點三刻掛小五十元、計二千六百元、（收進减三百元左右）、同業互做價仍帶疲態、晨低三十元、計二千三百四十元、俄稍回上、做升二千三百六十元、十點後局勢轉定、爲二千三百五十元左右、比上日小二十元、有廿元差度、成交淸稀、首飾紋銀每兩仍掛十四元、同業互做價十二元五七角、</p>
+<p>錢業公會拆息仍掛一角四分未更、票據交換所自十月廿六日至卅一日止交換及代收票據合計張數七五·四三五張、金額八三七·七七八·一一二·六元、至十月份全月總數則爲三〇三·〇四〇張、金額三·二五一·一五九·一一〇·一二元、</p>
+<p>日軍票仍少起色、同業互做價五元五角五分二四厘、銀號與小錢莊門市收進五元五角五分弱、售出五元五角六分云、</p>
+<h3>雙馬廠單　買賣絕跡</h3>
+<p>最近紗市、一升一降、變化萬千、使人驚惶戰慄、昔日因京滬路一帶、現紗價格較昂、投機藉此、大爲活躍、收買之徒、更形擁擠、市盤處此情况之下、直綫奔騰、穿出七千元關、此時空方因差金不及交解、發生動搖、尤以某號、拋空數額最巨、無法扒補、被逼擱淺、突然倒閉、市塲頓呈顯著紊亂狀態、即於此時、當局又有加緊統制消息、足使浮多不安於市、市盤驟起反動一瀉千里、由七千元外直跌至六千五百元、最低曾見六千四百三十元、本日工部局通告、對於雙馬廠單嚴厲禁止交易違者處罰、於是雙馬廠單即停止買賣、以前雙方所成交之額、大概作六千六百元結價、以了手績、不過多數尚未允納云、</p>
+<h3>黑瓜子京市略鬆</h3>
+<p>黑瓜子昨據南京快函、辦價略見回鬆、但爲數甚微、依然難以劃申、如徐大片子爲八百四十元、桐城子七百二三十元、五河子五百八十元、臨淮子五百六十元、</p>
+<h3>首烏還價稍增</h3>
+<p>首烏前到客貨因還價未合、堅守迄今、昨行方還盤稍增、比前僅高起二十碼、尙在洽談中或有成交可能</p>
+<h3>紙煙皂燭　紛紛回低</h3>
+<p>香烟火柴皂燭市價、均趨回落、良以各貨受銀根緊急、故相繼回跌、致烟市價格、立脚難穩、跟隨下游、如大英脾降至九千元、老刀脾八千元、品海七千九白元、仙女牌七千一百五十元、五華牌七千元、較上日均回一二百元之譜、日烟金槍牌三千一百五十元、金大樓三千五百元、全祿牌三千二百五十元、指南牌二千七百元、美麗牌五千四百元金鼠牌三千九百元、金字塔六千二百五十元、均告疲軟、鳳凰牌火柴二千五百元、固本皂三百九十五元、黃祥茂皂二百九十元、箭刀皂二百六十元、亦小十元弱、</p>
+<h3>人造絲亦下趨</h3>
+<p>邇日人造絲市况、因紗布回跌、亦告下趨、一百二十號天橋有光昨晨開全七千三百八十元、收市七千四百元、比上日又小八十五元、旭暉七千四百元、金三馬七千四百六十五元、東洋七千二百元、銀鳥七千三百四十元、富士七于一百五十元、一百五十號金環星七千二百元、七十五號金鷄半光五千八百元</p>
+<h3>洋元方板平定</h3>
+<p>新洋元方板、最近依然未有走銷、客幫去胃旣呆、本街廠家用戶等、亦少點綴、故行情無甚榮辱、新洋元方板每噸均售一萬二千元花色酌加、</p>
+<h3>大馬口鐵　繼長增高</h3>
+<p>二十四號與二十六號大馬口鐵、昨日由本街紗廠滾筒作搜去十餘張、市氣難免重振、標準喊價、繼長增高、刻如二十四號花色每張開一百六十元、二十六號貨一百四十元、</p>
+<h2>Page 6</h2>
+<p>家庭</p>
+<h3>踴躍參加寒衣運動</h3>
+<p>— 華</p>
+<p>冷天是窮苦的同胞最感受威脅的季節，他們饑寒交迫，要謀生存，實在是很困難的，這一點只要看每年街頭凍死的人數統計，就可以證明。</p>
+<p>我們曾經在今年度過一個酷熱的暑天，預料一定有一個奇寒的冷天，想起了一般窮苦的同胞，不覺爲他們躭憂，因爲同情心是每人都有的。</p>
+<p>然而沒有組織的救濟也有相當弊病的，現在有一個機會，可以使我們盡一點人類互助的責任，因爲女靑年會，正在發起徵募寒衣運動，有五種方法，可以參加，我們除了出錢或者出力之外，尙可以把無用的舊衣舊襪交到女靑年會去。</p>
+<p>在顧到自身過冬的種種準備之餘，兼能參加寒衣運動，可說是當前最有意義的工作。</p>
+<h3>為善最樂</h3>
+<p>— 黃佐廷夫人　黃薛葩</p>
+<p>世界上最快樂的人，並不是他有滿屋的黃金，或是崇高的聲譽，而是他能將自己的快樂建築在別人的幸福上，處處幫助別人，常常爲別人的幸福而辛勤的工作。</p>
+<p>一年一度的女靑年會徵募寒衣運動又將開始了，也許在目前艱難的日子裏，對於這一切善舉你會感到「無能爲力」但是，我相信，你我現在仍能豐衣足食的過着愉快的家庭生活，比起這許多在冰天雪地中飢寒交迫的人們，眞是幸福得多了，祇要我們在個人和家庭的日常開支中，略略的節省一點，積少成多，也儘够爲這許多凍餒的人們縫製薄薄的棉衣了</p>
+<p>「爲善最樂」請你慷慨的解囊吧！</p>
+<h3>葛氏家書二十封</h3>
+<p>— 徐百益譯</p>
+<p>葛賴亨先生的兒子，再度獲得了升級的機會，他從開帳員升到了旅行推銷員的職位，而起程到外埠去了，葛賴亨先生在送行的那天所得到的印象並不佳妙，所以立刻寫信給予他許一多忠告，這種忠告，在普通一般人，知道葛賴亨先生的兒子是公司小主人的地位，決不會給予他，而他的父親能够拋開父子的私情，以公司爲前提而痛快的說個明白，對於他是非常寶貴的。</p>
+<p>第十封　經商之道親愛的兒子：</p>
+<p>當我在昨天看你出發開始旅行的時候，我實在有一些不安，因爲你顯得非常神氣，好像你現在是全公司最重要的人物。但是你要知道我們所需要的是定單而不是對外職員的神氣活現。</p>
+<p>臘腸是我們公司中主要出品之一，因此就應該很愼重的去規劃一切，在上星期中，臘腸部的主任建議在臘腸上面加一張鉛質的牌子，我立刻加以阻止，因為那樣一來，就無形中成爲一種商標了，將來在出售的時候，要平添許多麻煩。這一點就可以證明我們辦事的審愼。</p>
+<p>我希望你在你的頭腦裏牢牢地記住，這一次的旅行多少是一個試騐，你的是否能　成功，完全要看你自己的努力如何。一個眞正的推銷員是十分之一的說話和十分之九的判斷力，他應該利用十分之九的判斷力，去判斷什麼時候去用那十分之一的說話。有許多推銷員，都以爲進貨員所感覺興趣的是棒球，有趣的故事，而做生意還是屬於次要的地位，然而能够做到進貨員的的職位人，決不能聽聽笑話就成功的。</p>
+<p>當然啦，你待人接物，能够和藹是最好，但過分的和藹，就成爲無用了。一個眞正精明的進貨員，除了我們貨品的質料和價錢之外，對於其他的事，並不會感到興趣，你不必向同業讓步，但不必訴說他們的缺點，你不心跪下來去懇求定單，也不能將你的鼻子抬得過高。在你旅行的時候，一定會遇見許多你並不喜歡的人物，但那些人正是可以與公司發生營業關係的。</p>
+<p>如果你要做一個頭等的推銷員，你應該以下列三點爲目標：（一）將定單寄到公司，（二）繼續寄更多的定單，（三）寄價值更大的定單。你能够做到這三點，那末你決沒有時間去寫很長的信，而且我們也決沒有時間續很長的信，因爲我們將忙於製造和寄發貨品了。我們對於別人所獲得的定單，並不感到興趣，所以萬一被別人搶去了定單以後，你也不必來報告公司，因爲最妥當的辦法，當然是不被別人搶去生意，最好的辦法就是每天把你的住址和定單寄到公司來，這樣我們就可以知道你的一切動態了了、</p>
+<p>以前我曾經代表一家公司到埃及開羅去推銷服裝用品，我到了那裏，在初次與新環境接觸，就以爲很有推銷的可能，將來的營業，一定可以成功。然而推銷的結果，並不如理想的那末美滿，因此我就時常寫信給總公司，報告失敗的原因和怎樣被同業爭去生意的詳情，結果總公司來了一個電報，電文是：「我們知道同業的一切動態，他們獲得了全部的營業，但是你在做些什麼？」那時候我立刻明白，再解釋也沒有什麼用處，惟有提出辭職，所以就把辭職信發出，現在我們對於你也抱着同一態度，等待着你的定單或是辭職信。</p>
+<p>你的摯愛的父親葛賴亨。</p>
+<h3>給小朋友的一封信</h3>
+<p>— 路琦</p>
+<p>親愛的小朋友：</p>
+<p>時光過得眞快，嚴寒的冬天又將到臨了，小朋友們一定也很不高興冬天的來臨的罷？因爲天太冷了，手指會凍得僵紅，而且媽媽是不會允許你出去玩的，但是，小朋友，你有沒有看見馬路上許多窮困的孩子嗎，他們穿着一件薄薄的衣服，在路上奔走工作着，肚子又餓，身上父冷，他們和你同樣是好孩子，他們的媽媽也是愛他們的，但是，他們太窮了，爲了生活，他們不得不冒着風雪工作着。</p>
+<p>前天，我走過虞洽卿路，看見許多人圍着一個荷包這兒躺着一個死的孩子，孩子痙攣地露出一個恐怖的小臉。唉，小朋友，我難過極了，你看，這孩子一點也沒有錯就這樣的死了。</p>
+<p>在這嚴寒的冬天，小朋友們，又不知將有許多窮苦的孩子凍死餓死，人是應該互助的，現在已經有女靑年會發起幫助這許多苦兒的寒衣運動。小朋友你願意不願意也節省一點糖果錢來帮助這許多苦孩子嗎？我們希望你同你的爸爸媽媽一同節省着來給這許多苦孩子縫製棉衣。</p>
+<p>你的朋友路琦手上</p>
+<p>十一月六日</p>
+<h3>女靑年會　發起徵募寒衣運動</h3>
+<p>天氣漸漸的冷了，街頭似乎也有些肅殺的氣象，當然，在嚴冬的路上，你儘可以看見皮大衣，呢大衣，絲絨大衣！穿得暖暖的行人，但是，你也曾看見那些辛勞的窮困人們，他們爲了自己的生活，穿著僅有的單薄的寒衣，冒著厲風，踏著冰雪，在工作着？嗎牙齒和牙齒交戰，身子和雙腿發抖。當你走過他們身旁的時候，你也曾有過一些憐憫的心想伸出一隻手來救救他們？嗎上海女靑年會看到這種救濟工作的需要，在往年，都有寒衣的分發，今年，誰都知道生活是更艱難了，因此，這種救濟工作的需要，也跟著更增大了。雖然，這種工作是相當的繁雜和艱巨的，但，女靑年會，本着以往一貫服務的精神，本年度仍將櫃續推行這種工作。自然，這一種工作的完成仍是有待在社會熱心人士的贊助和推動的。</p>
+<p>「救濟的對象」本年度救濟的對象仍是一般老弱和婦孺，</p>
+<p>「捐款的目的」捐款的目的是「三萬元」預計新衣按每套六十元計算可縫製五百套即一千件舊衣希望徵募五千套（即一萬件）如果捐款超過那末衣服當然也多。</p>
+<p>「捐募的方法」女靑年會祗是一個社會服務機關，款額的捐助全賴社會熱心人士，約合作和認捐至於捐款的方法可分下列數方面（一）捐送現款——分認套捐款（每套六十元）或任意捐款，（數額不定）（二）捐贈寒衣，請本會代發（三）捐贈新舊布料棉花，洋錢等（四）捐贈人力——義務代爲縫製（五）捐贈舊衣，舊鞋，舊褲，舊襪等以上各項如蒙捐贈是十二分歡迎的。</p>
+<p>「衣服的縫製和分發」是合乎救濟性質的，我們將利用一般失業的婦女來縫製，在按件計工的原則下可以對於她們的生活略有補助，此外，我們更將請我們的會員和社會上熱心的人士，共同來分担這種縫製的工作，至於寒衣的分發也是很嚴格的領取寒衣一定要經過可靠機關或個人的介紹而經本會調查確屬需要的人始能核准發給。</p>
+<p>「寒衣委員會執行工作」以上一切關於寒衣的捐款，縫製和分發等工作，均有本會寒衣委員會執行推進，捐款賬目和救濟人數，將來可以在報端公開發表。</p>
+<p>「捐款日期和收捐處」捐款日期係自即日起至本月底止，收捐處爲下列四處，（一）威海衛路六三八號本會會所，（二）大西路六十六號本會上海托兒所，（三）愚園路一零八六弄八號本會寄宿舍，圓明園路二零六號本會寄宿舍。</p>
+<p>熱心的士女們，幫助別八是我們每一個人的責任，伸出你的援助的手罷，救救這許多可憐的人們！</p>
+<p>救人如救火請即日塡寫送交女靑年會</p>
+<p>參加寒衣運動！（請即在本表塡寫較為便利）茲送上下列各件請即　登收為荷</p>
+<p>（一）現金（每套六十元）計　套共</p>
+<p>（二）捐贈寒衣</p>
+<p>（三）捐贈布料，棉花，洋綫，計</p>
+<p>（四）願參加縫製工作</p>
+<p>（五）捐贈舊衣，舊鞋，舊褲，計</p>
+<p>送威海衛路六三八號女靑年會或大西路六十六號女靑年會上海托兒所愚園路一〇八六弄八號女靑年會寄宿舍或圓明園路二〇六號女靑年會寄宿舍</p>
+<p>參加者姓名　住址</p>
+<h3>做饅頭經騐談</h3>
+<p>— 星也</p>
+<p>我們每次領了麵粉，總是做些麵餅；麵疙瘩吃。未免生厭。想做饅頭，又不懂如何發酵。某次在米店裏領麵粉，順便買一塊新亞酵母，拿了一張說明書，回去試做，居然很好。現在把我的經騐寫在下面，以供參考。</p>
+<p>先把酵母一塊，在微溫水裏溶化調勻，加糖少許。然後稱二斤麪粉，放在磁盆裏，拿溶化的水慢慢倒下，隨倒隨搓，揑成一個柔軟的麪團，上面把潮毛巾蓋好，放在溫暖的地方（如爐子附近等），這就等他發酵了。</p>
+<p>三小時以後，再去看看，麪團已經漲大一倍有餘，我非常驚異，認爲這種酵母的確不錯。隨即做成一個個饅頭，排在檯上（檯上先要灑些乾麪粉）上面仍把潮毛巾蓋好。因爲如不蓋好，饅頭吹了風，要起硬皮，就不會鬆軟了。</p>
+<p>這時候把鍋子蒸籠（或蒸架）預備好。籠裏墊了濕布，先用强火隔水煮沸。再把做好的饅頭排入籠裏，大約蒸十幾分鐘，熱汽直綫上騰，饅頭就好了。我吃着自己做成鬆軟的饅頭，心中愉快，眞非筆墨可以形容呢。</p>
+<p>讀者如有興趣，不妨也做來換換口味，好在新亞酵母在米店和食品店裏，都有出賣的。（廣告）</p>
+<h3>一門之隔　兩個世界</h3>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.11.08</h1>
+<h3>Announcement from the Japanese Imperial Headquarters: Recent Naval Battle Results - Over 250,000 Tons of Enemy Ships Sunk</h3>
+<p>Tokyo, 7th (Domei News Agency) - The Japanese Imperial Headquarters announced at 3:30 PM today that Japanese warships had sunk 21 enemy submarines from late July to late October. During the same period, the Japanese Navy sank 34 enemy ships, totaling 252,400 tons. The Japanese side only lost two submarines. The Japanese Imperial Headquarters also admitted that the Japanese side lost 29 merchant ships, totaling 122,500 tons, during the three months. According to military observers in Tokyo, as reported by Domei News Agency on the 7th, the Japanese military results announced by the Imperial Headquarters this afternoon included the sinking of 21 enemy submarines and 24 enemy ships, totaling 252,400 tons. Combined with the Japanese Navy's battle results since the start of the war, a total of 89 British and American submarines have been sunk and 39 damaged, totaling 128. In addition, a total of 391 ships have been sunk or damaged, approximately 220,000 tons. It is expected that most of the enemy submarines sunk in this announcement belong to the United States. Therefore, it can be estimated that the U.S. submarines have lost about 60 ships since the start of the war. Thus, most of the U.S. submarines in the Pacific have been lost, and those that remain are restricted by the Japanese Navy's control of the sea. Therefore, it will be impossible for the United States to implement a commerce raiding war in the Greater East Asia area. Most of the ships lost by Japan are transport ships in combat, and the loss of ships engaged in commerce is extremely minimal. From this, it can be seen that the Japanese army has established a strong and complete defense line in the Greater East Asia area against enemy submarine attacks. In the future, U.S. Navy submarines will have no room to be active under the power of the Japanese Navy. In addition, the number of enemy ships sunk by the Japanese Navy since the start of the war has reached 391, approximately 220,000 tons. Although this number is still small compared to the battle results of the German and Italian navies, the waters in which the Japanese Navy operates are much wider than those in which the German and Italian navies operate. The purpose of the Shanghai Naval operation is mainly to destroy the British and American maritime forces, and the commerce raiding war has no important position. Therefore, the focus of the Japanese Navy's operational goals is completely different from that of the German and Italian navies. Since the start of the war, the overall battle results of Japanese submarines have been very significant. The surprise attacks by submarines on Pearl Harbor, Sydney Harbor, and Madagascar, as well as the sinking of the USS Wasp and USS Hornet aircraft carriers by Japanese submarines, are all important battle results.</p>
+<h3>Sino-Japanese Joint Celebration Night in the Capital: Minister Lin's Speech</h3>
+<p>Nanjing, 7th (Central News Agency) - The Sino-Japanese Joint Celebration Night, sponsored by the Propaganda Department and the Japanese Embassy, was held at the Grand China Theater at 7:30 PM today. Minister Lin personally attended and delivered a speech. The main idea was: "Tonight, the Japanese Embassy and the Propaganda Department are holding a celebration party here. I am deeply grateful for the enthusiastic participation of all officials and people from all walks of life. Originally, during the war, it is time for us to shed blood and sweat, not for singing and dancing. The reason why we are celebrating today is not for singing and dancing, but for another important meaning. First, today is the eighth anniversary of the Greater East Asia War. In the past year, the brave soldiers of the Allied Powers have achieved an absolute victory in the Greater East Asia War. This victory is not only the glory of the Allied Powers, but also the glory of the entire East Asia. We have today's celebration to show the bright future of East Asia to the people of both countries. Second, with the progress of the Greater East Asia War and the collapse of the Anglo-American aggressive forces, the success of the peace movement is determined. However, to win a thorough victory, we still need the continuous efforts and joint cooperation of the two major nations of China and Japan. We have today's celebration to continue our past efforts. We have today's celebration to step up our future cooperation. Third, the chairman often tells us that to cooperate in the Greater East Asia War, the people of East Asia must share weal and woe. To complete the Greater East Asia Co-Prosperity Sphere, the people of East Asia must love each other. During the war, we don't need to ask how to share weal in the future, but only ask how to share woe now. Only by being able to share woe can we talk about sharing weal. We have today's celebration with this spirit. Based on the above three points, we want to express our infinite respect to the heroic soldiers of the Greater East Asia War. We want to express our infinite sympathy to the majority of hardworking and resilient people. We must have the same brave and diligent spirit as the soldiers to fight. We must have the same hardworking and resilient spirit as the people to work hard. We must expand today's celebration in continuous efforts and continuous struggles, and make it a grand celebration held simultaneously by 550 million people in China and Japan."</p>
+<h3>New Japanese Ambassador to Italy, Hidaka, Holds Farewell Gathering in Nanjing</h3>
+<p>Nanjing, 7th (Central News Agency) - The newly appointed Japanese Ambassador to Italy, Shiro Hidaka, went north a few days ago to bid farewell to the authorities of various Sino-Japanese institutions in North China before leaving his post. He returned to Nanjing on the 6th. Because all the affairs during his term of office have been completed, in order to express his farewell to all parties, he held a tea party at the International Club at 4:00 PM yesterday (the 7th) to entertain the heads of various Sino-Japanese institutions and representatives from all walks of life. Those present included ministers of the National Government, Chief of Staff Kawabe and Deputy Chief Noda of the Japanese Command, Major General Oki of the Military Police, Military Advisor Nakamura, Counselor Takagi and Secretary Takufushi of the Embassy, Military Attaché Ochiai, Major General Daitani, Major General Okino, Consul General Yoshitomi, Chief of Police Shinobu, Dr. Umeda of the Fellow Townsmen Association, Chairman Maeda of the Residents' Association, and other representatives. Representatives of the German and Italian embassies were also invited to participate. For a time, toasts were exchanged, making it a grand occasion. The gathering ended at about 6:00 PM.</p>
+<h3>Ambassador Shigemitsu Visits the Japanese Prime Minister</h3>
+<p>Tokyo, 7th (Domei News Agency) - Shigemitsu Aoi, the resident ambassador to China, returned to Japan a few days ago to discuss matters related to the establishment of the Ministry of Greater East Asia. He visited Prime Minister Tojo at the Prime Minister's official residence at 1:00 PM this afternoon and held talks for two hours.</p>
+<h3>Lieutenant General Shimomura Succeeds as the Highest Commander of the Japanese Army in the Shanghai Area</h3>
+<p>Lieutenant General Sawada Shigeru, the highest commander of the Japanese Army in the Shanghai area, has been transferred to an important position in a certain area. The Japanese military authorities in Central China have announced that Lieutenant General Shimomura Tei has been specially appointed to succeed him. Lieutenant General Shimomura is from Kochi Prefecture and a graduate of the 20th class of the Japanese Army Officer School. He and Vice Minister of the Army Kimura and Field Marshal Iida, the highest commander of the Japanese Army in Burma, were classmates. After graduating from the Army University, he served in the General Staff Headquarters and abroad. During the September 18th Incident, he served as an imperial plenipotentiary in Geneva. When the Sino-Japanese War broke out, he initially worked at the Imperial Headquarters. In Showa 14 (1939), he was awarded the rank of Lieutenant General and most recently served as the president of the Army University. Lieutenant General Sawada Shigeru, the former highest commander of the Japanese Army in the Shanghai area, has made significant contributions to the operation in the lower reaches of the Yangtze River and the cooperation in the pacification work since his arrival two years ago. People from all walks of life in China and Japan express their regret at his departure for an important position in a certain area.</p>
+<h2>Page 3</h2>
+<h3>East of Mersa Matruh, German and Italian Forces Counterattacked Several Times: Armored Forces on Both Sides Fiercely Engaged; Genoa, Italy Bombed the Night Before Last</h3>
+<p>Berlin, 7th (Domei News Agency) - Fierce fighting continues east of Mersa Matruh in Egypt. German General Rommel and British General Alexander's armored forces are fiercely engaged. Although the Axis forces have been subjected to fierce attacks by British tanks and infantry, they are still maintaining an unbroken line. The British side claims that the Axis forces have been driven back, while here it is announced that the Axis heavy bomber squadrons have continuously bombed the British motorized units between Mersa Matruh and El Alamein, inflicting heavy damage. Informed sources here say that the British claim that a large amount of German and Italian military equipment has been destroyed and captured is absurd. General Rommel is withdrawing from the El Alamein positions according to a pre-determined plan. When the German army withdrew from the old positions on the nights of November 3rd and 4th, only unusable war equipment, heavy artillery, and other military equipment were left behind. The artillery had been moved to the new positions to bombard the British army. The Axis forces are still outnumbered on land and in the air, so reinforcements have begun to arrive. There are no continuous lines on the current front. The fighting is currently taking place along a 60-mile front from north to south.</p>
+<p>Fuhrer Headquarters, 7th (DNB) - Today's German military report states that fierce fighting continues in Egypt. German and Italian troops counterattacked, inflicting heavy losses on enemy tank formations. German and Italian air forces in batches attacked enemy mechanized units between Mersa Matruh and El Alamein. The anti-aircraft guns of German warships shot down five enemy aircraft in the Mediterranean in recent days. A few British planes, under cover of floating clouds, flew into western Germany and harbors yesterday during the day. The damage to the people was very small. Six enemy aircraft were shot down.</p>
+<p>Rome, 7th (DNB) - Today's Italian military headquarters communique states that operations continued yesterday east of Mersa Matruh. The Axis forces counterattacked several times, inflicting heavy damage on enemy tanks. Our aircraft attacked the airfields on Malta several times last night. British aircraft bombed Genoa last night, causing greater damage to the eastern part of the city. Twenty civilians were killed and fifty were injured. However, the general public observed discipline and the order was quite good. Only one enemy bomber was shot down.</p>
+<p>Bern, Switzerland, 6th (Domei News Agency) - Regarding the fighting in North Africa, the London military believes that the first phase of the large-scale offensive launched by General Alexander has come to an end. It will take some time to see how it develops in the future. Since the battle has changed from trench warfare to mobile warfare, General Rommel has been known as an expert in mobile warfare in the Axis countries. Therefore, the final outcome should be judged carefully and not be too optimistic. Moreover, although the British army has won, the German and Italian forces on the Egyptian front have not completely collapsed, and their retreat is a planned one.</p>
+<h3>German Reinforcements for North Africa - Constructing Two Lines of Defense</h3>
+<p>London, 6th (Havas) - According to semi-official sources, the Axis countries are currently sending a large number of reinforcements to North Africa. In addition to multiple trains full of troops seen in Greece, troops are also about to depart from Sicily and Genoa in Italy. It is estimated that the strength of all the reinforcements is at least four divisions.</p>
+<p>Berlin, 7th (DNB) - German military figures pointed out that the German and Italian air forces are able to continuously bomb North Africa, which proves that fresh troops have flown in to help. But we cannot assume that the German and Italian air forces have gained the upper hand in Egypt, because there are more British planes than ever before. It is estimated that the British Eighth Army is larger than the British army that went to France in 1940. However, the British claim that the Allied forces in North Africa number no less than one million is doubtful.</p>
+<p>Stockholm, Sweden, 7th (DNB) - According to British sources in London, the fighting in the El Daba area is still going on. This morning's news from Cairo states that the British army has occupied the landing place of Fuka. It is reported that the landing place of El Daba has also been occupied. The British army has also crossed the El Daba defense line. Military circles in Cairo believe that Marshal Rommel has built two defense lines in the past two months to protect Libya. The first line of defense starts east of Mersa Matruh, passes through the Libyan plain, and reaches the Siwa Oasis. The second line of defense is based on the Halfaya Pass and extends to the south of the Siwa Oasis.</p>
+<h3>Western Caucasus, German Troops Fight in the Rain - Soviet Reinforcements in the Terek Area; Street Fighting in Stalingrad Still Fierce</h3>
+<p>Fuhrer Headquarters, 7th (DNB) - Today's German military report states that in the western Caucasus, our army launched a surprise attack and repelled the enemy on a certain high ground. German infantry north of Tuapse made progress in the rain. East of Alagir, the enemy counterattacked several times. German aircraft destroyed 30 Soviet tanks and an armored train. German reconnaissance bombers attacked Soviet troops advancing along the Georgian Military Road. There were only local battles in the Stalingrad area. Our dive bombers attacked enemy artillery positions east of the Volga River. Our suicide squads destroyed many enemy bunkers in the central sector. German aircraft bombed enemy concentrations in the Volga River and Vinnitsa River areas.</p>
+<p>Rome, 7th (Havas) - According to reports here, the resistance of the Soviet army in the Terek area of the Caucasus has been strengthened, and fresh troops are constantly arriving. Special forces are busy building fortifications at night.</p>
+<p>Stockholm, Sweden, 7th (Havas) - The German-Soviet war has lasted 72 weeks, and there are no major changes. In the Stalingrad area, a large number of German reinforcements have arrived in recent days, and the air force has also stepped up bombing. Street fighting in the city is still very fierce, but there are no large-scale battles on either side.</p>
+<h3>Wang, also Head of Training Corps, Hosts Banquet for Trainee Officers from Various Regions</h3>
+<p>Nanjing, 7th (Central News Agency) - The Central Army Officer Training Corps, headed by Wang as the Corps Commander, has had the third class of officer training for a long time. Senior naval trainees also came to Nanjing for training. A banquet was held at the International Club at noon today to entertain them. Chief of Staff Liu, Minister Bao, Minister Ren, Director Yao of the Aviation Administration, and senior military officers from Allied countries, including Major General Teraoka, Colonel Nakamori, Colonel Okino, and Major Hayashi, were invited to attend as companions to express their encouragement.</p>
+<h3>Matsui Meets Wang Yitang</h3>
+<p>Beijing, 7th (Central News Agency) - General Iwane Matsui, Vice President of the Greater Japan Asia Association, visited Chairman Wang of the North China Political Affairs Commission this morning for a long discussion. Chairman Wang hosted a banquet at the Foreign Affairs Building at 1:00 PM. At 2:30 PM, General Matsui also visited Advisor Suzuki of the New People's Association to exchange views on strengthening the New People's Association and its connection with the Asia Association.</p>
+<h3>Japanese Ordinary Diet to be convened next month</h3>
+<p>Tokyo, 7th (Central News Agency) - The Japanese government recently announced the imperial edict stating that the 81st Ordinary Diet will be convened on December 24th. This Ordinary Diet will be the first Diet after the general election of members of the Japanese House of Representatives this spring.</p>
+<h3>Foreign Minister Tani Granted Audience with the Emperor of Japan</h3>
+<p>Tokyo, 7th (Domei News Agency) - Foreign Minister Tani Masayuki was granted an audience with the Emperor of Japan at 3:00 PM today to report on the latest developments in international affairs.</p>
+<h3>Fighting on the Island of Madagascar has Ended - Both Sides are Negotiating a Treaty</h3>
+<p>Stockholm, Sweden, 7th (DNB) - London formally announced yesterday that the British High Command has agreed to an armistice with the French Governor-General of Madagascar. An official statement issued here states that the War Office announces that at the request of the French Governor-General of Madagascar, hostilities ceased at 2:00 PM on November 5th. The armistice agreement has been signed by both sides, and the battle of Madagascar has come to a smooth end.</p>
+<p>Vichy, 6th (Havas) - The French Cabinet held a state council meeting today, chaired by Marshal Petain. The head of government, Laval, reported on the course of the fighting on the island of Madagascar and explained the difficulties faced by the island's garrison, saying, "The French army on the island has fought to the last breath, but the greatness of their spirit of sacrifice has been fully demonstrated and is worthy of the respect and admiration of the people across the country." After the meeting, officials confirmed that hostilities on the island of Madagascar had ceased and that negotiations for an armistice agreement had begun.</p>
+<p>Vichy, 6th (Havas) - The French garrison on the island of Madagascar was in dire straits and had no choice but to request an armistice. Marshal Petain, upon hearing the news, immediately sent a telegram to Governor Annet of the island, saying, "The government has complete confidence in you. Your actions are like those of a glorious and resistant warrior. Do not accept any conditions of a political nature." The government also decided to award the War Cross to Annet and the garrison commander, General Guillemet.</p>
+<h3>A Squadron of British Warships Sails into the Mediterranean</h3>
+<p>Bern, Switzerland, 6th (Havas) - According to news from Berlin, a large squadron of British warships, including several aircraft carriers, sailed from Gibraltar into the Mediterranean last night.</p>
+<p>Algeciras, 7th (DNB) - Yesterday, a large convoy flying British and American flags sailed from the Atlantic through the Strait of Gibraltar into the Mediterranean at 5:00 PM. The convoy included 24 merchant ships, including several oil tankers and troop transports. Two oil tankers, three destroyers, and four flat-bottomed battleships joined the convoy at that port. The battleship HMS Rodney sailed away from the port yesterday morning under the protection of fighter planes. Shortly thereafter, 16 fighter planes flew to the port from the Atlantic.</p>
+<p>Algeciras, 7th (DNB) - According to news received here, the Gibraltar authorities have ordered the detention of ships, motorboats, and sailboats. Naval exercises were held in Gibraltar yesterday afternoon. There are currently four aircraft carriers anchored in the port.</p>
+<h3>Stalin's Radio Address on the Anniversary of the Soviet October Revolution - Strongly Argues that Britain and the United States Should Open a Second Front and Explains the Goals of the Current War Against Germany</h3>
+<p>Moscow, 7th (Domei News Agency) - In a radio address to the nation yesterday on the 25th anniversary of the Soviet Revolution, Stalin again argued that Britain and the United States should open a second front in Europe. He said that if Britain and the United States could launch a second front on the European continent within the year, they would be able to draw 60 German divisions from the Soviet side and 20 divisions from their allies, thereby preventing the German army from winning on the Eastern Front. In the Egyptian sector, only four divisions of the German army are being restrained and 11 divisions of the Italian army, while the Soviet side has a total of 240 divisions of the Axis forces. In the last world war, there were two fronts in Europe, east and west, but in this European war, there is no second front, so the ratio of enemy and our forces is two to one. The suffering of the Red Army and the magnitude of the sacrifices can be imagined. In short, the second front must be realized, not because of our needs, but also because it is necessary for our allies. As for the German plan to fight in southern Soviet Union, the original goal was to encircle the Soviet army and isolate it from Moscow. The German army's attack on the Soviet oil-producing areas was not its main goal, but only a side effect. Because the German army has no worries, it can concentrate all its forces and win a major victory on the Eastern Front. If Britain and the United States could open a second front as in the last world war, the situation on the Soviet side would definitely take a sharp turn for the better. In the last world war, Germany had a total of 220 army divisions, of which only 85 divisions were used to fight against Russia, plus 27 divisions of the Austro-Hungarian army, three divisions of the Bulgarian army, and three divisions of the Turkish army. In September this year, according to accurate records, of the 256 German divisions, 179 divisions were used to deal with the Soviet Union, plus 20 divisions of the Romanian army, 14 divisions of the Finnish army, 10 divisions of the Italian army, 13 divisions of the Hungarian army, one division of the Slovak army, and one division of the Spanish army, totaling 240 divisions. Compared with Napoleon's invasion of Russia, the strength of the forces is also very different. Napoleon invaded Russia with an army of 600,000 people, and no more than 300,000 to 400,000 people reached Borodino, and no more than this number reached Moscow. Now the Red Army is dealing with more than three million people and is equipped with the latest weapons. Stalin elaborated that the goals of the enemy and our armies in this war are completely opposite. Our operational policy is to crush the new order in Europe.</p>
+<p>Moscow, 6th (Central News Agency) - Stalin delivered a radio address to the nation at Red Square here on the evening of the 6th, first reviewing the achievements of the Soviet Union on the front line in the past year. He said, "The activities of the Soviet government in the past year have focused on organizing the domestic front and the Red Army's operations. In terms of domestic industry, it has been moved to the east, the area of cultivation has also been expanded, and the discipline of rear workers has also been strengthened. Therefore, the organization within the country can be said to be sound."</p>
+<h3>Africa in the Midst of Shifting Winds: The Independent Nation of Liberia, Founded by Eighty Freed Slaves (Part 2)</h3>
+<p>This place was originally a small British West African territory called Sierra Leone. The expedition team sent a few representatives ashore to take a look, but they felt something was amiss. On the one hand, their fellow countrymen were too uncivilized, refusing even to wear trousers; on the other hand, the white landowners on shore were treating the local black people worse than animals; those who had already regained their freedom were certainly unwilling to be whipped again. They would rather die in the sea.</p>
+<p>After a discussion among the eighty people, they decided to sail further south, willing to go to a place where no one had set foot and fight for their lives against lions and crocodiles. As fate would have it, they found a small island at the mouth of the Mano River, which had all kinds of trees, flowers, and fruits, only lacking human care. The eighty people, old and young, landed here and named the island Paradise Island.</p>
+<p>While living on this small island, they also explored the mainland across the river, and discovered that the Mano River basin could indeed be a place for great achievements, so they moved a portion of the people there. This is the Mesurado Cape, which is now the capital of Liberia, Monrovia. The following year, the black slaves in the United States heard this news and were greatly encouraged, and two thousand men, women, and children crossed the ocean to come. Two thousand was indeed a large number, and the newly discovered place, even after being developed, could not accommodate them all, so another group was organized to head south along the coast, hoping to find a place where they could settle down.</p>
+<p>This group of people walked and lived along the way, spending eleven or twelve years (1833), roughly walking more than three hundred miles, and found a good piece of land at Cape Palmas, which they named "Maryland in Africa." This free area later prospered, and in 1857, it was finally decided to merge into Liberia and be called Maryland County.</p>
+<p>What is the origin of the name Liberia? It turns out that in the second year after the eighty people discovered the capital Monrovia (1824), a missionary named Gurley saw that the area was lush and green, with flowers and fruits everywhere, and with inspiration, he named it Liberia. The first five letters of the word spell "liber" in French, which means "free." (Phonetically, it should be translated as "Lai Bei Li Ya" to avoid confusion with the Italian territory of Libya).</p>
+<p>In fact, this land was not exactly a new discovery by free black slaves. In the fourteenth century, a Portuguese explorer had been here and drawn a map, so many of the old place names still in use today are of Portuguese origin. In the fifteenth century, Portuguese merchants also came, and in the sixteenth century, exploration teams from England, the Netherlands, Germany, and France came one after another, driving away the Portuguese who had first discovered the area.</p>
+<p>Since the free black people arrived in Liberia, black people have continued to migrate from the United States every year, with the largest number being more than three thousand. Within twenty-five years, most of the people on Paradise Island and in the capital were under the management of the British, while those in the free area of Maryland were truly self-governing.</p>
+<p>In 1841, when the last white official died, an outstanding talent, a pure black man named Roberts, took office. At this time, Liberia was not yet a country, nor was it an official colony of any country; it was just a free area for black slaves. But because it did not have an official name, it was difficult to handle all affairs. What was especially hateful was that there were often conflicts between the British and French colonies on the borders of the area, often involving negotiations, and often breaking out into fights. In addition, within this free area, there were many indigenous tribes who often caused trouble for them. Throughout the year, things like this happened every day.</p>
+<p>The black leader Roberts, although not one of the original eighty pioneers, was indeed a member of one of their families. He graduated from the black university in Virginia, the state best known for its tobacco; although he was not a specialized talent or a famous scholar, he was indeed worthy of being the leader of the entire free area in terms of learning and knowledge. As for his spirit, courage, and great talent, he was indeed extraordinary.</p>
+<p>The free area had such an incredible figure, and seized the right opportunity to enter the political arena, so of course he was going to make a big difference. In the first six years, all his energy was devoted to internal stability and external resistance. Internal stability meant subduing several leading barbarian tribes and getting them to submit. External resistance meant directly negotiating with the colonial powers of England and France.</p>
+<p>In 1847, everything was handled quite well in terms of political affairs and foreign affairs, so with a thunderclap from the ground, the free area officially declared the establishment of the Republic of Liberia. All political organizations and laws were modeled after the United States; at the same time, a passionate declaration of independence was drafted; a rough translation of the main points is as follows:</p>
+<p>We, the citizens of Liberia, are all originally citizens of the United States of North America.</p>
+<p>During our time as citizens of that country, in certain regions, we were unable to obtain the rights that human beings should have; in other regions, the customs of the people, which had more power than the law, looked down on us to the extreme.</p>
+<p>Everywhere that calls itself a place of civilization, we are excluded.</p>
+<p>We have no say in any administration.</p>
+<p>We are not allowed to express our opinions on taxation and levies.</p>
+<p>We are oppressed horizontally, and although we offer our products, we receive no national protection.</p>
+<p>We are distinguished as a special ethnic group, and we have no right to enjoy any improvements, while other foreign ethnic groups with different skin colors from us are given priority in everything.</p>
+<p>We have repeatedly appealed, but have been ignored, or even dismissed on the pretext of special organizations.</p>
+<p>Our hard work and hope have finally been shattered; what hangs before our future is only depravity.</p>
+<p>Since landing on the coast of Africa, we have been able to freely admire a glimmer of light in our future, hoping that we can develop the personality of human beings endowed by nature; nurture our sincere and upwardly mobile fire; develop the inspiration given to us by the creator; and show those who have always looked down on, mocked, and oppressed us that we are the same round-headed, square-footed beings, with the same natural gifts; and that we can also obtain the cultivation of a refined nature, and also obtain the evolution that decorates so-called noble human beings....</p>
+<p>Discovered Paradise Island.</p>
+<h2>Page 4</h2>
+<h3>Authorities Determined to Suppress Commodity Prices. Public Announcement Addressed to Citizens. Calling for Citizen Cooperation and Encouraging Production, Discouraging Speculation and Excessive Profits in Order to Stabilize Prices.</h3>
+<p>Yesterday, the Shanghai Municipal Council of the International Settlement and the French Municipal Council jointly issued a public announcement addressed to citizens regarding commodity price controls. It stated, "Now, in order to stabilize commodity prices and ensure the well-being of the people, we specially call on citizens to cooperate. Although the authorities can find ways to control commodity prices, this matter requires the cooperation and understanding of citizens to be effective. The harms of rising commodity prices are well known to the public. If the trend of rising prices is not curbed, not only will the wage-earning class experience great difficulties, but the economic foundation of this city will also be shaken. Whenever commodity prices rise beyond the affordability of the general wage-earning class, social and physical harms will follow, and their impact will be obvious. Therefore, the rise in commodity prices, if not checked, will always be a source of social unrest."</p>
+<p>Credit Loans; Encouraging Production</p>
+<p>The true key point of our research into economic problems is the purchasing power of money. Therefore, our actions must be determined by whether their impact can increase or decrease the purchasing power of money. When commodity prices rise, the purchasing power of money decreases. For example, if a person has 1,000 yuan to buy goods, and the price of the goods doubles, their money will also double to 2,000 yuan. But at this time, the 2,000 yuan they obtain has the same purchasing power as the previous 1,000 yuan, or even less. On the authorities' side, there are currently plans for various methods, such as credit loans, limited to production enterprises, and encouraging major industries, etc., to improve the situation.</p>
+<p>Focus on Investment; Do Not Engage in Speculation</p>
+<p>On the citizens' side, the following items can also be implemented for cooperation: (1) focus on the operation of production enterprises; (2) individual purchases should be limited to practical and essential items; (3) do not hoard any goods; (4) rather than engaging in the distribution of manufactured products, focus on investing in genuine production enterprises; (5) do not engage in speculation in goods and stocks to seek excessive profits; (6) carefully study various investments based on the previous ratio of dividends and profits, and do not rely on impressions and rumors. Before investing, you should also carefully check the company's balance sheet and profit and loss statement. If citizens can implement the above methods, not only will rising commodity prices be suppressed, but also the wealth they already possess and will obtain in the future will be protected.</p>
+<h3>Issuance of Purchase Certificates for Restaurants and Wine Shops Temporarily Suspended</h3>
+<p>The Shanghai Edible Oil Industry Wholesale Department has finalized an order for 500 tons (equivalent to 10,000 dan). In addition, retail stores began selling their stock yesterday. Such lines can be seen at edible oil stores on Xiamen Road, Fujian Road, Tiantong Road, and Baker Road. Therefore, citizens do not seem to need to worry excessively about edible oil at present.</p>
+<p>Oil Purchase Certificates; Suspended This Month</p>
+<p>The Edible Oil Industry Wholesale Department, regarding the item "Restaurants and Wine Shops Receive Oil Purchase Certificates" published in various newspapers yesterday, stated to the Datong News Agency reporter with great emphasis that, as there are discrepancies with the facts, in order to avoid misunderstandings from the outside world, the issuance of oil purchase certificates for restaurants and wine shops began several months ago. Starting this month, due to the insufficient supply of edible oil, the authorities of the wholesale department issued a notice temporarily suspending the issuance.</p>
+<p>500 Tons of Oil; Scheduled for Distribution</p>
+<p>According to the person in charge of the Edible Oil Industry Wholesale Department, the 500 tons of edible oil that has been finalized has made headway in moving permits. It is expected that it will be distributed to retail stores for sale next Tuesday or Wednesday. However, in order to avoid hoarding and creating black markets, the initial distribution volume is temporarily set at 1,000 to 2,000 dan.</p>
+<h3>Air Defense Exercises; Continued Exercises Starting Today</h3>
+<p>Since the highest air defense authority in this city announced that large-scale blackout exercises would be held again starting on the 8th of this month, all districts of the city have paid close attention and have held local exercises one after another. Yesterday, for the sake of caution, the Lianbao chiefs of the two concessions issued notices separately, with roughly similar wording. It is noted that the large-scale air defense exercise in this city will be held again starting tomorrow, or warning exercises may be held at any time without prior notice. Therefore, residents must pay attention to the sound of the air raid siren at all times, and pay extra attention to covering up all lights. The police authorities have dispatched detectives to patrol in sections, and residents who violate the rules will be severely punished.</p>
+<h3>Shanghai Municipal Council; Continued Distribution of Butter</h3>
+<p>The Shanghai Municipal Council recently issued a notice stating that butter can be purchased from designated stores with coupon number 11 from the 9th to the 14th of this month. Australian butter is priced at 30 yuan per pound, and Qingdao butter is priced at 25 yuan per pound.</p>
+<h3>Shanghai Russians; Commemorate the October Revolution; Two Factions with Completely Different Attitudes</h3>
+<p>The English-language "China Press" reports that the more than 2,000 Russians in Shanghai are today (the 7th) commemorating the 25th anniversary of the Soviet October Revolution in vastly different ways. Soviet expatriates are celebrating joyously, while White Russians are banning entertainment and praying for the end of Communist rule. Both the Soviet and White Russian newspapers in Shanghai have special editions today. The former is filled with photographs of Soviet leaders and the country's war efforts, as well as texts commemorating this great Soviet holiday. The White Russian newspaper has a large headline, "Day of Sorrow for Russians," and the entire page of the White Russian Shanghai "Chara" newspaper is surrounded by a thick black border and contains anti-Soviet texts, such as the assassination of Tsar Nicholas II and his family.</p>
+<h3>Guangdong Fellow Countrymen's Dissolution Meeting; Last Batch Going South This Morning</h3>
+<p>The last batch of fellow countrymen from Guangdong traveling back to their hometowns, organized by the Guangdong Shanghai Association Dissolution Meeting, will depart this morning after repeated negotiations by the association. With this, the association's business will be declared completely over. Once the accounts are settled clearly and audited by an accountant, they will be printed and published as a credit record, distributed to all fellow countrymen for verification and to show fairness. The association was established in March of this year, and within eight months, it has sent nine batches of unemployed fellow countrymen back to their hometowns, totaling 800 people, benefiting the unemployed in their hometowns, which can indeed be said to be no small feat.</p>
+<h3>Businesses in Violation Continue to Be Fined</h3>
+<p>According to a joint announcement by the authorities of the International Settlement and the French Concession, in the past two weeks, businesses that have raised prices or engaged in other violations have been punished. The punished stores are listed below:</p>
+<p>(1) International Settlement</p>
+<p>Store Name, Address, Number of Days Closed, or Fine Paid</p>
+<p>Siberian Fnrriens Stores, 1141 Jing'an Temple Road, 3 days, 500 yuan</p>
+<p>Tongshengxiang, 345 East Xihua Road, 3 days, 500 yuan</p>
+<p>Tongyu, 831 Jing'an Temple Road, 4 days, 500 yuan</p>
+<p>Yitai, 41 Henan Road, 3 days, 500 yuan</p>
+<p>Yunshang, 680 Jing'an Temple Road, 4 days, 500 yuan</p>
+<p>Hengkang, 563 Sichuan Road, 3 days, 500 yuan</p>
+<p>Yutaishengji, 107 Zhapu Road, 4 days, 600 yuan</p>
+<p>Wang Ruichang, 198 Weihaiwei Road, 5 days, 700 yuan</p>
+<p>Zheng Fengtai, 244 Avenue Edward VII, 4 days, 800 yuan</p>
+<p>Laochangsheng, 133 Fujian Road, 3 days, 800 yuan</p>
+<p>Hengxin Southern Goods Store, 289 Guangxi Road, 3 days, 800 yuan</p>
+<p>Yuyuanhao, 322 Qiwupu Road, 3 days, 800 yuan</p>
+<p>Try and See, Avenue Edward VII, 5 days, 1,000 yuan</p>
+<p>Beitaiyuan, 502 North Sichuan Road, 3 days, 1,000 yuan</p>
+<p>Weisheng, 323 Guangdong Road, 6 days, 1,000 yuan</p>
+<p>Dalu, 778 Chengdu Road, 4 days, 1,000 yuan</p>
+<p>Kaili, 761 Jing'an Temple Road, 5 days, 1,000 yuan</p>
+<p>Jingcheng, 874 Tiantong Road, 3 days, 1,500 yuan</p>
+<p>Hongxia, 735 Jing'an Temple Road, 6 days, 2,000 yuan</p>
+<p>Chunhua Pharmacy, 466 Avenue Foch, 7 days</p>
+<p>In addition, there are 53 other stores that have been fined less than 500 yuan or closed for several days for violations. (To be continued)</p>
+<h2>Page 5</h2>
+<h3>Exorbitant Black Market Profits Have Yet to Be Curtailed; Thorough Elimination Is Urgently Needed; Swift and Severe Action Is Required to Prevent the Resurgence of Speculation in Various Commodities</h3>
+<p>The English-language "Shanghai Times" reports that, according to a recent investigation by reporters, although the municipal authorities have enacted various regulations and trade associations are attempting to curb the evils of hoarding, the trend of hoarding and speculation in sugar, oil, rice, and meat has not yet been curtailed. Therefore, the citizens of Shanghai are now demanding that the authorities take immediate and severe action to completely eliminate black market activities in food.</p>
+<p>Hoarding and Excessive Profits; Should Be Severely Punished</p>
+<p>All Shanghai newspapers, whether Chinese, Japanese, English, or Russian, are clearly aware of the seriousness of the situation faced by citizens and are unanimously supporting the movement to crack down on hoarding and excessive profits, and pointing out that the authorities must take swift and severe action to prevent the intensification of speculation in various commodities. Some people even advocate that hoarders and profiteers should be punished with the utmost severity, and at the same time, the current food distribution system should be reorganized to adapt to current needs. According to general opinion, the most important reorganization step is to establish a per capita rationing system to distribute various foods. The police are currently closely monitoring the issue of controlled foods, and the public welcomes any announcements by the authorities regarding controlled foods.</p>
+<p>Black Market Activities; Have Yet to Be Curtailed</p>
+<p>At the beginning of this year, Chinese and foreign citizens were still suspicious of the authorities' plan to ration rice, flour, bread, and butter per capita. Now, they are eager for all daily necessities to be distributed through a per capita rationing system. The discovery of black market activities in the buying and selling of items such as rice, sugar, oil, and meat has aroused serious concern among the public. Although the authorities are making every effort to promote a low-price policy, the black market prices of food are constantly rising, and sugar and oil are already in short supply. So far, the rationing of sugar and oil has been handled separately by the Shanghai Sugar Merchants Cooperative and the Oil Merchants Wholesale Department. The situation of sugar has not improved since the beginning of this month. As for vegetable oil, the Oil Merchants Wholesale Department is now taking strong measures to prevent the same situation from occurring in vegetable oil transactions.</p>
+<p>Why Is There a Shortage of Edible Oil?</p>
+<p>According to people from all walks of life interviewed by reporters yesterday (the 6th), even if the authorities allocate the minimum amount of sugar and oil, it would be better than the current method of lining up to buy half a pound of sugar. Over the past two weeks, Chinese newspapers have been reporting daily on the black market prices of food. For example, the price of rice along the Shanghai-Nanjing Railway is 250 yuan, while the price of rice in Shanghai has tripled (rice rationed per capita is not included in this example). According to well-informed sources, the daily distribution of 1,000 dan of vegetable oil is not only sufficient to meet the needs of the residents of the two concessions, but also to meet the legitimate needs of residents in the western district and Pudong. Of the approximately 2,000 oil shops in Shanghai, 400 are suspected of engaging in speculation, which has led to higher oil prices. Some of these black market speculators are currently not being allocated vegetable oil.</p>
+<p>Thorough Control; Per Capita Rationing</p>
+<p>As for sugar, although the Shanghai Sugar Merchants Cooperative has repeatedly announced that stocks are sufficient, hoarders and speculators continue to be active, and the public has not been able to obtain the sugar they need daily. With regard to meat, the authorities issued a price limit on October 11, but very few food shops and vendors complied with the price limit when selling meat. The pork market situation was quite bad about six weeks ago, but it has improved slightly since then, but not completely. And the market price of beef and mutton is also openly higher than the price limit. Since unscrupulous merchants disregard official regulations, the public is even more urgently demanding a thorough control and per capita rationing system for all foods.</p>
+<h3>The Masses Are Re-publishing Books</h3>
+<p>The "Public" monthly magazine, founded by the contemporary erudite scholar Qian Xumi, sold out within three days of its premiere on the 1st of this month. Distribution points in Shanghai and other places have requested additional copies, so an additional edition was immediately printed and released yesterday. The content is wonderful, and it has a good reputation. The whole book is 250 pages and sells for 5 yuan. The office is located at No. 48, Lane 228, Baker Road, phone number 91131. The distributors are Wuzhou Pictorial Society, and the distributors are Huxi, Bai Peng Chunming, Zhongxi, and Qiuyi.</p>
+<h3>Record of an Interview with Mr. Xia Jingguan</h3>
+<p>The old seniors in the literary and academic circles, in the present day, are as sparse as the morning stars. The countable ones are the five old gentlemen Jin (Songcen), Li (Bake), and Qian (Mingshan), and Chen (Hecai). Some are known for their classical Chinese, others for their poetry. But besides poetry and prose, the one who can write and paint is Mr. Xia Jingguan.</p>
+<p>At the extreme west of Avenue Joffre, a place called "Jingcun," I met two old men with flowing white beards. When I arrived, they had probably been quietly wielding their brushes and ink, busy with their art. After readjusting their clothes, they slowly came out to meet me. At that time, Mr. Xia put down his pen and chatted with me. He had unique insights on politics, society, science, and all kinds of knowledge, and was by no means as stubborn as ordinary people. He pointed me to a completed painting under a corner of the bright window. It had faint peaks and sparse forests, and was inscribed with twenty-four characters: "In a world of great peace, people do not travel to and fro, new houses are built, leaning against the mountains, dogs bark sparsely, and roosters crow harmoniously." A kind of unattainable ancient style seemed to awaken my tired soul, which had just swallowed a full "world of dust." He told me that he always leaned over this corner of the bright window to wield his brush for an entire morning. As soon as one piece was finished, another would come next, it was a bit overwhelming. He is not an ordinary artist, he is a famous veteran in the literary world, a craftsman in the art world. From November 6th, at the urging of his friends, he held a painting exhibition at the Ningbo Fellow Countrymen Association for three days, and today is the last day.</p>
+<p>Jingcun, how fortunate to have this noble and old gentleman residing there. "Only through purity and quiet can one travel freely in the spirit," this is the meaning of Yang Ziyun's "Mystery," perhaps he loves Jingcun for this reason! I thought. (Huazi)</p>
+<p>Yesterday's newspaper reporting time was 6:40 PM</p>
+<p>Sports News</p>
+<h3>Sports Games Open This Morning; Chinese and Japanese Students' Grand Parade</h3>
+<p>The host of the Greater East Asia Goodwill Sports Games, the Greater East Asia Goodwill Games supported by the Shanghai Japanese Army News Department, will be held grandly at the Racecourse on Jing'an Temple Road starting at 10:00 AM this morning (8th). The participating nationalities include eight countries including China, Japan, Manchukuo, Germany, Italy, Philippines, India and Thailand. The groups from various countries are mainly schools. It is reported that 10,000 Chinese and Japanese school students participating in the conference from the Hongkou area will gather at the south side of the Bund Park at 8:00 AM, and at 8:30 AM, led by the Nanshi Police Bureau band and other bands, they will pass through the Huangpu Bund, Nanjing Road, and Jing'an Temple Road. It is scheduled to arrive at the Racecourse Assembly Hall at 9:30 AM. The order of the parade is Japanese Middle School, Commercial School, Youth School, First and Second Senior Girls' Schools, Girls' Commercial School, First to Ninth National Schools, and various Chinese elementary schools. At that time, all vehicle traffic on the roads passed by the parade will be temporarily cut off. The detailed measures are recorded as follows:, "Estimated Time for Cutting Off Vehicle Traffic", When going from the Bund to the Racecourse, the Nanjing Road and Jing'an Temple Road sections will be restricted for approximately one and a half hours starting at 8:15 AM. When students return to school, the first shift will be for approximately one and a half hours starting at 2:45 PM, the second shift will be for approximately one hour starting at 4:45 PM, "Eastbound Tram" The section of Jing'an Temple Road and Kabao Road will be closed to traffic at 8:00 AM. Also, at 2:45 PM, eastbound trams other than those carrying students will be temporarily suspended at the above locations. "Westbound Cars" The Nanjing Road Huangpu Bund tram will stop running at 8:25 AM. At 2:30 PM, all vehicles except trams carrying students will stop. At 4:30 PM, the above locations will stop westbound trams. "Other Trams", When the students are passing in a parade, the trams going north and south on Huangpu Bund, Nanjing Road, and Nanjing Road Jiangxi Road will stop. The trams going north and south on Nanjing Road and Nanjing Road Fujian Road Zhejiang Road will be temporarily suspended from passing through Nanjing Road. In addition, the trams going north and south on Yuchiaqing Road and Nanjing Road will be temporarily suspended. "China Motor Bus" When the students are parading, Nanjing Road Sichuan Road will generally stop running, but there are no restrictions on pedestrian traffic.</p>
+<h3>Middle School Round Gate Ball Game; Postponed Opening</h3>
+<p>The Middle School Cup Round Gate Ball League, sponsored by Shiye Middle School, was originally scheduled to kick off today. Due to the fact that the number of participating teams is still less than the planned number, and the site is not yet repaired, the sponsoring authorities announced that it would be postponed until the end of this month at the Shiye Middle School on Nanyang Road. At that time, a mixed team of men and women from the West Union will be invited to participate in the performance. The schools that have already registered include the Sino-French, Shiye, Xiaguang, Guoqiang, and Guangxia, totaling nine teams. There are more registrations from the amateur group, including Nanyang, Zhonglian, Xinye, and Bai teams, totaling ten teams. There are also teams for women, including Lingsheng, Vitafu, and You teams. There are still vacancies in each group, so register as soon as possible. The deadline is this Thursday. Registration is at the school's Sports Department.</p>
+<p>Commercial News</p>
+<h3>Stand-off in Government Bonds; Limited Ups and Downs</h3>
+<p>The dark market for government bonds, yesterday's market price fluctuated, still very limited, the situation between the bulls and bears, is still in a standoff, watching a consistent seller of spot goods is still flowing out, yesterday the market pulled up the price, most of them are scalpers on the floor, when Category C started to do business, it was extremely chaotic, the seller shouted the price of five yuan, and some shouted four yuan and four and a half cents, the buyer was willing to offer five and a half yuan, this situation, is obvious, because this newspaper mentioned a few days ago that it failed to break through six yuan three or four times, so the bulls tried their best to pull it up, initially starting from five and a half yuan, then immediately raised to six yuan one cent, and finally unable to raise it any further, it immediately fell to five yuan, as a result of the market price, except for Category D which did not move, the rest were slightly up or down by one cent to six cents, the turnover was approximately 2.56 million yuan, a brief table is listed below,</p>
+<h3>Cotton Cloth Trading Reduced Significantly</h3>
+<p>Factory cloth The trading in yesterday's market was surprisingly light, and the selling prices also varied, generally the fatigue was still considered stable, 16-pound Earth coarse cloth 226 yuan, Feihong 222 yuan, 9-pound New Character 127 yuan, 8-pound Zhenzhong 122 yuan, 12-pound Earth fine cloth 180 yuan, Fugui single 175 yuan to six yuan, Changshou silk 7 yuan 25 cents, Mermaid oblique cloth 160 yuan, Qin Liangyu bleached cloth 170 yuan, Peach Blossom Lady's Lin fluctuated greatly, and as a result, the price did not rise or fall significantly, at around 279 yuan,</p>
+<p>Eastern cloth First soft and then firm, and the afternoon close was flat and tired again, 12-pound Longtou fine cloth new single 191 yuan, Bank single Longtou 183 yuan, Caiqiu 183 yuan half, all continued to fall by 2 yuan per bolt, Four Gentlemen Serge red single 7 yuan 30 cents, started to rise to 7 yuan 40 cents, and then fell back to 7 yuan 34 cents, down 6 cents,</p>
+<h3>Summer Goods: Woolen Fabrics – Speculation and Trading</h3>
+<p>Yesterday, the woolen fabric market saw significant progress, mainly due to the Zhuma Company's high-priced purchases of grass-green broadcloth and serge. Merchants from Nanjing, Xuzhou, and Bengbu showed slight interest. Simultaneously, favorable buying news spread frequently. With the first ten days of the month passed, buyers began to take action, leading to a surge in both retail and wholesale transactions. Consumer confidence rebounded, and prices began to rise. Flannel, palis, white drills, white serge, "Guang Huo" (plain weave) spring light tweed, summer gauze and rubberized fabrics, and similar items from various brands were successively acquired by major wholesalers in the industry. As a result, market sentiment improved significantly, with prices rising and shortages appearing. Yesterday, "Guang Huo" spring light tweed from foreign sources sold for around 400 yuan for ordinary quality, while goods from eastern factories sold for around 300 yuan, and local factory goods for 200 yuan. Lixin palis sold for 115 yuan, Ewo Shanghai for 50 yuan, Lianxin and Baoxin rubberized fabric for 8 yuan, Fengyu white serge for 240 yuan, Haohua white drills for 280 yuan, foreign diagonal flannel for 280 yuan, and "Ban Si Di" (grade four) flannel for 245 yuan.</p>
+<h3>Dried Mussels: Extremely Scarce, No Signs of Easing</h3>
+<p>Although the price of dried mussels has recently stabilized, it remains high compared to previous levels, with no signs of easing. Yesterday, market prices were as follows: large Dongdan (Eastern dried mussels) sold for 3,800 yuan, small Dongdan for 3,300 yuan, domestic Ningbo dried mussels for 4,000 yuan to 3,950 yuan, San Zi Gong (three-seed offering) for 3,600 yuan, and Yuan Dan (original dried mussels) for 3,000 yuan to 2,950 yuan.</p>
+<h3>Beans Remain in Demand</h3>
+<p>The arrival of beans has been delayed for a long time, and the allocation of goods is also scarce, resulting in high demand and prices. About ten bags of Pudong Du beans were traded at a price of 280 yuan.</p>
+<p>The supply and demand of bean cakes are relatively balanced, and there are no significant price changes. 500 pieces of Changji bean cake were traded at 72 yuan and 7.5 jiao. One cart of Yuanlong bean cake was 76 yuan, and two carts for delivery in two weeks were 74 yuan and 7.5 jiao to 74 yuan and 5 jiao.</p>
+<h3>Gold and Silver Ornaments Remain Weak</h3>
+<p>The jewelry gold price quoted by large silver firms such as Daxin Tonghang at the storefront was initially 2,650 yuan per tael. At 9:30 AM, it dropped by 50 yuan to 2,600 yuan (buy-back price reduced by approximately 300 yuan). The inter-dealer price remained weak, opening 30 yuan lower at 2,340 yuan. It then slightly recovered to 2,360 yuan. After 10:00 AM, the market stabilized at around 2,350 yuan, which was slightly lower (20 yuan) than the previous day, with a difference of 20 yuan. Transaction volume was low. The price of standard silver jewelry remained at 14 yuan per tael, with an inter-dealer price of 12 yuan and 57.5 jiao.</p>
+<p>The interest rate offered by the Money Trade Association remained unchanged at 1.4 jiao. The total number of checks exchanged and collected by the Clearing House from October 26th to 31st was 75,435, amounting to 837,778,112.6 yuan. The total number for the entire month of October was 303,040 checks, amounting to 3,251,159,110.12 yuan.</p>
+<p>There was little improvement in the price of Japanese military scrip. The inter-dealer price was 5 yuan, 5 jiao, 5 fen, and 2.4 li. Silver firms and small money shops bought in at 5 yuan, 5 jiao, and 5 fen (weak), and sold out at 5 yuan, 5 jiao, and 6 fen.</p>
+<h3>"Shuang Ma" Factory Receipts – Trading Vanishes</h3>
+<p>The yarn market has recently experienced rapid and unpredictable fluctuations, causing anxiety and fear. Previously, due to the higher price of current yarn in the Beijing-Shanghai Railway area, speculators became very active, and buyers were even more crowded. Under these circumstances, the market price soared, breaking through the 7,000 yuan mark. At this time, short sellers, unable to cover their margin calls, began to falter. In particular, one company, with a large number of short positions, was unable to cover and was forced to close down, causing significant market turmoil. Simultaneously, news of stricter government control further unsettled those with long positions. The market price suddenly reversed, plummeting from over 7,000 yuan to 6,500 yuan, with a low of 6,430 yuan. Today, the Shanghai Municipal Council issued a notice strictly prohibiting trading in "Shuang Ma" factory receipts, with penalties for violations. As a result, trading in "Shuang Ma" factory receipts ceased immediately. The previously transacted amounts were generally settled at a price of 6,600 yuan to finalize the transactions, although most have not yet been accepted.</p>
+<h3>Black Melon Seeds: Slight Easing in the Beijing Market</h3>
+<p>According to a quick letter from Nanjing yesterday, prices for black melon seeds showed a slight easing, but the amount was very small and still difficult to transfer to Shanghai. Xu Da Pian Zi (Xu large slice seeds) were priced at 840 yuan, Tongcheng Zi (Tongcheng seeds) at 720-730 yuan, Wuhe Zi (Wuhe seeds) at 580 yuan, and Linhuai Zi (Linhuai seeds) at 560 yuan.</p>
+<h3>Fleeceflower Root: Slightly Increased Offer</h3>
+<p>The previous arrival of guest goods (fleeceflower root) has been held up until now due to unmet offers. Yesterday, the market offered slightly increased bids, only about 20 yuan higher than before, still under negotiation and potentially leading to a transaction.</p>
+<h3>Cigarettes, Soap, and Candles: Prices Fall</h3>
+<p>The market prices of cigarettes, matches, soap, and candles are all trending downwards. This is largely due to the tight credit conditions affecting all goods, causing them to decline successively. The cigarette market price has been difficult to stabilize, following the downward trend. British brands fell to 9,000 yuan, Old Knife brand to 8,000 yuan, Pin Hai to 7,900 yuan, Fairy brand to 7,150 yuan, and Wuhua brand to 7,000 yuan, a decrease of 100-200 yuan compared to the previous day. Japanese cigarettes: Golden Gun brand at 3,150 yuan, Golden Building at 3,500 yuan, Quanlu brand at 3,250 yuan, Compass brand at 2,700 yuan, Beauty brand at 5,400 yuan, and Golden Mouse brand at 3,900 yuan, Pyramid at 6,250 yuan all showing weakness. Phoenix brand matches at 2,500 yuan, Gubensao soap at 395 yuan, Huangxiangmao soap at 290 yuan, and Arrow Knife soap at 260 yuan, also down slightly less than ten yuan.</p>
+<h3>Rayon Also Trending Down</h3>
+<p>Recently, the rayon market has also been trending downward due to the decline in yarn and cloth prices. No. 120 Tianqiao (Sky Bridge) bright silk opened at 7,380 yuan yesterday morning, closing at 7,400 yuan, down 85 yuan from the previous day. Xuhui was at 7,400 yuan, Jin San Ma (Golden Three Horses) at 7,465 yuan, Toyo at 7,200 yuan, Silver Bird at 7,340 yuan, Fuji at 7,150 yuan, and No. 150 Golden Ring Star at 7,200 yuan, No. 75 Golden Chicken semi-gloss at 5,800 yuan.</p>
+<h3>Foreign Silver Dollars and Square Ingots Stable</h3>
+<p>Recently, there has been no improvement in sales of new foreign silver dollars and square ingots. Guest merchants have lost interest, and local manufacturers and users are also showing little interest, so the market price has not fluctuated much. New foreign silver dollars and square ingots are selling for 12,000 yuan per ton, with a slight premium for different patterns.</p>
+<h3>Tinplate Continues to Increase</h3>
+<p>Yesterday, the local yarn factory used rolling machines to search for more than ten sheets of No. 24 and No. 26 tinplate, and the market atmosphere inevitably revived. Standard asking prices continued to increase. Currently, No. 24 pattern is offered at 160 yuan per sheet, and No. 26 goods at 140 yuan.</p>
+<h2>Page 6</h2>
+<p>Family</p>
+<h3>Enthusiastically Participate in the Winter Clothing Drive</h3>
+<p>— Hua</p>
+<p>Cold weather is the most threatening season for impoverished compatriots. They are plagued by hunger and cold, and it is truly difficult for them to survive. This is proven by the annual statistics of people freezing to death on the streets.</p>
+<p>We experienced a scorching summer this year, and we anticipate an exceptionally cold winter. Thinking of our impoverished compatriots, we cannot help but worry about them, because everyone has compassion.</p>
+<p>However, unorganized relief efforts also have significant drawbacks. Now there is an opportunity for us to fulfill our responsibility of human mutual assistance, because the YWCA is launching a winter clothing drive, with five ways to participate. In addition to donating money or labor, we can also donate unused old clothes and socks to the YWCA.</p>
+<p>While taking care of our own winter preparations, participating in the winter clothing drive is arguably the most meaningful work we can do right now.</p>
+<h3>The Greatest Happiness is Doing Good</h3>
+<p>— Mrs. Huang Zuoting, Huang Xuepa</p>
+<p>The happiest person in the world is not the one with a house full of gold or lofty fame, but the one who can build their own happiness on the happiness of others, helping others everywhere and working diligently for the happiness of others.</p>
+<p>The YWCA's annual winter clothing drive is about to begin again. Perhaps in these difficult times, you may feel "powerless" to contribute to these good deeds. However, I believe that you and I are still living a happy family life with plenty of food and clothing, which is much happier than the many people suffering from hunger and cold in the icy and snowy weather. As long as we slightly economize on our personal and family daily expenses, we can accumulate a small amount into a large sum, which is enough to sew thin cotton clothes for these many starving and freezing people.</p>
+<p>"The greatest happiness is doing good." Please donate generously!</p>
+<h3>Twenty Letters from the Ge Family</h3>
+<p>— Translated by Xu Baiyi</p>
+<p>Mr. Ge Laiheng's son was once again promoted, from an accounting clerk to a traveling salesman, and set off to another city. Mr. Ge Laiheng did not have a good impression on the day of his departure, so he immediately wrote a letter to give him many pieces of advice. This kind of advice would not be given to ordinary people who know that Mr. Ge Laiheng's son is the company's young master. His father's ability to put aside the private feelings between father and son and frankly speak his mind from the company's perspective is very valuable to him.</p>
+<p>Letter 10: The Way of Doing Business</p>
+<p>Dear Son:</p>
+<p>When I watched you depart yesterday to begin your travels, I felt somewhat uneasy because you seemed very proud, as if you were now the most important person in the entire company. But you need to know that what we need are orders, not the flamboyant demeanor of an external employee.</p>
+<p>Sausage is one of the main products of our company, so everything should be planned very carefully. Last week, the director of the sausage department suggested adding a lead tag to the sausage. I immediately stopped him, because that would invisibly become a trademark, which would add a lot of trouble when selling in the future. This proves our prudence in handling affairs.</p>
+<p>I hope you will firmly remember in your mind that this trip is somewhat of a test. Whether you can succeed completely depends on your own efforts. A true salesperson is one-tenth speaking and nine-tenths judgment. He should use nine-tenths of his judgment to determine when to use that one-tenth of speaking. Many salespeople think that purchasing agents are interested in baseball and funny stories, and that doing business is only secondary. However, people who can reach the position of purchasing agent cannot succeed by listening to jokes.</p>
+<p>Of course, it is best if you can be amiable in dealing with people, but excessive amiability becomes useless. A truly shrewd purchasing agent is not interested in anything other than the quality and price of our goods. You don't have to give in to your competitors, but you don't have to talk about their shortcomings. You don't have to kneel down to beg for orders, but you can't hold your nose too high either. During your travels, you will inevitably meet many people you don't like, but those people are precisely the ones who can have a business relationship with the company.</p>
+<p>If you want to be a top-notch salesman, you should aim for the following three points: (1) Send orders to the company, (2) Continue to send more orders, (3) Send orders of greater value. If you can do these three points, then you will definitely not have time to write long letters, and we will definitely not have time to read long letters, because we will be busy manufacturing and shipping goods. We are not interested in the orders that others have obtained, so if someone else steals your order, you don't have to report to the company, because the most appropriate way, of course, is not to have your business stolen by others. The best way is to send your address and orders to the company every day, so that we can know all your dynamics.</p>
+<p>I once represented a company and went to Cairo, Egypt to sell clothing supplies. When I arrived there, I initially came into contact with the new environment and thought that there was a very good possibility of sales, and that business would definitely succeed in the future. However, the results of the sales were not as ideal as I had imagined, so I often wrote letters to the head office reporting the reasons for the failure and the details of how the competitors were stealing business. As a result, the head office sent a telegram with the text: "We know all the movements of the competitors, they have obtained all the business, but what are you doing?" At that time, I immediately understood that it was useless to explain any further, and the only thing to do was to resign, so I sent out the resignation letter. Now we have the same attitude towards you, waiting for your orders or your resignation letter.</p>
+<p>Your loving father, Ge Laiheng.</p>
+<h3>A Letter to the Children</h3>
+<p>— Lu Qi</p>
+<p>Dear Children:</p>
+<p>Time flies so fast, and the cold winter is coming again. Are the children also unhappy about the arrival of winter? Because it is too cold, your fingers will freeze and turn red, and your mother will not allow you to go out to play. But children, have you seen many poor children on the road? They are wearing thin clothes, walking and working on the road, hungry and cold. They are just as good children as you are, and their mothers love them too, but they are too poor. In order to live, they have to work in the wind and snow.</p>
+<p>The day before yesterday, I walked past Yu Qiaqing Road and saw many people surrounding a bundle. There was a dead child lying there, his small face convulsed with terror. Alas, children, I was extremely sad. You see, this child died without doing anything wrong.</p>
+<p>In this cold winter, children, I don't know how many poor children will freeze to death or starve to death. People should help each other. Now the YWCA has launched a winter clothing drive to help these many suffering children. Children, would you be willing to save a little bit of your candy money to help these many suffering children? We hope that you and your parents will save together to sew cotton clothes for these many suffering children.</p>
+<p>Your friend, Lu Qi</p>
+<p>November 6th</p>
+<h3>YWCA Launches Winter Clothing Drive</h3>
+<p>The weather is getting colder and colder, and there seems to be a bleak atmosphere on the streets. Of course, on the roads in the cold winter, you can see fur coats, woolen coats, and velvet coats! Warmly dressed pedestrians, but have you ever seen those hardworking and impoverished people, who for their own lives, wear only their thin winter clothes, braving the fierce wind, stepping on the ice and snow, and working? Do their teeth chatter, and their bodies and legs tremble? When you walk past them, have you ever had the compassionate thought of reaching out a hand to save them? Seeing the need for this relief work, the Shanghai YWCA has distributed winter clothing in previous years. This year, everyone knows that life is more difficult, so the need for this relief work has also increased accordingly. Although this work is quite complicated and difficult, the YWCA, based on its consistent spirit of service in the past, will continue to promote this work this year. Naturally, the completion of this work still depends on the sponsorship and promotion of enthusiastic people in society.</p>
+<p>"Relief Targets" The relief targets this year are still the general elderly, weak, and women and children.</p>
+<p>"Purpose of Donations" The purpose of the donation is "30,000 yuan." It is estimated that new clothes can be sewn at 60 yuan per set, which can make 500 sets, that is, 1,000 pieces. It is hoped that 5,000 sets of old clothes can be collected (that is, 10,000 pieces). If the donation exceeds that, then of course there will be more clothes.</p>
+<p>"Methods of Donation" The YWCA is just a social service organization. The donation of funds depends entirely on enthusiastic people in society, who cooperate and pledge donations. The methods of donation can be divided into the following aspects: (1) Donating cash—pledging set donations (60 yuan per set) or donating arbitrarily (amount not fixed). (2) Donating winter clothes and asking our association to distribute them on your behalf. (3) Donating new and old fabrics, cotton, thread, foreign currency, etc. (4) Donating labor—volunteering to sew clothes. (5) Donating old clothes, old shoes, old pants, old socks, etc. All the above items are very welcome if donated.</p>
+<p>"Sewing and Distribution of Clothes" is in line with the nature of relief. We will use generally unemployed women to sew clothes. Under the principle of paying by the piece, their lives can be slightly subsidized. In addition, we will invite our members and enthusiastic people in society to jointly undertake this sewing work. As for the distribution of winter clothing, it is also very strict. Receiving winter clothing must be introduced by a reliable organization or individual and approved by our association after investigation to confirm that it is needed.</p>
+<p>"Winter Clothing Committee Implements Work" All the above-mentioned work related to winter clothing donations, sewing, and distribution will be implemented and promoted by the Winter Clothing Committee of our association. Donation accounts and the number of people who received relief will be publicly published in the newspapers in the future.</p>
+<p>"Donation Date and Collection Points" The donation date is from now until the end of this month. The collection points are the following four places: (1) Our association's office at 638 Weihaiwei Road, (2) Our association's Shanghai nursery at 66 Daxilu Road, (3) Our association's dormitory at 8, Lane 1086, Yuyuan Road, and (4) Our association's dormitory at 206 Yuanmingyuan Road.</p>
+<p>Enthusiastic men and women, helping others is the responsibility of each of us. Extend your helping hand and save these many poor people!</p>
+<p>Saving people is like putting out a fire. Please fill out and submit it to the YWCA today.</p>
+<p>Participate in the Winter Clothing Drive! (Please fill out this form to make it easier) I am sending the following items, please sign for receipt.</p>
+<p>(1) Cash (60 yuan per set), totaling sets, for a total of</p>
+<p>(2) Donated winter clothing</p>
+<p>(3) Donated fabrics, cotton, thread, totaling</p>
+<p>(4) Willing to participate in sewing work</p>
+<p>(5) Donated old clothes, old shoes, old pants, totaling</p>
+<p>Send to the YWCA at 638 Weihaiwei Road, or the YWCA Shanghai Nursery at 66 Daxilu Road, the YWCA Dormitory at 8, Lane 1086, Yuyuan Road, or the YWCA Dormitory at 206 Yuanmingyuan Road.</p>
+<p>Participant's name Address</p>
+<h3>Talking about Making Steamed Buns (Mantou) from Experience</h3>
+<p>— Xingye</p>
+<p>Every time we receive flour, we always make pancakes and noodles to eat. It is inevitable to get tired of it. I wanted to make steamed buns, but I didn't know how to ferment them. Once, I received flour at the rice store and bought a piece of Xinya yeast. I took a sheet of instructions and went back to try it, and it turned out very well. Now I will write down my experience below for reference.</p>
+<p>First, dissolve a piece of yeast in lukewarm water and mix well, add a little sugar. Then weigh two catties of flour, put it in a ceramic basin, slowly pour in the dissolved water, kneading as you pour, and knead it into a soft dough. Cover it with a damp towel and place it in a warm place (such as near the stove), and then wait for it to ferment.</p>
+<p>After three hours, go and take a look. The dough has swelled to more than twice its original size. I was very surprised and thought that this yeast was indeed good. Immediately, I made individual steamed buns and arranged them on the table (sprinkle some dry flour on the table first). Because if it is not covered well, the steamed buns will be blown by the wind and form a hard skin, so they will not be soft.</p>
+<p>At this time, prepare the pot, steamer (or steaming rack). Put a damp cloth in the steamer, first use a strong fire to boil the water. Then put the prepared steamed buns into the steamer, steam for about ten minutes, the hot steam rises straight up, and the steamed buns are ready. I ate the soft steamed buns that I made myself, and my heart was happy, which is truly indescribable in words.</p>
+<p>If the reader is interested, you may as well make them to change the taste, since Xinya yeast is sold in rice stores and food stores. (Advertisement)</p>
+<h3>A Door Apart, Two Worlds</h3>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.11.07.html", "next": "1942.11.09.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

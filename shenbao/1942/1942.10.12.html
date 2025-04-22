@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.10.12 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 488 - 4924627</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>高加索濃霧大雪德軍行動受影響斯城戰事重心移頓河套最近發展顯於蘇這有利</h3>
+<p>柏林十日同盟社電</p>
+<p>德軍在高加索西北地區之攻擊八日頗有進展目下該方面因有濃霧及大雪故作戰大受阻礙</p>
+<p>莫斯科十一日同盟社電</p>
+<p>據蘇聯情報局午放公報稱本日我軍在斯達林格勒西北及摩斯杜克等區賡續作戰其他各區並無變化</p>
+<p>柏林十一日海通社電</p>
+<p>據前線最近息氣候情形現已開始影響於東線各處之軍事行動高加索之大雪出人意外中北兩區之大雪亦足以限制軍事之活動故星期五僅有局部之戰事德軍在都浦斯區續有進展臺萊克之德軍續向克洛士奈油田推進德軍另一部在馬爾科佩克區肅清殘敵後沿鐵路線向奧士霍尼基士進展故該區蘇軍處境極危尤以蘇軍左翼受壓力最重蘇軍司令部遂不得不下令再度撤退德軍工兵在斯達林格勒炸毀摩天樓一所該樓位於該城之北郊德軍工兵向該樓掘通地道埋藏炸藥當爆炸時充塞於該處之蘇軍皆被炸死斯達林格勒區內除此以外僅有砲戰而已德空勞繼續襲擊蘇軍後方之供應線伏爾加河蘇軍砲船曾作數次進攻但皆為該河東岸之德軍砲隊所擊退蘇軍損失砲船數艘</p>
+<p>烏克蘭邊境某地哈瓦斯社電</p>
+<p>過去二十四小時中東線戰局並無重大發展德軍在斯達林城內賡續從事掃蕩戰以期肅清殘敵此在紅軍雖予以堅決抵抗但仍不得不放棄若干土地目下斯達林城內僅工廠區仍在紅軍手中德軍事觀察家之視線已自斯城爭奪戰移至頓河河套三日來所發生之大戰該處戰事之發展對於蘇聯有利據最後消息紅軍已於三日前渡過頓河深入德軍陣地二公里之遙現已設法扼守新陣地並加強防務以資堅守昨日激戰竟日紅軍在頓河西岸又獲一橋頭據點此在中立觀察家則謂不論此役產生何種結果亦不能改變斯城的運命紅軍未必能收復此一重要工業中心惟經勞在頓河與伏加爾河間獲勝之後高加索邦德軍所處地位將受一重打擊最近德軍在臺兇河流域暫緩前進即以此故至於外傳德軍在加爾末克區發動攻勢企圖進窺亞斯特拉漢城此說已由負責方面予以否認特德軍在最短期內採取一攻勢非不可能而已</p>
+<h3>蘇開始訓練滑雪部隊準備冬季戰爭</h3>
+<p>莫斯科十一日哈瓦斯社電</p>
+<p>塔斯通訊社本日發出消息稱最近數日以來紅軍總司令部已開始訓練滑雪部隊準備今冬戰爭全國二十七大城市同時開始總教官一職由滑冰健將萬西利夫擔任</p>
+<h3>中路德軍進攻未逞</h3>
+<p>瑞典京城十一日哈瓦斯社電</p>
+<p>頃自東線接獲戰訊多件其中最惹人注意者厥為中路德軍昨在砲火飛機及鐵甲車掩護之下向紅軍陣地猛攻經紅軍反攻之後結果雙方陣地均無變動但其確切地點並未說明大抵在爾齊夫區或在斯摩倫斯克城之西北德軍此舉之目的乃在試探紅軍之虛實德方前已傳稱紅軍已在該區集中惟德軍此次在中路進攻不能同為德國發動大規模攻勢之開端</p>
+<h3>羅斯福定週四發表演說</h3>
+<p>里斯本十一日同盟社電</p>
+<p>據此間接美京報告星期四羅斯福總統之演說將述及國內外大事總統秘書歐萊謂此項廣播為家常談話云</p>
+<h3>加拿大與蘇聯互換使節人選業已發表</h3>
+<p>里斯本十一日海通社電</p>
+<p>據此間息渥太華今日宣稱沃特旬姆少校已被任為加拿大首任駐蘇聯公使沃氏將不日起程赴任又息蘇聯首任駐加公使古西夫將於日內抵達渥太華</p>
+<h3>加準備步英美後塵廢在華領判權</h3>
+<p>里斯本十一日海通社電</p>
+<p>渥太華電訊加拿大首相金氏昨稱加拿大亦已準備與重慶當局談判廢除在華之依賴裁判權</p>
+<h3>華北中交分行短期內將復業</h3>
+<p>北平十一日同盟社電</p>
+<p>中國交通兩銀行業與當局成立協定決定華北分行於短期內復業該分行業務將限於地方環境而進謀發展</p>
+<h3>浙清鄉處訂自衛工作要綱</h3>
+<p>嘉興十一日中央社電</p>
+<p>太湖東南二期清鄉自衛工作業已開始所有各區自衛指導員亦經郵發各區開始活動與編查保甲同時推進現駐浙辦事處為期各特區充份明瞭辦理計特訂定工作要綱通令各特區遵照辦理（一）清查戶口時須即編造壯丁工作編組之準備（二）凡年在十八以上四十五以下均須編查（三）編組方法可參酌自衛團組織暫和條例辦理</p>
+<h3>越南產米大部運日</h3>
+<p>東京十一日同盟社電</p>
+<p>據朝日新聞由河內所得息越南政府糧食管理局估計本年越南米糧收穫正常米之全部產量其中百分之八十已根據日越協定運送至日本</p>
+<h3>美海長返京</h3>
+<p>華盛頓十一日哈瓦斯社電</p>
+<p>美海軍部長諾克斯週遊拉丁美洲各國已歷十八日之久頃於本日返此此行曾訪問巴西京城及視察加勒比安海各海軍根據地</p>
+<h2>Page 3</h2>
+<h3>德潛艇活動範圍擴至南非沿岸英美供應線受威脅德宣傳布協約國運油船沉失達四百六十萬噸</h3>
+<p>柏林十日哈瓦斯社電</p>
+<p>德軍統帥部頃發表公報稱德軍潛艇已在南非沿岸闢一新戰場軍事進行極為順利按自北冰洋交通線受德潛艇威脅後英美乃注意經營南非至波斯灣之交通線蓋不僅可以接濟蘇聯且亦為埃及及印度之供應線是以南非各港口對於英美船隻極為重要</p>
+<p>柏林十一日海通社電</p>
+<p>此間軍界負責方面昨夜宣稱自開戰迄今德海空軍所擊沉之敵方運油船已達四百六十萬噸之鉅本年五月十二日德軍事當局所發表英美運油船之沉失數字共為三百十萬啊其後德潛艇在美國沿海加勒比海大西洋西非沿海及地中海等加緊活動計本年五月至十月初旬為止共擊沉敵運油船二百十五艘計一百五十萬噸總數遂達四百六下萬噸美國自參戰至本年五月十二日為止共沉失一百另五艘運沿船</p>
+<p>柏林十一日海通社電</p>
+<p>此間權威方面昨夜發表關於敵方運油船被擊沉沒之名單如次卡那斯號（美）一萬零六百噸基爾洛號（挪威）七千四百五十五噸小摩弗特號（美）九千九百七十四噸杜諾凡尼亞號（英）八千一百五十噸聖加斯巴號（英）一萬二千九百十噸秀韋爾號（挪威）六千零三十啊小地主號（英）六千九百九十噸維米拉號（英）五千七百二十八噸哈伍德號（美）六千六百十噸薩德勒號（美）九千六百三十噸</p>
+<p>里斯本十一日海通社電</p>
+<p>美運油船卡那斯號之獲救船員昨抵此稱卡那斯號係於八月杪在此亞索爾羣島附近沉失按該船甫於本年二月作處女航為時未麗即被送人海底云</p>
+<p>美巨型運兵船遭德潛艇擊沉</p>
+<p>柏林十一日海通社電</p>
+<p>據德軍司令部宣稱　　　艇長華爾克林報告事於九月二十五日午後四時許發現運兵之巨型坐船一艘頗似一九·六二七噸之印度總督　號信送之驅逐艦二艘顯已發現潛艇曾投深水炸彈累船亦向南面逃避卒被第二艘潛艇所擊沉該二潛艇所報告之時間與地點完全符合華爾克林復於當夜聞爆炸聲且先見一片火光彷佛洛日發光之地點與潛艇艇長海爾里傑爾所報告擊沉巨輪巴錫菲柯一號一七·七○二噸之地點相同</p>
+<h3>阿根廷智利對美抗議否認有軸心份子在境內從事活動</h3>
+<p>根毛京城十一海通社電</p>
+<p>阿根廷外長昨晚宣稱阿根廷當局今已訓令駐美大使向美政府表示阿根廷政府對美國國務副卿肆爾斯所發表之演說極為不滿阿根廷政府就此事所發表之官報曰阿根廷已於本年七月一日向美國政府作具體之保證採取阻止軸心國僑民在阿根廷境內從事間諜工作之措施今威爾斯所發表之言論實屬侮辱阿根廷威爾斯所稱若干船隻之沉失乃由於阿根廷政府不能加以接受要知船隻沉失之地點距離阿根廷領海甚遠事實俱在何得責及阿根廷</p>
+<p>華盛頓十日哈瓦斯社電</p>
+<p>國務副卿威爾斯一昨聲言協約國部份商船之損失係因軸心國份子得在智利及阿根廷兩國境內活動所致智利駐美大使米蓋爾本日特親訪羅福總統代表政府提出抗議相與會談歷時四十五分鐘威爾斯副卿時亦在座該大使於離開白宮時向報界談稱余除口頭交涉之外並提出書面抗議但雙方談話經過融洽至於敝國總統里奧斯係以元首資格應邀來聘貴國殊無理由展緩行期且羅斯福總統方準備盛大歡迎敝國元首</p>
+<h3>取消紅軍政治委員斯達林說明理由柏林予以密切注意</h3>
+<p>里斯本十日同盟社電</p>
+<p>據土京消息斯達林頃已命令取消在紅軍中共黨所派之政治委員現在所有之政治委員將安插於軍隊編制中故共黨對紅軍之支配力在制度上已被廢止又斯達林曾說明此次取消政治委員之理由稱在全體紅軍將士對蘇維埃時代政治委員實有存在之價值然在此次戰爭中已證明政治委員可無再存在之必要云</p>
+<p>土京十一日海通社電</p>
+<p>莫斯科無線電臺評論員密特勒夫昨夜為蘇聯當局改革軍隊中之政治專員制度一事發表其辯護曰此次改革乃以黨睡之方針為根據列寗與斯達林均主張嚴密之組織與紀律尤注意於指揮之統一今因前方與後方更應實行鐵的紀律故頒怖新法令藉以加強經勞之戰門力云</p>
+<p>柏林十日哈瓦斯社電</p>
+<p>德國負責方面對於蘇聯廢除紅軍政治部（各級軍隊原均設有政治委員）一節雖極注意但未評論其原因或揣測其後果此在一般人則成以蘇聯當局鑒於紅軍迭遭敗衂乃欲藉此減少黨政領袖之責任亦有謂斯達林意欲統一軍事指揮以應付自前軍事局勢云</p>
+<h3>史丹萊抵伊京發表談話</h3>
+<p>安加拉十一日同盟社電</p>
+<p>據伊朗京城消息美駐蘇大使史丹萊昨從莽撞行抵德黑蘭美使於接見新聞記者時謂渠此次返國目的之一為設法加速接濟品之運蘇按美使離莫斯科前曾晤斯達林當時斯達林切言協約國必須增加其援助以履行義務</p>
+<h3>印度辛特邦首揆阿利巴克辭職</h3>
+<p>印度喀拉嗤城十日哈瓦斯社電</p>
+<p>辛特邦首后顧可利巴克巴於本日辭職聞將由呼桑爵士級織混合內閣以繼其反按阿利巴克內閣素為大會黨所支援阿氏對於英國印度事務大臣亞梅萊日來在下院所發表之演說極為不滿</p>
+<h3>巴庫油田</h3>
+<p>巴庫為歐洲第一產油之區巴庫市位於裹海沿岸之阿普雪龍半島因附近有著名之大油田故一躍而名聞世界圖為巴庫市之景色街市整飭風光明媚亦高加索之勝地也</p>
+<h3>驅逐機五百架保護下美飛行堡壘襲法比德方稱七架被擊落</h3>
+<p>柏林十日哈瓦斯社電</p>
+<p>此間負責方面頃談稱大批美國飛行堡壘在驅逐機五百餘架保護之下襲擊法國北部尤其是法國工業中心里爾城德國防軍曾集中努力對付美國轟炸機德國驅逐機毫無損失而美國轟炸機雖有敵機多架保護但於五分鐘之內仍被我擊落七架故在敵機投彈轟炸之前即被我方擊退云</p>
+<p>柏林十日哈瓦斯社電</p>
+<p>德軍總司令部頃發表戰報稱敵方機羣昨日轟炸法國北部及比利時美國製造之轟炸機被我擊落多架而我方僅損的一架</p>
+<h3>美將派軍隊駐巴林島美軍千名抵英</h3>
+<p>安加拉十一日海通社電</p>
+<p>據報達息美國將在波斯灣之巴林羣島設置駐軍因美國在該島經濟利益較大於英國故有設置駐軍之必要印度政府所派駐在該島之軍事總督將由美國官員替代云</p>
+<p>瑞典京城十一日海通社電</p>
+<p>倫敦電訊續有美軍一千名開抵英國將受開闢第二戰線之訓練</p>
+<h3>取締棉花條例施行細則</h3>
+<p>第一條</p>
+<p>本細則依據取締棉花摻水摻雜暫行條例之規定訂定之第二條實施取締棉花摻水摻雜暫行條例（以下簡稱本條例）之機關為實業部直接辦理或委託各省市區辦理之各棉業管理區辦事處及分處暨各查騐所第三條紗廠花行或其他棉商收買含有水分或雜質超過最高限度棉花之經辦人應依本條例第五條第一項一併處罰之第四條本條例第三條準予買賣之黃花紅花腳花廢花須由貨主或代理人事前聲明並在包外加蓋黃花紅花腳花廢花各字樣查明屬實準予運銷如於原含雜質外故意摻入石粉或其他雜質或次花用藥品燻白或有其他朦混情事仍按本條例第四條處罰之第五條中棉種與美棉種在送軋前或上軋時混雜軋花經取締機關查獲應依本條例第九條處罰之但在中美區棉毘連處種原來混雜者不在此限第六條中棉區軋美棉或美棉區軋中美或中美棉種原來混雜之棉花應向取締機關報名理由並際繳混雜棉花之證明證據如匿不聲報候查明確係意圖不法利益應依本條例第九條處罰之第七條棉商或棉農如有違犯本條例第四五及九十十一之規定經人向取締機關告發或由取締機關檢得查有確據者得由該取締機關封存物證並派員向貨主或其他代理人所在地之警察局聲請派警將該貨主或其他代理人拘局轉送或逕行送請司法機關依法辦理第八條違犯本條例第四第五及九條十第十一條之規定應由取締機關檢舉之人民或團體不得假借名義藉端索詐並不得設立類似取締機關如有違犯者由各該地方司法機關依法辦理第九條棉商或棉農藏有摻水摻雜之器具一經查處應由取締機關予以扣留銷燬前項應予取締之器具其類別及名稱應由棉業管理區辦事處或分處視各地實際情形本島量規定並先期布告之第十條依本細則第七條所送各該地方司法機關辦理案件得函請其將判決正本送各該取締機關第十一條依本細則第七條封存之棉花須經各該取締機關之核定發還原貨主或其代理人自行整理並由取締機關派員監督俟經整理完畢查騙合格方準買賣第十二條取締機關執行取締職務應在紗廠軋花廠打包廠花行販戶及其他棉商暨運輸處所經營棉花打包之機器打包廠應由取締機關派員查騐之第十三條本條例第六第七兩條規定棉花之買賣其成交契約上除價格外對水分雜質含有量應載明依本條例辦理如不載明契約或載明而不履行或因扣價補價發生爭執時得聲請公證機關證明關於公證機關及其辦法另定之第十四條棉花經原運輸地取締機關發給合格證書轉運其他各地時各地取締機關應騙證放行但主體間性和要時得本島量抽查如查有中途摻水摻雜確據或原有取締機關查騙疏忽情事應按照本細則第八條辦理或通知原取締機關核辦之第十五條區辦事處及分處是騐所查騐棉花不收任何費用第十六條取締機關所在之棉商登記由各該機關辦理其他產棉各縣之棉商登記及宣傳事項得委托各該縣縣政府負責協助辦理之第十七條產棉各區之縣政府及警察局應負責協助取締機關關於本條例施行事項第十八條棉花摻水摻雜查騐辦法及棉商登記通則另定之第十九條本細則自修正公布之日施行</p>
+<h2>Page 4</h2>
+<h3>防空燈罩及窗簾應速添置完備</h3>
+<p>麥蘭區昨表演防空消防救護</p>
+<p>自本月一日至八日擴大防空演習雖已終結惟居民對遮光燈罩及窗等均應繼續作隨時使用之準備不應束之高擱蓋此後防空演習不再事先通行隨時以鳴汽笛為之故居民於一聞汽笛即應辨其聲浪為警戒管制抑空襲管制迅速為防空上必要措施母待自警團之督導而始為之其以前尚未完備者應從速添置聽候隨時抽查</p>
+<p>昨日演習</p>
+<p>法租界麥蘭區五十七六十兩聯保即東起東新橋街西至自來火街北至法大馬路南至寗波路為止一段內於昨日午後三時由兩區正副聯保長召集所屬保甲長與民警團於同仁輔元分堂集合出發表演消防救護清潔等工作先用繩索封鎖禁止行人旋於法大馬路及自來火街之立賢里內兩處先後表演消防救火工作各民警團提水桶黃砂趕往灌救撲滅火熖繼由人假作受傷仆地召救護隊用擔架擔往同仁輔元分堂內為施救醫療之處最後召清潔隊打掃表演處所之垃圾表演歷一小時完畢</p>
+<h3>糶田糧每期九天</h3>
+<p>第十天米號結賬買粉證用複記式</p>
+<p>兩租界米號因十一日為星期日故停止出糶第十四期四糧須十二日起開始出糶惟以後星期日不再停止營業照常供給居民購領以後每屆發售期十天之最後一天停止出糶以便米號辦理一期中揭算賬目故直四期出糶之最後一天米號停止營業凡執有十四期米票者須於本月十九日下午二時前購領竣事免失時效工部局米糧辦事處已定於十二日發給第十六期至二十期買米證各戶長均應攜帶房捐票前往以前領取之就近各區辦事處領自十六期起並附發賣粉證一種買米證與買粉證均取複記式以便市民向同一米號購領</p>
+<h3>呢絨門售減價減百分之二三個月為限</h3>
+<p>呢絨業同業公會因奉當局邀同製造販賣零售等呢絨廠商擬將貨價再行減低俾收安定物價之宏效經與廠方研商合作辦法決自即日起於前經當局核準之限價中之本市製造呢絨再為減低百分之二此項減價以三個月為有效期業已核準施行特通告各會員及聯合兼營呢絨之綢緞棉布西服等業一致辦理</p>
+<h3>法租界移動證費率</h3>
+<p>法租界居民領取永久移動證即日起開始徵收相當費用凡附戶移動一人者收費五角二人以上收費一元正戶移動四人以下每人五角四人以上者二元正戶闔家移動二人以上者收費二元查法租界各戶居民有一月以上之移出或移入者須領永久移動證手續上須先填寫報告書連同應納之費繳至聯保辦事處於次晨由聯保辦事處轉繳該管警署待審核後當簽發移動證此事已由各段段長通告各保甲區負責人員知照辦理</p>
+<h3>侵呑房捐</h3>
+<p>將有人居住之房屋偽報空屋收捐分肥</p>
+<p>公共租界工部局捐務處近查得職員張順發沈祿珊有侵占公款事宜乃報告中央捕房將兩人拘捕茲經調查之下得悉張沈二人自前年起將有人居住之房屋偽報空屋而將居戶所付之捐款予以侵占化用迄至本年九月止經查明侵占之數共為一萬三千一百六十七元八角故飭令押候訊究</p>
+<h3>戈思默由津返平</h3>
+<p>英美大美晚報云法大使戈思默於上月初往游天津十月五日午後五時五十分從北平行抵津埠法領事及法軍民代表多人均在車站迎迓津埠法僑官民連日執行至星期五戈氏始返北平</p>
+<h3>法租界保甲義捐報告</h3>
+<p>同孕一百二十元協順祥一百五十元上哉一百五十元陳安貴七十二元施憲祖二十四元順茂二十四元全泰二百元志生二百元沈竹君八十四元信康二百五十元祥茂五百元日新五百元潘源盛五百元德昌一百元厚生五百元介順五百元乾吉五百元福昌五百元益記五百元協茂五百元協茂北貨五百元協德二百五十元震豐五百元</p>
+<p>永源祥五百元盈泰一百元兆昌一百元兆元一百元小帳務洋行五百元協和一百元震泰祥三百元同泰三百元趙子鴻一百元全昌東三百元永泰三百元恒生三百元陸連富三百元同泰永一百元萬昌公司五百元源興一百元泰生永一百元源盛五百元葍豐五百元震餘五百元順茂一百元均昌一百元永記三百元源昌德三百元義大五百元義隆五百元茂興五百元元昌一百元震源恒興鑫和餘發江實豫源協泰信康義昶久豐德昌號鴻興鴻源行坤元新茂和聚興長源永記福泰餘豐永大信孚永昌發裕德豐永新震豐棧源源械萬春源康械寶康益豐泰和祥大康民生以上各三百元其記二百元同福祥二百元陳同年一百元王燮坤六百元老通裕六百元乾坤六百元老通裕六百元乾坤和六百元福和六百元彩成四百元大中四百元順大四百元大中華二百元振源二百元上松二百元張長興二百元（待續）</p>
+<h3>燃燒汽油代用品出租汽車準予行駛限本月廿一日前請領許可證</h3>
+<p>工部局情報處公告云本局頃發布告第六一一六號說明出租汽車凡燃燒汽油代用品如木炭焦炭及白煤三類者準在公共租界內和駛但須遵守公用汽車執照規則第十四條之規定（參閱本月一日本局布告第六一一一號）欲行駛此類車輛者應於本月二十一日星期三以前向福州路一八五號中央捕房車務處請領許可證此項許可證為數有限故車主宜於改造車輛以前先行領證</p>
+<h3>日憲兵隊對敵性產業一律黏貼封印任何處置事先均須領證</h3>
+<p>貝當路十號日憲兵隊法租界分隊頃發表通告稱（一）日本憲兵隊最近在敵國人民之若干動產與不動產上黏貼封印凡現使用或保藏任何敵性之動產或不動產而經本憲兵隊封印者應將關係之產業呈報該管之憲兵隊即始由敵國人民借第三國人民名義所用之房屋及不動產暨所用或保藏之動產亦須呈報（二）任何中立國人欲將房屋不動產或動產出賣或出租於敵國人民必須先向本憲兵隊領得許可證（三）即日起任何敵國人民欲處置向有或他人動產或不動產必須先向本憲兵隊領得許可證（四）凡違反上項規則者將依軍法嚴厲處罰</p>
+<h2>Page 5</h2>
+<h3>勸募宣傳結束後自警團大遊行電臺播音宣傳明日結束各界點唱認捐極為踴躍</h3>
+<p>公共租界保甲自警擴大宣傳勸募週自本月五日開始除在各重要路口張貼醒人標語及圖畫外又曾舉行保甲音樂會目下正進行遊藝界大會串播音今日為第二日定</p>
+<p>明日截止</p>
+<p>據悉保甲當局現計劃在宣傳週之最後一日即十五日下午二時假跑馬廳舉行自警大會公共租界四十五萬自警團員中選出十分之二約五萬人參加該會會畢在蘇州河南各主要衝衢遊行大致是日節目為二時正在跑馬廳集合昇旗（國旗及保甲旗）唱國歌及保甲歌向國父行敬禮然後由關係長官訓話會畢五萬人由工部局銅樂隊首導沿南京路外灘福州路跑馬廳路威海了路西摩路及靜安寺路遊行最後回至跑馬廳散會關於播音宣傳共計三日假</p>
+<p>大美電臺</p>
+<p>舉行昨為第一日時間下午二時至下午十時請徐鐵珊袁履登葉扶霄及王伯元等演講後即行平劇會串點唱捐款者甚為踴躍今日下午二時至四時為越劇票友會串四時至七時女子越劇會串七時至十時滑稽大會串明日下午二時至六時為彈詞大會串六時至十時為申曲大會串</p>
+<h3>浙地江蘇裕民三行催存戶速提款</h3>
+<p>利息概照規定辦理</p>
+<p>浙江地方江蘇江西裕民等三銀行上海分行停業清理後經當局派定監理官辦理清算一切賬目均已查竣已於本月五日起分期發還存款除書面通知各存戶外盼各存款人速往具領以清債戶至於各行營業時間為上午十時至十二時星期日明修棧道假關於各行以前之舊幣存款均已以二對一比率一律折合中停刊券存款利息依照各行規定率照詰</p>
+<h3>法筯介居住證正陸續塡發中</h3>
+<p>茲擴大通社記者探悉法租界居民身份證自於本年六月初由各區捕房簽發以來至今如霞飛等區仍由居民每日領取中至公共租界則已頒發竣事且一切遷居等事亦均由保甲長轉飭各居民必需履行報告登記手續關於滬西方面則迄今尚未開始發給惟據記者探悉該處執行此項事務者已擬於最近期內實行且決定儘先發給一般年在二十歲至四十五歲之少壯男子以便加緊組織類似公共租界自警團及法租界民警團之團體</p>
+<h3>國際紅十字會負責收寄國外信件</h3>
+<p>已寄發三萬五千封英文泰晤士報云國際紅十字會自五月初開始執行遞交信件事務以來本埠被認為敵性國及中立國國民之信件由該會寄發者已有三萬五千封至於由他地寄滬者則據證實亦有一萬八千封據稱此種現象足以說明郵路暢通依照規定每一居民每月僅能寄發在二十五字數以內之信件此種信件並須有一定封寫交與圓明園路九七號國際紅十字會同時又悉日本紅十字會亦已規定準許收寄通過齊尼物之信件惟此等信件不準超過五十字以上</p>
+<h3>由日艦運南京貨物須多繳副報單一張</h3>
+<p>江海關分卡管理股昨通告云一為通告事所有報裝日本軍用運輸運艦往南京免稅及完納統稅綱物均須於本月十六日起多繳副報單一張以便本關寄至南京轉口稅征收所查核之用</p>
+<h3>今日各業恢復辦公</h3>
+<p>前日為雙十節紀念日兩租界曾施嚴竣戒備並封鎖非必要馬路之進出口而法租界之戒備更為嚴厲自昨日起上項戒備已全部撤除至銀錢業學校及郵局海關工部局法公董局等昨日星期繼續休假今日起均可恢復辦公</p>
+<h3>周懷民畫展閉幕</h3>
+<p>故都名畫家周懷民此次南來假大新公司展覽傑作頗博各界好評定件踴躍為近頃畫展所罕見昨值星期下午前往欣賞者尤眾茲以展覽期滿於昨晚圓滿閉幕現周君擬將各方定購畫件部署就緒即行北返</p>
+<h3>各界簡訊</h3>
+<p>遣散汕頭同鄉廣東旅滬社團遺散同鄉回籍委員會於上月一菜遣送四批現為遣返粵雨量之最後一批因本批被遣回籍者本於上月杪一次遣完祇以各人證件有失效力者或不及備辦騐便證者故稽延至今至汕頭部份因開粵輪船不駛汕頭仍須暫候大約本月內亦可遣完此次海運社協助遣散頗力</p>
+<p>公利三輪車訊</p>
+<p>金融界實業界集資創設公利客車股份有限公司昨在麗都花園舉行發起人會議資本國幣二百萬元即席由發起人認定足額該公司所出車輛身寬暢速率頗快一部份不日即可通行</p>
+<p>昨日本報發報時間工時</p>
+<p>體育新聞</p>
+<h3>江南文社詩人大會</h3>
+<p>今將寄附獎品諸芳名順列如下王雪塵寄金三千元新君寄金二千元申君寄金二千元錢旦寄金二千元周鑫寄金一千元林教育局長寄金四百元陳冉生寄金十元報道部長橫山中佐寄贈扇子二百五十把又燈籠五十隻青年隊贈花藍四隻書一百五十本祝詩人大會長聯三付及其他佈置孫守素贈聯十對徐朗西贈字囝共三幅張侶了畫共七幅徐鐵珊贈字六幅聞蘭亭贈字六幅袁履登贈字五幅瞿存樸贈字五幅倪軼池贈長聯一對畢少譚贈書一本畫一幅蕭覺天贈扇面兩把趙希明贈書八本鄧春澍贈字畫二幅聯一付胡文階贈書一本竺行之贈字一幅倪也魯贈聯一付安岡博士祝諸吟友大會贈詩一首彭益廉頌諸文友長聯一聯</p>
+<p>再者文韻彭益廉得中左六右十二名及鹽韻右二左十九名乃左右評判所選特此聲明</p>
+<p>江南文社一同道謝</p>
+<h3>同仁乒乓盃聯賽郵務聯青奪季軍今晚七時在西警球室舉行</h3>
+<p>同仁盃慈善乒乓錦標賽分組程序經一月之環戰業已全部賽竣同組郵務輿仁組聯青兩隊各以七勝一負之戰績分獲該兩組亞軍照章須決賽一次以定總季軍之誰屬定今晚（十二日）七時起在海格路三四六號西警球室舉行各界可備函向九江路二一九號同仁醫院辦事處索取入場券憑券入場按郵務素負盛名於球壇實力非常雄厚擁有健將王惠章劉造時姜春山葉秀章等四騎士上次因球運不佳致為青聯所挫殊屬可異聯青亦屬後起之佼佼此次在仁組力敗強隊如北美洲郵星戰績煊赫最後祗以一分之失見負於人才濟濟之三益今晚一旦與郵會師雙方球藝均等鹿死誰手殊駖預測</p>
+<h3>今日召開年會</h3>
+<p>上海西聯足球會自本年度起見改組為委員制今日下午五時一刻假霞飛路一二七三號葡商總會內召開本年度年會商討本屆足球聯賽方針並選舉本屆職員及討論召集全體球隊代表大會等</p>
+<h3>運動簡訊</h3>
+<p>一星盃小球昨賽結果公佈光夏勝巨星三——○文靜勝志云三——二秋潮勝敏隊二——一冠雲勝鐵烏四——一ＣＣ勝雄偉四——○永毅勝北友三——一健身勝南聯二——○豐友勝偉星二——一</p>
+<p>保甲自警盃足球慈善賽決延至本月十八日（星期日）下午二時在膠州路膠州公園舉行今日下午三時起在永安先施新新大新四大公司及大光明南京國泰美開春大華六大戲院開始預售門票</p>
+<h2>Page 6</h2>
+<p>經濟專刊第四三五期</p>
+<p>週間市語</p>
+<h3>似是實非似非實是問得希奇答得巧妙</h3>
+<p>甲：日本之物價管理有補償制度為畏本市有沒有設置補償制度之必要</p>
+<p>乙：零售捐飮食娛樂等捐未必全部報繳此亦可視為變相之補償制度（編者按各該哌依法應全部報繳）</p>
+<p>甲：聽說當局現正嚴禁銀錢業經營地產等交易怎麼辦呢</p>
+<p>乙：地產交易等等本係各行莊信託部的經常業務信託部經營此等交易依法依理均不在禁止之列（編者按信託部為代客委託而設非為本行委手託而設）</p>
+<p>甲：你究屬有多少本鈿？今天這家中明天那家監察似乎有用之不竭的實力</p>
+<p>乙：做了董監事之後就把股票出售豈不又具備在另一家做董監事的資格了嗎（編者按依公司法規定如係發起人則在公司新設的第一年內不得出讓其股票目前一人身兼許多新公司董監事之職恐以被衣並贈以乾股者居多公司方面旨在借重名人增加其聲望與歐美之專為人作發起人者性質相彷</p>
+<p>市場動態</p>
+<h3>公債激漲</h3>
+<p>債市走勢不出本刊所料上週已呈劇烈反動上漲之烈得未曾有五天間各債均出六十地大關丙種且達六十四元高峯此非記者預測正確實係情理中勢所當然者並聞新舊兩證券業公會之合併改組刻已接近目於上週五拍電南京向當道要求維持債信云云依吾人觀察此種要求似無拒絕之理但亦決無無條件接受之理而陽可能之條件不外乎（一）新籌碼入場問題（二）市價變動之幅度問題（三）市場監理之設置問題等等至於統一各債本息之償付的繼承問題或亦有重行商議之可能但結果不致會超過年初聲明之原則則可斷言</p>
+<p>如就各債今後之走勢而言將視上項消息是否可靠其結果又如何解決而定在迷離撲朔時期走勢將流通籌碼之揑緊而繼續向前推進但本刊已屢屢言之此時此地對於債市之觀測究不能不作兩面想本砷上期所論今後債市之各點目前市場動態果已證明其所見不誤但仍須細細讀之方能知其另一種因素亦不可不加以提防者也要而言之走勢趨堅仍係情理中事但其漲勢過激則非佳兆蓋所謂投鼠忌器不能不知明乎此則最近今後之市勢應走向各債間價格之調整一俟突出角度磨平再待新奇峯之出現否則當作別論</p>
+<h3>華股盛況</h3>
+<p>上週華股走勢亦不出本刊所料新華股奇峯突起尤以新亞股受新亞資本集團大擴張之良好影響飛漲最烈新亞當局長袖善舞資本集團內所營各業無不蒸蒸日上</p>
+<p>最近又組織資本一千萬元之投資公司新亞系統下各公司股要東有優先認股權因之頗有搜羅高，眼明手快了大振五洲信誼中法一時為之帶起時令進冬藥業本入佳境新藥股因亦日趨佳境至於營業年度之日近終結持股人之不願輕易出售其股票則係目前華股市勢向上之一般原因</p>
+<p>紡織股處境不若新藥股為有利市氣平疲大致見小翠玉悄安紗廠之第二第四兩廠原係軍管理此次列入發還之列市價一時激漲二百餘元然本市紡織各廠目前均在極度減工中據東報所聲討這去五個月內發還之申新等八家紗廠共有紗錠卅五萬四千錘但最近開工率不過占其三成如其中規模最大之申新紗廠開工率且不及一成三分（見八日每日新聞）則其處境之困可以想見</p>
+<p>查此次發還之工廠計有永安紗廠第二第四兩廠恒豐紗廠太倉了利泰紗廠緯成利記絲廠華豐紙廠南洋兄弟煙草公司七家恒豐等廠股票原鮮流動應作別論外股票素在流動之南洋兄弟煙草公司之股市竟未如永安紗廠股之受利較堪注意</p>
+<p>但就整個華股之處境而論除節近營業年度終結一點外目前並不比他時為佳且有兩種因素正在起而立之年和用為秋熟上市本市資金有攜出收買土產之勢銀根相當緊張二為公債市氣有進無退從股市流入債市之游資恐亦不在少數故除有特種情形者外股市走勢縱有一般向上可能一時仍未可寄以更多之期望可知</p>
+<h3>紗布呢絨</h3>
+<p>紗布銳氣竭鳳馬徘徊於前週原幅度之間並無可以注意之處疋頭鵝步蝸行亦有闌珊之象最近新開布號有如雨後春筍持貨人心理上之苦悶可以想見</p>
+<h3>西藥季節</h3>
+<p>時已近冬上海人又將進補與時疫流行之夏季同稱藥業季節夏季用藥貧苦者居多因彼等染時疫較富有者為易冬報情形反是能進補者均係富裕之輩故市氣前弱而後強滋補各品市氣頗銳加以食糖購買不易糖精銷路大振市價隨之而雀起</p>
+<h3>油糖市氣</h3>
+<p>食油食糖實施配給編制後本市之油糖恐慌原已輕減但最近故態復萌油行前車見購眾長蛇陣終日不散主因乃因配給量之減少與零售量之配制到處經之由乃係產地供給不充來源發生阻礙</p>
+<p>據東報所傳青島生油各廠目前都在減工乃至停工中因花生原料價格甚貴而製品的油價因受編制之故相形見同甘共苦各榨油坊乃相率停工減工關係當局為克服此種局面計現正組織華北油料協會以冀增加生產調整市價云</p>
+<h3>五金熱浪</h3>
+<p>物價編制雖厲五洋物品投機竟未稍殺上週內暴漲暴跌不減未編制前之盛況</p>
+<p>十月二日七日八日</p>
+<p>大英牌六二○○八八○○八五五○</p>
+<p>老刀牌六四五○七一五○七○五○</p>
+<p>固本皂二八五二三五三二五</p>
+<p>白祥茂二四○三七○二六五</p>
+<p>此次暴烈變動據謂由於配給量減少所喚起此說如果屬實則配給編制不能作為物價編制看矣</p>
+<h2>Page 7</h2>
+<p>自由談</p>
+<p>小談</p>
+<h3>向前駛去</h3>
+<p>— 張子容</p>
+<p>根據四五世紀前歐洲所通用的日歷十月十二日是哥倫布發現美洲新大陸的紀念日雖然依照現行的日歷推算起來正確的日期是在十月二十一日（或作十月二十三日未知孰是孰非）但是為了習慣的關係今天就算是哥倫布發現新大陸的四百五十年紀念日了</p>
+<p>哥倫布發現新大陸雖是偶然的事情但是他是一個有非常的毅力的人他有堅定的意志有不畏艱難不怕吃苦的精神這是誰也不能否認的所以發現新大陸的事雖屬偶然而新大陸不被別人所發現偏由這位熱諾亞的早晨險家去發現這去並不是偶然的</p>
+<p>我們試想像當那三隻帆船在茫茫一片的汪洋怒海中繼續行駛了五六十天而四週所見仍屬一片汪洋的時候同行的水手害怕了滿船都是怨言糧食減少了許多人要求把船頭向後轉可是哥倫布還是勇氣百倍地下令說向前駛去西半球新大陸的發現世界歷史的轉向全靠著這點不屈不撓的精神</p>
+<p>人生海洋中的水手們當你遭遇風浪的時候請勿疑懼我們當切記哥倫布所下的命令向前駛去！</p>
+<p>史話</p>
+<h3>哥倫布與新大陸</h3>
+<p>— 佳基</p>
+<p>在四百五十年前世界上發生了一件轉移歷史路向的大事可是當時卻沒有一曉得連那位擔任主角的英雄自己也不知道</p>
+<p>但是事情總算是發生了是一四九二年的十月十二日上午在西半球紅種的野蠻人聚居地文質海面突然駛來了三隻帆船接著有一部份穿著複雜的衣服的人登陸了紅種人在驚奇之餘認為這些不速之客一定是從天而降的而船上的人經過約七十天的波濤洶湧的大海洋中航行以後突然看見了陸地喜不自勝認為他們的目的地已達使命業已完成他們自以為已經發現了歐洲通匠新航線而想不到他們所發現的卻是美洲新大陸</p>
+<p>這三隻帆船和八十八名水手不消說是由一位名叫上哥化布的意大利人統率的他們於八月在日從柏羅斯港動身沿途遭遇狂風暴浪又因為哥倫布的計算不甚準確超過預算的日期仍未達到目的地以致沿途水手畏縮抱怨哥倫布祇好鼓勵安慰叫大家繼續前進終於為了他有堅定的信心和過人的勇氣他們到達目的地了同時也意外地發現了美洲新大陸</p>
+<p>哥倫布此次的航由西班牙皇后伊莎伯拉資助促成的所以他於感恩之餘把他所發現的地方全部宣佈為西班牙的屬地同時也把西班牙皇帝和皇后的名號作為一部份地方的名字以示紀念之意</p>
+<p>哥倫布看見印地安人赤身露體未曾開化於是發了悲憫之心決計向他們宣傳天主教義並在那裹創立殖民地他起初原想於發現航線之後可以把東方的金銀財帛帶回歐洲去可異這個心願始終未能實現但是他還是把他所到達之處認為亞洲</p>
+<p>他到新大陸去雖然遭遇了種種的困難甚至有一個時候被誣貪污瀆職像囚犯般地被配回西班牙去但是他的精神還是沒有受到絲毫的損傷與挫折他對於他所發現的新大陸簡直可以諳鞠躬盡瘁了他前後往回四次到一五○六年五月二十日這個號稱海洋上將的哥倫布以六十歲的平凡探險家身份鬰鬰而逝在他那簡陋的小屋子裹的牆上懸掛著一條鐵練表示他曾經做過囚徒</p>
+<h3>偶語</h3>
+<p>— 呂呂</p>
+<p>以前有句成語說多吃飯少開口現在最好把它換成少吃飯不開口</p>
+<p>雄辯是銀沉默是金但行動是鑽石</p>
+<p>蟋蜶好門可以勝一百次而於一百零一次的時候敗下從此以後不再鳴叫開牙</p>
+<p>據說閻王捉到盜跖之後把他打入第十八層的地獄盜跖在那裹受最大的苦卻聽到他下面有呻吟的聲音問之後那聲音譜子我是你的先生柳下惠閻王把我罰入第十九層說盜跖是我教出來的</p>
+<p>人可以分成兩種一種是權竭力想伸高入天堂一種是樹根竭力想下陷入地獄</p>
+<p>一個出版家對薩繆久翰生說別做什麼詩人去做腳夫吧這話在今日說來同樣有它的眞理</p>
+<p>給風一吹落花生撒下它的花而後在地上結果</p>
+<p>一朵煙頭上的火在黑暗裹迸裂了我是啟示</p>
+<p>山頂上的小草山腰裹的古松你說這是侮辱嗎</p>
+<p>筆眞是刀把我頰上的肉都削盡了</p>
+<p>話匣</p>
+<h3>粉墨生涯</h3>
+<p>— 梁燦</p>
+<p>（一）從業餘到職業</p>
+<p>演話劇能稱得上職業不過是三四年來的事情雖說話劇首次在中國出現還是在三十年前民國初年之時可是二十風年來話劇一向被人看成雕蟲小技不登大雅因為當時一切技術尚在萌芽不足以引起觀眾的興趣所以每次演出總得自己掏出錢來賠本這二十幾年來都是靠著許多熱心的話劇前輩用業餘的愛美劇社方式不絕如縷地繼續著話劇的生命可是這個技術磨練時期終於過過各種的技巧都慢慢的成熟優秀的劇本產生了良好的演員也出現了話劇對於觀眾不再是簡陋的堪的游藝會式的演出而是一種新型的綜合藝術於是職業劇團方才開始站得住腳可是時至今日話劇在娛樂部門已經發達到僅次於方興未京戲和電影的地位它擁有十九個職業劇團七八個第一流劇場和近千個從業員包括編劇導演演員舞臺工作人員和工匠等在營業上它也產生了一個戲連演三個月的紀錄並且現在每天有一萬左右的觀眾川流不息地化上能看兩次電影的代價來欣賞一番這所謂綜合藝術者而這藝術最直接表現於觀眾的就是演員</p>
+<p>（二）話劇的包銀</p>
+<p>演員在一個劇團里佔有很重要的地位對外說由於演員陣容的強弱可以決定一個戲生意的好壞對內說演員是數最多也是人事糾紛最多的階級普通職業劇團的演員可以分為兩種一種是基本演員就是和劇團訂有合同只能在該團演戲者另一種是特約演員是由於人數不夠或是為了特種需要而請非團員客串的在報酬方面基本演員在按月支薪（不論演若干場總是照合同拿錢）照目前的情形基本演員的薪金每月約由二百元至六七百元由各劇團情形而定特約演員以演出的場數計算大約每場由四五元到十餘元不等這種高額的薪水還是近半年來因為劇團成立過多彼此挖角競爭而抬起不過以現在生活費用看來拿二三百元的三流演上人的生活都不易至認準事后一六百元的一流演地月之薪也只夠一衣一鞋之資上臺要好看開支大矣不過行行出狀元演員中也有些掛得起主演大明星牌子者或收入總營業百分之二十或每票另抽一元之數夜間　日入千金生財有道這又另當別論了</p>
+<h3>醫生三身份</h3>
+<p>— 佳基</p>
+<p>據說在病人眼中一個醫生有三個身份</p>
+<p>請到病人牀邊的時候——是天使</p>
+<p>把毛病醫好了的時候——是上帝</p>
+<p>要收診金藥錢的時候——是魔鬼</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一○）　飛來峯</p>
+<p>在黃龍看來黑暗裹走個十里八里路算不了一回事可是翠珍就不能儘讓他揟著走在離開盛虎山家裹沒多少路說黃先生你讓下來吧黃黃站定了道翠珍姊你喚我黃先生了我幾時當過先生的這稱呼不對翠珍道哦黃龍哥你放我下去吧黃龍道就媽媽夫夫放你下來不然我還要和你論年紀到底是黃龍哥還是黃龍弟把劃準了再放你下來翠珍在黃龍背上瀉下去是田岸上對面恰恰有一個墳周圍種了好多柏樹倒是給他們擋了風黃龍看翠珍坐在地下又說道翠珍姊你不能直沖驪不能走還是我揹了你走翠珍道你要揹了我走我真不敢當你是怕他們追了來嗎黃龍道你說什麼我會怕他們好翠珍姊你給我坐著坐半個鐘頭再走他們要在半個鐘頭裹來我文治武功個個把他們打的屁滾尿流翠珍姊這不是我黃龍誇口你躲都不用躲還是坐在這裹睜了眼看黃龍的話說的多麼有力不像是在舌尖上滾了出來找卻像在牙齒上嚼了出來的</p>
+<p>翠珍原是想坐一坐再慢慢的站起來看能走不能走現在聽黃龍這般倔強的口氣倒急於要支撐起來走路她扶著道旁一棵小樹一站說能走了我們還是走現在我把葉家當做家了黃龍道不能你坐半個鐘頭再走坐下坐下我犯了罪會牢是聽那瘟官的命令我譜子話你該聽是我的命令坐下翠珍有些知道他令出必行只得又坐下來笑道黃龍哥你是什麼時候來葉家的我真感謝你你又怎麼知道我在那裹黃龍一笑道我嗎我的話多呢（二○○）</p>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.10.12</h1>
+<h3>Heavy Fog and Snow in the Caucasus Impact German Operations; Shift in Focus of Warfare from Stalingrad to the Don River Bend Favorable for Soviets</h3>
+<p>Berlin, 10th (DPA)</p>
+<p>German attacks in the northwestern Caucasus region have made considerable progress as of the 8th. Currently, operations in that area are greatly hampered due to heavy fog and snow.</p>
+<p>Moscow, 11th (DPA)</p>
+<p>According to the Soviet Information Bureau's afternoon communique, our forces continued operations northwest of Stalingrad and in the Mozdok area today. There were no changes in other areas.</p>
+<p>Berlin, 11th (Havas)</p>
+<p>According to recent frontline reports, weather conditions have begun to affect military operations along the entire Eastern Front. The heavy snow in the Caucasus is unexpected, and heavy snow in the central and northern regions is also sufficient to limit military activity. Therefore, only localized battles occurred on Friday. German forces continued to advance in the Tuapse area. German forces in the Terek area continued to advance towards the Grozny oil fields. Another German force, after clearing out the remaining enemy in the Maikop area, advanced along the railway line towards Oshkhonigiski, placing the Soviet forces in a very dangerous situation, especially with the Soviet left flank under the most pressure. The Soviet command was forced to order another retreat. German engineers demolished a skyscraper in Stalingrad. The building was located in the northern suburbs of the city. German engineers dug a tunnel to the building and planted explosives. All Soviet troops in the area were killed in the explosion. Apart from this, only artillery battles took place in the Stalingrad area. German air forces continued to attack Soviet supply lines in the rear. Soviet gunboats on the Volga River made several attacks, but were all repelled by German artillery positions on the east bank of the river. The Soviets lost several gunboats.</p>
+<p>Somewhere on the Ukrainian Border, (Havas)</p>
+<p>There have been no major developments on the Eastern Front in the past 24 hours. German forces continued to engage in mopping-up operations within Stalingrad in order to clear out the remaining enemy. Although the Red Army put up a resolute resistance, they were forced to abandon some territory. Currently, only the factory district within Stalingrad remains in Red Army hands. The attention of German military observers has shifted from the battle for Stalingrad to the major battle that has been taking place in the Don River bend for the past three days. The development of the war there is favorable to the Soviet Union. According to the latest news, the Red Army crossed the Don River three days ago and penetrated two kilometers into German lines. They are now trying to hold the new positions and strengthen their defenses to hold on. In fierce fighting all day yesterday, the Red Army also gained a bridgehead on the west bank of the Don River. Neutral observers say that regardless of the outcome of this battle, it will not change the fate of Stalingrad. The Red Army may not be able to recover this important industrial center. However, if successful in the area between the Don and Volga Rivers, the German forces in the Caucasus will suffer a major blow. The recent slowing of the German advance in the Terek River basin is due to this. As for the rumors that German forces launched an offensive in the Kalmyk region, attempting to advance on Astrakhan, this has been denied by responsible parties. However, it is not impossible for the Germans to launch an offensive in the very near future.</p>
+<h3>Soviets Begin Training Ski Troops in Preparation for Winter Warfare</h3>
+<p>Moscow, 11th (Havas)</p>
+<p>TASS reported today that in recent days the Red Army High Command has begun training ski troops in preparation for the coming winter war. Training has begun simultaneously in 27 major cities across the country. The position of head coach is held by skating champion Vasilyev.</p>
+<h3>German Attack in Central Sector Unsuccessful</h3>
+<p>Stockholm, 11th (Havas)</p>
+<p>Several war dispatches have just been received from the Eastern Front, the most noteworthy of which is that yesterday, under the cover of artillery fire, aircraft, and armored vehicles, German forces in the central sector launched a fierce attack on Red Army positions. After a Red Army counterattack, the positions of both sides remained unchanged, but the exact location was not specified. It was generally in the Rzhev area or northwest of Smolensk. The purpose of this move by the German forces was to test the strength of the Red Army. It had previously been reported that the Red Army had concentrated forces in that area. However, this German attack in the central sector may not be the beginning of a large-scale German offensive.</p>
+<h3>Roosevelt Scheduled to Deliver Speech on Thursday</h3>
+<p>Lisbon, 11th (DPA)</p>
+<p>According to reports from Washington, D.C., President Roosevelt's speech on Thursday will address major domestic and international issues. Presidential Secretary O'Leary said the broadcast would be a "fireside chat."</p>
+<h3>Canada and the Soviet Union Exchange Ambassadorial Appointments</h3>
+<p>Lisbon, 11th (Havas)</p>
+<p>According to reports from Ottawa today, Major General Wotherspoon has been appointed as Canada's first ambassador to the Soviet Union. Mr. Wotherspoon will depart for his post soon. Furthermore, the Soviet Union's first ambassador to Canada, Mr. Gusev, will arrive in Ottawa within days.</p>
+<h3>Canada Prepares to Follow Britain and the United States in Abolishing Extraterritorial Rights in China</h3>
+<p>Lisbon, 11th (Havas)</p>
+<p>Ottawa dispatch: Canadian Prime Minister King stated yesterday that Canada is also prepared to negotiate with the Chongqing authorities to abolish extraterritorial rights in China.</p>
+<h3>North China Branch of the Bank of Communications to Resume Operations in the Short Term</h3>
+<p>Beijing, 11th (DPA)</p>
+<p>The Bank of China and the Bank of Communications have reached an agreement with the authorities to reopen the North China branch in the short term. The branch's business will be limited to the local environment and seek development.</p>
+<h3>Zhejiang Rural Clearing Office Orders Key Points for Self-Defense Work</h3>
+<p>Jiaxing, 11th (Central News Agency)</p>
+<p>The second phase of rural clearing and self-defense work in southeastern Taihu has already begun. All self-defense instructors in each district have also been dispatched to the districts to begin activities and promote concurrent household registration. The Zhejiang office has set key points for work to ensure that each special zone fully understands the procedures, and orders each special zone to comply with them: (1) When checking household registrations, preparations must be made for the organization of able-bodied men for labor. (2) All persons aged 18 to 45 must be registered. (3) The organizational method can be based on the regulations for the organization of self-defense corps.</p>
+<h3>Most of Vietnam's Rice is Shipped to Japan</h3>
+<p>Tokyo, 11th (DPA)</p>
+<p>According to the Asahi Shimbun, the Vietnamese government's Food Administration estimates that the total rice harvest in Vietnam this year is normal. Eighty percent of the total production has been shipped to Japan under the Japan-Vietnam agreement.</p>
+<h3>US Secretary of the Navy Returns to Washington</h3>
+<p>Washington, 11th (Havas)</p>
+<p>U.S. Secretary of the Navy Knox, who has toured Latin American countries for the past 18 days, returned here today. During his trip, he visited the Brazilian capital and inspected naval bases in the Caribbean Sea.</p>
+<h2>Page 3</h2>
+<h3>German Submarine Activity Expands to the South African Coast; British and American Supply Lines Threatened; German Propaganda Announces Allied Oil Tanker Losses Reach 4.6 Million Tons</h3>
+<p>Berlin, 10th (Havas)</p>
+<p>The German High Command recently issued a communique stating that German submarines have opened a new battlefield off the coast of South Africa, and military operations are proceeding very smoothly. Since the Arctic Ocean supply line is threatened by German submarines, Britain and the United States are now paying attention to operating the South Africa to Persian Gulf supply line, which can not only supply the Soviet Union but also serve as a supply line for Egypt and India. Therefore, South African ports are extremely important for British and American ships.</p>
+<p>Berlin, 11th (Havas)</p>
+<p>Responsible military figures here announced last night that since the beginning of the war, German naval and air forces have sunk enemy oil tankers totaling 4.6 million tons. On May 12 of this year, the German military authorities announced that the sunk British and American oil tankers totaled 3.1 million tons. Since then, German submarines have intensified their activities off the coasts of the United States, the Caribbean Sea, the Atlantic Ocean off West Africa, and the Mediterranean Sea. From May to early October of this year, they sunk a total of 215 enemy oil tankers, totaling 1.5 million tons, bringing the total to 4.6 million tons. From the United States' entry into the war until May 12 of this year, a total of 105 oil tankers were sunk.</p>
+<p>Berlin, 11th (Havas)</p>
+<p>Authoritative sources here released the following list last night regarding enemy oil tankers sunk: *Kennebec* (U.S.), 10,600 tons; *Kirkland* (Norway), 7,455 tons; *Samuel Q. H. Moffett* (U.S.), 9,974 tons; *Donovania* (British), 8,150 tons; *San Caspado* (British), 12,910 tons; *Sturevaar* (Norway), 6,030 tons; *Little Havers* (British), 6,990 tons; *Vimiera* (British), 5,728 tons; *Harwood* (U.S.), 6,610 tons; *Sadler* (U.S.), 9,630 tons.</p>
+<p>Lisbon, 11th (Havas)</p>
+<p>Survivors of the sunken American oil tanker *Kennebec* arrived here yesterday and said that the *Kennebec* sank near the Azores Islands at the end of August. The ship had just completed its maiden voyage in February of this year and was soon sent to the bottom of the sea.</p>
+<h3>American Giant Troop Transport Sunk by German Submarine</h3>
+<p>Berlin, 11th (Havas)</p>
+<p>According to the German High Command, submarine commander Walkering reported that on September 25, at around 4:00 PM, a giant troop transport was discovered, resembling the 19,627-ton *Viceroy of India*. Two escorting destroyers, having apparently detected the submarine, dropped depth charges. The ship also fled south. It was eventually sunk by the second submarine. The time and location reported by the two submarines completely matched the location reported by submarine commander Hellriegel for the sinking of the giant ship *Pacifico I*, 17,702 tons. On the same night, Walkering heard an explosion and saw a flash of light, similar to the location where Hellriegel reported sinking the giant ship *Pacifico I*, 17,702 tons.</p>
+<h3>Argentina and Chile Protest to the United States, Deny Axis Elements Engaging in Activities Within Their Borders</h3>
+<p>Buenos Aires, 11th (Havas)</p>
+<p>The Argentine Foreign Minister announced last night that the Argentine authorities have instructed the Argentine ambassador to the United States to express to the U.S. government the Argentine government's extreme dissatisfaction with the speech delivered by U.S. Undersecretary of State Welles. The Argentine government's official statement on the matter stated that Argentina had made a concrete guarantee to the U.S. government on July 1 of this year to take measures to prevent Axis nationals from engaging in espionage activities within Argentina. Welles' remarks are an insult to Argentina. Welles' claim that the sinking of certain ships was due to the Argentine government is unacceptable. The locations where the ships were sunk are far from Argentine territorial waters. The facts are all there. How can Argentina be held responsible?</p>
+<p>Washington, 10th (Havas)</p>
+<p>Undersecretary of State Welles stated yesterday that the losses of some Allied merchant ships were due to the fact that Axis elements were able to operate within the borders of Chile and Argentina. Chilean Ambassador to the United States, Miguel, personally visited President Roosevelt today on behalf of the government to lodge a protest. The meeting lasted 45 minutes, and Undersecretary Welles was also present. Upon leaving the White House, the ambassador told reporters that he had lodged a protest in writing in addition to the oral negotiations, but that the talks were friendly. As for his country's President Ríos being invited to visit the United States as head of state, there is no reason to delay the trip, and President Roosevelt is preparing a grand welcome for his country's head of state.</p>
+<h3>Abolition of Red Army Political Commissars; Stalin Explains the Reasons; Berlin Pays Close Attention</h3>
+<p>Lisbon, 10th (DPA)</p>
+<p>According to reports from Turkey, Stalin has ordered the abolition of the political commissars dispatched by the Communist Party in the Red Army. All current political commissars will be placed in the military structure. Therefore, the Communist Party's control over the Red Army has been abolished in principle. Stalin explained the reasons for abolishing the political commissars, saying that political commissars had a value in the Soviet era for all Red Army soldiers, but this war has proven that political commissars are no longer necessary.</p>
+<p>Istanbul, 11th (Havas)</p>
+<p>Moscow Radio commentator Mitrev defended the Soviet authorities' reform of the political commissar system in the military last night, saying that the reform was based on the party's line. Lenin and Stalin both advocated strict organization and discipline, especially attention to the unity of command. Now that the front and rear should implement iron discipline even more, a new decree was promulgated to strengthen the combat effectiveness.</p>
+<p>Berlin, 10th (Havas)</p>
+<p>German authorities are paying close attention to the Soviet Union's abolition of the Red Army Political Department (political commissars were originally stationed at all levels of the military), but have not commented on its reasons or speculated on its consequences. The general public believes that the Soviet authorities, in light of the Red Army's repeated defeats, want to reduce the responsibility of party and government leaders, and that Stalin intends to unify military command to cope with the current military situation.</p>
+<h3>Standley Arrives in Tehran and Makes a Statement</h3>
+<p>Ankara, 11th (DPA)</p>
+<p>According to reports from the Iranian capital, U.S. Ambassador to the Soviet Union Standley arrived in Tehran yesterday. The U.S. ambassador told reporters that one of the purposes of his return home was to find ways to speed up the delivery of supplies to the Soviet Union. Before leaving Moscow, the U.S. ambassador met with Stalin, who urged the Allies to increase their aid to fulfill their obligations.</p>
+<h3>Chief Minister of Sindh, India, Allah Baksh Resigns</h3>
+<p>Karachi, India, 10th (Havas)</p>
+<p>Chief Minister of Sindh, Allah Baksh, resigned today. It is rumored that Sir Ghulam Hussain Hidayatullah will organize a coalition cabinet to succeed him. Allah Baksh's cabinet has been supported by the Congress Party. Mr. Baksh is extremely dissatisfied with the speeches made by the British Secretary of State for India, Amery, in the House of Commons in recent days.</p>
+<h3>Baku Oil Field</h3>
+<p>Baku is the largest oil-producing area in Europe. The city of Baku is located on the Absheron Peninsula on the coast of the Caspian Sea. Because of the famous oil fields nearby, it has become world-renowned. The picture shows the scenery of the city of Baku, with well-organized streets and beautiful scenery, and it is also a scenic spot in the Caucasus.</p>
+<h3>U.S. Flying Fortresses Attack France and Belgium Under the Protection of 500 Fighters; Germans Claim Seven Were Shot Down</h3>
+<p>Berlin, 10th (Havas)</p>
+<p>Responsible figures here stated that a large number of U.S. Flying Fortresses, under the protection of more than 500 fighters, attacked northern France, especially the French industrial center of Lille. German defense forces concentrated their efforts on dealing with the U.S. bombers. German fighters suffered no losses, and although the U.S. bombers were protected by many enemy aircraft, seven were still shot down by us within five minutes. Therefore, they were repelled by us before the enemy aircraft could drop their bombs.</p>
+<p>Berlin, 10th (Havas)</p>
+<p>The German High Command issued a war bulletin stating that enemy aircraft bombed northern France and Belgium yesterday. Many American-made bombers were shot down by us, and we only lost one aircraft.</p>
+<h3>U.S. to Send Troops to Bahrain Island; 1,000 U.S. Troops Arrive in Britain</h3>
+<p>Ankara, 11th (Havas)</p>
+<p>According to reports from Basra, the United States will establish a garrison on the Bahrain Islands in the Persian Gulf because the United States has greater economic interests on the island than Britain, so it is necessary to establish a garrison. The Indian government's military governor stationed on the island will be replaced by a U.S. official.</p>
+<p>Stockholm, 11th (Havas)</p>
+<p>London dispatch: Another 1,000 U.S. troops have arrived in Britain and will receive training to open a second front.</p>
+<h3>Detailed Rules for the Implementation of the Regulations for the Suppression of Adulteration of Cotton</h3>
+<p>Article 1</p>
+<p>These Detailed Rules are formulated in accordance with the provisions of the Provisional Regulations for the Suppression of Adulteration of Cotton.</p>
+<p>Article 2</p>
+<p>The agencies implementing the Provisional Regulations for the Suppression of Adulteration of Cotton (hereinafter referred to as the Regulations) are the Cotton Industry Management Offices and sub-offices and the various inspection bureaus directly managed by the Ministry of Industry or entrusted to various provinces, cities, and districts.</p>
+<p>Article 3</p>
+<p>The managers of yarn factories, cotton firms, or other cotton merchants who purchase cotton containing moisture or impurities exceeding the maximum limit shall be punished in accordance with Article 5, Paragraph 1 of these Regulations.</p>
+<p>Article 4</p>
+<p>The yellow cotton, red cotton, foot cotton, and waste cotton permitted to be sold in Article 3 of these Regulations must be declared in advance by the owner or agent, and the words "yellow cotton," "red cotton," "foot cotton," and "waste cotton" must be stamped on the outside of the package. If it is verified that the declaration is true, it will be permitted to be transported and sold. If, in addition to the original impurities, stone powder or other impurities are deliberately mixed in, or inferior cotton is bleached with chemicals, or there are other deceptive circumstances, it will still be punished in accordance with Article 4 of these Regulations.</p>
+<p>Article 5</p>
+<p>If *zhongmian* seeds and American cotton seeds are mixed before or during ginning, it will be punished in accordance with Article 9 of these Regulations if discovered by the regulatory agency. However, this does not apply to areas where *zhongmian* and American cotton are adjacent and are originally mixed.</p>
+<p>Article 6</p>
+<p>If American cotton is ginned in a *zhongmian* area, or *zhongmian* is ginned in an American cotton area, or cotton with originally mixed *zhongmian* and American cotton seeds, the reasons must be reported to the regulatory agency and proof of the mixed cotton must be submitted. If the declaration is concealed and it is clearly intended for illegal gain, it shall be punished in accordance with Article 9 of these Regulations.</p>
+<p>Article 7</p>
+<p>If a cotton merchant or cotton farmer violates the provisions of Articles 4, 5, and 9, 10, and 11 of these Regulations, and someone reports it to the regulatory agency or the regulatory agency discovers it and there is conclusive evidence, the regulatory agency may seal up the physical evidence and send personnel to the police station in the location of the owner or other agent to request the police to detain the owner or other agent and transfer them or directly send them to the judicial organs for handling in accordance with the law.</p>
+<p>Article 8</p>
+<p>People or groups who violate the provisions of Articles 4, 5, and 9, 10, and 11 of these Regulations and should be reported by the regulatory agency shall not take advantage of the name to extort or defraud, and shall not establish organizations similar to the regulatory agency. If there are any violations, they shall be handled by the local judicial organs in accordance with the law.</p>
+<p>Article 9</p>
+<p>If a cotton merchant or cotton farmer hides equipment for adding water or adulterating cotton, it shall be confiscated and destroyed by the regulatory agency once discovered. The types and names of the equipment that should be suppressed in the preceding paragraph shall be determined by the Cotton Industry Management Office or sub-office based on the actual local conditions, and shall be announced in advance.</p>
+<p>Article 10</p>
+<p>In cases handled by local judicial organs in accordance with Article 7 of these Detailed Rules, a letter may be sent to request that the original judgment be sent to the regulatory agency.</p>
+<p>Article 11</p>
+<p>The cotton sealed up in accordance with Article 7 of these Detailed Rules must be approved by the regulatory agency and returned to the original owner or his agent for self-rearrangement, and the regulatory agency shall send personnel to supervise it. It can only be sold after the rearrangement is completed and the inspection is qualified.</p>
+<p>Article 12</p>
+<p>The regulatory agency shall perform its regulatory duties in yarn factories, ginning factories, packing factories, cotton firms, peddlers, and other cotton merchants, and the machinery packing factories operating cotton packing in transportation locations shall be inspected by the regulatory agency.</p>
+<p>Article 13</p>
+<p>In the purchase and sale of cotton stipulated in Articles 6 and 7 of these Regulations, the moisture and impurity content shall be indicated on the contract in addition to the price in accordance with these Regulations. If the contract is not indicated, or the indication is not fulfilled, or a dispute arises due to price deduction or compensation, a public notary agency may be requested to prove the matter. The provisions regarding the public notary agency and its methods shall be determined separately.</p>
+<p>Article 14</p>
+<p>When cotton is transported from the original place of transport with a qualified certificate issued by the regulatory agency, the regulatory agencies in other places shall release it upon inspection of the certificate. However, the principal body may conduct spot checks when necessary. If it is verified that there is conclusive evidence of water adulteration or adulteration in transit, or that the original regulatory agency's inspection was negligent, it shall be handled in accordance with Article 8 of these Detailed Rules or the original regulatory agency shall be notified for verification.</p>
+<p>Article 15</p>
+<p>The district office and sub-office inspection bureaus do not charge any fees for inspecting cotton.</p>
+<p>Article 16</p>
+<p>Cotton merchant registration in the location of the regulatory agency shall be handled by the agency. Cotton merchant registration and publicity matters in other cotton-producing counties may be entrusted to the county governments to assist in handling.</p>
+<p>Article 17</p>
+<p>The county governments and police stations in cotton-producing areas shall be responsible for assisting the regulatory agency in matters related to the implementation of these Regulations.</p>
+<p>Article 18</p>
+<p>The methods for inspecting water adulteration and adulteration of cotton and the general rules for cotton merchant registration shall be determined separately.</p>
+<p>Article 19</p>
+<p>These Detailed Rules shall come into force from the date of amendment and promulgation.</p>
+<h2>Page 4</h2>
+<h3>Anti-Aircraft Lampshades and Curtains Should Be Quickly Completed</h3>
+<p>The Mai Lan District Performed Anti-Aircraft Fire Protection and Rescue Yesterday</p>
+<p>Although the expanded anti-aircraft exercise from the 1st to the 8th of this month has ended, residents should continue to prepare the blackout lampshades and curtains for use at any time and should not put them away. From now on, anti-aircraft exercises will no longer be announced in advance and will be carried out at any time with sirens. Therefore, residents should immediately distinguish the sound of the sirens to determine whether it is a warning, control, or air raid control, and take the necessary anti-aircraft measures. Those who have not yet completed the preparations should quickly complete them and wait for spot checks at any time.</p>
+<p>Yesterday's Exercise</p>
+<p>The 57th and 60th Lianbao in the French Concession's Mai Lan District, from Dongxin Bridge Street in the east to Zilaihuo Street in the west, and from Fa Da Ma Lu in the north to Ningbo Road in the south, were convened yesterday afternoon at 3:00 PM by the Zhengfu Lianbao chiefs to gather the leaders of the Baojia and the Civil Police Corps at the Tongren Fuyuan Branch Hall to set off and perform fire protection, rescue, and cleaning work. First, ropes were used to block and prohibit pedestrians. Then, fire protection work was performed successively at the Lixianli on Fa Da Ma Lu and Zilaihuo Street. The Civil Police Corps carried water buckets and yellow sand to put out the fire. Then, people pretended to be injured and collapsed to the ground to call the rescue team, who used stretchers to carry them to the Tongren Fuyuan Branch Hall for first aid and medical treatment. Finally, the cleaning team was called to sweep the garbage at the performance location. The performance lasted for one hour.</p>
+<h3>Selling Grain for Nine Days Each Period</h3>
+<p>Account Settlement for Rice Shops on the Tenth Day; Purchase Certificates Use Duplicate Format</p>
+<p>Because the 11th is Sunday, the rice shops in the two concessions will stop selling grain. The fourth grain for the 14th period must be sold starting from the 12th. However, Sundays will no longer be closed in the future and will continue to supply residents to purchase grain. The last day of each ten-day sales period will be closed to allow the rice shops to handle the accounting for the period. Therefore, the rice shops will be closed on the last day of the fourth period of sales. Those who hold 14th period rice tickets must purchase grain before 2:00 PM on the 19th of this month to avoid losing their validity. The Public Works Department's Grain Office has set the 12th to issue purchase certificates for the 16th to 20th periods. All householders should bring their property tax receipts to the nearest district office where they previously received their certificates. Starting from the 16th period, a flour purchase certificate will also be issued. Both the rice purchase certificate and the flour purchase certificate will be in duplicate format to allow citizens to purchase grain and flour from the same rice shop.</p>
+<h3>Woolen Fabric Retail Price Reduction; Reduction of 2%; Limited to Three Months</h3>
+<p>Because the Woolen Fabric Trade Association was invited by the authorities to cooperate with the manufacturers, sellers, and retailers of woolen fabrics to reduce the price of goods again to achieve the goal of stabilizing prices, it has discussed the cooperation methods with the factories and decided that from now on, the price of woolen fabrics manufactured in this city will be reduced by another 2% from the price limit approved by the authorities. This price reduction will be valid for three months and has been approved for implementation. All members and allied businesses, such as silk, satin, cotton cloth, and Western clothing, are hereby notified to comply.</p>
+<h3>French Concession Moving Permit Fees</h3>
+<p>Residents of the French Concession will be charged a corresponding fee for obtaining a permanent moving permit starting today. A fee of 50 cents will be charged for each dependent household moving, and a fee of one yuan will be charged for two or more people. A fee of 50 cents will be charged per person for principal households moving four or fewer people, and a fee of two yuan will be charged for four or more people. A fee of two yuan will be charged for principal households moving two or more people. Residents of each household in the French Concession who move in or out for more than one month must obtain a permanent moving permit. In terms of procedures, a report form must first be filled out and the fee paid to the Lianbao office. The Lianbao office will forward it to the police station in charge the next morning for review, and then issue a moving permit. This matter has been notified by the chiefs of each section to the responsible personnel in each Baojia district for implementation.</p>
+<h3>Embezzling Property Tax</h3>
+<p>Reporting Inhabited Houses as Vacant Houses to Share the Stolen Tax</p>
+<p>The Public Concession's Public Works Department's Tax Office recently discovered that employees Zhang Shunfa and Shen Lushan had embezzled public funds and reported the matter to the Central Police Station, which arrested the two. After investigation, it was learned that Zhang and Shen had reported inhabited houses as vacant houses since the previous year and embezzled the taxes paid by the residents for their own use. As of September of this year, the amount of embezzlement was found to be 13,167.80 yuan. Therefore, they were ordered to be detained pending interrogation.</p>
+<h3>Gosmore Returns to Ping from Tianjin</h3>
+<p>The English-American Grand American Evening Post reports that French Ambassador Gosmore, who traveled to Tianjin at the beginning of last month, arrived in Tianjin from Beiping at 5:50 PM on October 5th. The French consul and many representatives of the French military and civilians welcomed him at the station. French officials and civilians in Tianjin had been entertaining him for several days, and Mr. Gosmore only returned to Beiping on Friday.</p>
+<h3>Report on Baojia Voluntary Donations in the French Concession</h3>
+<p>Tongyun 120 yuan, Xieshunxiang 150 yuan, Shangzai 150 yuan, Chen Angui 72 yuan, Shi Xianzhu 24 yuan, Shunmao 24 yuan, Quantai 200 yuan, Zhisheng 200 yuan, Shen Zhujun 84 yuan, Xinkang 250 yuan, Xiangmao 500 yuan, Rixin 500 yuan, Pan Yuansheng 500 yuan, Dechang 100 yuan, Housheng 500 yuan, Jieshun 500 yuan, Qianji 500 yuan, Fuchang 500 yuan, Yiji 500 yuan, Xie Mao 500 yuan, Xie Mao Beihuo 500 yuan, Xiede 250 yuan, Zhenfeng 500 yuan.</p>
+<p>Yongyuanxiang 500 yuan, Yingtai 100 yuan, Zhaochang 100 yuan, Zhaoyuan 100 yuan, Small Accounts Foreign Firm 500 yuan, Xiehe 100 yuan, Zhentaixiang 300 yuan, Tongtai 300 yuan, Zhao Zihong 100 yuan, Quanchangdong 300 yuan, Yongtai 300 yuan, Hengsheng 300 yuan, Lu Lianfu 300 yuan, Tongtaiyong 100 yuan, Wanchang Company 500 yuan, Yuanxing 100 yuan, Taishengyong 100 yuan, Yuansheng 500 yuan, Fufeng 500 yuan, Zhenyu 500 yuan, Shunmao 100 yuan, Junchang 100 yuan, Yongji 300 yuan, Yuanchangde 300 yuan, Yida 500 yuan, Yilong 500 yuan, Maoxing 500 yuan, Yuanchang 100 yuan, Zhenyuan Hengxing Xinhe Yu Fa Jiang Shi Yu Yuan Xietai Xinkang Yichang Jiufeng Dechang Hao Hongxing Hongyuan Xing Kunyuan Xinmao He Juxing Changyuan Yongji Futai Yufeng Yongda Xinfu Yongchang Fayu Defeng Yongxin Zhenfeng Zhan Yuanyuan Xie Wanchun Yuankang Xie Baokang Yifeng Taihe Xiang Dakang Minsheng, all the above are 300 yuan each. Qiji 200 yuan, Tongfuxiang 200 yuan, Chen Tongnian 100 yuan, Wang Xiekun 600 yuan, Laotongyu 600 yuan, Qiankun 600 yuan, Laotongyu 600 yuan, Qiankun He 600 yuan, Fuhe 600 yuan, Caicheng 400 yuan, Dazhong 400 yuan, Shunda 400 yuan, Da Zhonghua 200 yuan, Zhenyuan 200 yuan, Shangsong 200 yuan, Zhang Changxing 200 yuan (to be continued).</p>
+<h3>Rental Cars Using Gasoline Substitutes Allowed to Operate, Apply for Permits Before the 21st of This Month</h3>
+<p>The Public Works Bureau Information Office announced: The Bureau has recently issued Announcement No. 6116, stating that rental cars using gasoline substitutes such as charcoal, coke, and white coal are allowed to operate within the Public Concession but must comply with Article 14 of the Public Motor Vehicle License Regulations (see Bureau Announcement No. 6111 of the 1st of this month). Those wishing to operate such vehicles should apply for a permit at the Vehicle Affairs Office of the Central Police Station at 185 Fuzhou Road before Wednesday, the 21st of this month. The number of these permits is limited, so car owners should apply for a permit before modifying their vehicles.</p>
+<h3>Japanese Military Police Affix Seals to All Enemy Property; Any Disposal Must Be Licensed in Advance</h3>
+<p>The French Concession Branch of the Japanese Military Police at 10 Bei Dang Road recently issued a notice stating: (1) The Japanese Military Police have recently affixed seals to certain movable and immovable property of enemy nationals. Anyone currently using or storing any enemy movable or immovable property that has been sealed by the Military Police should report the relevant property to the responsible Military Police. This also applies to houses and immovable property used by enemy nationals under the names of third-country nationals, as well as movable property used or stored. (2) Any neutral national wishing to sell or rent houses, immovable property, or movable property to enemy nationals must first obtain a permit from the Military Police. (3) From this date, any enemy national wishing to dispose of existing or future movable or immovable property must first obtain a permit from the Military Police. (4) Anyone violating the above rules will be severely punished according to military law.</p>
+<h2>Page 5</h2>
+<h3>After the End of the Fundraising Campaign, the Self-Defense Corps Will Hold a Grand Parade; Radio Broadcasting Propaganda Will End Tomorrow; All Sectors Enthusiastically Order Songs and Donate</h3>
+<p>The Public Concession Baojia Self-Defense Expanded Propaganda Fundraising Week began on the 5th of this month. In addition to posting eye-catching slogans and pictures at various important intersections, Baojia music concerts have also been held. Currently, a large-scale gathering of entertainment circles is underway. Broadcasting is on the second day today and will end tomorrow.</p>
+<p>It is reported that the Baojia authorities are planning to hold a Self-Defense Congress at the Racecourse at 2:00 PM on the last day of the propaganda week, the 15th, with about 50,000 people, or two-tenths, selected from the 450,000 members of the Public Concession Self-Defense Corps. After the meeting, they will parade in the main thoroughfares south of the Suzhou River. The general program for the day is: gather at the Racecourse at 2:00 PM, raise the flags (national flag and Baojia flag), sing the national anthem and the Baojia song, pay tribute to the Founding Father, then officials will give speeches. After the meeting, 50,000 people, led by the Public Works Bureau Brass Band, will parade along Nanjing Road, the Bund, Fuzhou Road, Racecourse Road, Weihai Road, Seymour Road, and Jing'an Temple Road, and finally return to the Racecourse to disperse. The radio broadcasting propaganda will last a total of three days.</p>
+<p>Great American Radio Station</p>
+<p>It was held yesterday for the first day, from 2:00 PM to 10:00 PM. Xu Tieshan, Yuan Ludeng, Ye Fuxiao, and Wang Boyuan, etc., gave speeches, followed by a Peking Opera concert. Donations were very enthusiastic. Today from 2:00 PM to 4:00 PM is a Yue Opera amateur gathering, from 4:00 PM to 7:00 PM is a women's Yue Opera gathering, and from 7:00 PM to 10:00 PM is a comedy gathering. Tomorrow from 2:00 PM to 6:00 PM is a storytelling gathering, and from 6:00 PM to 10:00 PM is a Shanghai Opera gathering.</p>
+<h3>Three Banks in Zhejiang, Jiangsu, and Anhui Urge Depositors to Withdraw Funds Quickly</h3>
+<p>Interest will be handled according to regulations.</p>
+<p>After the Shanghai branches of the Zhejiang Local, Jiangsu, and Jiangxi Yumin Banks suspended operations and were liquidated under the supervision of officials appointed by the authorities, all accounts have been checked and funds are being returned to depositors in stages starting from the 5th of this month. In addition to notifying each depositor in writing, it is hoped that all depositors will quickly come to claim their funds to clear the debt. The business hours of each bank are from 10:00 AM to 12:00 PM. Sundays are closed. Regarding the old currency deposits of each bank in the past, all have been converted into Chinese banknotes at a ratio of two to one, and interest on deposits of suspended banknotes will be paid according to the rates stipulated by each bank.</p>
+<h3>French Concession Residence Permits Are Being Issued Sequentially</h3>
+<p>An expanded news agency reporter learned that since the French Concession resident identity cards were issued by the various district police stations at the beginning of June this year, residents in areas such as Avenue Joffre are still receiving them daily. The Public Concession has completed the distribution, and all relocation matters are being handled by the Baojia chiefs, who instruct all residents to complete the reporting and registration procedures. The distribution has not yet started in the western part of Shanghai, but the reporter learned that those responsible for implementing this matter plan to implement it in the near future and have decided to give priority to young men between the ages of twenty and forty-five in order to strengthen the organization of groups similar to the Public Concession Self-Defense Corps and the French Concession Civil Police Corps.</p>
+<h3>International Red Cross is Responsible for Receiving and Sending Overseas Letters</h3>
+<p>35,000 Letters Have Been Sent. The English "Times" reports that since the International Red Cross began handling the delivery of letters in early May, 35,000 letters from nationals of countries considered hostile and neutral countries in this city have been sent by the organization. It has been confirmed that 18,000 letters have been sent to Shanghai from other places. It is said that this phenomenon is sufficient to show that the postal routes are open. According to regulations, each resident can only send letters of up to 25 words per month. These letters must have a specific envelope and be delivered to the International Red Cross at 97 Yuanmingyuan Road. It is also learned that the Japanese Red Cross has also stipulated that it is permissible to receive and send letters through Chefoo, but these letters must not exceed 50 words.</p>
+<h3>Goods Transported to Nanjing by Japanese Warships Must Submit an Additional Copy of the Manifest</h3>
+<p>The Jianghai Customs Branch Management Division announced yesterday: As a notice, all goods that are declared to be transported by Japanese military transport ships to Nanjing, whether duty-free or subject to consolidated tax, must submit an additional copy of the manifest from the 16th of this month so that the Customs can send it to the Nanjing Transit Tax Collection Office for verification.</p>
+<h3>All Businesses Will Resume Operations Today</h3>
+<p>The day before yesterday was the Double Tenth National Day. The two concessions implemented strict security measures and closed non-essential roads. The security measures in the French Concession were even stricter. Since yesterday, the above security measures have been completely lifted. Banking, schools, post offices, customs, the Public Works Bureau, and the French Municipal Council, etc., continued to be closed yesterday (Sunday). All can resume operations today.</p>
+<h3>Zhou Huaimin's Art Exhibition Concluded</h3>
+<p>The famous painter Zhou Huaimin from the old capital came south this time and exhibited his masterpieces at the Great World Department Store, which won high praise from all sectors. The number of orders was enthusiastic, which is rare in recent art exhibitions. Yesterday, which was Sunday, many people went to admire them in the afternoon. The exhibition ended successfully last night as the exhibition period expired. Mr. Zhou plans to prepare the paintings ordered by various parties and then return north.</p>
+<h3>Brief News from All Sectors</h3>
+<p>Dismissal of Shantou Compatriots. The Guangdong Shanghai Associations Sending Compatriots Back Home Committee sent off four batches last month. This is the last batch of returning Cantonese. Because those in this batch were to be sent back home at the end of last month, only those whose documents were invalid or did not have time to prepare verification documents have been delayed until now. The Shantou portion still has to wait because the Cantonese ships do not sail to Shantou, which should be completed within this month. The China Merchant Steam Navigation Company has assisted greatly in the dismissal this time.</p>
+<p>Gongli Tricycle News</p>
+<p>The financial and industrial circles jointly invested in the establishment of Gongli Passenger Car Co., Ltd. yesterday held a founding meeting at the Lido Garden. The capital was 2 million national currency, which was fully recognized by the founders on the spot. The vehicles produced by the company are spacious and fast. Some will be available soon.</p>
+<p>Yesterday, the newspaper's broadcasting time and working hours</p>
+<p>Sports News</p>
+<h3>Jiangnan Literary Society Poetry Grand Meeting</h3>
+<p>The names of those who donated prizes are listed below: Wang Xuechen donated 3,000 yuan, Xin Jun donated 2,000 yuan, Shen Jun donated 2,000 yuan, Qian Dan donated 2,000 yuan, Zhou Xin donated 1,000 yuan, Education Bureau Chief Lin donated 400 yuan, Chen Ransheng donated 10 yuan, Reporting Minister Lieutenant Colonel Yokoyama donated 250 fans and 50 lanterns, the Youth Team donated 4 flower baskets and 150 books, congratulatory poems to the president of the poetry grand meeting, 3 sets of couplets and other decorations. Sun Shousu donated 10 pairs of couplets, Xu Langxi donated 3 paintings, Zhang Lüle donated 7 paintings, Xu Tieshan donated 6 calligraphy works, Wen Lanting donated 6 calligraphy works, Yuan Ludeng donated 5 calligraphy works, Qu Cunpu donated 5 calligraphy works, Ni Yichi donated a long couplet, Bi Shaotan donated a book and a painting, Xiao Juetian donated 2 fan paintings, Zhao Ximing donated 8 books, Deng Chunshu donated 2 calligraphy works and a set of couplets, Hu Wenjie donated a book, Zhu Xingzhi donated a calligraphy work, Ni Yelu donated a set of couplets, Dr. Yasuoka congratulated all poets at the conference and donated a poem, Peng Yilian praised all literary friends with a long couplet.</p>
+<p>Furthermore, Peng Yilian won 6th and 12th place on the left and right sides of the "Wen Yun" category, and 2nd and 19th place on the right and left sides of the "Yan Yun" category, which were selected by the left and right judges. This is hereby declared.</p>
+<p>Jiangnan Literary Society Thanks Everyone</p>
+<h3>Tongren Table Tennis Cup League: Postal and United Youth Teams Win Third Place; Held at the Western Police Gym at 7 PM Tonight</h3>
+<p>The group stage of the Tongren Cup Charitable Table Tennis Championship has been completed after a month of round-robin matches. The Postal team and the United Youth team from the Tongren group each won second place in their respective groups with a record of seven wins and one loss. According to regulations, a final must be held to determine the overall third place winner. It is scheduled to be held at the Western Police Gym at 346 Haig Road tonight (the 12th) starting at 7:00 PM. People from all walks of life can send letters to the Tongren Hospital Office at 219 Jiujiang Road to obtain admission tickets and enter with tickets. The Postal team has always been famous in the table tennis world and has very strong strength, with four knights including Wang Huizhang, Liu Zaoshi, Jiang Chunshan, and Ye Xiuzhang. Last time, due to bad luck, they were defeated by the United Youth team, which was quite unusual. The United Youth team is also an emerging force. This time, in the Ren group, they defeated strong teams such as the North American Post Star, and their record was remarkable. In the end, they were defeated by the San Yi team, which is full of talent, by only one point. Tonight, once they meet with the Postal team, both sides will have equal skills. It is difficult to predict who will win.</p>
+<h3>Annual Meeting to Be Held Today</h3>
+<p>The Shanghai Western Union Football Club will be reorganized into a committee system from this year onwards. The annual meeting for this year will be held at the Portuguese Business Association at 1273 Avenue Joffre at 5:15 PM this afternoon to discuss the policy of this year's football league, elect this year's officers, and discuss convening a general meeting of all team representatives.</p>
+<h3>Sports Briefs</h3>
+<p>Results of the One Star Cup Small Ball Game Yesterday Announced: Guangxia defeated Juxing 3-0, Wenjing defeated Zhiyun 3-2, Qiuchao defeated Mindui 2-1, Guanyun defeated Tiewu 4-1, CC defeated Xiongwei 4-0, Yongyi defeated Beiyou 3-1, Jianshen defeated Nanlian 2-0, Fengyou defeated Weixing 2-1.</p>
+<p>The Baojia Self-Defense Cup Football Charity Match has been postponed to 2:00 PM on the 18th of this month (Sunday) at Jiaozhou Park on Jiaozhou Road. Advance tickets will be available for purchase starting at 3:00 PM this afternoon at the four major companies of Wing On, Sincere, Sun Sun, and The Great World, and the six major theaters of Grand Theater, Nanking, Cathay, Majestic, Great China.</p>
+<h2>Page 6</h2>
+<p>Economic Special Issue No. 435</p>
+<p>Weekly Market Commentary</p>
+<h3>Seemingly True but Not, Seemingly False but True; Strange Questions, Clever Answers</h3>
+<p>A: Japan has a price control compensation system. Is it necessary to establish a compensation system in this city?</p>
+<p>B: Retail donations, food and drink, entertainment donations, etc., may not all be reported and paid in full. This can also be regarded as a disguised compensation system. (Editor's note: All such items should be fully reported and paid in full according to law.)</p>
+<p>A: I heard that the authorities are now strictly prohibiting banking and financial industries from engaging in real estate transactions, so what should we do?</p>
+<p>B: Real estate transactions, etc., are the regular business of the trust departments of various banks and firms. The operation of such transactions by the trust department is in accordance with the law and reason and is not prohibited. (Editor's note: The trust department is set up for customer commissions, not for the bank's own commissions.)</p>
+<p>A: How much capital do you have? Today this family, tomorrow that family, it seems to have an inexhaustible strength to be a supervisor.</p>
+<p>B: After becoming a director or supervisor, I will sell the stock, so I will not have the qualifications to be a director or supervisor in another company? (Editor's note: According to the Company Law, if you are a promoter, you cannot transfer your shares in the first year of the company's new establishment. At present, one person holds many positions as directors and supervisors of new companies, and I am afraid that most of them are gifted shares. The company aims to borrow celebrity to increase its reputation, similar to European and American specialized promoters.)</p>
+<p>Market Trends</p>
+<h3>Government Bonds Surge</h3>
+<p>The bond market trend is as expected by this publication. Last week, it showed a violent reversal and unprecedented surge. In five days, each bond exceeded the 60 yuan mark, and C bond even reached a peak of 64 yuan. This is not because the reporter's prediction is correct, but it is a natural trend in the situation. It is also heard that the merger and reorganization of the old and new securities industry associations is nearing completion, and on Friday, a telegram was sent to Nanjing requesting the authorities to maintain bond credibility. According to our observation, this kind of request seems to have no reason to refuse, but it will definitely not be accepted unconditionally. The possible conditions are nothing more than (1) the issue of new chips entering the market, (2) the magnitude of market price fluctuations, (3) the establishment of market supervision, etc. As for the issue of inheriting the unified payment of principal and interest of each bond, it may also be discussed again, but the result will not exceed the principles stated at the beginning of the year.</p>
+<p>Regarding the future trend of each bond, it will depend on whether the above news is reliable and how the results are resolved. During the confusing period, the trend will tighten the circulating chips and continue to move forward. However, this publication has repeatedly stated that at this time and place, the observation of the bond market cannot but be thought of on both sides. The various points of this journal's discussion on the future bond market have already proved to be correct in the current market trends, but it is still necessary to read it carefully in order to know that another factor should not be prevented. In other words, the trend is still strong in reason, but its excessive rise is not a good sign. The so-called "throwing the mouse and being afraid of breaking the vase" must be known. Knowing this, the recent and future market trends should move towards the adjustment of prices between each bond. Once the protruding angle is smoothed, wait for the appearance of a new peak, otherwise, it will be discussed separately.</p>
+<h3>Prosperity of Chinese Stocks</h3>
+<p>Last week's trend of Chinese stocks was also as expected by this publication. The peaks of new Chinese stocks rose sharply, especially the stocks of New Asia, which were greatly affected by the expansion of the New Asia Capital Group. The authorities in New Asia are skilled in their sleeves, and all industries operated within the capital group are thriving.</p>
+<p>Recently, a capital investment company with a capital of 10 million yuan has been organized. Shareholders of various companies under the New Asia system have priority in subscribing for shares, so there is a lot of searching for high-quality, discerning hands, and the rise of the Five Continents Xinyi Zhongfa has led to the trend of the times. The pharmaceutical industry in winter is entering a good situation. As the end of the business year approaches, shareholders' reluctance to sell their shares easily is the general reason for the current upward trend in the Chinese stock market.</p>
+<p>The textile stock is not as favorable as the new pharmaceutical stock. The market is generally tired, and the situation is generally seen that the second and fourth factories of Xiao Cuiyu Qiao An Yarn Factory were originally under military management. This time, they were listed as being returned, and the market price rose sharply by more than 200 yuan. However, the various textile factories in this city are currently in extreme labor reduction. According to the "Dongbao" report, the eight yarn factories such as Shenxin that were returned in the past five months have a total of 354,000 spindles, but the recent operating rate is only 30%. As the largest Shenxin Yarn Factory has an operating rate of less than 13% (see the "Daily News" on the 8th), its difficult situation can be imagined.</p>
+<p>It is found that the factories returned this time include the second and fourth factories of Wing On Yarn Factory, Hengfeng Yarn Factory, Taicang Liaotai Yarn Factory, Weicheng Liji Silk Factory, Huafeng Paper Mill, and Nanyang Brothers Tobacco Company. The stocks of factories such as Hengfeng were originally rarely traded and should be discussed separately. The market value of Nanyang Brothers Tobacco Company, whose stocks were usually traded, did not benefit as much as Wing On Yarn Factory's stocks, which is more noteworthy.</p>
+<p>However, from the perspective of the entire Chinese stock market, except for the approach of the end of the business year, the current situation is not better than other times, and there are two factors that are rising to prominence. One is that in autumn, the funds in the market have a tendency to carry out and buy local products. The other is that the government bond market has no retreat, and the floating funds flowing into the bond market from the stock market may also be considerable. Therefore, except for special circumstances, even if there is a general upward possibility in the stock market trend, it may not be possible to place more expectations for a while.</p>
+<h3>Yarn, Cloth, and Woolen Fabrics</h3>
+<p>The sharp edge of yarn and cloth is exhausted. Feng Ma lingers in the original range of the previous week, and there is nothing to pay attention to. The progress of piece goods is also slow, and there are signs of decline. Recently, new cloth shops have sprung up like mushrooms after a rain, and the psychological distress of the holders can be imagined.</p>
+<h3>Seasonal Western Medicine</h3>
+<p>It is already near winter, and Shanghai people also call the summer when tonic and seasonal epidemics are prevalent as the medicine industry season. In summer, most of the medicines are used by the poor, because they are more likely to be infected with seasonal epidemics than the rich. The situation is reversed in winter. Those who can take tonic are all rich, so the market is weak first and then strong. The market for various tonics is quite strong. In addition, it is not easy to purchase sugar, and the sales of saccharin have soared, and the market price has risen accordingly.</p>
+<h3>Oil and Sugar Market Conditions</h3>
+<p>After the implementation of the rationing system for edible oil and sugar, the panic about oil and sugar in this city has been alleviated, but recently the old habits have reappeared. The main reason is that the number of people buying in front of the oil shop is long, and the long snake array does not disperse all day long. The main reason is the reduction of the rationing amount and the allocation of the retail amount everywhere. The reason is that the supply from the place of origin is insufficient and the source is obstructed.</p>
+<p>According to the Dongbao report, the various raw oil factories in Qingdao are currently reducing or even suspending work because the price of peanut raw materials is very expensive, and the price of oil products is seeing the same suffering due to the rationing system. Therefore, the various oil presses have stopped and reduced work in cooperation. In order to overcome this situation, the authorities are now organizing the North China Oil Association in order to increase production and adjust market prices.</p>
+<h3>Hardware Fever</h3>
+<p>Although the price rationing is severe, the speculation in foreign goods has not been reduced at all. Within the last week, the sharp rise and fall has not been reduced compared to before the rationing.</p>
+<p>October 2, 7, 8</p>
+<p>British Brand 6200 8800 8550</p>
+<p>Old Knife Brand 6450 7150 7050</p>
+<p>Gu Ben Soap 285 235 325</p>
+<p>Bai Xiangmao 240 370 265</p>
+<p>This violent change is said to be caused by the reduction of the rationing amount. If this statement is true, then the rationing system cannot be regarded as a price rationing.</p>
+<h2>Page 7</h2>
+<p>Free Talk</p>
+<p>Small Talk</p>
+<h3>Drive Forward</h3>
+<p>— Zhang Zirong</p>
+<p>According to the calendars used in Europe before the fourth and fifth centuries, October 12th is the anniversary of Columbus's discovery of the new continent of America. Although the correct date calculated according to the current calendar is October 21st (or October 23rd, it is not known which is correct), but for the sake of habit, today is considered the 450th anniversary of Columbus's discovery of the new continent.</p>
+<p>Columbus's discovery of the new continent was an accidental event, but he was a man of extraordinary perseverance. He had a firm will and a spirit of not fearing difficulties and hardships. This is undeniable. Therefore, although the discovery of the new continent was accidental, it was not discovered by others, but by this Genoese early morning adventurer. This was not accidental.</p>
+<p>Let us imagine that when those three sailboats continued to sail in the vast and angry sea for fifty or sixty days, and all that was seen around was still a vast ocean, the sailors traveling with them were afraid, and the ship was full of complaints. Food was reduced, and many people demanded that the bow of the ship be turned back. However, Columbus still ordered with a hundred times the courage: "Drive forward!" The discovery of the new continent in the Western Hemisphere and the turning of world history all depended on this indomitable spirit.</p>
+<p>Sailors in the ocean of life, do not be afraid when you encounter storms. We must remember the order given by Columbus: Drive forward!</p>
+<p>Historical Tale</p>
+<h3>Columbus and the New Continent</h3>
+<p>— Jiaji</p>
+<p>A major event that shifted the direction of history occurred 450 years ago, but no one knew it at the time, not even the hero who played the leading role.</p>
+<p>But the event did happen. On the morning of October 12, 1492, three sailboats suddenly sailed to the waters of the Western Hemisphere, the gathering place of the red barbaric people. Then, a group of people wearing complicated clothes landed. The red people were surprised and thought that these uninvited guests must have descended from the sky. After sailing for about 70 days in the turbulent ocean, the people on the ship suddenly saw the land and were overjoyed, thinking that their destination had been reached and their mission had been completed. They thought they had discovered a new route to the European craftsman, but they did not expect that what they had discovered was the new continent of America.</p>
+<p>Needless to say, these three sailboats and eighty-eight sailors were led by an Italian named Columbus. They set off from the port of Palos in August and encountered storms and waves along the way. Also, because Columbus's calculations were not very accurate, the destination was not reached after exceeding the estimated date, which caused the sailors to shrink back and complain along the way. Columbus had to encourage and comfort them and ask everyone to continue moving forward. Finally, because of his firm faith and extraordinary courage, they reached their destination and also unexpectedly discovered the new continent of America.</p>
+<p>Columbus's voyage was sponsored by Queen Isabella of Spain, so out of gratitude, he declared all the places he discovered to be Spanish territory and also used the names of the Spanish emperor and queen as the names of some places to show his remembrance.</p>
+<p>Columbus saw the Indians naked and uncultured, so he felt pity and decided to preach Catholic doctrine to them and establish colonies there. At first, he originally wanted to bring the gold and silver treasures of the East back to Europe after discovering the route, but this wish was never realized. However, he still regarded the places he reached as Asia.</p>
+<p>Although he encountered various difficulties when he went to the new continent, he was even falsely accused of corruption and渎职 at one point and was assigned back to Spain like a prisoner, but his spirit was not damaged or frustrated in the slightest. He simply devoted himself to the new continent he discovered. He went back and forth four times. On May 20, 1506, this Columbus, known as the admiral of the sea, died as an ordinary explorer at the age of sixty in his simple hut. On the wall of the hut hung an iron chain, indicating that he had been a prisoner.</p>
+<h3>Occasional Words</h3>
+<p>— Lü Lü</p>
+<p>There used to be an idiom saying "Eat more, talk less," but now it's best to change it to "Eat less, don't talk."</p>
+<p>Eloquence is silver, silence is gold, but action is diamond.</p>
+<p>A cricket may win a hundred times at a good door, but it fails at the hundred and first time, and from then on, it no longer chirps or opens its mandibles.</p>
+<p>It is said that after Yama caught Zhi, he threw him into the eighteenth level of hell. Zhi suffered the greatest pain there, but he heard a groaning sound below him. Upon asking, the voice said, "I am your teacher, Liu Xiahui. Yama punished me and put me in the nineteenth level, saying that Zhi was taught by me."</p>
+<p>People can be divided into two types: one that exhausts its power trying to reach heaven, and one whose roots exhaust themselves trying to sink into hell.</p>
+<p>A publisher said to Samuel Johnson, "Don't be a poet, be a porter." This statement still holds its truth today.</p>
+<p>Blown by the wind, the peanut scatters its flowers and then bears fruit on the ground.</p>
+<p>A spark on a cigarette butt bursts in the darkness: I am revelation.</p>
+<p>The small grass on the mountaintop, the ancient pine on the hillside, do you say this is an insult?</p>
+<p>The pen is truly a knife, scraping all the flesh from my cheeks.</p>
+<p>Chatterbox</p>
+<h3>The Theatrical Life</h3>
+<p>— Liang Can</p>
+<p>(1) From Amateur to Professional</p>
+<p>Being able to call acting in spoken drama a profession is only a matter of the last three or four years. Although spoken drama first appeared in China thirty years ago, at the beginning of the Republic of China, for the past twenty years, spoken drama has always been seen as a trivial skill, not fit for the refined. Because at that time, all techniques were still in their infancy and not enough to arouse the interest of the audience, every performance would always require one to pay out of pocket and lose money. For these past twenty-odd years, the life of spoken drama has been continuously maintained, albeit faintly, by many enthusiastic spoken drama pioneers using amateur drama clubs. But this period of honing techniques has finally passed, and various skills have slowly matured. Excellent scripts have been produced, and good actors have also emerged. Spoken drama is no longer a simple and crude entertainment performance for the audience, but a new type of comprehensive art. Thus, professional theater troupes have only just begun to gain a foothold. But as of today, spoken drama in the entertainment sector has developed to a point second only to Peking opera and film, which are also booming. It has nineteen professional theater troupes, seven or eight first-class theaters, and nearly a thousand employees, including playwrights, directors, actors, stage workers, and craftsmen. In terms of business, it has also produced a record of a play running for three months, and now about ten thousand viewers flock to it every day, spending the price of seeing two movies to appreciate this so-called comprehensive art, and what is most directly expressed to the audience in this art is the actor.</p>
+<p>(2) The Pay of Spoken Drama</p>
+<p>Actors occupy a very important position in a theater troupe. Externally, the strength of the cast can determine whether a play is a commercial success or not. Internally, actors are the most numerous and also the class with the most personnel disputes. Actors in ordinary professional theater troupes can be divided into two types: one is the basic actor, who has a contract with the troupe and can only perform in that troupe; the other is the special guest actor, who is invited as a non-member guest performer due to a shortage of people or for special needs. In terms of remuneration, basic actors are paid monthly (regardless of the number of performances, they always receive money according to the contract). According to the current situation, the salary of basic actors is about two hundred to six or seven hundred yuan per month, depending on the situation of each theater troupe. Special guest actors are paid based on the number of performances, roughly from four or five yuan to more than ten yuan per performance. This high salary has only been raised in the last half year due to the excessive number of theater troupes being established and the competition for talent among them. However, considering the current cost of living, it is not easy for third-rate actors who earn two or three hundred yuan to make a living. As for first-rate actors who earn six or seven hundred yuan a month, it is only enough for the cost of a single outfit and a pair of shoes. It costs a lot to look good on stage. However, every profession produces its top talents. There are also some actors who can afford to hang the banner of leading stars, and their income is either twenty percent of the total revenue or one yuan per ticket, earning thousands of gold a night, which is another matter.</p>
+<h3>Three Identities of a Doctor</h3>
+<p>— Jia Ji</p>
+<p>It is said that in the eyes of a patient, a doctor has three identities:</p>
+<p>When invited to the patient's bedside - an angel</p>
+<p>When the ailment is cured - a God</p>
+<p>When asking for consultation and medicine fees - a devil</p>
+<h3>Sharing the Same Boat Through Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(10) Flying Peak</p>
+<p>To Huang Long, walking ten or eight miles in the darkness was nothing, but Cui Zhen couldn't just let him carry her all the way. Not far after leaving Sheng Hu Shan's house, she said, "Mr. Huang, let me down." Huang Huang stopped and said, "Sister Cui Zhen, you called me Mr. Huang? When have I ever been a Mr.? That address isn't right." Cui Zhen said, "Oh, Brother Huang Long, please put me down." Huang Long said, "Only if you call me 'husband' will I put you down. Otherwise, I still have to discuss your age with you. Is it Brother Huang Long or Younger Brother Huang Long? Make it clear before I put you down." Cui Zhen slid down from Huang Long's back onto the embankment. Opposite them was a grave surrounded by many cypress trees, which blocked the wind for them. Huang Long watched Cui Zhen sit on the ground and said again, "Sister Cui Zhen, you can't walk straight. I'll still carry you." Cui Zhen said, "If you carry me, I really wouldn't dare. Are you afraid they'll come after us?" Huang Long said, "What are you saying? Would I be afraid of them? Alright, Sister Cui Zhen, let me sit for half an hour before walking. If they come in half an hour, I'll use my civil and military skills to beat them until they run away with their tails between their legs. Sister Cui Zhen, this isn't Huang Long bragging. You don't even need to hide, just sit here and open your eyes and watch." Huang Long's words were so forceful, not like they were rolling off his tongue, but rather like they were being chewed out of his teeth.</p>
+<p>Cui Zhen originally wanted to sit for a while and then slowly try to stand up to see if she could walk, but now, hearing Huang Long's stubborn tone, she was eager to support herself and walk. She leaned on a small tree beside the path, stood up, and said, "I can walk. Let's go. I've already taken the Ye family as my home." Huang Long said, "No, you sit for half an hour before walking. Sit down, sit down. If I commit a crime, it's because I followed the orders of that plague official. But you should listen to my words, it's my order. Sit down." Cui Zhen somewhat knew that he would do what he said, so she had to sit down again and said with a smile, "Brother Huang Long, when did you come to the Ye family? I really appreciate you. How did you know I was there?" Huang Long laughed and said, "Me? I have a lot to say." (200)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.10.11.html", "next": "1942.10.13.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.04 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 405 - 4924408</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日機羣猛炸萬隆　抓哇展開爭奪戰　登陸日軍向腹地推進佔領重要鐵路交叉點</h3>
+<p>東京三日同盟社電　「日日新聞」特電稱、爪哇日軍先鋒隊昨夜攻抵某地、敵軍司令部所在地之萬隆已在望云、</p>
+<p>東京三日同盟社電　爪哇之戰今日巳歷三天、日軍在爪哇海岸登陸後、向腹地疾進、已佔巴達維亞與萬隆間鐵路上之要城格拉橫、距巴達維亞約三十五哩、</p>
+<p>東京三日海通社電　爪哇前綫來電稱、在爪哇中部登陸之日軍、繼續向內地推進、巳佔領巴達維亞與萬隆間之重要鐵路交叉點、今萬隆與巴達維亞間火車業已不通云、</p>
+<p>萬隆三日路透社電　爪哇戰况頗烈、詳情未悉、日前守軍之動作、乃以進攻日本主力軍為主、而非着重其滲入部隊、日機今日大部轟炸萬隆、分兩批進襲、先後在萬隆上空盤旋達九十分鐘之久、第一批轟炸機四十二架、戰鬥機十八架、</p>
+<p>日軍航空某根據地三日同盟社電　昨日午後五時日機突襲爪哇之萬隆、在空戰中射落敵方勃發羅式戰鬥機兩架、並炸毀地面巨型戰鬥機十餘架、日機又重創巴達維亞郊外之軍事設備、敵機昨日午後襲卡里蒂亞的克時、被日陸軍機擊落兩架、</p>
+<p>萬隆三日路透社電　據官方宣布、爪哇之戰正在展開中、惟作戰詳情未便宣布、又據前綫路透特派記者稱、荷蘭坦克車巳出動助戰、昨晨記者到前錢某一戰區、荷蘭軍戰車隊正與登陸日軍交戰、戰鬥情形至為激烈、爪哇兵一名昨夜吿記者、日軍乘英國軍用車兩輛及私人汽車兩輛、出其不意開到該區、駛行甚速、並以機關槍左右射擊、我軍亦予還擊、旋有日軍數小隊乘機集中、荷蘭軍乃被迫退守附近新陣地、昨今兩日、上空並無日機出現、僅見荷蘭飛機絡續自前綫飛回、裝彈加油</p>
+<p>巴達維亞三日路透社電　此間雖尙未遭受任何直接威脅、但重要軍事設備均已炸毀、</p>
+<p>荷印政府遷都萬隆</p>
+<p>倫敦薩滿日路透社電　倫敦荷方人士今日聲稱、荷印政府因首府巴達維亞頗易遭攻擊、故已遷至萬隆、按軍事司令部設萬隆已有時、</p>
+<p>巴達維亞人心鎮靜</p>
+<p>巴達維亞二日路透社電　日軍在爪哇登陸後、其用以掩護陸上部隊與滲入部隊作戰之空軍、尙甚少活動、而盟軍之航空部隊則甚形活躍、今日日軍尙無在其他地帶登陸說、全城居民至為鎭靜、記者會經無數小村鎭、沿途僅見軍運浩繁、而居民生活則一如往日、</p>
+<p>澳西部兩城遭空襲</p>
+<p>墨爾缽三日路透社電　今日發表之澳空軍公報稱、日機今晨襲擊澳洲西部北海岸之布盧姆與文達姆兩城飛機塲、文達姆並無炸彈擲下、惟遭機關槍與小鋼砲火射擊、聞布盧姆有彈落下、兩城均受若干損失、又新幾內亞之波魯魯與胡埠、星期日遭日機　炸、星期一午後澳機偵察新不列顚島日軍陣地、</p>
+<p>墨爾缽三日路透社電　澳軍一千五百名已在蒂摩爾島被俘之說、未經此間官塲證實、惟知當日軍花蒂摩爾島登陸時、該島駐有澳軍、</p>
+<h3>爪哇海面空前海戰詳情　日方正式公佈</h3>
+<p>東京三日同盟社電　日本帝國大本營今日午後五時三十分宣布、關於上月二十七日及本月一日泗水及巴達維亞兩處海戰結果、敵方被擊沉巡洋艦六艘、驅逐艦八艘、潛水艇七艘、砲艦一艘、掃雷艦一艘、擊沉巡艦中計有美國「好斯頓」號（九〇五〇噸）·英國「愛克斯脫號（八三九〇噸）·澳洲「坡斯」號（六八三〇噸）「霍巴特號（六九八〇噸）·荷蘭「特萊脫」號（六四五〇噸）及「爪哇」號（六七〇〇噸）、日方損失掃雷艦一艘、並有馭逐艦一艘受輕創云、</p>
+<p>日海軍基地一日同盟社電　日軍運輸隊由艦隊護送、於上月二十七日晚、隱約瞥見巴達維亞海岸附近聯軍艦隊輪廓、其中計有重巡洋艦二艘·輕巡洋艦一艘·驅逐艦二艘、顯欲襲擊日軍運輸隊、日軍各艦大砲立即隆隆開放、時適二月二十七日晚六時正、此即大東亞戰爭之首次海戰業、據日方另一艦隊無綫電報告、亦已在　水海岸附近遭遇聯軍另一艦隊、其中計有巡洋艦約三四艘、其他軍艦數艘、想係驅逐艦、雙方艦隊同時開砲轟擊、旋有聯軍巡艦二艘中魚雷沉沒、黑夜之中、雙方艦隊交戰欲烈、砲聲怒吼、浪花四濺、探照光綫閃耀交織、飛機聲與高射砲聲相應和、戰至翌日黎明、日艦隊已佔優勢、聯軍軍艦被擊況者計有巡洋艦三艘、驅逐六艘、另有巡洋艦四艘重創、殘部分別退入巴達維亞及泗水兩港、日軍運輸隊乃又向前進發云、</p>
+<h3>華維爾重任印駐軍總司令　荷印軍事移荷將領主持戰略調節事宜並無變更</h3>
+<p>倫敦三日路透社電　西南太平洋聯軍總司令華維爾將軍、業巳復仟印度方面總司令、遺缺已由荷蘭某將軍承乏、昨據唐寗街十號首府宜布、「為荷屬東印度統帥事、査自馬來失守、日軍開入蘇門答臘之後、緬甸與荷印之聯絡巳被截斷、爰乃決定、荷印陸海空三軍統帥一職、應移交荷蘭將領、惟協約各、國仍當盡力加以援助、華維爾將軍、已由英王核准、即日復任印度方面總司令、緬甸方面軍事現亦歸其指揮、至於對日作戰一般軍略調節事宜、並無變更」云、關於此事、某軍事記者加以解釋稱、此種決策、並不出於意料之外、而在現况之下、實為必然之舉、蓋日軍進展迅速、兼以新加坡陷落蘇門答臘失守、西南太平洋局勢業已劇變、時至此際、爪哇已為聯軍在該方面之最後防錢、而非華維爾將軍當初到任時所擬作為反攻之出發點矣、又况荷軍已在該島佈防、爪哇已為自身存亡而戰、軍事應由荷蘭當局主持云、</p>
+<p>瑞典京城三日海通社電　據美國陸海軍部咋聯合公布、依照協定之規定、華維爾將軍業已辭去荷印軍司令、復任印度總司令之職、此後華氏之任務、保衛緬甸云、</p>
+<p>飛倫敦二日路透社電　仰光局勢仍懸而未決、日方自稱巳切斷仰光瓦城間之鐵路、果爾則仰光局勢、自極嚴重、英國之戰略、似在堅守仰光、同時保持鐵路錢、如是仰光縱吿失守、守軍仍可北退、與華軍携手作戰、緬南即全部淪陷、英軍隊仍能自東部攻襲、惟仰光瓦城間鐵路苟被切斷、則英軍即失其退路而被困於仰光區、屆時英軍雖可自海上撒退、然因仰光入口處之佈雷、而必極感困難、今日之仰光巳為一死城、市內十室九空、巿區由軍事當局管理、所有壯丁多赴前方服役、所有軍艦俱經海軍用為保護交通對抗日人之船隻、日軍曾一度襲擊安達曼羣島、其後又派機轟炸耶誕島、足示其侵略路綫已開始向印度洋伸展、英方相信日必力圖控制孟加拉灣、以切斷中印緬間之交通、實則印度洋上之交通綫尙不止此、自英美假道好望角荷屬西印度、或中東至澳洲、皆須取道印度洋、日機轟炸即誕島（爪哇以南二百五十英里）之作用、蓋即欲破壞澳印路錢與亞丁灣而封鎖紅海也、</p>
+<h3>美新稅案提出衆院</h3>
+<p>華盛頓三日路透社電　一九四二年七月一日開始之一年稅收計劃、已山財長摩根索提交衆院財務委員會、此項計劃將實現羅斯福總統之二百七十萬萬元稅收之願望、摩氏宣稱、每一美國家庭皆將感覺此新稅之責任、並稱、現所擬議中之附加稅、將較政府在一九四一年以前任何一年所繳之稅為大云、</p>
+<h3>東條演說　謂戰事猶在初期勢將曠日持久</h3>
+<p>東京三日同盟社電　東條首相今晨在各地長官會議席上致辭稱、大東亞戰爭猶在初期、此後戰事勢須持久、全國應進一步團結、解除各種困難、以利獲取最後勝利云、</p>
+<p>東京三日海通社電　首相東條昨接見新任日本駐蘇大使佐藤、作重要之會商、日政府副發言人崛氏稱、政府之任命佐藤之出使蘇聯、因渠熟悉蘇聯之情勢、並對困難之外交談判甚有經騐云、</p>
+<h3>蘇聯南部　戰事劇烈　蘇軍傾力反攻德稱已被擊退</h3>
+<p>柏林二日哈瓦斯社電　此間官方發表戰報稱、克里米亞及唐納資區劇戰、仍在進行中、德軍在寇爾許半島擊毀敵軍鐵甲車多輛、並有運輸船一艘排水量六千噸被我擊沉云、</p>
+<p>德元首行營三日海通社電　今午德軍戰報稱、蘇軍曾藉重祖克車之掩護、力圖進攻、咸被擊退、德機襲擊寇爾許及鄰港、數處大火、</p>
+<h3>北非前綫　戰事沉寂</h3>
+<p>羅馬二日哈瓦斯社電　此間軍事觀寂蒙頃談稱、北非戰事暫趨沉寂、但非地中海戰事膠着之誚、交戰國雙方現正秣馬厲兵、準備應付北非戰局之新發展、至以目下情形而論、雙方所採取之軍事行動、僅限於陸空偵察、俾能窺測雙方陣地、從而探知其抵抗力量、是以雙方陸上陣地此際均甚穩定、暫無變動、同時海上亦極沉寂、惟德義機羣對於英屬馬爾秦島、仍不斷作有系統之轟炸而已云。</p>
+<p>本報特稿</p>
+<h3>華維爾論將才（十）</h3>
+<p>他還有一個計劃是想從義大利或塞爾維亞進攻，以包抄膠着的西綫鐵壁。這個側面包抄的觀念是極正確的，但是他不知道那邊運兵給養的便利是如何的不敷足。假使你把中歐同盟國當作一個圓圈，在圓周上把通到圈內圈外的主要交通綫都一一畫了出來，我想你就會煥然大悟，知道協約國因交通綫的關係只有在西綫可以和同盟國勢均力敵的作戰。協約國在西綫所採取的戰術或嫌呆笨而浪費，事實上也的確如此，但是羅伯特生的基本觀念，就是說因交通綫的限制只得在西綫運用主力，我相信是不錯的。</p>
+<p>由此可知一個領袖的好壞，不在懂不懂戰略原理，須看他有沒有戰爭機構的知識。這話在第一次演講裏我就提過了。從上面這些零星的例證裹，我們究竟得到了什麼敎訓呢？政治家與軍人恐怕巳經在十九世紀永久分家了。德國已經把戰爭當作一種專門的職業；而現代的種種發明，增加了戰爭的技術性質，也自然的使其日趨專門化。政治上也有同樣的情形，是因為民主的結果而趨於專門化。所以沒有人再能够希望同時兼顧這兩種職業，雖則　根結締都不外乎使治人與治事。在操作業方面說，政治家有許多地方比軍人佔便宜。政治家好像時時刻刻在政治戰場上作戰；而軍人在平時只有少數的機會可以作模擬戰，這好比實一個學習獵犬管理的人，在學校裏只用電兎來練習，偶然有幾次趕到野外作人工臭跡物的狩獵（猶軍中的大演習）。政治家以勤說辯駁務，必須胸襟開拓，屈伸自如，使能應付衆人的批評與爭議，軍人的腦筋，因為習於發令及無條件的服從，便容易流於刻板，機械畫，和墨守成規。我不必多作比較；總之，雙方的互相了解是進行現代戰事的緊要條件</p>
+<p>但是如何能够做到這一步呢？惟有細心研究過去的經騐，虛心接受現在的事實，一旦有事則耐心理解對方的困難。很容易忽視或低估政治家的困難，我記得當代的一位英國政治家曾有一個很恰當的例子，他說，一個軍人看見政治家已同意去制定謀中重要的政治法案，譬如徵兵法案，但是進行遲緩，便十分不耐煩的　間政治家道：「既然擬答應立這個法案，為什麽不立刻辦了呢？」政治家就這樣反問：「假使擬的部隊趕到惡了河邊，敵在對岸列陣而守，而你爲達任務必須過河，你是否立刻進攻？」軍人答道：「當然沒有那樣容易，必須先偵察一番，佈好砲位，搭造橋梁，設法分散敵軍的注意力，使不知偷渡的地點，以及別的準備工作。於是政治家振振有辭了：「旣是如此，我也必須先迎合與情，看有什麽樣的反對論調，起好一個對個階級都公　德革案，不止體格檢查的事宜，決定免役等許多別的事情，那才行啊。」</p>
+<p>我的三次演講總算巳經交卷了。千言萬語，只是希望諸君去研究有血有肉的活戰史，須知戰爭並不是圖表，原理，或規則的問題。一個高級指揮官如要倚賴陸軍典範來解決戰術上的問題，正猶斷症須翻醫藥辭典的醫生一樣，決不能使人信任。除非領袖自己函蓄着一樣基本的東西－就是戰鬥精神，任何敎育方法，陞遷制度，或應世才能都沒有什麼價値。上次大戰中的軍政領袖，如克雷猛　，福熙，勞合喬治，人個性如何不同，有一點是個個人相同的，便是都抱着一種大無畏的精神。共中有一個人曾經說過：」任何戰事，非等領袖自認絕望，決不能算是失敗的」：所以領袖的第一件眞正任務是「決不認敗」，從前有一個羅馬的將官在極度危急中把羅馬拯救了出來，人民建了一尊像來紀念他，上面刻着這句話：「因為他從來對共和國絕望。」</p>
+<p>還有一句話，虔敬的希臘人從前在替天神按名建造一個祭壇後，另外又加造了一個，「獻給無名之神」，所以當我們紀念名將，要簪漢尼拔，拿破崙，及馬爾巴羅等建造戰爭祭壇，也讓我們加造一個「獻給無名的領袖」，就是指那些英勇的連隊，分隊，或小隊領袖，有的率部衝鋒，有的死守陣地，往往就沒沒無聞的陣亡了。戰事的勝利到底大半靠這些人的力量。　（完）</p>
+<h3>羅斯福總統頒令　美陸軍實行改組　分為三部由將領統率國外得設置特別司令部</h3>
+<p>華盛頓二日哈瓦斯社電　羅斯福總統本日簽署命令一道、改組美國陸軍、共分三部份、　陸軍本部、　陸軍所屬飛行隊、　軍需處、上開三部均受總司令管轄、並授權陸軍部、將海外陸軍亦照上述三部份加以改組、其中包括、　作戰部隊、　作戰指揮部、　防禦部隊指揮部、　各戰區司令部、　總司令所認為必須設立之其他司令部、據此間廣播電臺所號出之消息、陸軍本部司令將同時指揮步兵及砲隊、陸軍所屬空軍司令則將為美國空軍總司令、經此次改組之後、美國空軍總司令仍當為亞諾爾特少將、陸軍總司令將爲麥克奈爾中將、軍需總監則當爲西佛爾少將、</p>
+<p>里斯本日海通社電　此間接獲消息稱、美國陸軍將分為三部、此三部委陸軍，陸軍航空隊，及佻應隊、每部有一將軍管轄之、此三將又完全受命於總參謀長馬歇爾將軍之指揮、除此以外、美國陸軍部為美國之安全起見、得在國外設置特別之司令部、</p>
+<p>美太平洋沿海岸全部歸軍事管理</p>
+<p>舊金山三日路透社電　美陸軍頒令劃整個太平洋海岸區、爲「第一軍事區」、該區從海岸展向內地九十五哩至二百五十哩不等、區內軸心國外僑均予逐出、據該令稱、今未能立刻强迫該區全體軸心國僑民撤退、故先將撤退若干極重要地區內之日僑及美籍日人、然後施諸德義僑民云、</p>
+<h3>澳紐商討聯防擬就具體計劃</h3>
+<p>威靈頓二日哈瓦斯電　紐西蘭自治領內閣總理佛萊塞頃發表談話稱、澳洲與紐西蘭軍事專家最近曾舉行會議、其目的乃在竭力設法、務使協約國在太平洋所採取之行動成為有效、並設法改組協約國聯軍、俾能收復失地、軍需部長蘇利望、商業部長麥克柯特二人、均曾參加此項會議、得隨時將各項消息、通知紐西蘭內閣云、</p>
+<p>西貢三日海通社電　此間得墨爾缽息協約國戰事委員會與紐西蘭代表團訂立協定、其主要之原則、係改組聯軍在南太平洋之戰略、惟此協定尙待倫敦華盛頓之批准、此計劃包括組織上重要之改變、惟詳情尙未公布、一待英美政府對此計劃加以批准後、即將在澳洲及紐西蘭軍隊作戰地帶付諸實施、澳洲戰時內閣並已決定將空軍及常備軍隸屬於國內防禦軍、其月餉及服役情形受相同之待遇、其他如組織·設備·及軍隊之增援·加以簡單化、使司令部指揮作戰時、有較彈性之權力、澳洲民軍將獲得較優之待遇、並可得養老金及退伍之權、最近官方宣布之動員律、使澳洲政府可命令任何人參加政府所需要之服務、內閣並可決定令受有軍事訓練之勞工强迫入伍、其待遇與兵士相同、澳洲首相寇丁將不日下令成立勞工新軍云、</p>
+<h3>美與巴西簽訂　經濟協定</h3>
+<p>華盛頓二日哈瓦斯社電　國務副卿威爾斯頃談稱、渠將於明日午前十一時半、與巴西財長蘇薩哥斯達簽訂經濟協定數件、其一有關民治國租借法實施事宜、俾一方由巴西以重要原料運往美國、一方則由美國協助巴西整飭國防、其二、有關巴西亞馬森河流域開發事宜、俾增加橡膠生產、並在該處建造橡膠工廠一所、此外或將簽訂其他經濟協定、事畢巴西財長應加拿大政府之邀請、並當轉往哇太華一行云、</p>
+<h3>東南聯合大學籌委人選決定　由何炳松王鳳喈等擔任</h3>
+<p>金華二日電　東南聯合大學籌備委員、茲巳決定為何炳松·王鳳喈·駱美奐·胡健中·黎兆寰·裴復恒·張壽鏞·曹惠肇·樊正康·楊永淸、由何炳松·王鳳喈·分任籌備會正副主任、校址、經費、組成學校及院系諸問題、須待籌備委會商討呈部核定、</p>
+<h3>國定紀念日　業已修正概爲五天國父逝世紀念刪去</h3>
+<p>重慶三日電　修正國定紀念日改定為五天如下、一月一日、中華民國開國紀念、三月二十九日、革命先烈紀念、八月二十七日、孔子誕辰、十月十日、國慶日、十一月十二日、國父誕辰、上項紀念日、即由國民政府明令公布、又四月十二日原為國父逝世紀念日、此次改訂案、以國父逝世、於今十七週年、依照我國固有習慣、喪禮三年而終、國際通例、紀念元勳、亦以誕辰舉行、我國父誕辰、旣已列為國定紀念日、故將原有逝世紀念刪去、本年起、即不再舉行紀念儀式、</p>
+<h3>政院會議　決議要案</h3>
+<p>重慶三日電　政院於三日開第五五三次會議、各部會長官均出席、軍事外交報吿外、決議各案擇載如下、一、內政部是擬各省地價申報處組織規程、及各縣市地價申報處組織規程草案、請核定案、決議修正通過、二、財政部呈擬編審三十一年度縣市預算辦法、請核定案、決議修正通過、三、財政部呈擬具修正該部各省區緝私處組織規程草案、請核定案、決議修正通過、四、山東省政府電請撤銷該省府魯東魯北兩行署案、決議通過、任免事項決議案、一、廣西省第八區行政督察專員兼區保安司令何應恩、第十一區行政督察專員兼區保安司令黃昆山另有任用、均應免本兼各職、並派黃昆山為該省第八區行政督察專員兼區保安司令、何應恩為第十一區行政督察專員兼區保安司令、二、派王聰之為山西省第四區行政督察專員兼區保安司令、三、內政部地政司司長鄭震宇另有任用、應予免職、逍缺任命李慶麐繼任、四、任命馬燦榮為農林部參事、五、任命程孝慕為陝西省糧政局副局長、六、任命陶履敦為黃河水利委員會簡任技正、並免去該員原任薦任技正職務、</p>
+<h3>彭澤東南激戰</h3>
+<p>皖南某地一日電　華軍某部、二十七晚與彭澤東南之馬路口西迴山之日軍交戰、至午夜始已、</p>
+<p>皖南某地二日電　東流附近王家嘴一帶、一日晨發生戰事、</p>
+<h3>居正赴曲江</h3>
+<p>長沙三日電　居總團長三日晨參加此間軍民盛大慰勞會後、即偕夫人及團員於晨十時離長赴曲江、各界民衆自動齊集江干歡送者達萬人、狀極熱烈、</p>
+<h3>渝市昨晨月蝕</h3>
+<p>重慶三日電今晨月蝕、渝市昨晚月色雖皎潔、惟入夜後霧起雲結、嗣並小雨十餘分鐘、致無法觀測、</p>
+<h3>法國境內　破壞事件　最近七個月中共有二百餘起</h3>
+<p>維希二日合衆社電　法內政部長首次發表法境各地對德軍及德控制下之機關施行破壞行動詳情、其中包括有使用炸藥及炸彈之有組織襲擊情事、據稱、在一九四一年七月至一九四二年二月中旬期間、共發生襲擊案二百三十次、德軍搜捕一萬二千七百七十二次、結果捕去五千三百九十人、其中大部為法國及外國共產黨人、警局曾將七十四次案件局部解決、另有二十九次澈底解決、各次案件中犖犖大者如下、　十二月七日有人向巴黎德軍司令部德憲兵投彈、　巴黎南區荷人埋置炸藥、圖炸德兵營、　二月間有人向巴黎大學荷蘭紀念亭投彈、　一月十六日向德人所辦巴黎日報編輯室投彈云、</p>
+<h3>擊斃一德兵二十人抵命</h3>
+<p>維希三日路透社電　法境德佔領軍司令史都普那奇爾將軍今日發表公報稱、一九四二年三月日、德哨兵一名在巴黎被犯罪份子暗殺、德軍為報復計、將槍決出事區內之共黨與猶太人二十名、如三月十六日前仍未偵獲兇手、則復將槍決二十人、三月四日被殺德兵下葬、是日各電影院劇塲及娛樂塲所、一律停閉、餐室則於午後八時收業、</p>
+<h3>前義駐阿總督　奧斯泰逝世</h3>
+<p>英屬怯尼亞奈羅比城二日哈瓦斯社電　官方宣佈、義國前任駐阿比西尼亞總督即菲洲義軍前任總司令奧斯秦公爵、被英軍俘獲之後、忽患肺癆、頃已逝世、</p>
+<h2>Page 3</h2>
+<h3>煤斤將自化北運滬電流供給無虞　二月份消耗與預算相符路燈未減少霓虹燈全停</h3>
+<p>自去年十二月太平洋戰事發生後、滬市情勢、為之丕變、尤以燃料一項、來源本巳减少、至此乃益見短絀、燃料以煤斤為主要、而本市電力之發源、尤所利賴、在節省電流聲中、電力供給之前逮、實為本埠工商界及住戶所急需明瞭者、茲探誌有關電力維持之目前情况及將來趨勢如次、</p>
+<p>廣告用電完全禁止</p>
+<p>戰前本埠之電力供給、向無限制、每月該公司消耗煤斤、約五萬餘噸、戰後仍予勉力維持直至太平洋風雲緊急、始不得不謀節省之計、而逐漸將電流供給節减、工廠及娛樂塲所之節减限制、為百分之四十五、商店及一般住戶之節减限制、則為百分之二十五、路燈之數量並未减少、開啟時間仍為夏季時刻下午七時、霓虹燈及一切廣吿燈、則全在禁用之例、</p>
+<p>上月用煤三萬餘噸</p>
+<p>二月份之本埠用電統計、因一般工廠商店之新春休假、工作大都停頓若干日期、對於用電估計之準確問題、實不無影饗、故二月份之用電量、不能作為本埠電流供給最近趨勢之依據、二月份該公司煤斤之消耗、約三萬餘噸、尙能與預算相吻合、</p>
+<p>此後供給來自華北</p>
+<p>上海電力公司已為興亞院接管統制、故將來之煤斤來源、興亞院已允予按月供給三萬噸、此項煤斤、來自華北、該公司目前存煤、僅能維持一至三個月之短時期、煤斤新來源如有挫折、本埠用電限制、勢將更為緊縮、</p>
+<p>柴油替代並非事實</p>
+<p>外傳該公司儲有大批柴油、足以代替煤斤之說、並非事實、該公司現已引用柴油於一小部份燃料消耗中、然柴油決不能代替煤斤為電力供給之主要消耗、且柴油本身、亦與煤斤之情形同、存底少而來源並無把握也、</p>
+<h3>簽發船車半價證　普通通給</h3>
+<p>改在通行證上蓋一印戳兩處發證每日有三千張工部局巾請簽發回鄕通行設辦事處、因中請領證人數激增、由一樓商團部份、遷至樓下操塲後、前日起、又在商團運輸室添設發證處、該室位於操塲隔壁、兩處每日簽出通行證總數、在三千張左右、</p>
+<p>半價證改蓋一印戳</p>
+<p>該處對半價證之發給、極為普通、不限職業、均可中請、是項半價證、巳非以前之另發證件、僅將刻有「船車運賃半價之證」之印戳、蓋於回鄕通行證之後面、即得享輪船或火車半價講票之優待也、</p>
+<p>發證處所地名摘錄</p>
+<p>其他簽發通行證辦事處、最近訂正、張貼於發證處、以便市民就近申請、其地點如下、　爾州路一八〇號工部局大廈內二樓、　工部局大廈操塲、　克能海路一九九號工都局北區小學、　荊州路四二號聶中丞華童公學、　山海關路八四五號育才公學、　星加坡路二九號工部局公學、　廈門路二〇六號、　戈登路七五三號、　馬白路二五號工部局華童公學、至共他委托發證社團、茲不備舉、</p>
+<p>赴甬購票可詢五處</p>
+<p>至領得通行證之離滬返甬巿民、其不能購得船票者、指定可向下列修正處所詢問、即　福州路一三二四號、　四川路一一〇號、　四川路通濟隆飛行社、　九江路五九二號（永安公司後面）　　自爾路六三號（八仙橋郵局隔壁）</p>
+<h3>被禁俘虜　可開俘虜匯票</h3>
+<p>向國際匯票開發局申請上海郵政管理局儲金匯業局昨發第六十八號通吿云、「査匯款往日木、交現在被禁於日本俘虜拘禁所內之俘虜者、可向國際匯票開發局申請開發俘虜匯票、此項匯票、免收匯費、合行通知、此吿、局長乍配林、」</p>
+<h3>公共租界民眾警衛　推定主持人員法警務處嚴密遏制恐怖行動</h3>
+<p>英文秦晤士報載稱、據法公董局警務處情報主任鮑芬多氏、昨（二日）向本報記者謂、「關於民衆警察工作問題、法警務處正與工部局警務處、維持密切之接觸、並研究與工部局警務處採取相同措施之問題」、</p>
+<p>法警務處嚴密維護</p>
+<p>英文大美晚報云、法租界警務處發言人頃披露、法警務處刻正考慮仿效公共租界開始實行之計劃、在法租界內採行平民警務制度、法租界業巳派有區長若干人、其任務為照顧所在區之治安、並以任何罪案報吿警方、法警務處為遏制界內恐怖行動之蔓延計、已增加巡捕搜查隊之活勁、並已採取其他保護辦法云、</p>
+<p>平民警衛漸告確立</p>
+<p>同時、公共租界民衆警察隊漸吿確立、本月一日金門飯店內曾舉行一會議、推舉工部局華董袁履登、任保甲自治準備委員會之主席、又由袁履登薦舉周某余某為副主席、此外五島茂副總巡、被選為公共租界特別警務司令官、督察長梅木守雄被任為特別警務主任、而助理總巡及川·中村·兩氏、則分任甲乙兩防區之區長、</p>
+<h3>淪陷區匯滬匯票　一百元可兌付</h3>
+<p>外埠匯滬匯款、除前經限五十元以下可兌付外、惟淪陷區匯滬匯票、限制已寬放至一百元、至上海匯淪陷區匯票、即停止開發、民衆深感不便、僑匯局以款項不敷調劑、尙無籌復辦法、.</p>
+<h3>單身盜冒充顧客　搶劫西服店</h3>
+<p>法租界麥高包祿路一五二號裕昌西服店、前晚九時半、忽有一匪冒充顧客、進入店內、將西裝一套、皮鞋一雙、大衣一件穿上身後、復令店夥出手表四隻、正選擇間、該匪突露猙獰面目、並掏出手槍、一支、向店夥嚇禁聲張、然後携同手表等、出門逸去、共計損失達達二千餘元之鉅、事後事主即投法捕房報吿、經派探到店調査一過、並將該匪遺下棉袍一件、帶回捕房偵査、</p>
+<h3>廈門包裹恢復</h3>
+<p>郵局頃通知、査關於暫停收寄廈門大宗包裏及大宗小包郵件一節、業經通知在案、茲査寄往廈門之大宗包裏及大宗小包郵件、自木月四日起、可以恢復收寄、</p>
+<h3>盜刦彙訊</h3>
+<p>滬西小沙渡路鴻壽坊二十九號、於昨晚八時十五分左右、突來四匪、兩人出手槍、操江北口音、當被刦去現鈔五百元、自由車一輛、及偽鑽戒一隻、</p>
+<p>長沙路一四九弄第五十七號、於昨晚八時四十分許、來有五匪、一人出示手槍、威逼恫嚇、國去幣珠寳計値一千五百元</p>
+<h3>太平洋戰區各地　電訊未通</h3>
+<p>自太平洋戰事發生後、滬上各外商電報局、如大北，大東·太平洋·環球及美商通訊社等、相繼接管、上海與太平洋戰區各地電訊、遂完全隔絕、香港與內地電訊交通、亦無法暢通、現香港·馬尼剌·新加坡等地雖先後為日方佔領、但對各該地電訊交通、迄今猶未恢復、對內地電訉交通、更無法轉遞、據仁記路國際無綫電台消息、恢復太平洋日方佔領區各地電訊交通、尙無確期、</p>
+<h2>Page 4</h2>
+<h3>日總領署發表捲烟限價　工部局亦將統制各種哦捲烟售價</h3>
+<p>英文大美晚報云、工部局發言人今（三日）晨聲稱、工部局刻正等候日當局通知、然後將隨日方先例、限定市上各種捲烟之售價云、日總領署前（二日）巳發表此間捲烟之限價表、並囑日商店舖一體遵守、限價概以軍票日圓計算、茲錄於後、</p>
+<p>社會服務</p>
+<h3>徵詢孵荳芽法</h3>
+<p>主筆先生、鄙人因遭失業、準備返鄕、擬營小菜攤販、吾鄕浙東在春冬秋三季、市集上無黃荳芽及茶荳芽出售、回鄉後擬自行去孵黃菉荳芽、惟苦不知孵法、倘，有專書請讀者諸君見吿、對於孵法、鄙人曾試騐過、但成績不好、茲懇詢數項、　一斤荳須淸水若干、放在木桶內、除水以外、尙須置放其他物件否、若然、其置放之法如何、　荳浸入桶內之後、需否陽光和空氣、抑將桶蓋蓋住、使斷絕空氣、孰然孰否、　荳一斤約成荳芽若干、並須若干日期、　黃荳芽及菉荳芽孵法、是否相同、倘不相同、請指示異點、巨潑來斯路一三一號金家祥</p>
+<h3>「貓精」擾清夢</h3>
+<p>鄙人現年二十三歲、男性、身壯健、無夙疾、惟夜半睡眠間、每似有重物壓身、頗氣喘、被壓時、全身不能自主動彈、口欲言而不出聲、經用力掙扎後、歷時須二三分鐘、始能復原、據俗說為「貓精、」而非病、因恐對身體康健有關、特借貴報社會服務處一角、請貴報讀者將醫山方法及原因吿我、徐家匯徐鎭路三合里十四號邵人直、</p>
+<p>答「南洋專籍」杜美路韋釭函云、南洋專籍有　馬來羣島游記一冊、商務版，　南洋導遊一冊、中國旅行社版、世界遊記選一冊、（關於南洋之各篇）中國文化服務社版、　英國與其殖民地一冊、正中版、　新近出之南洋地圖、有日新輿地學社之一種、中英文對照、作者書店或有出售、</p>
+<h3>女用皮夾招尋</h3>
+<p>鄙人於一日（星期日）下午有搭一路電車至南京路外灘、車經過浙江路多數搭客下車後、在頭等月台面上、發現女用皮夾一只、敝人即將該物交存七一號賣票員收存、失主可將皮夾內之物記淸、向該賣票員取回可也、再當時約在下午二點半、車號B字五號、搭客人啟、</p>
+<p>投函規約</p>
+<p>對於公衆福利事宜之報吿或意見及詢問均可、　來函必須具眞實姓名·職業·住址·惟出力救助、自願隱名者聽、　來函請黏貼下角本報印花、並書明編輯部社會服務欄、　一般福利事宜之新　、本欄不刊布、　惆人瑣屑事務或無從處理者、概不答復、　來函或答復、除刊本欄外、不另函復、</p>
+<h3>大眾人事委託所訊</h3>
+<p>大衆人事委託所、為協助工部局華人疏散委員會疏散人口起見、特定於木月五日起、上午九時至十二時止、義務代發回鄕證、凡需回鄉者、可逕往南京路三三四號二樓該所領取、</p>
+<p>啟事</p>
+<p>未署名讀者惠鑒、昨承以大作油畫四幅、囑敝館出售、以潤資所得、捐作助學金、仁心義舉、不勝欽遲、惟物件代替捐款、敝報向不收受、茲將原物存本報收發處、請親來領回並希察諒為荷、申報讀者助學金辦事處啟、　　昨日木報發報時間六點四十分</p>
+<p>體育新聞</p>
+<h3>本屆羽毛球個人錦標　定週四開始報名　分男女單雙打及混雙等五項</h3>
+<p>本屆羽毛球個人錦標賽、仍分男子單打、女子單打、男子雙打、女子雙打及混雙打等五項、定於本星期四（明日）開始報名、査上屆男子單打為飛梭隊洪德全所獲、本屆洪已轉人職業界、華健將侯樹基，李盛世。楊敬齡·榮君·及梅西·桂氏</p>
+<h3>合羣募款足球賽　週末四強會師</h3>
+<p>合羣募款足球賽、邀請徐匯、震旦、金獅、及合羣等叫强、參加演出、原定上月舉行、因雨三度展期、現定於本星期日（八日）下午二時起、仍在呂班路震旦球塲交鋒、門票二元四元、在下列四處預售　靜安寺路華東運動器具公司、　霞飛路祥興琴行、　華龍路錦江茶室、　四川路三十三號麟麟公司、以前所預售之門票、屆時一律通用、</p>
+<h3>世界重量拳擊錦標　喬治路易戰西蒙</h3>
+<p>本月二十七日在紐約紐約路透社電　、世界重量拳擊冠軍褐色爆炸機黑人喬路易、將於本月二十七日與西蒙氏作其第二十一次世界重量拳擊錦標挑戰賽、地點在此間麥迪遜方塲、査西蒙今年二十六歲、長高六尺餘、重二百五十二磅、預料必能予喬氏以威脅、</p>
+<p>商業新聞</p>
+<h3>獲利出籠　紗價轉鬆</h3>
+<p>棉紗市况、始昂後疲、此因連漲多日引起獲利者出檔、所以巿面轉稍鬆動矣、二十支雙馬廠單初開價為二千五百十元、少頃　至二千五百四十五元、繼以盈者吐出、市盤轉鬆、終續疲至二千四百五十元、但空頭稍補、又回昂至二千四百八十元收盤、四二支藍鳳五千七百八十元至五千六百五十元、六十支彩球一萬一千三百元、二十支月琴三千〇三十元至二千九百五十元、二十支天女二千八百五十元、二十三支金鷄二千八百元、二十支雙地球二千七百四十元、二十支雙馬現貨二千八百元、二十支藍鳳三千二百六十五元、二十支水月二千二百八十元、十八支織女二千七百四十元、十六支紅奎星二千四百二十五元、至二千三百五十元、十四支金塔二千四百五十元、三二支松鹿四千三百七十元、四十支金城五千元、</p>
+<h3>投機集中棉布</h3>
+<p>廠布昨市先堅後回、實銷雖滯、而交易熱鬧、乃因投機賣買趨向紗布之故、花蝶粗布廠單八十六元、現貨一百三十元、富貴細布廠單八十六元、現貨一百〇五元、富貴細斜廠單七十六元現貨九十五元、一六磅永字粗布一百十五元、一四磅地球粗布一百〇一元、十一磅並蓮七十九元半、一九〇桃花女七林一百七十六元、四大天王漂布二百二十五元、長亭四十二支素府綢四元牛、各貨漂染布不動、白貨跌五角至一元半、本街成交五百餘件、</p>
+<p>東布　咋巿倏漲倐落、範圍已見擴大、競爭賣買熱烈非常、晨市龍頭廠單喊高五角、為一百二十六元半、惟無買戶、反引起散多出籠、直瀉至一百二十元、迨聞紗價尙堅、補空回升至二十一元、午後開盤二十一元半、高漲至二十五元半、收市再回至二十四元二角半、餘貨收盤價銀行單龍頭細布一百十三元、彩球一百十五元、陽鶴十四元半、喇叭童十二元、雙魚十一元半、五福雙魚斜紋〇五兀、實貝〇三元、四君子嗶嘰十至十二月單四元一角一分、七至九月單三元九角二分、現貨三元八角七分、紅新單三元九角九分、</p>
+<h3>金價不易出關</h3>
+<p>昨日烚赤暗市先泓後回、一萬四千元大關仍衝出後即見回入、自晨每條（十兩）初開一萬三千九百五十元、即高五十元、某金號少出、回下至一萬三千九百元、某證券號忽來力進、情勢頓堅、嘉餘仁承水德成合發及故戶等紛起力進、在抬風中步升三百餘元、突出一萬四千元外、達一萬四千二百五十元、各現金號水豐餘生元永及新豐永合發來力售、價頓反動囘下、兩金號與誠達亦賣出、午刻遜至一萬三千七百七十元、永豐餘復進、證券號亦來買、正午提升一百三十元為收市、計萬三千九百元、與上日收價無榮辱、收後一萬三千八百五十元、當日有四百八十元差度、成交仍稀、首飾金每兩大新同行曾掛升五十元為一千五百元、後即回下、仍一千四百五十元、（收進减一百五十元）紋銀掛十四元、黑巿十二元半、銀幣一枚為七元五角、均係成交價、</p>
+<p>昨外幣市况、英美金鎊仍站原盤、前者為三百五十元、後者為三百六十元、美金票續退為十六元七八角、香港票略退為二元九角半、大票减小五分、軍用票為四元四角二三分、</p>
+<h3>公債漲跌互見</h3>
+<p>公債暗盤、昨巿稍見安定、曾一度湧起回風、丙種由六十七元開盤、即好至七元六角、甲種亦曾穿出七十元關、乙種高至六十八元、入後始因同康及大康成餘貨仍有大數湧出、始見回小、加以公茂及聯和亦尙有脫手、是以協康·通記·和豐·及同益收買、未能將市價抬高、但甲乙兩種已比前為堅、甲種維持七十元站定、丁戊兩種則仍續小、但亦為隔日下跌數目多寡　有參差、致有此現象耳、前途或當趨堅、昨結果高低互見、為數約四五角、成交約六七十萬元、茲列簡明表於後、</p>
+<p>昨外股市况、仍多低落、成交五千二百股、計怡和紗廠由二十三元二五、退至二十二元七五、信和紗廠由六元四角半、退至六元四角、鋼業初十四元、後十三元四角、當日軋小六角、</p>
+<h3>國米已見回頭</h3>
+<p>國米來源、因前兩朝春雨連綿被阻、致上市尤稀、貨主售意甚堅、若薄稻曾開二百八十五元、早稻二百八十四元、然價格一再森高、作客亦未免有所顧忌、即復袖手不進、卒難立足、結果售般薄稻遂祇二百八十一元、早稻二百八十二元、計升一二元而已、厚粳雖市貨極微、常祇一二十石、而銷塲因價叩將及三百元大關、反較棘手、故開昆山粳行情僅能略提二元之砠、為三百九十六元、然門市有售三百十元之高價、余壇白元因價格轟足、仍乏做開、惟開會有二百八十七八元之喊聲、</p>
+<h3>豆價尚少變遷</h3>
+<p>昨日豆市甚為平靜、囤戶進出絕鮮、僅祇本街零戶稍有點綴、價與前少變遷、計售開天津金元二百十包、價為一百七十五元至于百七十三元、常州牛皮黃二百包、價一百五十三元、平湖揀靑二十包價一百二十五元、崇沙蠶一百包、價九十元、又沙赤五十包、價一百三十元，奔牛豇豆六十包、價一百二十五元、</p>
+<p>紅糧及花生囤銷較活、市勢一致趨挺、計售開明光紅糧十車、價為八十三元半至八十六元、江北花生一百餘包、價二百二十元、</p>
+<p>豆餅囤戶進出互有、實銷淡泊、故市勢頗平、昨售開　記豆餅四千片、四月份棧單價為三十五元五六角、五月份棧單三十六元五角至三十六元七角、六月份棧單三十七元半、十一月份棧單三十八元、</p>
+<p>麩皮昨日又被客囤趁低吸收而見回振、三鑫麩皮開價即為六十八元三角、繼至六十八元五角、成交數約千數百包、</p>
+<h3>本月份糖在支配</h3>
+<p>近日糖市因軍票時有上落、合價遂因之亦有軒輊、惟無過甚出入、至於木月份供給木巿零售商之糖、正在申請購支配中不日當有確數發表、市勢異常堅固、</p>
+<h3>湘蓮步升</h3>
+<p>湘蓮近以軍票提升、而此物來源與軍票亦有關係、故巿價遂隨之上騰、前日木湖蓮曾升至六百二三十元、咋更叫至六百五十元、均為空前之新紀錄、但較之桂圓荔枝尙稱廉宜、後市或有再緊希望、</p>
+<h3>香烟既遭統制</h3>
+<p>肥皂依然疾升　香烟因願中廠出品各牌婦中支那配給組合、撥永泰行經銷、昨巳開始辦理同業登記手續、不日即可派貨、做開計大英牌每箱七千元、老刀牌六千元、品海牌五千八百元、小仙女脾四千二百元、五華牌四千二百元、均比上日暴落七百元之巨、日烟亦跟隨下游、計金槍牌一千七百元、金大樓一千九百十元、全祿牌二千四百元、紅玫瑰牌三千零二十元、結果價較上日軋小五十元、</p>
+<p>肥皂市面、各牌做價狂升不已、蓋廠方無貨供給、銷路頗為旺盛、故價向前疾進、做開如固木皂海每箱達一百五十元高價、白祥茂皂一百四十兀、黃祥茂皂一百三十五元、箭刀皂一百三十元、均比上日狂升十餘元、</p>
+<h3>潮枝軋缺步昂</h3>
+<p>潮枝因　來到貨久缺、市存至為軋缺、開某號略有運到、已售出二次、價格步緊、前後漲度達四五十兀云、</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>「看吃飯」的故事</h3>
+<p>— 公雞</p>
+<p>朋友吿訴我這樣一個故事：</p>
+<p>一個跑堂忘了把顧客所點的菜通知廚房，顧客等待好久，不見上菜，一把拉住了跑堂說：「朋友，我是來吃飯的，不是來看吃飯的。」我覺得這故事很「幽默」。茶餘飯後，常把這故事告訴另一些朋友，博</p>
+<p>但是從那一天之後，我不再拔這故事告訴任何一人。我明白了「看吃飯」並不是　　「幽默」的事。，那一天在一家小飯店裏吃午飯。飯店小得連沿街窗上窗帘都沒有。我坐對着靠窗的桌子，飯來了，菜來了，我舉起筷子來扒飯往嘴裏送。我一抬頭，窗外有許多人頭，眼睛都注視着我。兩隻，四隻，六隻，八隻，……奇怪！也許我身上有令人注意的地方。不，我祇穿着半新舊棉袍。也許今天飯菜特別，那是一客極平常的客飯：菜是黃芽菜炒肉絲，湯是雪裏紅湯，飯是白米飯，那眞是平常到無可平常。每一隻眼睛注視着我：把菜往嘴裏送，把湯往嘴裏喝，把飯往嘴裏扒。把我看得十分難為情。我低着頭，避開他們的視綫，好像一個新娘子怕見一羣鬧新房的惡客。我低着頭尋思，再思，三思，唔，我明白了！我明白了！他們是「餓」了。但是我沒有餘力能請他們進來飽餐一頓。我的心理由羞澀變為慚愧，由慚愧變為抱歉。直到吃完飯，我終沒有敢抬起頭來和他們對一對眼光。我算淸了賬，推出門去，把零找塞在一個站得離門最近的「看吃飯」朋友手裏。我連奔帶跑地穿過街心，我終沒有勇氣回頭看看那些「餓」了的「看吃飯」朋友。</p>
+<p>那一天起，我不再談那「看吃飯」的「幽默」故事。而且我以後在飯店吃飯，永遠坐在離街窗最遠的座位上，因為我「羞澀」！我「慚愧」！我「抱歉」！</p>
+<h3>胡不歸？</h3>
+<p>— 文震</p>
+<p>甲：「老兄，你為什麼不回鄉去？」</p>
+<p>乙：「實不相瞞，近年來我拖了不少的債，時難以脫身。你呢？」</p>
+<p>甲：「唉，我放了好幾筆債，要慢慢地索還，目前也不能回鄉！」</p>
+<p>讀者</p>
+<h3>呼聲取消夜間配方</h3>
+<p>— 仁珊</p>
+<p>我們是六口之家，山弟兄兩人分負經濟責任。可是舍弟年幼無知，在大雨中多跑了路，回家便納頭而睡，當晚即寒熱大作，母親起初拿「午時茶」來當萬應靈丹，不幸却是個兇險之症，三天之後，病勢有增無减，祇得請朋友中掛牌的來略盡義務。一診之下，竟是肺炎。</p>
+<p>在赴藥房的路上，我在盤算着這兩天服量的水不知要多少錢，現在的西藥漲上一百倍二百倍好像是用不到詫異的。然而我的盤算是多餘的。藥房已經打烊，我想從邊門進去的時候，剛巧有人從里面出來，我就問他配方在那裏？那人祗回答了「明天」兩惆字，連看都不看我一眼。我以為他聽錯了，重高聲地說「配方在那裏？」「明天！」他的聲音超過了我的晚」上不配方嗎？「我把聲音壓到了最低的限度。</p>
+<p>「沒有人！」他的聲音還是提足了勁。</p>
+<p>做醫生，開藥房，似乎不能和普通的職　及商店相等的。做醫生的即使不能每天「施診　號一，也該「貧病不計」；「夜間配方，請走後門」更是各藥房予病家便利的服務。然而「沒有人」。道家藥房是家大藥房，即以營業而論，留一位藥劑師値夜班，也不見得就是浪費。</p>
+<p>當時已經將九點鐘了，看來再交涉下去也不會發生什麽效力，但我總不能把藥方在袋裏借宿一宵，九從四馬路轉到大馬路，找到一家我平時不注意的藥房，門口「夜間配方請走後門」的紅燈亮淸，才安心地擠了進去，裏面配方的人很多。我從窗口向內望去，裏面</p>
+<p>據說在囤貨聲中，有囤積藥品的藥房及私人，實在令人寒心，為了節省開支而取消夜間配方，也不是大藥房應有的現象。現在巳到了山窮水盡之際，能够予人便利，即是造福社會；祗有自己，也會沒有自己的！</p>
+<p>游藝雜談</p>
+<h3>道情</h3>
+<p>— 澤夫</p>
+<p>道情木為道士所歌，其詞意以離塵絕俗為主，在樂歌中亦謂之黃冠體。其後賣唱者以俚俗之詞，寓勸戒之意，沿門擊唱，原非道士之流，人亦謂之唱道情。江浙河南一帶多有之，以男子為多，而開封鄭州則有婦女唱之者。唱時左手擊簡子，右手拍漁鼓，漁鼓郎抱在左臂者。簡子用以節音，漁鼓用於尾聲，故於唱完一句或一段後始擊拍之。所歌大抵為三七言句，如鄭板橋所仿作者作按「續仙傳」載藍采和嘗手持三尺餘長大拍板，歌以行乞於市，此大拍板當如今之簡子，其歌亦以勸戒為主，則唐時已有此種唱道情矣。父淸人（著者不詳）畫舫餘譚記嘉慶間在京中唱道情者，謂無業遊民，略熟「西遊記」即挾漁鼓，詣諸姬家，探其睡罷浴餘，演說一二回，籍消淸倦云云，則業此者不僅能唱歌曲，且能演說長篇說部，是又別樹一幟浙矣。</p>
+<p>前刋「相聲」，內有「大快朶顧」一語係筆誤，茲特刋正於此。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（二）風雨之夕</p>
+<p>兩個人都摸上房艙的艙門，一個是摸着左邊一扇，一個是右邊一扇，分工合作樣的關上了，又恢復了躺下以前的原狀。國芳一笑道：「我哥哥倒是好睡。」維城道：「我有一些矇朧，也知道你在把大衣蓋在被上，懶得說話，便沒有道謝。」國芳道：「那算得什麼，道謝那是不敢當，你還當做我是一個外人嗎？」維城仰起了脖子，看一看船頂上，像是在審視還有漏下來的水沒有。國芳道：「明天，天晴了，回到鄕裏，也高興一些。」維城這一回，是正式注視國芳了，想在國芳臉上，我出什麽劣點，同時答話道：「回鄉，到底是快活的，你回去看祖母，我回去看母親，她們老人家的臉，就是天，她們歡喜，就是天晴。」國芳給維城說的笑了。</p>
+<p>在說說笑笑的過程中，船家在後邊喚了一聲，這一聲也可以說是嘯，和電影裏泰山人猿喚的具體而微。維城道：「是不是到了花港，要我準備起來？」國器聽維城提着花港，有些知音者芳心自警，突然坐起，問道「到了花港嗎？這麽快。」國芳把衣袖往上捋一捋，笑道：「才兩點鐘，怎麽便會到花港，經騐吿訴我，要天明才到。這是船要拐彎，船家不知道前面河裏有船沒船，所以這麽喚一聲，如果前邊有船，那麽應該應一聲，可以避免兩隻船在黑暗裏相撞。」維城在鄕裏生長的，這些一常識，當然是有；但他今天晚上，只裝做不識不知，等國芳說完，接口道：「國芳的常識，比我豐富得多。可見得一個人，隨時隨地，都是學問，我猜那些住在大都會的人，倘然旅行到鄕村裏，得到些弄船知識，還要寫入旅行日記裏，作為是一種新收獲。哈哈！一（一二）</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.04</h1>
+<h3>Heavy Bombing of Bandung by Japanese Planes; Java Enters Decisive Battle; Landing Japanese Troops Advance Inland, Occupying Key Railway Junction</h3>
+<p>Tokyo, 3rd (Domei News Agency) – A special dispatch from the "Nichinichi Shimbun" states that the vanguard of the Japanese army in Java advanced to a certain location last night, and Bandung, the location of the enemy's command headquarters, is already in sight.</p>
+<p>Tokyo, 3rd (Domei News Agency) – Today marks the third day of the Battle of Java. After landing on the coast of Java, Japanese troops advanced rapidly inland, already occupying Gelahang, a key city on the railway between Batavia and Bandung, approximately 35 miles from Batavia.</p>
+<p>Tokyo, 3rd (Haitong News Agency) – A dispatch from the Java front reports that Japanese troops landing in central Java are continuing to advance inland and have occupied a key railway junction between Batavia and Bandung. Train services between Bandung and Batavia are now suspended.</p>
+<p>Bandung, 3rd (Reuters) – The situation in Java is quite intense, but details are unknown. The defending forces have been focusing on attacking the main Japanese forces rather than concentrating on their infiltrating units. Japanese planes bombed Bandung heavily today, attacking in two waves, circling over Bandung for a total of 90 minutes. The first wave consisted of 42 bombers and 18 fighters.</p>
+<p>A Certain Japanese Air Force Base, 3rd (Domei News Agency) – Yesterday at 5 PM, Japanese planes launched a surprise attack on Bandung in Java, shooting down two enemy Brewster fighters in aerial combat and destroying over a dozen large fighters on the ground. Japanese planes also heavily damaged military facilities outside Batavia. Enemy planes attacked Kalijati yesterday afternoon, and two were shot down by Japanese army aircraft.</p>
+<p>Bandung, 3rd (Reuters) – According to official announcements, the Battle of Java is underway, but operational details cannot be announced. A Reuters correspondent at the front reports that Dutch tanks have been deployed to assist in the fighting. Yesterday morning, the correspondent arrived at a certain war zone where Dutch tank units were engaging landing Japanese troops. The fighting was extremely fierce. A Javanese soldier told the reporter last night that Japanese troops, using two British military vehicles and two private cars, unexpectedly drove into the area at high speed, firing machine guns to the left and right. Our troops returned fire, and several Japanese squads quickly concentrated, forcing Dutch troops to retreat to new nearby positions. No Japanese planes have appeared in the sky today, only Dutch aircraft continuously flying back from the front to reload and refuel.</p>
+<p>Batavia, 3rd (Reuters) – Although this area has not yet suffered any direct threats, important military facilities have been destroyed.</p>
+<p>Dutch East Indies Government Moves Capital to Bandung</p>
+<p>London, Saturday (Reuters) – Dutch sources in London stated today that the Dutch East Indies government has moved to Bandung because the capital, Batavia, is vulnerable to attack. The military headquarters has already been located in Bandung for some time.</p>
+<p>Calm in Batavia</p>
+<p>Batavia, 2nd (Reuters) – After the Japanese landed in Java, their air force, used to cover ground troops and infiltrating units, has been less active, while Allied air forces have been very active. There are no reports of Japanese landings in other areas today. The residents of the entire city are very calm. The reporter has passed through countless small towns and villages, and only heavy military transport is visible, while the lives of residents continue as usual.</p>
+<p>Air Raids on Two Cities in Western Australia</p>
+<p>Melbourne, 3rd (Reuters) – An Australian Air Force bulletin released today states that Japanese planes attacked the airfields of Broome and Wyndham on the north coast of Western Australia this morning. No bombs were dropped on Wyndham, but it was subjected to machine gun and small cannon fire. Bombs are reported to have fallen on Broome, causing some damage to both cities. Furthermore, Japanese planes bombed Port Moresby and Wau in New Guinea on Sunday. On Monday afternoon, Australian aircraft reconnoitered Japanese positions on New Britain Island.</p>
+<p>Melbourne, 3rd (Reuters) – Reports that 1,500 Australian troops have been captured on Timor Island have not been confirmed by official sources here. However, it is known that Australian troops were stationed on the island when Japanese troops landed.</p>
+<h3>Details of Unprecedented Naval Battle in Java Sea Officially Announced by Japanese</h3>
+<p>Tokyo, 3rd (Domei News Agency) – The Japanese Imperial General Headquarters announced today at 5:30 PM the results of the naval battles near Surabaya and Batavia on February 27th and March 1st. The enemy suffered the sinking of six cruisers, eight destroyers, seven submarines, one gunboat, and one minesweeper. The sunk cruisers include the American "Houston" (9,050 tons), the British "Exeter" (8,390 tons), the Australian "Perth" (6,830 tons) and "Hobart" (6,980 tons), and the Dutch "De Ruyter" (6,450 tons) and "Java" (6,700 tons). Japanese losses were one minesweeper sunk and one destroyer lightly damaged.</p>
+<p>A Certain Japanese Naval Base, 1st (Domei News Agency) – On the evening of February 27th, a Japanese transport convoy, escorted by a fleet, vaguely sighted Allied fleet silhouettes near the coast of Batavia, including two heavy cruisers, one light cruiser, and two destroyers, clearly intending to attack the Japanese transport convoy. The Japanese ships immediately opened fire with their cannons at exactly 6:00 PM on the evening of February 27th. This was the first naval battle of the Greater East Asia War. According to a radio report from another Japanese fleet, they also encountered another Allied fleet near the coast of Surabaya, including approximately three or four cruisers and several other warships, believed to be destroyers. Both fleets simultaneously opened fire. Two Allied cruisers were torpedoed and sunk. In the darkness, the two fleets engaged fiercely, with the roar of cannons, splashing waves, and interwoven searchlights. The sounds of aircraft and anti-aircraft guns echoed each other. By dawn the next day, the Japanese fleet had gained the upper hand. Allied warships hit included three cruisers and six destroyers sunk, with another four cruisers heavily damaged. The remaining vessels retreated to the ports of Batavia and Surabaya. The Japanese transport convoy then continued its advance.</p>
+<h3>Wavell Reappointed Commander-in-Chief of Indian Forces; Dutch General in Charge of Military Matters in Dutch East Indies; Strategic Adjustments Unchanged</h3>
+<p>London, 3rd (Reuters) – General Wavell, Commander-in-Chief of the Allied Forces in Southwest Pacific, has resumed his post as Commander-in-Chief in India. His former position has been filled by a certain Dutch general. It was announced yesterday by the Prime Minister's office at 10 Downing Street that, "Regarding the command of the Dutch East Indies, following the fall of Malaya and the entry of Japanese troops into Sumatra, communication between Burma and the Dutch East Indies has been severed. It has therefore been decided that command of the Dutch East Indies army, navy, and air force should be transferred to a Dutch general. However, Allied nations will continue to provide assistance to the best of their ability. His Majesty the King has approved the immediate resumption of General Wavell's command in India. Military matters in Burma will also be under his command. There will be no change in general strategic adjustments regarding operations against Japan." Regarding this matter, a certain military correspondent explained that this decision was not unexpected and was inevitable given the current situation. The rapid advance of Japanese forces, combined with the fall of Singapore and Sumatra, has dramatically changed the situation in the Southwest Pacific. At this point, Java is the Allies' last line of defense in that area, not the starting point for a counteroffensive as General Wavell initially intended. Furthermore, Dutch forces have already been deployed on the island, and Java is fighting for its own survival. Military matters should be managed by Dutch authorities.</p>
+<p>Stockholm, 3rd (Haitong News Agency) – According to a joint announcement by the U.S. Army and Navy Departments, in accordance with the agreement, General Wavell has resigned as Commander-in-Chief of the Dutch East Indies and has resumed his post as Commander-in-Chief of India. Wavell's task from now on will be to defend Burma.</p>
+<p>Flying to London, 2nd (Reuters) – The situation in Rangoon remains uncertain. The Japanese claim to have cut the railway between Rangoon and Mandalay. If this is true, the situation in Rangoon is extremely serious. British strategy appears to be to defend Rangoon while maintaining the railway line. Even if Rangoon falls, the defending forces can still retreat north and join forces with Chinese troops. If southern Burma falls completely, British troops can still attack from the east. However, if the railway between Rangoon and Mandalay is cut, British troops will lose their retreat route and be trapped in the Rangoon area. Although British troops can withdraw by sea, it will be extremely difficult due to the mining of the entrance to Rangoon. Rangoon today is a ghost town, with nine out of ten houses in the city empty. The city area is managed by military authorities, and most of the able-bodied men have gone to the front to serve. All warships have been used by the navy to protect transportation and confront Japanese ships. Japanese forces once attacked the Andaman Islands and then bombed Christmas Island, indicating that their line of aggression has begun to extend into the Indian Ocean. The British believe that Japan will try to control the Bay of Bengal to cut off transportation between China, India, and Burma. In fact, the transportation lines in the Indian Ocean are more than just this. Whether it is the route from Britain and the United States via the Cape of Good Hope and the Dutch West Indies, or from the Middle East to Australia, all must pass through the Indian Ocean. The purpose of the Japanese bombing of Christmas Island (250 miles south of Java) is to disrupt the Australian-Indian route and close off the Red Sea.</p>
+<h3>New U.S. Tax Bill Introduced in the House</h3>
+<p>Washington, 3rd (Reuters) – A one-year tax revenue plan starting July 1, 1942, has been submitted by Treasury Secretary Morgenthau to the House Ways and Means Committee. This plan will realize President Roosevelt's desire for $27 billion in tax revenue. Morgenthau stated that every American family will feel the burden of this new tax and that the proposed surtax will be larger than any tax paid by the government in any year before 1941.</p>
+<h3>Tojo Speech: War Still in Early Stages, Will Be Protracted</h3>
+<p>Tokyo, 3rd (Domei News Agency) – Prime Minister Tojo, in a speech at a meeting of local officials this morning, stated that the Greater East Asia War is still in its early stages. The war will be protracted, and the entire nation should further unite to overcome various difficulties in order to achieve final victory.</p>
+<p>Tokyo, 3rd (Haitong News Agency) – Prime Minister Tojo met with the newly appointed Japanese Ambassador to the Soviet Union, Sato, yesterday for important discussions. Government Deputy Spokesman Hori stated that the government's appointment of Sato as envoy to the Soviet Union is because he is familiar with the situation in the Soviet Union and has experience in difficult diplomatic negotiations.</p>
+<h3>Fierce Fighting in Southern Soviet Union; Soviet Forces Counterattack Vigorously; Germans Claim to Have Repulsed Them</h3>
+<p>Berlin, 2nd (Havas News Agency) – An official war report here states that fierce fighting is continuing in Crimea and the Donets region. German forces destroyed several enemy armored vehicles on the Kerch Peninsula, and a transport ship with a displacement of 6,000 tons was sunk by our forces.</p>
+<p>German Supreme Headquarters, 3rd (Haitong News Agency) – This afternoon's German war report states that Soviet forces, under the cover of heavy tanks, attempted to attack but were repulsed. German aircraft attacked Kerch and neighboring ports, causing several large fires.</p>
+<h3>Quiet on the North African Front</h3>
+<p>Rome, 2nd (Havas News Agency) – Military observers here stated that the fighting in North Africa has temporarily subsided, but this does not mean that the fighting in the Mediterranean is at a standstill. The warring parties are now preparing for new developments in the North African campaign. In the current situation, the military actions taken by both sides are limited to land and air reconnaissance to assess each other's positions and resistance capabilities. Therefore, the land positions of both sides are currently very stable, with no temporary changes. The sea is also extremely quiet, but German and Italian aircraft continue to systematically bomb the British island of Malta.</p>
+<p>Special Article from This Newspaper</p>
+<h3>Wavell on Generals (10)</h3>
+<p>He also had a plan to attack from Italy or Serbia to encircle the entrenched Western Front. This concept of a flank attack was very correct, but he did not know how inadequate the convenience of transporting troops and supplies was there. If you consider the Central European Allies as a circle and draw all the main transportation lines leading into and out of the circle on the circumference, I think you will suddenly realize that due to the transportation lines, the Allied powers could only fight the Allied countries on an equal footing on the Western Front. The tactics adopted by the Allied powers on the Western Front may have been clumsy and wasteful, and in fact they were, but Robertson's basic concept, that the main forces could only be used on the Western Front due to the limitations of the transportation lines, I believe is correct.</p>
+<p>From this, we can see that the quality of a leader does not depend on whether he understands strategic principles, but on whether he has knowledge of the war mechanism. I mentioned this in the first lecture. What lessons have we learned from these scattered examples? Politicians and soldiers have probably permanently separated in the 19th century. Germany has already regarded war as a specialized profession; and modern inventions have increased the technical nature of war, naturally making it more specialized. The same situation exists in politics because of the specialization resulting from democracy. Therefore, no one can hope to take care of both professions at the same time, although the roots are all about governing people and managing affairs. In terms of operations, politicians have many advantages over soldiers. Politicians seem to be fighting on the political battlefield at all times; while soldiers only have a few opportunities to conduct simulated battles in peacetime. This is like a person learning to manage hunting dogs who only uses electric rabbits to practice in school and occasionally rushes to the wild for artificial scent hunting (like major military exercises). Politicians must be open-minded and flexible because they are diligent in speaking and debating, and must be able to cope with public criticism and disputes. Soldiers' minds are easily rigid, mechanized, and stick to conventions because they are accustomed to issuing orders and unconditional obedience. I don't need to make more comparisons; in short, mutual understanding between the two sides is a vital condition for conducting modern warfare.</p>
+<p>But how can this be achieved? Only by carefully studying past experiences, humbly accepting current facts, and patiently understanding each other's difficulties once something happens. It is easy to overlook or underestimate the difficulties of politicians. I remember a very apt example from a contemporary British politician. He said that a soldier saw that a politician had agreed to enact an important political bill in the plan, such as the Conscription Act, but progress was slow, and he impatiently questioned the politician, saying, "Since you intend to agree to pass this bill, why don't you do it immediately?" The politician retorted, "If your troops rushed to the edge of a dangerous river, with the enemy lined up and defending on the other side, and you had to cross the river to complete your mission, would you attack immediately?" The soldier replied, "Of course, it's not that easy. You must first scout, set up artillery positions, build bridges, and try to divert the enemy's attention so that they don't know the location of the sneak crossing, as well as other preparations." So the politician said eloquently, "In that case, I must first cater to public sentiment, see what kind of opposition arguments there are, draft a bill that is fair to all classes, not just matters of physical examination, but also decide on many other things such as exemptions before proceeding."</p>
+<p>My three lectures are finally completed. In a word, I only hope that you will study living war history with blood and flesh. You must know that war is not a matter of charts, principles, or rules. A senior commander who relies on army paradigms to solve tactical problems is like a doctor who needs to flip through a medical dictionary to diagnose a disease. He can never be trusted. Unless the leader himself contains something fundamental - that is, the fighting spirit, no educational methods, promotion systems, or worldly talents have any value. The military and political leaders of the last war, such as Clemenceau, Foch, and Lloyd George, how different their personalities were, had one thing in common: they all held a spirit of fearlessness. One of them once said: "Any war cannot be considered a failure until the leader himself admits despair." Therefore, the leader's first real task is to "never admit defeat." A Roman general once saved Rome in extreme danger, and the people built a statue to commemorate him, inscribed with the words: "Because he never despaired of the Republic."</p>
+<p>One more thing, the devout Greeks used to build an altar for the gods after naming each one, and then added another one, "Dedicated to the Unknown God." So when we commemorate famous generals, and build war altars for Hannibal, Napoleon, and Marlborough, let us also add one "Dedicated to the Unknown Leader," which refers to those heroic company, platoon, or squad leaders, some leading their troops to charge, some defending their positions to the death, often dying unknown on the battlefield. The victory of war ultimately depends mostly on the strength of these people. (End)</p>
+<h3>President Roosevelt Issues Order Reorganizing U.S. Army; Divided into Three Departments Led by Generals; Special Commands May Be Established Abroad</h3>
+<p>Washington, 2nd (Havas News Agency) – President Roosevelt signed an order today reorganizing the United States Army into three parts: 1) Army Headquarters, 2) Army Air Force, and 3) Quartermaster Corps. The above three departments are all under the jurisdiction of the Commander-in-Chief and authorize the Army Department to reorganize the overseas army into the above three parts, including: 1) Combat Troops, 2) Combat Command, 3) Defense Forces Command, 4) Theater Commands, and 5) Other commands that the Commander-in-Chief deems necessary to establish. According to news broadcast by radio stations here, the Commander of the Army Headquarters will simultaneously command the infantry and artillery, and the Commander of the Army Air Force will be the Commander-in-Chief of the United States Air Force. After this reorganization, the Commander-in-Chief of the United States Air Force will still be Major General Arnold, the Commander-in-Chief of the Army will be Lieutenant General McNair, and the Quartermaster General will be Major General Sefer.</p>
+<p>Lisbon, Today (Haitong News Agency) – Messages received here say that the American Army is to be divided into three parts, that is the Army, the Army Air Force and the ordinance section, each being in control of one general. All of these three generals are reporting to General Marshall the general officer of the general staff of the American Army. Besides these sections the American Department of the Army also are able to build special military commands for the sake of American security.</p>
+<p>Entire Pacific Coast of U.S. Under Military Control</p>
+<p>San Francisco, 3rd (Reuters) – The U.S. Army has issued an order designating the entire Pacific coast region as the "First Military District." The district extends inland from the coast from 95 to 250 miles. Foreign nationals from Axis countries are being expelled. According to the order, because it is not possible to immediately force all Axis nationals to evacuate the district, the evacuation of Japanese nationals and American citizens of Japanese descent from several extremely important areas will be carried out first, followed by German and Italian nationals.</p>
+<h3>Australia and New Zealand Discuss Joint Defense, Intend to Formulate Concrete Plan</h3>
+<p>Wellington, 2nd (Havas News Agency) – New Zealand Prime Minister Fraser recently gave a speech stating that Australian and New Zealand military experts recently held a meeting to make every effort to ensure that the actions taken by the Allied powers in the Pacific are effective and to reorganize the Allied forces so that they can recover lost ground. Minister of War Supplies Sullivan and Minister of Commerce McCourt both attended the meeting and were able to notify the New Zealand cabinet of various news at any time.</p>
+<p>Saigon, 3rd (Haitong News Agency) – It is reported here that the Allied War Committee in Melbourne and the New Zealand delegation have reached an agreement. The main principle is to reorganize the Allied strategy in the South Pacific. However, this agreement still needs to be approved by London and Washington. This plan includes important organizational changes, but the details have not yet been announced. Once the British and American governments approve this plan, it will be implemented in the combat zones of the Australian and New Zealand armies. The Australian War Cabinet has also decided to subordinate the Air Force and standing army to the domestic defense force, with the same monthly salary and service conditions. Other matters, such as organization, equipment, and reinforcement of troops, are simplified, giving the command headquarters more flexible authority when directing operations. The Australian militia will receive better treatment and will be entitled to pensions and retirement benefits. The recently officially announced mobilization law allows the Australian government to order anyone to participate in services required by the government. The Cabinet can also decide to force conscription of workers with military training, with the same treatment as soldiers. Australian Prime Minister Curtin will soon order the establishment of a new labor army.</p>
+<h3>U.S. and Brazil Sign Economic Agreement</h3>
+<p>Washington, 2nd (Havas News Agency) – Under Secretary of State Welles recently stated that he will sign several economic agreements with Brazilian Finance Minister Sousa Costa at 11:30 AM tomorrow. One concerns the implementation of the Lend-Lease Act, whereby Brazil will ship important raw materials to the United States, and the United States will assist Brazil in strengthening its national defense. The second concerns the development of the Amazon River basin in Brazil to increase rubber production and build a rubber factory there. Other economic agreements may also be signed. After the event, the Brazilian Finance Minister will travel to Ottawa at the invitation of the Canadian government.</p>
+<h3>Members of the Southeast United University Preparatory Committee Decided; He Bingsong, Wang Fengjie, etc. to Serve</h3>
+<p>Jinhua, 2nd – The members of the Southeast United University Preparatory Committee have now been decided to be He Bingsong, Wang Fengjie, Luo Meihuan, Hu Jianzhong, Li Zhaohuan, Pei Fuheng, Zhang Shouyong, Cao Huizhao, Fan Zhengkang, and Yang Yongqing. He Bingsong and Wang Fengjie will serve as the director and deputy director of the preparatory committee, respectively. Issues such as the school site, funding, composition of schools and departments must be discussed by the preparatory committee and submitted to the ministry for approval.</p>
+<h3>National Memorial Days Revised; Generally Five Days; Memorial of Sun Yat-sen's Death Removed</h3>
+<p>Chongqing, 3rd – The revised national memorial days have been changed to five days as follows: January 1st, Founding Memorial of the Republic of China; March 29th, Revolutionary Martyrs Memorial; August 27th, Confucius' Birthday; October 10th, National Day; November 12th, Sun Yat-sen's Birthday. The above memorial days will be promulgated by the National Government. Furthermore, April 12th was originally the Memorial Day of Sun Yat-sen's Death. This amendment removes it because it has been seventeen years since Sun Yat-sen's death. According to our country's inherent customs, mourning ends after three years. According to international practice, commemorating founding fathers is also held on their birthdays. Since Sun Yat-sen's birthday has already been listed as a national memorial day, the original memorial of his death has been removed. From this year onwards, memorial ceremonies will no longer be held.</p>
+<h3>Cabinet Meeting Resolves on Important Matters</h3>
+<p>Chongqing, 3rd – The Executive Yuan held its 553rd meeting on the 3rd. All ministers were present. Besides military and diplomatic reports, the following resolutions were made: 1. The Ministry of Interior submitted the draft "Organizational Regulations for Land Price Reporting Offices in Various Provinces" and the draft "Organizational Regulations for Land Price Reporting Offices in Various Counties and Cities" for approval. It was resolved to pass them with revisions. 2. The Ministry of Finance submitted the "Methods for Compiling and Reviewing County and City Budgets for the 31st Year" for approval. It was resolved to pass them with revisions. 3. The Ministry of Finance submitted the draft "Revised Organizational Regulations for the Ministry's Anti-Smuggling Offices in Various Provinces and Regions" for approval. It was resolved to pass them with revisions. 4. The Shandong Provincial Government requested the abolition of the two administrative inspectorates of Ludong and Lubei in the province. The resolution was passed. Resolutions on personnel appointments and removals: 1. He Ying'en, Administrative Inspector and concurrently Security Commander of the Eighth District of Guangxi Province, and Huang Kunshan, Administrative Inspector and concurrently Security Commander of the Eleventh District, are to be otherwise employed and are relieved of their concurrent posts. Huang Kunshan is appointed as Administrative Inspector and concurrently Security Commander of the Eighth District of the province, and He Ying'en is appointed as Administrative Inspector and concurrently Security Commander of the Eleventh District. 2. Wang Congzhi is appointed as Administrative Inspector and concurrently Security Commander of the Fourth District of Shanxi Province. 3. Zheng Zhenyu, Director of the Land Administration Department of the Ministry of Interior, is to be otherwise employed and is removed from his post. Li Qinglin is appointed to succeed him. 4. Ma Canrong is appointed as Counselor of the Ministry of Agriculture and Forestry. 5. Cheng Xiaomu is appointed as Deputy Director of the Shaanxi Provincial Grain Administration Bureau. 6. Tao Lidun is appointed as Senior Technical Expert of the Yellow River Water Conservancy Commission and is relieved of his original position as Technical Expert.</p>
+<h3>Fierce Fighting Southeast of Pengze</h3>
+<p>A Certain Place in Southern Anhui, 1st – A certain unit of the Chinese army engaged in battle with the Japanese army at Xihuishan, west of Malukou, southeast of Pengze, on the evening of the 27th. The fighting continued until midnight.</p>
+<p>A Certain Place in Southern Anhui, 2nd – Fighting broke out near Wangjiazuizui, near Dongliu, on the morning of the 1st.</p>
+<h3>Ju Zheng Departs for Qujiang</h3>
+<p>Changsha, 3rd – General Commander Ju, after attending a grand rally to cheer up troops and civilians in this area on the morning of the 3rd, departed for Qujiang with his wife and team members at 10:00 AM. A crowd of about ten thousand people from all walks of life spontaneously gathered at the riverside to bid farewell, creating a very enthusiastic scene.</p>
+<h3>Lunar Eclipse in Chongqing Yesterday Morning</h3>
+<p>Chongqing, 3rd – There was a lunar eclipse this morning. Although the moon was bright in Chongqing last night, fog and clouds gathered after nightfall, followed by more than ten minutes of light rain, making observation impossible.</p>
+<h3>Over Two Hundred Acts of Sabotage in France in the Last Seven Months</h3>
+<p>Vichy, 2nd (United Press) – The French Minister of Interior released, for the first time, detailed information on acts of sabotage against German troops and German-controlled organizations throughout France, including organized attacks using explosives and bombs. It is reported that 230 attacks occurred between July 1941 and mid-February 1942. German troops conducted 12,772 searches, resulting in the arrest of 5,390 people, mostly French and foreign communists. The police have partially solved 74 cases and thoroughly solved 29 cases. Some of the major cases are as follows: On December 7, someone threw a bomb at the German military headquarters in Paris. In the southern district of Paris, the Dutch planted explosives intending to blow up a German barracks. In February, someone threw a bomb at the Dutch memorial pavilion at the University of Paris. On January 16, a bomb was thrown at the editorial office of the German-run Paris Daily News.</p>
+<h3>One German Soldier Killed, Twenty Executed in Retaliation</h3>
+<p>Vichy, 3rd (Reuters) – General Stuelpnagel, commander of the German occupation forces in France, issued a communiqué today stating that on March 1, 1942, a German sentry was assassinated by criminals in Paris. In retaliation, the German army will execute twenty communists and Jews from the area where the incident occurred. If the perpetrators are not apprehended by March 16, another twenty people will be executed. The German soldier killed on March 4 was buried. All movie theaters, theaters, and entertainment venues were closed on that day, and restaurants closed at 8:00 PM.</p>
+<h3>Former Italian Governor of Abyssinia, Aosta, Dies</h3>
+<p>Nairobi, British Kenya, 2nd (Havas) – It was officially announced that the Duke of Aosta, former Italian Governor of Abyssinia and former commander of the Italian forces in Africa, suddenly contracted tuberculosis after being captured by British forces and has now passed away.</p>
+<h2>Page 3</h2>
+<h3>Coal Supply from North China to Shanghai Ensures Electricity Supply; February Consumption Matches Budget; Streetlights Not Reduced, Neon Lights All Shut Down</h3>
+<p>Since the outbreak of the Pacific War last December, the situation in Shanghai has undergone a dramatic change. In particular, the source of fuel, already reduced, has become even more scarce. Coal is the main fuel, and it is particularly relied upon for the generation of electricity in this city. Amidst the call for saving electricity, the future of the electricity supply is a matter of urgent concern for the business community and residents of this city. The following is an exploration of the current situation and future trends in maintaining the electricity supply.</p>
+<p>Complete Prohibition of Electricity for Advertising</p>
+<p>Before the war, there were no restrictions on the electricity supply in this city. The company consumed approximately 50,000 tons of coal per month. Efforts were made to maintain this until the emergency of the Pacific War, when it became necessary to plan for savings and gradually reduce the electricity supply. The reduction limit for factories and entertainment venues is 45%, while the reduction limit for shops and general households is 25%. The number of streetlights has not been reduced, and they are still turned on at 7:00 PM in the summer. Neon lights and all advertising lights are completely prohibited.</p>
+<p>Over 30,000 Tons of Coal Used Last Month</p>
+<p>The electricity consumption statistics for February in this city are affected by the New Year holidays for general factories and shops, during which most work was suspended for several days. Therefore, the electricity consumption in February cannot be used as the basis for judging the recent trends in the electricity supply in this city. The company's coal consumption in February was approximately 30,000 tons, which is still in line with the budget.</p>
+<p>Future Supply from North China</p>
+<p>The Shanghai Power Company has been taken over and controlled by the Asia Development Board, so the Asia Development Board has agreed to supply 30,000 tons of coal per month in the future. This coal comes from North China. The company's current coal reserves can only last for a short period of one to three months. If there are setbacks in the new source of coal, the electricity restrictions in this city will be further tightened.</p>
+<p>Diesel Substitution Not True</p>
+<p>Rumors that the company has a large supply of diesel that can replace coal are not true. The company is currently using diesel in a small portion of its fuel consumption. However, diesel can never replace coal as the main source of electricity supply, and diesel itself is in the same situation as coal, with low reserves and no guaranteed source.</p>
+<h3>Issuance of Half-Price Train and Boat Tickets Universally Available</h3>
+<p>Changed to stamping a seal on the travel permit, two places issuing permits, 3,000 per day, the Municipal Council requests the issuance of return home travel permits, the office is established due to a surge in the number of people requesting permits, moved from the commercial group section on the first floor to the playground downstairs, starting the day before yesterday, another issuing office was added to the transportation office of the commercial group, the office is located next to the playground, the total number of travel permits issued daily in the two places is around 3,000.</p>
+<p>Half-Price Tickets Changed to a Stamp</p>
+<p>The office is very common in the issuance of half-price tickets, not limited to occupations, all can apply, the half-price tickets are no longer issued as separate documents, only engraved with "Certificate of Half-Price Boat and Train Fare" seal, stamped on the back of the return home travel permit, you can enjoy the preferential treatment of half-price boat or train tickets.</p>
+<p>List of Place Names of Issuing Offices</p>
+<p>Other offices for issuing travel permits have been recently revised and posted at the issuing office to facilitate citizens' applications nearby, the locations are as follows, 180 Erzhou Road, Second Floor inside the Municipal Council Building, Municipal Council Building Playground, 199 Kenhai Road, North District Elementary School of the Municipal Council, 42 Jingzhou Road, Nie Zhongcheng Chinese Children's Public School, 845 Shanhaiguan Road, Yucai Public School, 29 Xingjia Po Road, Municipal Council Public School, 206 Xiamen Road, 753 Gedeng Road, 25 Maba Road, Municipal Council Chinese Children's Public School, as for other entrusted issuing organizations, they are not listed here.</p>
+<p>Five Places to Inquire About Purchasing Tickets to Ningbo</p>
+<p>Those citizens returning to Ningbo from Shanghai who have obtained travel permits but cannot purchase boat tickets are designated to inquire at the following revised locations, namely 1324 Fuzhou Road, 110 Sichuan Road, Tongjilong Aviation Company Sichuan Road, 592 Jiujiang Road (behind Yong'an Company), 63 Zier Road (next to the Eight Immortals Bridge Post Office)</p>
+<h3>Prohibited Prisoners Can Open Prisoner Drafts</h3>
+<p>Apply to the International Draft Development Bureau, Shanghai Postal Administration Savings and Remittance Bureau issued Notice No. 68 yesterday, "Checking remittance to Japan, those currently imprisoned in Japanese prisoner detention centers can apply to the International Draft Development Bureau to open prisoner drafts, this draft is exempt from remittance fees, it is notified, this is the notice, Director Zha Peilin,"</p>
+<h3>Public Concession Citizens' Guard Presumption of Hosting Personnel French Police Department Strictly Restrains Terrorist Activities</h3>
+<p>The English Qin Wu Shi Bao reported that Mr. Bao Fendo, director of intelligence of the French Public Works Bureau Police Department, said to this reporter yesterday (the second), "Regarding the issue of civilian police work, the French Police Department is maintaining close contact with the Municipal Council Police Department and is studying the issue of taking the same measures as the Municipal Council Police Department."</p>
+<p>The French Police Department Strictly Maintains</p>
+<p>The English Da Mei Evening News said that a spokesman for the French Concession Police Department recently revealed that the French Police Department is currently considering adopting a plan similar to that of the Public Concession to implement a civilian police system in the French Concession. The French Concession has already sent several district chiefs, whose task is to take care of the security of the area and report any crimes to the police. In order to curb the spread of terrorist activities in the area, the French Police Department has increased the activity of patrol and search teams and has taken other protective measures.</p>
+<p>Civilian Guards Gradually Established</p>
+<p>At the same time, the Public Concession Citizens' Police Team is gradually being established. A meeting was held at the Jinmen Hotel on the first of this month to elect Municipal Council Chinese Director Yuan Ludeng as the chairman of the Baojia Autonomy Preparatory Committee, and Zhou and Yu were recommended by Yuan Ludeng as vice-chairmen. In addition, Deputy Inspector General Gotoshima Shigeru was elected as the Special Police Commander of the Public Concession, Inspector General Umeki Morio was appointed as the Special Police Director, and Assistant Inspector Generals Kikawa and Nakamura were appointed as district chiefs of Districts A and B, respectively.</p>
+<h3>Remittance from Occupied Areas to Shanghai A Hundred Yuan Can Be Cashed</h3>
+<p>Remittances from other places to Shanghai, except for those previously limited to 50 yuan or less, the limit for remittances from occupied areas to Shanghai has been relaxed to 100 yuan, the issuance of remittances from Shanghai to occupied areas has been stopped, the public feels very inconvenienced, the Overseas Chinese Remittance Bureau has no way to raise funds due to insufficient funds for adjustment.</p>
+<h3>A Lone Thief Impersonates a Customer, Robs a Western Clothing Store</h3>
+<p>The Yuchang Western Clothing Store at 152 Rue McGao Bao Lu in the French Concession, at 9:30 the night before, suddenly a thief impersonating a customer entered the store, put on a suit, a pair of leather shoes, and a coat, and then ordered the shop assistant to hand over four watches. While choosing, the thief suddenly revealed a hideous face and took out a pistol to scare the shop assistant and prevent him from making a sound, and then carried the watches and other items out of the door and fled. The total loss amounted to more than two thousand yuan. Afterwards, the victim reported to the French Police Station, which sent detectives to the store to investigate and took a cotton robe left by the thief back to the Police Station for investigation.</p>
+<h3>Xiamen Packages Resume</h3>
+<p>The Post Office recently notified that the temporary suspension of receiving large packages and bulk small packages to Xiamen has been notified in the case, now checking that large packages and bulk small packages to Xiamen can be resumed from the 4th of this month.</p>
+<h3>Robbery Summary</h3>
+<p>29 Hongshou Lane, Xiaoshadu Road, West Shanghai, at around 8:15 last night, suddenly four thieves came, two with pistols, speaking Jiangbei accent, they robbed 500 yuan in cash, a bicycle, and a fake diamond ring.</p>
+<p>57, Lane 149, Changsha Road, at around 8:40 last night, five thieves came, one showing a pistol, threatening and intimidating, stealing jewelry worth 1,500 yuan</p>
+<h3>Telecommunications to Various Pacific War Zones Are Blocked</h3>
+<p>Since the outbreak of the Pacific War, foreign telegraph bureaus in Shanghai, such as Great Northern, Great Eastern, Pacific, Globe, and American news agencies, have been successively taken over, and telecommunications between Shanghai and various Pacific War zones have been completely cut off. Telecommunication traffic between Hong Kong and the mainland is also unable to flow smoothly. Although Hong Kong, Manila, Singapore and other places have been occupied by the Japanese, telecommunication traffic to those places has not yet been restored, and telecommunication traffic to the mainland is even more impossible to relay. According to the International Wireless Radio Station on Renji Road, there is no definite date for the restoration of telecommunication traffic to various places occupied by the Japanese in the Pacific.</p>
+<h2>Page 4</h2>
+<h3>Japanese Consulate General Announces Cigarette Price Limits Municipal Council Will Also Control Prices of Various Cigarettes</h3>
+<p>The English Da Mei Evening News reported that a spokesman for the Municipal Council stated this (3rd) morning that the Municipal Council is waiting for notification from the Japanese authorities and will then follow the Japanese precedent to limit the prices of various cigarettes on the market. The Japanese Consulate General previously (2nd) issued a price limit list for cigarettes here and instructed Japanese shops to comply. The price limits are calculated in military yen, listed as follows,</p>
+<p>Social Services</p>
+<h3>Seeking Bean Sprout Germination Method</h3>
+<p>Editor, I am unemployed and preparing to return to my hometown, intending to run a small vegetable stall. In my hometown in Eastern Zhejiang, yellow and tea bean sprouts are not sold in the markets during spring, winter, and autumn. After returning home, I plan to germinate yellow and green bean sprouts myself, but I do not know the germination method. If there are any special books, please inform the readers. Regarding the germination method, I have tried it, but the results are not good. I am now inquiring about several items: How much clean water is needed for one catty of beans? Should other objects be placed in the wooden bucket besides water? If so, how should they be placed? After the beans are immersed in the bucket, do they need sunlight and air, or should the bucket be covered to cut off air? Which is correct? How much bean sprout can be made from one catty of beans, and how many days does it take? Are the germination methods for yellow and green bean sprouts the same? If they are not the same, please indicate the differences. Jin Jiaxiang, 131 Julai Si Road</p>
+<h3>"Cat Spirit" Disturbs Sweet Dreams</h3>
+<p>I am 23 years old, male, strong, and have no previous illnesses. However, when I sleep in the middle of the night, it often feels like a heavy object is pressing on me, and I am quite breathless. When I am pressed, my whole body cannot move independently, and I want to speak but cannot make a sound. After struggling hard, it takes two or three minutes to recover. According to folklore, it is a "cat spirit" rather than an illness. Because I am afraid that it is related to my health, I am borrowing a corner of the social services section of your newspaper to ask your readers to tell me the medical methods and causes. Shao Renzhi, 14 Sanheli, Xuzhen Road, Xujiahui.</p>
+<p>Answering "Nanyang Special Collections" Wei Gang, Dumei Road, letter states: Nanyang Special Collections has one volume of "Travel Notes of the Malay Archipelago," Commercial Press edition; one volume of "Nanyang Tour Guide," China Travel Service edition; one volume of "Selected World Travel Notes" (various articles about Nanyang), China Cultural Service Society edition; one volume of "Britain and its Colonies," Zhengzhong edition; and the newly published Nanyang map, there is a type from the Japanese New Cartography Society, Chinese and English comparison, the author's bookstore may have it for sale.</p>
+<h3>Seeking Lost Women's Wallet</h3>
+<p>I took a No. 1 tram to Nanjing Road Bund on one day (Sunday) afternoon. After the tram passed Zhejiang Road and most of the passengers got off, I found a women's wallet on the surface of the first-class platform. I immediately handed the item over to the ticket seller No. 71 for safekeeping. The owner can take it back from the ticket seller after clearly recording the items in the wallet. Also, it was around 2:30 in the afternoon at that time, car number B, number 5, passenger.</p>
+<p>Submission Regulations</p>
+<p>Reports, opinions, and inquiries regarding public welfare matters are welcome. Letters must include the real name, occupation, and address of the writer. However, those who make efforts to help and voluntarily wish to remain anonymous will be heard. Please affix the newspaper's stamp at the bottom corner of the letter and indicate the social service column of the editorial department. News of general welfare matters will not be published in this column. Trivial personal matters or matters that cannot be handled will not be answered. Letters or replies will not be replied to by separate letter except for those published in this column.</p>
+<h3>Public Personnel Trust Agency News</h3>
+<p>The Public Personnel Trust Agency, in order to assist the Municipal Council Chinese Evacuation Committee in evacuating the population, has specifically decided to issue return home permits on a voluntary basis from 9:00 AM to 12:00 PM starting on the 5th of this month. Those who need to return home can go directly to the agency at 334 Nanjing Road, second floor, to pick up their permits.</p>
+<p>Announcement</p>
+<p>To the unnamed reader: I received four oil paintings from you yesterday, instructing our museum to sell them and donate the proceeds as student aid. Your benevolence and righteous deed are greatly appreciated. However, this newspaper does not accept objects instead of donations. The original objects are now stored at the newspaper's receiving and dispatch office. Please come and collect them in person and we hope for your understanding. Student Aid Office of Shen Bao</p>
+<p>Yesterday's newspaper publishing time was 6:40</p>
+<p>Sports News</p>
+<h3>This Year's Badminton Individual Championship Registration Set to Begin on Thursday Divided into Men's and Women's Singles, Doubles, and Mixed Doubles</h3>
+<p>This year's badminton individual championship is still divided into five events: men's singles, women's singles, men's doubles, women's doubles, and mixed doubles. Registration is set to begin this Thursday (tomorrow). Last year's men's singles champion was Hong Dequan of the Flying Shuttle Team. Hong has now moved to the industry sector. Huajian will have Hou Shuji, Li Shengshi. Yang Jingling, Rong Jun, and Messi. Gui's</p>
+<h3>Hequn Fundraising Soccer Tournament Weekend Semi-Finals Meeting</h3>
+<p>The Hequn Fundraising Soccer Tournament invited Xuhui, Aurora, Golden Lion, and Hequn, four strong teams, to participate in the performance. Originally scheduled to be held last month, it was postponed three times due to rain. It is now scheduled to be held this Sunday (8th) starting at 2:00 PM at the Aurora Stadium on Luban Road. Tickets are two yuan and four yuan and are pre-sold at the following four locations: Huadong Sports Equipment Company on Jing'an Temple Road, Xiangxing Piano Store on Xiafei Road, Jinjiang Tea Room on Hualong Road, and Linlin Company at 33 Sichuan Road. Tickets previously pre-sold will be valid at that time.</p>
+<h3>World Heavyweight Boxing Championship George Louis vs. Simon</h3>
+<p>New York, Reuters, 27th of this month, the world heavyweight boxing champion Brown Bomber black man Joe Louis will hold his 21st world heavyweight boxing championship challenge match with Simon on the 27th of this month, at Madison Square here. Simon is 26 years old this year, more than six feet tall, and weighs 252 pounds, it is expected that he will be able to threaten Joe.</p>
+<p>Business News</p>
+<h3>Profits Emerge, Yarn Prices Relax</h3>
+<p>The cotton yarn market started strong and then weakened. This was because profits were taken after rising for many days, so the market turned slightly looser. The initial asking price for 20-count Double Horse factory yarn was 2,510 yuan, a short while later it reached 2,545 yuan, then profit takers unloaded, the market softened, and eventually continued to weaken to 2,450 yuan, but short covering slightly increased, and it rose again to 2,480 yuan at closing. 42-count Blue Phoenix 5,780 yuan to 5,650 yuan, 60-count Colored Ball 11,300 yuan, 20-count Moon Lute 3,030 yuan to 2,950 yuan, 20-count Heavenly Maiden 2,850 yuan, 23-count Golden Rooster 2,800 yuan, 20-count Double Globe 2,740 yuan, 20-count Double Horse spot 2,800 yuan, 20-count Blue Phoenix 3,265 yuan, 20-count Water Moon 2,280 yuan, 18-count Weaver Girl 2,740 yuan, 16-count Red Kui Xing 2,425 yuan to 2,350 yuan, 14-count Golden Pagoda 2,450 yuan, 32-count Pine Deer 4,370 yuan, 40-count Golden City 5,000 yuan,</p>
+<h3>Speculation Concentrated on Cotton Cloth</h3>
+<p>The factory cloth market yesterday was first firm and then declined. Although actual sales were slow, transactions were lively, due to speculative trading trending towards yarn cloth. Flower Butterfly coarse cloth factory orders 86 yuan, spot 130 yuan, Fugui fine cloth factory orders 86 yuan, spot 105 yuan, Fugui fine twill factory orders 76 yuan, spot 95 yuan, 16-pound Yong character coarse cloth 115 yuan, 14-pound Earth coarse cloth 101 yuan, 11-pound Parallel Lotus 79 yuan and a half, 190 Peach Blossom Girl 7 176 yuan, Four Great Heavenly Kings bleached cloth 225 yuan, Changting 42-count plain silk 4 yuan, various bleached and dyed cloth unchanged, white goods fell 0.5 to 1.5 yuan, the street traded more than 500 pieces,</p>
+<p>East Cloth, yesterday the market rose and fell suddenly, the range has been expanded, competition and trading is extremely heated, the morning market leader factory orders shouted up 0.5 yuan, for 126.5 yuan, but there were no buyers, instead triggering many to unload, plummeted to 120 yuan, until it was heard that yarn prices were still firm, covering shorts rose back to 21 yuan, the afternoon opened at 21.5 yuan, soared to 25.5 yuan, the market closed back to 24.25 yuan, the remaining goods closing price bank orders leader fine cloth 113 yuan, colored ball 115 yuan, Yang Crane 14.5 yuan, Horn Child 12 yuan, Double Fish 11.5 yuan, Five Blessings Double Fish twill 05 yuan, Real Shell 0.03 yuan, Four Gentlemen serge October to December orders 4 yuan, 1 jiao 1 fen, July to September orders 3 yuan, 9 jiao 2 fen, spot 3 yuan, 8 jiao 7 fen, Red New orders 3 yuan, 9 jiao 9 fen,</p>
+<h3>Gold Prices Not Easy to Leave the Pass</h3>
+<p>Yesterday's raw gold dark market was first strong and then declined, the 14,000 yuan mark still saw a decline immediately after breaking through, since the morning each bar (10 taels) opened at 13,950 yuan, an increase of 50 yuan, a gold number slightly released, falling back to 13,900 yuan, a securities number suddenly came with great force, the situation suddenly strengthened, Jia Yuren, Cheng Shui, De Cheng, He Fa, and old households rose to increase force, rising more than 300 yuan in the gale, suddenly breaking out of 14,000 yuan, reaching 14,250 yuan, each cash number Shui Feng Yu, Sheng Yuan, Yong He, and Xin Feng Yong He Fa came to sell with force, the price suddenly rebounded downwards, two gold numbers and Cheng Da also sold, at noon it weakened to 13,770 yuan, Yong Feng Yu resumed progress, the securities number also came to buy, at noon it rose 130 yuan as the market closing, a total of 13,900 yuan, there was no honor or disgrace with the previous day's closing price, after closing 13,850 yuan, there was a difference of 480 yuan that day, the transaction was still rare, jewelry gold each tael Da Xin Tong Hang once listed an increase of 50 yuan as 1,500 yuan, then fell back, still 1,450 yuan, (taken back reduced by 150 yuan) silver tael listed at 14 yuan, black market 12.5 yuan, silver coin each for 7 yuan 5 jiao, are all transaction prices,</p>
+<p>Yesterday's foreign currency market situation, British and American gold pounds still stood at the original board, the former was 350 yuan, the latter was 360 yuan, American dollar tickets continued to decline to 16 yuan 78 jiao, Hong Kong tickets slightly declined to 2 yuan 9 jiao and a half, large tickets reduced by 5 points, military tickets were 4 yuan 4 jiao 23 points,</p>
+<h3>Bond Prices Mixed</h3>
+<p>The bond black market, the market yesterday saw slightly more stability, there was once a surge of return, Type C opened at 67 yuan, that is, good to 7 yuan 6 jiao, Type A also once broke out of the 70 yuan mark, Type B rose to 68 yuan, after entering because Tong Kang and Da Kang Cheng had a large number of remaining goods pouring out, began to see a small return, coupled with Gong Mao and Lian He still had to sell, so Xie Kang, Tong Ji, He Feng, and Tong Yi bought, and failed to raise the market price, but Type A and B have been more firm than before, Type A maintained 70 yuan standing, Type D and E continued to decline slightly, but there were also differences in the number of day-to-day declines, resulting in this phenomenon, the future may tend to be firm, yesterday's results were mixed, the number was about 4-5 jiao, the transaction was about 6-700,000 yuan, a brief table is listed below,</p>
+<p>Yesterday's foreign stock market situation, mostly declined, 5,200 shares traded, Jihe Yarn Factory retreated from 23 yuan 25 points to 22 yuan 75 points, Xinyi Yarn Factory retreated from 6 yuan 4 jiao and a half to 6 yuan 4 jiao, Steel Industry initially 14 yuan, later 13 yuan 4 jiao, on that day the squeeze was 6 jiao</p>
+<h3>Guomi Sees a Rebound</h3>
+<p>The source of Guomi, due to continuous spring rains in the previous two dynasties, was obstructed, leading to its scarcity on the market. Merchants were very determined to sell. If early Indica rice once opened at 285 yuan, and early rice at 284 yuan, but prices repeatedly rose, buyers were inevitably wary and hesitated, making it difficult to establish a foothold. As a result, the final selling price for ordinary Indica rice was only 281 yuan, and early rice was 282 yuan, an increase of only one or two yuan. Although the market supply of thick粳 rice was extremely limited, often only ten or twenty stones, the sales market was difficult because the price was approaching the 300-yuan mark. Therefore, the opening price of Kunshan 粳 rice could only be slightly raised by two yuan to 396 yuan, but retail sales reached as high as 310 yuan. Yutan white yuan rice, due to high prices, remained lacking in transactions, but there were bids around 287 or 288 yuan at the opening.</p>
+<h3>Bean Prices Show Little Change</h3>
+<p>The bean market was very quiet yesterday, with almost no activity from囤户 (speculators). Only some local retailers made minor transactions. Prices remained little changed from before. It was estimated that 210 bags of Tianjin Jinyuan beans were sold, with prices ranging from 175 yuan to 173 yuan. 200 bags of Changzhou Niupihuang beans were sold for 153 yuan. 20 bags of Pinghu Jianqing beans were sold for 125 yuan. 100 bags of Chongsha Silkworm beans were sold for 90 yuan, and 50 bags of Sha Chi beans were sold for 130 yuan. 60 bags of Benniu Cowpea were sold for 125 yuan.</p>
+<p>Sales of sorghum and peanuts were relatively active, with the market trend consistently upward. It was estimated that ten carts of Mingguang sorghum were sold, with prices ranging from 83.5 yuan to 86 yuan. Over a hundred bags of Jiangbei peanuts were sold for 220 yuan.</p>
+<p>The activities of囤户 (speculators) in the bean cake market were mixed, with sluggish actual sales, resulting in a relatively flat market. Yesterday, four thousand pieces of Ji bean cake were sold, with April warehouse receipts priced at 35.56 yuan, May warehouse receipts at 36.5 yuan to 36.7 yuan, June warehouse receipts at 37.5 yuan, and November warehouse receipts at 38 yuan.</p>
+<p>Wheat bran was once again absorbed at low prices by客囤 (speculators) yesterday, leading to a rebound. The opening price for Sanxin bran was 68.3 yuan, later rising to 68.5 yuan, with approximately one thousand to one thousand several hundred bags traded.</p>
+<h3>Sugar Controlled This Month</h3>
+<p>Recently, the sugar market has seen fluctuations due to ups and downs in military scrip, leading to corresponding price variations, but without excessive differences. As for the sugar supplied to retail merchants in this city for this month, applications are being made for procurement and allocation. The exact figures should be announced soon. The market trend is exceptionally firm.</p>
+<h3>Xianglian Gradually Rises</h3>
+<p>Xianglian (lotus seeds) has recently risen due to the increase in military scrip. As the source of this product is also related to military scrip, the market price has risen accordingly. The price of Muhu lotus seeds once rose to 620-630 yuan the other day, and yesterday, the price was even called up to 650 yuan, both unprecedented new records, but still considered cheaper compared to longan and lychee. There are hopes for further tightening in the future market.</p>
+<h3>Cigarettes Already Under Control</h3>
+<p>Soap Continues to Rise Rapidly. Cigarettes, due to the allocation of various brands produced by the願中厂 (Yuanzhong Factory) to the China Supply Association and the distribution handled by Yongtai Trading Company, began registration procedures for the industry yesterday. Delivery of goods should begin soon. The opening prices were: Great Britain brand at 7,000 yuan per carton, Old Knife brand at 6,000 yuan, Pinhai brand at 5,800 yuan, Little Fairy brand at 4,200 yuan, and Wuhua brand at 4,200 yuan. These were all a significant drop of 700 yuan compared to the previous day. Japanese cigarettes also followed the downward trend, with Jinqiang brand at 1,700 yuan, Jindalou at 1,910 yuan, Quanlu brand at 2,400 yuan, and Red Rose brand at 3,020 yuan. As a result, prices were reduced by 50 yuan compared to the previous day.</p>
+<p>The soap market saw frantic price increases across all brands. Because the factory had no goods to supply, sales were quite strong, causing prices to advance rapidly. The opening price for Gumuhai soap reached a high of 150 yuan per carton, Baixiangmao soap at 140 yuan, Huangxiangmao soap at 135 yuan, and Arrow Knife soap at 130 yuan. All saw frantic increases of over ten yuan compared to the previous day.</p>
+<h3>Chaozhou Branches Scarce and Prices Rise</h3>
+<p>Chaozhou branches (a type of dried tangerine peel) are facing a long-term shortage of incoming goods and a very tight market supply. A certain shop has slightly increased deliveries, and has already sold out twice. Prices are gradually tightening, with increases reaching forty to fifty yuan.</p>
+<h2>Page 5</h2>
+<p>Chunqiu (Annals)</p>
+<h3>The Story of "Watching Eating"</h3>
+<p>— Rooster</p>
+<p>A friend told me such a story:</p>
+<p>A waiter forgot to inform the kitchen about a customer's order. The customer waited for a long time and no food was served. He grabbed the waiter and said, "Friend, I came to eat, not to watch eating." I thought this story was very "humorous." After tea and dinner, I often told this story to other friends to amuse them.</p>
+<p>But from that day on, I no longer told this story to anyone. I realized that "watching eating" was not a "humorous" thing. That day, I was having lunch in a small restaurant. The restaurant was so small that there were no curtains on the windows facing the street. I sat at a table facing the window. The food came, the dishes came, and I picked up my chopsticks to scoop rice into my mouth. When I looked up, there were many heads outside the window, all eyes fixed on me. Two, four, six, eight... Strange! Maybe there was something about me that was attracting attention. No, I was only wearing a half-new, half-old cotton robe. Maybe today's food was special. It was an extremely ordinary set meal: the dish was stir-fried yellow buds with shredded pork, the soup was snow cabbage soup, and the rice was white rice. It was really ordinary to the point of being unremarkable. Every eye was fixed on me: putting the dish in my mouth, drinking the soup, scooping the rice. They made me feel very embarrassed. I lowered my head, avoiding their gaze, like a bride afraid of seeing a group of rowdy wedding guests. I lowered my head and pondered, pondered again, and pondered a third time. Aha, I understood! I understood! They were "hungry." But I did not have the ability to invite them in for a full meal. My heart changed from shyness to shame, from shame to apology. Until I finished eating, I never dared to raise my head and meet their gaze. I settled the bill, pushed the door open, and stuffed the change into the hand of a "watching eating" friend who was standing closest to the door. I ran and stumbled across the street. I never had the courage to turn around and look at those "hungry" "watching eating" friends.</p>
+<p>From that day on, I no longer talked about that "humorous" story of "watching eating." And from then on, when I ate in a restaurant, I always sat in the seat farthest from the street window, because I felt "shy"! I felt "ashamed"! I felt "apologetic"!</p>
+<h3>Why Not Return?</h3>
+<p>— Wen Zhen</p>
+<p>A: "Brother, why don't you return to your hometown?"</p>
+<p>B: "To be honest, I've accumulated a lot of debt in recent years, and it's difficult to get away. What about you?"</p>
+<p>A: "Alas, I've made several loans, and I need to collect them slowly. I can't return to my hometown at the moment either!"</p>
+<p>Readers</p>
+<h3>Calling for the Cancellation of Nighttime Prescriptions</h3>
+<p>— Ren Shan</p>
+<p>We are a family of six, with the two Shan brothers sharing the economic responsibilities. However, my younger brother was young and ignorant. He walked too much in the heavy rain and went to bed immediately upon returning home. That night, he had a high fever. At first, my mother gave him "Midday Tea" as a universal remedy. Unfortunately, it was a dangerous disease. After three days, his condition worsened, and we had to ask a licensed doctor among our friends to fulfill his duty. After one diagnosis, it turned out to be pneumonia.</p>
+<p>On the way to the pharmacy, I was calculating how much the water for the two days of medication would cost. Now, Western medicine prices have risen one hundred or two hundred times, as if it is not surprising. However, my calculations were unnecessary. The pharmacy was already closed. When I tried to enter through the side door, someone happened to come out. I asked him where to get the prescription filled. The person only answered "tomorrow," without even looking at me. I thought he had misheard me and loudly repeated, "Where to get the prescription filled?" "Tomorrow!" His voice exceeded mine. "Don't you fill prescriptions at night?" I lowered my voice to the lowest limit.</p>
+<p>"No one!" His voice was still loud.</p>
+<p>Being a doctor and running a pharmacy should not be equivalent to ordinary jobs and stores. Even if doctors cannot "provide free medical service every day," they should at least "not consider poverty when treating the sick"; "nighttime prescriptions, please use the back door" is even more of a service provided by pharmacies for the convenience of patients. Yet, "no one." Daojia Pharmacy is a large pharmacy. Even in terms of business, keeping a pharmacist on the night shift would not necessarily be a waste.</p>
+<p>It was already nine o'clock. It seemed that further negotiation would not be effective, but I could not keep the prescription in my pocket overnight. I turned from Simalu to Damalu and found a pharmacy that I usually did not pay attention to. The red light at the door reading "Nighttime Prescriptions, Please Use the Back Door" was brightly lit. I was relieved and squeezed in. There were many people filling prescriptions inside. I looked in through the window and saw many people inside.</p>
+<p>It is said that amidst the hoarding rumors, there are pharmacies and individuals hoarding medicines, which is truly disheartening. Canceling nighttime prescriptions to save expenses is also not something a large pharmacy should do. Now we have reached a desperate situation. Being able to provide convenience to others is to benefit society; only by having others, will you have yourself!</p>
+<p>Entertainment Miscellany</p>
+<h3>Daoqing (Taoist Ballads)</h3>
+<p>— Ze Fu</p>
+<p>Daoqing was originally sung by Taoist priests, with the meaning of the lyrics mainly focused on detachment from the mundane world. In music and songs, it is also called the Huangguan style (Taoist style). Later, street singers used vulgar lyrics to convey the meaning of persuasion and admonition. They sang along the streets and doors, not belonging to the Taoist stream. People also called them singing Daoqing. It is common in the areas of Jiangsu, Zhejiang, and Henan, mostly sung by men, but in Kaifeng and Zhengzhou, there are also women who sing it. When singing, they strike the jianzi (bamboo clappers) with the left hand and clap the yugu (fish drum) with the right hand. The yugu is held on the left arm. The jianzi are used to keep the rhythm, and the yugu is used for the coda. Therefore, they are only struck and clapped after singing a sentence or a paragraph. The songs are mostly in three- or seven-character verses. For example, the work imitated by Zheng Banqiao states that, according to the "Continued Biographies of Immortals," Lan Caihe once held a large clapper more than three feet long and sang to beg in the market. This large clapper should be like today's jianzi, and his songs were also mainly for persuasion and admonition. Thus, this kind of Daoqing singing existed in the Tang Dynasty. The Qing Dynasty (author unknown) Painting Boat Yutan records that during the Jiaqing period, those who sang Daoqing in Beijing were unemployed vagrants who were slightly familiar with the "Journey to the West." They carried a yugu and went to the homes of courtesans, explaining one or two chapters after they had finished sleeping and bathing, in order to relieve their fatigue. Thus, those engaged in this profession could not only sing songs but also perform lengthy narratives. This was another unique feature.</p>
+<p>In the previously published "Crosstalk," there was a typographical error, the phrase "大快朶顧” (Dà Kuài Duǒ Gù). It should be "大快朵頤” (Dà Kuài Duǒ Yí). It is hereby corrected.</p>
+<h3>Sailing Through Storms Together</h3>
+<p>— He Jia Zhi</p>
+<p>(Two) A Stormy Night</p>
+<p>Both of them reached for the cabin door, one touching the left door and the other touching the right door, closing them in a collaborative manner, and returned to their original state before lying down. Guo Fang smiled and said, "My brother sleeps well." Wei Cheng said, "I was a bit drowsy and knew you were putting the coat over the quilt, but I was too lazy to speak and didn't thank you." Guo Fang said, "What's that? There's no need to thank me. Do you still consider me an outsider?" Wei Cheng raised his neck and looked at the boat's roof, as if checking whether there was any more water leaking. Guo Fang said, "Tomorrow, when the sky clears and we return to our hometown, we'll be happier." This time, Wei Cheng formally stared at Guo Fang, wanting to see if there was anything bad on Guo Fang's face. At the same time, he replied, "Returning home is truly joyous. You go back to see your grandmother, and I go back to see my mother. Their faces are the sky; their happiness is the clear sky." Guo Fang laughed at what Wei Cheng said.</p>
+<p>During the chatting and laughing, the boatman shouted from behind. This shout can also be said to be a whistle, a microcosm of the Tarzan ape's call in the movies. Wei Cheng said, "Is it arriving at Huagang? Do you want me to prepare?" Guo Qi, hearing Wei Cheng mention Huagang, felt a sense of alertness, as if a confidante heard a hint, suddenly sat up and asked, "Arriving at Huagang? So fast?" Guo Fang rolled up his sleeves and laughed, "It's only two o'clock. How could we arrive at Huagang so quickly? Experience tells me we'll arrive at dawn. The boat is about to turn, and the boatman doesn't know if there are other boats in the river ahead, so he shouts like that. If there are boats ahead, they should respond, which can avoid two boats colliding in the dark." Wei Cheng grew up in the countryside and, of course, has this common knowledge, but tonight, he just pretended not to know and waited for Guo Fang to finish speaking. Then, he continued, "Guo Fang's knowledge is much richer than mine. It's evident that a person is always learning. I guess those who live in big cities, if they travel to the countryside and gain some knowledge about boating, would even write it in their travel diaries as a new gain. Haha!" (12)</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.03.03.html", "next": "1942.03.05.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

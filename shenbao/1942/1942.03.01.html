@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.01 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 402 - 4924405</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>爪哇海面發生極猛烈海戰</h3>
+<p>聯軍艦隊攻韋克島</p>
+<p>東京二十八日同盟社電日大本營今日午後四時四十五分宣布、二月二十四日拂曉、敵艦一隊、計航空母艦一、巡洋艦二、與驅逐艦六、企圖攻擊大鳥島（前韋克島）被該島日海軍海岸砲隊擊退、敵巡洋艦一艘起火、驅逐艦一艘尼部中彈、受創甚重、敵方巨型巡洋艦一艘、遭日機轟炸、後甲板受重損、敵機與日方防衛飛機交戰時、被射落五架、敵艦至有遭日海軍大舉襲擊之處時、即行逸去、日方巡邏船一艘沉沒、島上軍事設備稍損、並略有死傷、</p>
+<p>東京二十八日同盟社電　日本帝國大本營、今日午後十二時十分宣布、日本艦隊昨日午後在爪哇海面與敵方聯合艦隊作戰、已擊沉其巡洋艦一艘、及驅逐艦三艘、海戰仍在進行中、</p>
+<p>倫敦二十八日路透社電　據巴達維亞之海爾弗列克海軍大將司令部發表公報、協約國與日方軍艦刻在爪哇海岸外、進行大海戰、惟迄今所發表之消息、僅「海戰正在爪哇海發展中」而已、又據美海軍發言人宣布、美艦若干艘、聞亦已參與爪哇外之海戰、惟結果尙未可知、</p>
+<p>東京二十八日同盟社電　日日新聞載稱、昨日午後、敵艦駛出巴達維亞、其中有荷方三千噸軍艦三艘、在巽他海峽被日陸軍機投彈擊中、其一起火、同日日機襲巴達維亞海軍港、向港中驅逐艦四艘投彈、</p>
+<p>日軍某處基地二十七日同盟社電　日本海軍飛機、今日在巴達維亞附近三十海里爪哇海面轟炸敵方艦隊、共中有巡洋艦一艘、及輕巡洋艦二艘、曾重創其中愛克塞脫級（八三三九噸）巡洋艦一艘、其餘二艘乘機逃逸、</p>
+<p>東京二十八日海通社電　據「讀賣新聞」軍事訪員宣稱、日本倘能控制俾斯麥羣島及蒂摩爾島、美國艦隊企圖自紐西蘭及澳洲襲擊日本、必然失敗、美國之航空母艦、亦將沉失、雖達爾文港及茂萊斯比港可用為美國海軍根據地、但日本不難控制雪梨·墨爾鉢·新堡·及阿台萊德、美國海空軍倘自北面之阿拉斯加及阿留地安羣島進攻日本、美國將以全部艦隊冒險、而目前仍無勝利之希望云、</p>
+<h3>日傘兵在荷屬蒂摩爾打破降陸　日軍完全佔領古邦西里伯南仍有激戰</h3>
+<p>日方某根據地二十八日同盟社電　日海軍傘兵、於二月二十與二十一日降落於荷屬蒂摩爾島首邑古邦之附近、並得日陸海空軍之助、於二月二十二日完全佔領古邦、日傘兵現由水兵襄襄助、從事維持古邦之和平與秩序、日軍在荷屬蒂摩爾島作戰中、奪獲迫擊砲二十四尊、步槍與機關槍一千五百支、</p>
+<p>西貢廿八日海通社電　據昨晚此間息、巴達維亞權威方面昨稱、西里伯之南部仍在激戰中、此間未明峇厘之局勢、惟信日軍已完全佔領該島、日軍在海空兩方面增軍蒂摩爾、故該地有激烈之戰事、荷印軍隊在產錫島嶼本加澈底實施其「焦土政策」、</p>
+<h3>東條闡述作戰方略　拈據軍事基地控制重要資源</h3>
+<p>東京二十八日同盟社電　東條首相昨日午後在大東亞建設委員會首次會議致辭、略謂、英、美所受打擊重大、難以恢復、日本在北方防務鞏固、可保安全、日本戰略首在佔據東亞軍事基地、次在控制重要資源、增加日本戰鬥力、然後與、德義合作、發揮積極攻勢、以冀達到擊敗英、美之最後目的云、</p>
+<h3>荷印總司令廣播演說</h3>
+<p>西貢二十八日海通社電　荷印軍總司令波頓中將、咋發表廣播演說、略謂、爪哇戰士須以血肉從事堅固之戰爭、波頓繼以英語向與國發表演說曰、余信賴吾人之與國、英美澳軍戰士已迭在多處戰塲揚威、今望英美澳軍戰士亦能在吾國土地、作共同之奮鬥、</p>
+<h3>日駐蘇大使建川辭職　遺缺由佐藤繼任</h3>
+<p>東京二十八日同盟社電日外務省今日宣布、日木駐蘇聯大使建川美次中將、因體弱辭職、其遺缺已任命外務省顧問佐藤承乏、佐藤大使曾於一九三七年林內閣任外務大臣、並歷任駐比、駐法大使、</p>
+<h3>克里浦斯對歐廣播</h3>
+<p>倫敦二十七日路透社電掌璽大臣克里浦斯今夜十時（格林威士時間）對歐洲無名士及工人發表廣播演說、呼籲德·捷·法·荷·比及一切國家壓迫之工人一致奮力作戰、氏演說之前並由V字軍首領伯利頓上校為之介紹云、</p>
+<h3>中英信用委會舉行例會</h3>
+<p>倫敦二十七日路透社電中英信用委員會今日在倫敦舉行例會、由顧維鈞大使主席、出席者有李茲羅斯爵士、李維台爾勳爵、及其他中英雙方委員、中國財次郭秉文與中英信用借款委員會執行委員馬可文報吿上次例會以後之工作、英政府于會後宴請全體委員、由李茲羅斯代表招待、</p>
+<h3>澳洲北部全部劃歸軍事管理</h3>
+<p>康白拉二十八日路透社電澳洲陸長已下令將澳洲北部、全區置於軍事管理之下、按此前僅以達爾文港為巾心之澳洲極北區刻歸軍事管制、</p>
+<h3>葡萄牙總統電謝林主席</h3>
+<p>重慶二十八日電葡萄牙共和國總統福葛蘇嘉慕拉將軍三度當選總統、國府林主席曾去電致賀、頃福葛蘇嘉慕拉將軍巳復電林主席致謝、原電如次、國民政府林主席閣下、茲因本總統復選速任本國總統之職、辱承閣下以貴國政府名義致賀、謹此申謝、順祝責國國運昌降、貴主席政躬康泰、</p>
+<h3>委內瑞拉宣布保護荷屬島嶼</h3>
+<p>委內瑞拉京城二十七日哈瓦斯電　此間官方本日發表消息稱、位於本國海岸外之荷屬島、尤其是庫拉薩奧及阿盧巴兩島、均為重要產油區域、最近曾被軸心國潛水艇襲擊、委內瑞拉政府有鑒及此、今後當以本國海陸空軍實力、協助保護此項荷屬島嶼、査美國前巳派軍在庫拉薩奧島登陸、至以委內瑞拉兵力而言、陸軍方面有常備軍六千員名及已受訓練之後備兵八萬七千名、海軍方面有砲艦六艘、總噸位為三·三二九噸、空軍方面則截至一九三九年止、僅有飛機十七架、</p>
+<p>委內瑞拉京城二十七日哈瓦斯社電　頃據官方宣布、英政府已將巴托斯島之主權及巴利亞灣海面之管轄權、讓與委內瑞拉、巴托斯島面積極小、係在委內瑞拉海岸與英屬特里尼達島間之龍嘴海峽、巴利亞灣則位於委內瑞拉與巴托斯島之間</p>
+<h3>巴西與美國簽訂三項協定</h3>
+<p>阿根廷京城二十八日海通社電　巴西財長柯斯塔此番聘美之結果、簽訂重耍協定三件、　關於亞馬松盆地種植橡樹事業之發展、　關於美國借款一千二百萬美元、為修造巴西鐵路之經費、　關於催促運送租借軍火法案所規定應予接濟之原料、</p>
+<p>華盛頓二十七日哈瓦斯社財長摩根韜與赤道國駐美公使本日在此間簽訂一項協定、規定赤道國貨幣與美元聯繫辦法、藉以　定該國幣制、</p>
+<h3>羅斯福談護航問題</h3>
+<p>華盛頓二十七日哈瓦斯社電</p>
+<p>羅斯福總統稱、「吾人現正竭盡所能、以保護行駛各海洋之協約國商船、惟此種保護、仍有杯水車薪之概、美洲其他各國、刻正與美國通力合作、保護往來於美洲各國港口間之商船隊、惟詳細情形、此際未便宜布」</p>
+<h3>美國運油船又有兩艘擊沉</h3>
+<p>華盛頓二十八日哈瓦斯社電　海軍部宣布、美國運油船「安德遜一號、已在沿岸海面被潛艇擊況、船員二十三人中、僅一人獲救云、</p>
+<p>華盛頓二十七日哈瓦斯社電　海軍部宣布、美孚汽油公司之運油船「雷沙爾」號（排水量七千噸）、昨夜在大西洋沿海、被魚雷擊中、常即起火延燒、水手三十八人中、僅二人獲救、巳在大西洋沿岸某港登陸、</p>
+<h3>法向美提保證重申中立政策　對法屬地安全問題美仍待法續加說明</h3>
+<p>華盛頓二十八日路透社電羅斯福總統昨日午後向報界宜稱、巴黎無綫電報吿謂、美國駐法大使李希、曾要求法政府將其艦隊調動情形事前通知美政府、維希方面已加以拒絕、惟據國務院情報司所知、此種宣傳並不眞確、此外、國務院咋夜發表公報稱、法國政府曾於上星期二向美國大使李希提出照會、重行聲明中立政策、至於其他各種重要問題、美國政府仍待該國政府續加說明（據悉、所謂重要問題者，係指印度洋方面馬達加斯加島及非洲法屬地安全而言）該公報並稱、羅斯福總統曾於二月十日致書法元首貝當上將、聲明美政府已接得報吿、藉悉法國本部方面會有接洽品運往北非、以供里比亞軸心軍隊之用、深信任何資助美國人民公敵之舉、決非法國人民所願、且與法國人民之願望亦屬不利、貝當元首復聲稱、法國政府無論在何處戰區、決不以任何軍事援助、給予任何交戰國、此項公報曾經國務院從長計議之後始予發表、其措辭一方面作為美國對維希政府之最後的公開的警吿、一方面公開向美國保證、維希政府決不超出停戰協定範圍以援助軸心國、</p>
+<p>威爾斯談話</p>
+<p>華盛頓二十七日哈瓦斯社電國務副卿威爾斯稱、法政府已向美國提供新保證、任何行動凡足以破壞其中立地位者、均當避免、並不擬以軍事援助、畀予任何交戰國、法國照會中並特別聲明、所謂軍事援助、包括使用法國船隊一項在內、査我國羅斯福總統當於本月十日警吿法國、謂該國若以軍械或軍需供給軸心各國、即將自置於美國敵人之列、今茲法國政府所作保證、即係答覆此項警吿云、</p>
+<h3>居正抵衡</h3>
+<p>衡陽二十八日電居正今晨由桂抵衡、即將赴長、與薛岳會晤、並擬赴前錢一行、</p>
+<h3>湘省府獎勵省會警局長</h3>
+<p>長沙二十七日電湘省府以省會警察局長陳陣曉、卓著勳勞、特記大功一次、並呈中央頒警給察獎章、以資鼓勵、</p>
+<h3>伊朗閣員全體辭職</h3>
+<p>伊朗京城二十七日哈瓦斯社電伊朗內閣全體閣員、本日向總理提出總辭職、動機何在、未經官方說明、惟悉全體閣員、係於農業部長因病辭職之後、始作此項決定、</p>
+<h3>日將坂本逝世</h3>
+<p>東京二十八日同盟社電日退伍陸軍中將坂本政右衛氏、二十七日病故於朝澁谷私邸、享年六十四歲、坂本歷任陸軍士官學校校長第六師團長等職</p>
+<h3>里翁最高法院續開三四次庭　審判誤國要人達拉第等</h3>
+<p>里翁二十七日哈瓦斯社電里翁最高法院、本日午後二時三十分開第三庭、審判誤國要人、首由院長賈奧斯宣讀最高法院之文吿、逐一答覆各被吿律師所提出之意見、旋訊達拉第仍由賈奧斯歷舉達拉第罪狀、　使法國未能充分備戰、　內閣於一九三九年八月二十三日、討論法國有無武裝干涉歐洲局勢之實力時、達拉第之態度模稜、在此嚴重時期、達拉第僅出席國務會議一次、達拉第當即答辯稱、「依照法國法律、內閣會議於討論陸軍組織有關各項問題時、始由陸軍部長担任主席、在余任內、吾國召集後備兵入伍之人數、與年俱增、一九三三年僅有二十五萬八千名、至一九三八年、即增加至五十一萬一千名、至於軍備問題、余曾指撥巨款、充作製造軍備之經費、法國未能擁有充分之坦克車、責任不在我、而應由他人負之、余耍求國會撥款、總數達六百二十萬萬法郞、並竭盡所能、增加全國工業出產、最高法院院長賈奧斯曾謂、政府向各軍火廠定購來福槍八十萬枝、但至一九三九年八月一日止、僅交到八萬五千枝云云、據余所知、政府僅定購來福槍十五萬七千枝、一九三九年八月一日、交到者為十萬〇一千枝（至是另一被吿、即前任總軍需官賈戈梅挿言、力言截至一九三七年一月一日、重整軍備計劃之實施情形、實較預定時間提早六月）、至以各種軍備之製造情形而論、余曾提議編練「機械化師團」、德軍曾利用此種師團、作為鐵甲師之先驅、三十噸重坦克車之製造、亦為余所創議、然總司令部對此並不重視主將如畢洛德及杜門克輩、並不依照戰前各專家所主張之原則、運用坦克車、至是、檢察官詢問關於軍火製造事宜、何人為最後負責者、達拉第以推諉態度作答曰、「法國之動員、並不因軍械缺乏而受阻、余所規定供給軍隊之軍械　較動員計劃規定者為多」、法庭旋於午後五時四十五分閉幕、並定明日開第四庭、</p>
+<h3>協約國軍委會討論作戰方略</h3>
+<p>墨爾缽二十七日哈瓦斯社電協約國最高軍事委員會、本日在此間舉行秘密會議、各協酌國軍事專家、均曾出席、至於討論何事、未經官方發表、惟據半官方面談稱、大抵日軍不久即將有所行動、俾協約國不能利用澳洲、為他日反攻之起點云、</p>
+<p>瑞典京城二十八日海通社電據墨爾缽息、澳洲召集參加帝國戰爭委員會各軍之顧問、舉行從來未有之大會、討論進攻戰事之方略、以禦日軍對澳洲之進攻、澳洲及聯軍之軍事家在此次秘密會議中、提出一詳細之作戰計劃、包括防禦澳洲之海岸及向日軍進攻之方案、</p>
+<p>東京二十八日同盟社電日日新聞葡京電稱、據倫敦消息中國駐英大使顧維鈞、已被任命為太平洋戰爭議會之華方代表、該議會不久將舉行初次會議、</p>
+<p>本報特稿</p>
+<h3>華維爾論將才（七）</h3>
+<p>將領對部下大發脾氣不一定會損害他的令譽，或喪失部下對他的信仰；蓋習久為常不以為奇，（曾有人戲稱之為「高級軍官的特許發怒權」），而且除了直接有干係的人，部下也不會對他銜恨，有時候竟還因此表示敬服呢。但是長官的譏誚，則最為部下所痛恨而牢記心中。在意卑利亞半島戰役中，顯赫而奇矯的輕騎師團長克牢福脫比粗魯暴燥的匹克頓尤使士卒忌憚，蓋前者出言尖刻，含譏帶諷，而後者不過發怒時咆哮一陣而巳。</p>
+<p>高級指揮官是否應該具有幽默感呢？雖說幽默感對於任何人都有益無損，但亦切忌其濫，事實上歷觀許多名將，具有幽默感的蓋不多見。阿楞比確有幽默感，然而別人並不敢隨便同他開玩笑。他這種情感只在公退之餘方才顯露。威靈頓也是如此。海格我以為沒有幽默感；在拿破崙身上也一絲都找不到。只有那個奇矯的俄國天才蘇瓦羅夫可算是始終如一的幽默家；但與其說他是一個幽默家，恐怕毌寧是一個誇口家。</p>
+<p>倒是英國的士兵可稱為世界大幽默家之一。上次大戰之後，不幽默的德國人曾將士氣的造因　過一番硏究，結果以為次國　　的持久力多半得益於幽默感。因此，他們決定要把幽默感貫輸到德國士兵的腦子裏去，軍事敎本上也載着培養幽默感的命令，並以一張巴恩法柴的圖畫示例，畫上，「老皮」坐在屋旁，牆上有一個極大的砲彈洞，一個新伙伴問道：一這洞怎麼來的？」「老皮答道：「老鼠咬的，」下面鄭重其事的加上一行註釋：「不是老鼠，是砲彈啊。」</p>
+<p>我已經拉雜的說了一大堆話，於諸君恐怕並沒有什麽貢獻，我所竭力想吿訴諸君的，是說全部戰史都是有血有肉的活事件，不僅是一些圖表或規範而已；也不僅是機械與機械的爭鬥，而是人與人的爭鬥。在我曾經到過的一所法國步兵學校裏，共大講堂上有下面幾句杜畢克的話：「人是戰爭的第一件武器；就讓我們來研究戰時的軍人吧，因為使戰事實現的正是這些人啊，惟有研究過去才能使我們得到現實的感觀，並且知道將來又如何作戰。」</p>
+<p>諸君如研究戰史，不必讀戰略大鋼或戰爭原理，應該讀傳記，實錄，及歷史小說如「榮之光路」或喧白龍。我們所要研習的是有血有肉的活戰史，不是它的枯骨。知道了拿破崙！七九六年之役是用內綫作戰獲勝的。或諸如此類的名稱，很少有什麽用處。假使你能够知道一個沒沒無聞的靑年如何去激勵一隊殘敗飢餓已無鬥志的軍隊，使其母能賈勇前進拚力作戰，叉如何去壓服以多年事較長經騐較富的將領，使其俯首聽命，這才可許說學到一些東西了。拿破崙所以能够縱橫一世，多半是因共洞達戰時的人情，豈是單靠熟讀幾條規範或戰略呢？從他早年的一件逸事上，可知他是很懂心理學的。在拿破崙常砲隊軍官時，適値土倫之圍，他在毫無掩蔽的地方築了一惆砲臺，左右以為一定沒有砲手肯去把守。於是他在臺邊掛上一塊牌子，寫着不怕死者的砲臺」，臺上遂前仆後繼，守卒不絕。</p>
+<p>概括以上所說各點，我以為凡是成功的指揮官，在對部下的關係上，都該遵守下列幾條原則：一個將領必須保持嚴格的紀雜，但也不必過份苛酷。</p>
+<h3>巴達維亞城區景色</h3>
+<p>巴達維亞Bata　Via是荷屬東，分為新舊兩個區域，舊稱之巴城，係指舊區，至於新區，則名為威德佛烈JWetlevreten，因為舊城潮濕，所以政府機關和歐人住宅，都在新區為「花園城市」，街道廣闊，　樹成陰，房屋雅麗，空氣淸新，所謂Wellevreden者，就是「自族」之義。舊區街道，比較狹窄，房屋亦比較簡陋故舊。但是外國人的洋行銀行及貨倉，仍設在這裏。（上圖）為舊區森加大街，其旁大建築為小公銀行。（下圖）為舊區中心之芝利區河Tjiliwong，淸溪一碧，村婦　衣，其風幽好像杭州的浣紗溪　。據前日電訊，巴城上空，發生大規模空戰，這新舊兩區的居衣，一定遭　著不少的恐怖罷。</p>
+<h2>Page 3</h2>
+<h3>地產章和附則已經修　正存儲貨物須領執照　經營各種商業均須事先領照並得由局訂立條款收保證金</h3>
+<p>工部局接准領袖領事通知、地產章程附則第五十三款業經核准修正、將「凡係零售經工部局隨時布吿應受物價統制之任何物品者」等字樣、改為「凡係買賣或儲藏經工部局隨時布吿應受物價統制之任何物品者」、該款附則之修正條文如下、</p>
+<p>統制物品經營規則</p>
+<p>「一切個人合夥或公司凡係買賣或儲藏經工部局隨時布吿應受物價統制之任何物品者、均應遵守工部局隨時刊布關於記錄所存此項物品數量與存貯地點或關於出售價格之規則、任何個人合夥或公司、倘違犯工部局依照木款附則而公布之規則所載任何條款、應「甲」受地產章程第十七款所規定之懲罰、或主管法院所認為公允之其他處分、或「乙」由工部局將該個人合夥或公司所領執照扣留或吊銷、或（甲）（乙）兩項同時施行、」該局昨已布吿週知矣、</p>
+<p>各種營業均須領照</p>
+<p>又該局布告第五八〇二號內開、本局接准領袖領事通知、地產章程附則第三十四款業鏗核准修正、將在堆棧倉庫及其他塲所內儲藏貨物、加入該款所定應領執照之列、修正條文內規定在界內開設工塲、儲藏貨物、或開設市塲、娛樂塲、餐館、旅館、當鋪、錢莊、食品店、水陸交通等類、均須先領執照、外僑執照須由領事副署、並得訂立條款、酌收保證金、（附則修正條文見今日本報廣吿）</p>
+<h3>當局擬抑低肉價</h3>
+<p>本市肉價、於夏歷新年暴漲百分之七十五、公共租界與法租界當局因已開始調查抑低其價之可能性、工部局與公董局並未特設任何委員會、以進行此項調査工作、而係該兩局之各處會同統制物價團體担任者、採取抑低肉價之行動前、必須確定騰貴之原因、究係情勢使然、抑係非法暴利之結果云、肉價飛漲乃因夏歷新歲宰牲塲停工所致之說不確、據稱、本埠消耗之肉食、什六來自冷藏庫、固非盡賴宰牲塲也、同時昨日肉價無甚變動、</p>
+<h3>二月份工人生活費修正數</h3>
+<p>本年二月、本巿中國工人生活費總指數、達一四六八·九三、較一月高百分之一一·七〇、分類指數中、除住屋類微降百分之一五二外、食物及雜品兩類、上升達百分之一五·六六及一六·八〇、雜品類指數、已逾二千大關、</p>
+<p>洋米售價、木月三度上漲、每次售量、一再减少、本月二日、每次限二升、售價三元、九日、每次一升、為一元六角、二十三日、又增至一元七角、七日起、杜米移動、不得超過二斗、本月零售物價飛漲、本指數內食物類、凡三十品、上升者、二十五品、衣着類、凡十一品、上升者、六品、住屋類中、廢木柴之下跌、過於火柴之上漲、故指數微降、肥皂紙烟、上升頗烈、茲將若干主要之品、其本月平均物價、與上月相比、以見變遷之一斑、</p>
+<p>品名　增减百分率　　洋米　十　一五·四三　　黃豆芽　十　三〇·一九</p>
+<p>白蘿蔔　十　三五·五七</p>
+<p>鴨蛋　十　一八·六七　　廢木柴　一　一六·八八　　土布　一　九·三二　　紙烟　十　三〇·二二　　麺粉　十　三五·九七</p>
+<p>靑菜　十　八二·三〇　　牛肉　十　二一·〇九</p>
+<p>醬油　十　五七·四七</p>
+<p>漂布　十　一六·一八</p>
+<p>肥皂　十　二五·四一</p>
+<h3>黃沙商購汽油被騙貨款</h3>
+<p>滬東華德路榮昌里十九號葉和記主人戴霞泰、於前日投法捕房報稱、商人向業黃砂石子及包運築路材料、需用汽車油、本年一月十一日、逮遇友人王成法、據云伊友陳忠裕·陳昌林·蕭振華等、藏有大批汽油在家出售、商人信以為眞、與王接洽定購汽油一百介侖、計價二千四百元、即於十三日下午同至小東門大街立發水菓行將貨價如數交付與王等、並取得立發行收據為證、當時言明次日將貨送到、不料嗣後不見將貨送到、即向交涉、一味延約、經商人査得王等在愛多亞路公平旅館開十九號房門、專門在外詐騙、故即前往向王索還所付貨款、豈知彼等反指商人敲詐、因此來案報請究辦、捕頭據報、派探將以上四人、拘案、訊據王與兩陳及蕭四人、係受在逃之林阿二及胡姓等之愚、餘詞支吾、論令押候詳加偵査核辦、</p>
+<h3>中煤氣毒應急報消防處</h3>
+<p>法租界公董局為敬吿居民愼防煤氣中毒事、昨發表通吿云、「為通吿事、近數週來、查煤氣中毒事件、時有發生、茲特通吿界內居民、對於使用火爐、應行特別注意、因共每易引起煤毒、窒息極速、致有無力呼救或自起開窗之危險、如裝用火爐取煖、其烟囪直徑、應有相當寬度、屋內燃有火爐、睡眠時切勿緊閉窗戶、如有意外發生、立可通報本局消防處、該處備有特種急救器械、蒞塲應救、仰各週知、此布、技政總辦白義、」</p>
+<h3>申報讀者助金捐款報吿</h3>
+<p>本報昨日續收讀者助學金捐款、計喬添　　七十六元八角、福昌呢號周邦虎（拾遺）四十元、共計三百十六元八角、前存六萬六千零八十四元一角六分、共結六萬六千四百元零九角六分、謹向捐款諸君致謝、</p>
+<h3>花旗銀行法租界支行定今日起收歇　分行存戶付款在總行辦理大通保管箱開啓時間更改</h3>
+<p>協約國銀行保管箱、先後開啟者、巳有麥加利·匯豐·大通·華比·等四家、花旗保管箱、尙無開啟消息、惟大通營業及開啟保管箱時、新經變更、大通社記者、茲分錄於后、</p>
+<p>大通更改營業時間</p>
+<p>大通銀行保管箱開啟後、規定租戶申請開箱時間、為上午十時至十二時、午後二時至三時、惟最近已經更改為上午十一時至午後一時止、該行營業時間亦由上午十時至十二時、改短為十時半至十二時、至保管箱物件之提取、均照前經公布辦法辦理、該行保管箱只數尙多、故迄現在止、租戶申請、頗形擁擠、</p>
+<p>花旗分行今日收歇</p>
+<p>美商花旗銀行、設於邁而西愛路之法租界支行、已定今日收歇、昨日起、已在九江路總行金庫部窗口、闢一分行付款處、辦理分行存戶付款事宜、至麥加利在法租界並無分行、滙豐及大通等銀行、在法租界亦無分行之設置、至各行之保管箱開啟及申請、均一仍其售、</p>
+<h3>大中華飯店內破獲烟窟</h3>
+<p>中央捕房禁毒科華探目王樹森、探員趙寳生·郭守信、偵得虞洽卿路大中華飯店內有人私設大規模之炯窟、爰於前日馳往拘、當在二百十一號、三百十三號房間內拘獲尙兆榮·龐桂生·尙德順·陶新玉·綫萬榮·米四華·段章武等十六名、抄得烟槍十支、烟燈一隻、烟土二十七兩洋二百六十六元、一併收　、候究辦、</p>
+<h3>聞蘭亭氏壽誕</h3>
+<p>聞蘭亭先生農歷正月十五日（元宵）七三壽辰、門牆桃李、奚止萬人、咸欲致敬、聞氏目擊時艱、不願舖張、如有致送壽儀者、悉送捐助國醫平民醫院、辦事處上海仁濟善堂內新普育堂為平民造福、</p>
+<h3>專造假當票案發被捕</h3>
+<p>公共租界海寗路海寗典當、最近被人以假當票矇混、騙贖去貴重物件甚夥、經該常發覺後、乃據情報吿滙司捕房、該管捕房得報後、遂努力偵緝、結果於昨日查悉該項匪犯匿居北浙江路安樂旅社二十四號房間內、乃由華總探長馮百順·副探長黃福森·探目郭祥堯等按址前往、拘獲案犯黃家福·汪成培·余諸富·沈克炳等四名、並抄獲假當票廿五張、及偽迭之圖章等證件、一併帶返捕房訉究、</p>
+<h3>四川路口設電車站</h3>
+<p>公共租界電車公司新在南京路四川路、添置停車站頭一處、該站頭位於南京路靠東南一面、故自外灘向南京路西駛電車、均在該站停車、供乘客上落、惟自南京路向外灘東駛電車、則並不停車、</p>
+<h2>Page 4</h2>
+<h3>各協約國銀行續辦提存　華比銀行三次付款</h3>
+<p>本市多數協約國銀行、刻正繼續以第二批存款、付給存戶、惟華比銀行巳從二月一日起撥付第三批存款、查各協約國銀行第二批付款之手絞、為准提除去第一批二千元後餘款之半數、華比銀行則不然、第二批以十分之三為限、第三批復付十分之二、又據匯豐與花旗銀行披露、商行請領維持費、尙無獲得當局許可者、滙豐銀行某員聲稱、一切行務、均無變更、而保險箱仍照前定條例開放、惟該行不久將否撥付第三批存款一節、尙無所聞、目下協約國銀行、仍以第一批存款付給存戶者、僅大通銀行一家、該行准許存戶從十二月六日之個人與公司賬目中、最多提取二千元、而保險箱亦已開啟、</p>
+<h3>出售假白脫油判處罰金</h3>
+<p>工部局對於違反限價及以詐欺方法欺騙顧客之不良商號、取締甚嚴、該局衛生處最近査得靜安寺路一千二百十一號同泰洋酒食物號、以麥共林混充白塔汕出售、不特欺編顧客、抑且妨害公衆衛生、妥對該號主甬人陳俊秀予以澈究、乃陳經傳喚、而抗拒不到、途飭令緝捕將陳弋獲拘押、嗣經處決從寬處罰金三百元、以示儆戒、</p>
+<h3>盜刦彙誌</h3>
+<p>昨晚七時四十分阿拉白斯脫路長春里一四六號、突有盜匪七名侵人、其中四匪拔出手槍、威嚇不氏聲張、當被刦去衣飾及現鈔只計四千餘元、</p>
+<p>電東路一五九號、昨日上午九時二十分、忽有盜匪四名入內、匪袖出假手槍恫嚇、當被刦去法幣一千五百餘元、</p>
+<p>愛多亞路中匯大樓六樓六〇八號乾泰雜糧號、突有持槍盜匪四名闖人、刦去法幣七千餘元、</p>
+<h3>老司務起惡意糾盜行劫紙行</h3>
+<p>前日　　　的、有盜二名、侵入交通路二十三號志達紙行、搶刦得法幣四千二百一十元、日幣十元逃逸、乃經中央捕房華探孟憲中及一〇六號華捕、在山東路仁濟醫院附近、即將是案正犯甬人李阿金一名拘護、將贓款全部抄出、帶回捕房、據供出起意犯即屬志達行老司務周茂泉、及往拘捕、周巳聞風遠颺、乃將李盜收押、候拘周到案、再行核辦、</p>
+<h3>潘恒秋被控傷害昨突自行投案</h3>
+<p>女性潘恒秋、寓法租界古拔路一九七弄三十七號、將餘屋租賃與人、去年冬間潘女因欲對三房客陳寳娟加增租金二百元及頂費三千元、兩人發生糾紛、潘女乃勒令陳遷出未遂、將陳毆傷、陳乃控訴傷害恐嚇、因潘女未到、故出票拘緝在案、茲悉潘恒秋突於昨日偕辯護律師沈榮華自行投案、經略訊後、着交殷實舖保兩家出外候訊、</p>
+<h3>老閘轄境內抄獲賭窟三處</h3>
+<p>老閘捕房華探目曹岐山、探員尹夢飛·黃賜福·蔡欽明等、前日分別出動、在界內破獲賭窟數處、　天津路五二零號新廬俱樂部、拘獲頭家任偉臣等四名、賭客三十人、抄獲賭具賭洋甚夥、除賭客准各交一百元保出外、任等四人押候究辦、　芝罘路六十叫號天然飯店三百三十二號房間、枸獲頭家及賭客姚阿水·顧月初·陳綠春等十八名、　廣西路四二八號、拘獲曹月林·馬兆祥等七名、及賭具賭洋等、押候究　、</p>
+<p>社會服務</p>
+<h3>鼻菌求治</h3>
+<p>本人患鼻菌十年、雖曾割治、並不斷根、枯　豬油做丸試過不騐、現兩鼻塞滯、呼吸不便、近更兩耳發痛、時流汚水、且患重聽、如有根治方法、願出相當酬金、季中（三）</p>
+<h3>耳流膿水</h3>
+<p>長男純高、年八歲、在兩三歲時、曾患眼疾、五歲時、左耳患病、出膿水有臭氣、至今數年、左耳有時乾結成一膜、有時出膿水、耳朶內皮膚成白色、右耳則完好、請貴報讀者將醫治方法見吿、應永玉啟、（四）答　如何返鄕一、可向福州路工部局或任何代辦返鄉證之機關親自索塡申請書、二、簡單之行李可以携帶、三、返鄉證祇能單程用一次、嗣後個人如欲來往、須另行領證、</p>
+<p>答　里弄衛生關於里弄衛生應由各住戶分別負責、弄中發現嬰屍、可報吿附近警務機關辦理、</p>
+<h3>天主敎黃鐘社廣播</h3>
+<p>天主敎黃鍊播音社、假座上海法國電台、播送公敎節目以來、業已半載、茲改用上海語播講、另加兒童節目、極饒興趣、此次定於星期日九時開始播送、有張維屛司鐸講天主敎傳敎簡史、聞張司鐸特續講至天主敎在吾國傳敎情形、兒重節目、有公敎服務團蔡家小妹妹之「黃昏海濱、由沈才俊女十之鋼琴、蔡玉貞女士之口琴伴奏、又有蔡小姐之兒童故事、音樂節目、有卜司鐸領導之歌詠團、及名琴手朱希聖君之伴奏、上海法國電臺呼號FFZ、週率一千四百、</p>
+<h3>籌設國華保險公司</h3>
+<p>本市保險界著名鉅子集股創辦、完全依照股份公司保險業條例設立之國華保險公司、現待組織就緖後、定期正式開幕、屆時本市保險業中當有一番繁盛矣、籌備處設北京路淸遠里五十七號祥生行、電話一一九六一號、</p>
+<h3>本市法國電臺播音募捐</h3>
+<p>為難童救濟籌款</p>
+<p>哈瓦期世界電　訊社本埠消息，本埠法國電台、近為救世軍在新加坡路所設之難童救濟院募集捐款承各界聽衆踴躍輸將、三日之間、巳募得四千五百元、茲決定繼續募捐一星期、各界慷慨解囊、共襄善舉、該電台華語播音時間、為每日下午四時至四時五十分、凡惠賜捐款諸君、請在此華語播音時間內、用電話通知或飭人送款至該電台、該台地址在霞飛路一九三號、電話八〇五六七、倘在此播音時間之外、則請於上午九時至下午五時之間、送往杜美路三十六號該電台辦事處、電話七九八七八、</p>
+<h3>張學成醫師開業</h3>
+<p>張學成醫師、服務於上海中國紅十字會第二醫院內科系、達六年之久、活人無數、封於內科、肺科、傷寒病等、頗有經騐及研究、現設診所於霞飛路七〇六弄一號、每日下午四時至五時半應診云、</p>
+<p>昨日本報發報時間七點十分</p>
+<h3>各警務機關定期　實行警戒演習二十天</h3>
+<p>上海各警務機關、決定實行警戒恐怖實件演習二十日、發表預吿如次、茲為預防恐怖事件發生、當局與市民實行逮捕犯人演習、本演習在長期間屢次實行、至達成目的時為止、一般市民須遵守左開事項、協力達成演習目的為要、　目覩恐怖事件發生者、　目覩或聞知恐怖事件發生者、應立即報吿最近地點之官憲　或自警團、電話裝戶接到報吿時應有通知官憲義務、　目覩恐怖事件發生者、須記認犯人音貌服裝逃去方向、等待官憲　到來後自動報吿、　奮勇追捕犯人或與官憲　協力之個人或團體認為適當者、由當局授獎、　不遵守上列各項者、經由監視員發覺後處罰、　演習犯人左臂帶紅白色臂章上書「演習犯人」等字樣、　不准對演習犯人加以暴行、</p>
+<p>體育新聞</p>
+<h3>中西慈善足球賽華聯一球敗於西聯　二比三上半時各——平手</h3>
+<p>逸園開放第一聲之中西慈善足球賽、昨下午二時在亞爾培路逸園舉行、觀衆逾萬、盛况空前、結果華聯以二比二失敗、上半時各一平手、華聯失敗主因、乃後力不濟、及球藝生疏、裁判沈回春、開賽後十七分鐘、張昭鵬撞人犯規、被判十二碼、西聯法凡笑主罰、必高不慌不忙接住來球、未三分鐘、西聯蓋恩單騎來犯、張林根阻球失策、在左角處被攻入一城、四十三分鐘、戴麟經妙傳幼良、西聯貢山夫不識途徑、小賈一掃入網、上半時各一平手、擇地再戰、鮑賽仲得蘇若之傳在三十碼處蹴入、秦必高仆地搶救不及、西聯再度佔先、五分鐘華聯韓龍海傳小賈、西聯守將羅柴遼挽救不力、大意失荊州、遂二度和局、距終塲二分鐘、蓋恩又建功、華聯以二比三敗於西聯、</p>
+<p>西聯　　羅柴遼</p>
+<p>貢山夫　C雷米迪</p>
+<p>V蘇若　奧列維拉　J羅柴遼</p>
+<p>勃拉達　奥齊仲　蓋恩　柯拉沙　法凡笑</p>
+<p>華聯　　秦必高</p>
+<p>莊友仁　張林根　江潮</p>
+<p>丁兆成　陳效平　張昭鵬　韓龍海</p>
+<p>袁錕田　高保正　戴麟經　賈幼良　費春華</p>
+<h3>合羣體育會足球賽今日四強會師</h3>
+<p>合羣對徐匯金獅戰震旦合羣體育會、為籌募該會基金起見、舉辦四强大足球賽、定今日下午二時在呂班路震旦球塲揭幕、首塲合羣對徐團、合羣乃戴麟經訓練班學員組織、阿戴木人、亦出馬參戰、徐　乃學校隊中之翹楚、第二塲金獅逢震旦、前者乃藍隊之化身、擁有大批東華名將、如韓龍海·賈幼良等、門票一元四元、以前售出之券一律通用、秩序錄下、合羣——徐匯下午二時震旦——余獅三時三刻</p>
+<h3>今日小小足球龍隊初戰三星</h3>
+<p>元宵佳節精彩節目小小足球、今値元宵佳節、排定精彩節目、在光夏球塲舉行、下午二時起、前奏曲為小龍對健華、健華為白獅化身、次幕為國華戰影星、大軸兩巨頭會戰、三星對龍隊、作三戰兩勝之會師、門票一元、秩序如次、</p>
+<p>小龍——健華二時</p>
+<p>影星——國華三時</p>
+<p>三星——龍隊四時</p>
+<p>龍隊秦必高、范錦鏞、江潮、張林振、韓龍海、張昭鵬、袁錕田、趙永芳、曹琴芳、高保正、費春華、方克平、周文奎、</p>
+<p>三星董錦才、岳仁孝、譚杏春、朱偉忠、馮壽彭、陸彭林、何家統、宣盛華、蕭子文、吳紹泰、俞振岳、吳宗奎、</p>
+<p>商業新聞</p>
+<h3>現金平穩</h3>
+<p>現金粭赤暗市、轉入盤境、在一萬三千七百元左右、買賣雙方之掙扎下、價終再微漲、各方人心尙穩、晨初開盤一萬三千六百元、與上日收價同、某金號內做過一萬三千五百五十元、鼎成證券號與金號幫來力進、散戶紛起收吸、價頓步升三百三十元、達一萬三千八百八十元、成記等兩金號來力售小至一萬三千六百三十元、明豐順源及另一證券號收吸步盤上二百二十元、達一萬三千八百五十元、十一點後散戶及金號幫售出、重見步降至一萬三千六百元、曾有供無求終稍上升、正午一萬三千六百三十元為收價、比上日軋升三十元、當日有三百三十元差度、銀樓首飾金每兩兌出價、大新同行均掛升五十元、為一千四百五十元、（收進减一百五士兀）、紋銀仍十四元、黑巿十二元半、銀幣一枚七元三四角、均趨上漲、</p>
+<p>外幣市況、英美金鎊續漲五元、前者為三百五十元、後者三百六十元、美金票為十七元一二角，香港票為三元、大票减小五分、軍用票始做四元三角、繼而升高至四角二分、最後為四元四角、</p>
+<h3>滙劃莊上市</h3>
+<p>共為五十二家同餘上市不確</p>
+<p>本巿錢業公會會員錢莊、（即匯劃莊）、本月十九日（年初五）上市者、共計為五十家、聚康莊繼於二十三日上市、大賚莊已於二十五日上巿、共計為五十二家、至於同餘永記莊、初因股東意見參差、原擬改記營業、擇吉上巿、後因發覺帳目紊亂、無法繼續營業、委託律師宣吿清理、昨日某報載該莊定昨日繼續上市、似係不確、</p>
+<h3>洋商銀行（續）票據交換辦法</h3>
+<p>可以交換之票據為支票、匯票及已到期之定期存單、　票據交換於每日下列時間開始、星期一至五、下午一時、星期六上午十一時卅分、每月第一個營業日為下午一時及三時、每月最後一個營業日下午一時及三時三十分、每月第一個或最後一個營業日、為星期六時為下午一時、　會員往來戶餘額不敷支付其應付之差額時、應於下列時間內支付現款、星期一至星期五下午三時前、星期六下午一時三十分前、每月第一個或最後一個營業日下午四時三十分前、（但每月第一個或最後一個營業日為星期六時則為下午三時以前）　會員銀行中欲就正金銀行往來戶支付現款時、橫濱正金銀行有權囑交換差額為應付之銀行、以現款直接解付需款銀行、而由橫濱正金銀行以同數支票付與該付出現款銀行、以便將此項支票存入往來戶內、以之抵付交換差額、　交換後拒付之票據應於下列時間內、開具退票理由書退還之、星期一至星期五下午五時前、星期六下午二時前、每月第一個或最後一個營業日下午六時前（但每月一日或月秒日為星期六時則為下午四時前）此外如能提出充分之理由、得於次日上午十時前退還之、　非會員銀行得由會員銀行代理交換、惟須於二日前預先通知交換所、並須注意下列三事、（甲）該非會員銀行須將其簽章樣本送參加交換之銀行等備査、（乙）票據付效交換之會員銀行等有權要求提出票據之銀行證實非會員銀行所為之背書、（丙）拒付之退票、得山各會員銀行與該非會員銀行間直接處理之、　　上海銀行業同業公會聯合準備委員會代表該會交換銀行參加交換、所有設會交換銀行所收得之「外商銀行票據」均由該會提出交換、拒付票據由（該會交換銀行提出者、均應經由該會退還之、（完）</p>
+<h3>公債除息與否成為買賣爭持焦點</h3>
+<p>公債暗盤、昨巿跌風續起、巿上賣戶極為踴躍、微聞不久擬除第十二期息票為買賣、但息票在上海尙無代付機關，如除息計算、則執息票者等於呆滯在手、且巿價如除息計算、則必减二三元左右、是又多空雙方競爭之點、買方寗願除息票而市價减小、空方則不願除息票而少賣市價、但老空頭則得其所哉、因不能付現之息票、已經得價售去、他日補回時、不啻息票代價已經收到、是為互爭之焦點、但無論如何、一般以為第十三期甲種中籤號碼公佈後、買賣必將除息方合情理、是以昨市賣方如大中·恒康·大康成·順泰·同康·恒康·裕興等紛紛賣出、聯和·同興·協康·潤德及散戶補空、殊覺頹勢難挽、市價直錢下降一元餘至二元餘之多、暫時尙無回蘇之象、成交約四五十萬元、茲列簡明表於後，</p>
+<h3>日紗價漲獨鉅</h3>
+<p>棉紗市况、賡續上升、且漲風甚熾、惟華紗平庸也、二十支雙馬廠單初開價為二千二百二十五元、漲至二千二百九十五元、收盤回挫一步、價為二千二百七十五元、四二支藍鳳狂升二百元、初做價為五千二百元、漲至五千四百元、三二支藍鳳四千二百十元、三二支仙桃四千六百十元、三二支金實星四千一百元、三二支收羊四千元、至四千一百五十元、三二支紅禧四千二百五十元、二十支月琴二千八百元、二十支水月三千元、藍鳳三千零五十兀、二十支雙地球二千五百四十元、二十支雙虎二千八百五十元、二三支金雞二千六百二十元、十支紅雙馬一千二百元、</p>
+<h3>同業與囤戶拉抬棉布漲無止境</h3>
+<p>廠布昨因東疋狂升、市勢亦跟踪向上、白貨粗細布逐步昂騰、每疋漲起二三元不等、十六磅地球粗布一百十五元、飛鴻一百零七元、八磅振中六十四元、十二磅大鵬細布一百元、富貴九十八元、地球細布一百零四元、俱有做開、惟十六磅花蝶粗布仍喊一百二十六元、雙象一百二十四元、藍布府綢則一致續升、桃花女士林一百七十二元、白貓花布九十五元、三羊條府綢四元四角、長壽府綢四元四角半尤極缺俏、</p>
+<p>東布漲風續厲如無止境、昨龍頭細布廠單一百十六元五角開盤、同業與囤戶此拉彼抬、哄至一百十九元五角之最高峯收盤、每疋狂漲五元半、現貨及銀行單自一百零七元做至一百十元、飛魚彩球升至一百十元零五角、陽鶴一百十元、喇叭五福一百零八元、細斜漲勢較緩、五福藍雙魚做開一百元、寶貝九十八元五角、叫君子嗶嘰新單午收時喊盤三元八角八分、七月至九月單三元七角三分、現貨反形平庸、僅三元七角一分、</p>
+<h3>油漸有供給</h3>
+<p>本市食油近月來忽呈恐慌景象、皆為供給受制、及來源受船位不敷延期之故、各醬糟油坊有停止出售、有以惡劣之汕混售高價、煎熬之時、臭味異常、直至前日始見各油坊有油出售、每人限購一市斤、有限每人只購一元、公定價格、生油每市斤為三元三角半、豆油三元二角半、淸油及菜油三元一角、並聞前訂購之靑島生油一千三百噸、大速豆油五千噸、已有六百桶於昨日抵埠、其餘正在源源運滬中、如能見諸事實、則恐慌或可消除、但亦仍看油醬業商德何如、</p>
+<h3>雜糧趁高稍有賣出</h3>
+<p>苞米即將統制出售、因之昨日購買苞米粉絡繹不絕、購者較衆之處、亦須排隊待購、賣至一元一巿斤、猶係粗粉、間有混以石粉、簡直是食狠害人、但此後買苞米粉亦將如買米一般、無怪昨日購者擁擠也、</p>
+<p>赤豆交稀價疲、昨由散囤售出崇明沙赤一百包左右、價為一百卅六元半至一百卅四元、比前又小二三元、</p>
+<p>芝蔴貨缺獨俏、昨售開明光雪蔴一百餘包、價為二百廿八元、</p>
+<p>豆餅囤戶出多進少、市勢轉疲、昨售開利字豆餅六月份棧單五百片、價為卅四元、昌記豆餅五月份棧單一千片、價卅一元至卅元、漢口豆餅一千片、價廿九元、甡記豆餅五千片、五月份棧單卅六元半、六月份棧單卅九元至卅七元、七月份棧單卅七元半、二月份新棧單四十二元至四十一元八角</p>
+<p>黃豆昨市囤銷皆淡、僅祇零星交易、市呈平疲、計售開天津金元一百包、價為一百七十五元、蕪湖黃豆五十包、價一百五十五元、桑園黃豆一百九十四包、價一百五十九元、平湖杜豆一百五十四包、價一百六十九元、</p>
+<p>麩皮連日一再激漲後、已引起執貨者之趁高求脫、新囤納胃頓懈、昨市祇有少數鄉莊與內地實銷戶趁平略辦、但蘭花客麩抑低一元、為六十七元者仍無去化、而三鑫大包早市售開六十八元六八角之價、下午巳扒低至六十八元四角、最後開至六十八元、亦比前市小去一元一云、</p>
+<h3>南粳稍回小北粳仍堅定</h3>
+<p>昨國米南粳雖巳回平、而北粳存枯到少、特高貨反為扳足、崑錫特粳開二百九十五元至二百九十三元、又向三百元高峯邁進、惟南路早丸稻因連日天晴、近郊各鄉到貨略見加增、且以價碼過高、進戶胃懈、而執貨者亦以價高力求脫手、故早晚均見回落三四元、南幫陰元亦以價昂引到、漲風已挫、昨靑角陰元開二百七十五元、靑角薄稻二百七十五元至二百七十三元半、南幫早稻二百七十四元至二百七十二元云、</p>
+<h3>兒茶軋缺</h3>
+<p>兒茶因久無到貨、至為軋缺、査號方尙有手存、數亦不多、此物聞某種丸藥需要甚廣、故市勢極為居奇、叫價比去年幾升一倍有餘、致未成交云、</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>誠實得人敬重</h3>
+<p>— 星</p>
+<p>誠實為奸詐之對代詞，誠實處世者，每為奸詐者所利用而欺騙之，所以有誠實即無用之別名，幾為社會一般人所吐棄，但有時亦得人敬重；其所以為人敬重者，往往面諛而腹誹之。地位高崇者，敬重而利用之。經濟寬裕者，敬重而欺騙之。一旦誠實者失其固有之勢力而經濟拮据時，則每為奸詐所不取：親戚降為友朋，友朋降為路人，甚至投井下石，一反昔日恭順禮貌而遠而避之，是為誠實者之反收穫。但亦為久處社會者所必然之經騐，可見誠實者得人敬重為虛，受人利用而欺騙之是實，然亦何取乎誠實，不亦為社會所遺棄，而趨於淘汰乎？非也，但使誠實者，能始終如一，受利用而不變共初衷，受欺騙而不改其常態，欺騙雖奸，始終處之以誠；利用雖詐，始終處之以實，一正壓百邪，則其終必得人敬重而收穫必宏。格言有云：害人之心不可有，防人之心不可無。是亦誠實處世之道，亦誠實得人敬重之由，是為誠實者之正收穫。</p>
+<p>奸詐者視誠實為自欺，誠實者視奸詐為欺人。觀點不同，所趨各異。諺云：誠實不欺，各種商號皆以此為號召，能否做到，姑不具論，可見誠實乃能不欺，不欺始見誠實，是不易之論。意誠而後心正，按程演進，推而廣之，以致於天下平。又可見誠之一念，小之可以齊家，大之可以平天下，豈可以不合時宜而輕忽之，其得人敬重者宜乎不宜。</p>
+<p>近日因見電車內誠實得人敬重普遍廣吿，不啻提壺灌頂，發人深醒，足以警惕奸詐，但人心道德淪亡，競相以奸詐為能事，恐不能以語上海之社會，但以挽回人心計，仍不得不大聲疾呼曰。。「誠實得人敬重！」願全滬人仕三忍之。</p>
+<h3>舞臺与銀幕</h3>
+<p>辣斐劇塲繼「夢裏京華」後，將重演「北京人」，但前英茵擔任的會思懿一角，為愼重計，尙在物色中。</p>
+<p>顧也魯賀賓嚴化等，近亦組織「第八藝術劇團」，預備在蘭心演出，第一劇「殉情」，請李萍倩導演。</p>
+<p>舒適處女編導的「地老天荒」旣獲佳譽，決再編導一偵探片，劇名「案中案」，舒適本人或將自演。</p>
+<p>周貽白馬徐維邦等加入金星，擔任編導部工作。</p>
+<p>「楚霸王」在蘭心，決演一月，姚克日內將親自登臺演范增一角。</p>
+<p>— 靑</p>
+<p>麒麟童在黃金之局，期為一月，包銀每塲三千六百元，日夜兩塲照算——七千二百元，如此浩大，實吃癟「京朝派」矣。黃桂秋包銀一萬八千，王熙春九千：芙蓉草則長年二萬元，據稱黃金一個滿堂好賣一萬，這幾位角兒就去了半數了。</p>
+<p>郭玉崑的「十八羅漢鬥悟空」及「智激美猴王」等「李派」戲，幾下出手，尙有「活兒」；小楊月樓倒底是四十開外的人，無復當年「封神榜」時代的風韻了。</p>
+<p>天蟾的「鴻春社」也頗有小噱頭，與上海戲劇學校比起來，論者曰：各有千秋，據我外行人看來，演武戲得「火爆」兩字，羣戲的圖案美，也是他們獨特之處。</p>
+<p>— 太虛</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一）風雨之夕</p>
+<p>國芳在繼續掏出餅乾來，說：「你們幹麼光是說話，不吃，我怕瓜子花生都有壳，不方便，這是吃着消遣的，不是吃一個飽。我還有糖，可是現在還不拿出來，竿你們談的疲乏了，再拿出來給你們甜一甜嘴，就精神振作了。維城笑了，隨使拿一塊餅乾放在嘴裏，還說：「謝謝陳小姐。」國芳把肩膀磕着國器道：「哥哥，他還謝我，我可受不了了。」國器道：「只許謝一次，等到你把什麽咖啡糖太妃糖登塲的時候，就不准維城再道謝。」</p>
+<p>國芳把牛塊餅乾放在嘴裏，又半塊，揑在手裏，像是來不及等一齊嚥下去了再說話。兩眼望着維城，却向國器交涉道：「哥哥你旣然有這麽一個好朋友，為什麽沒有在我面前提上一提？便是在校裹，在家裏，桌子上也沒密斯脫葉的相片。」把意見發表了，叉一半塊的餅乾，才繼續到她嘴裏。國器道：「我妹妹說的好朋友，這個批評是對的，可是為什麽忽然地疏遠了，這責任不該是我一個人負的。一維城道：「我們預約：到了陰曆新年裏，請你們兄妹到花港來。到了花港，問世德堂葉家，只要是本鄕人，沒一人不知道的。」國芳不等他哥哥答應，說：「那一定到。哥哥和你老朋友，可以彌補以前的疏遠，我……我說不上來了。」她又讓國器的影子遮掩了她的臉。</p>
+<p>國器道：「好的，我們兄妹，先上花港來看你，你留不留我們住？」維城道：「徐孺下陳藩之榻，那用得着說嗎？」國器道：「那麽以一宿為度，到第二天，你隨了我們上雙橋去。到了雙橋，玩的事情多了：我知道新年裏有一個賽會，可以看會。我們已經三個人了，再凑一人，可以打牌。我記得鄕裏的小河，每一次新年，它總是冰凍了三四寸厚，我們可以溜冰。餘下的，便是吃喝；我祖母會做一種穌糖，大槪是她的絕技，是她從娘家携帶來的，雙橋人全不會做，只有我祖母會做，吃起來有一些兒鬆，又有一些兒黏，怪好吃的。她常想把這絕技傳給國芳，大槪這一回，總是要傳給她的了。」（九）</p>
+<h3>關於「皇后」及其他</h3>
+<p>— 聞大聲</p>
+<p>戲院子名叫「皇后」，照相館叫「皇后」，甚至嚮導社也有叫「皇后」……的等等眞是多得舉不勝舉，但對這種已經司空見慣的名稱，人們卻從不加以注意。然而，就在這一不加注意中間，我們卻可以推究出他的原因——其原因無他，乃表示「尊敬」女性也。而女性之從「皇后」兩字上得到的「光輝」，眞可說是「至高無上」的了。因為我們從來也沒有見過一家什麼「皇帝」大戲院，或是「皇帝」什麼館之類的「尊稱」。</p>
+<p>於是在男女同學的學校間「校花」，有被「加冕」而尊為「皇后」者，那似乎是「高雅之風」，不得不盛行一番也。而在宿舍之房門上捒臉蛋兒漂亮的就書以「正宮」兩字，其次則「東宮」，「西宮」，「南宮」，「北宮」依次而下，至於麻皮，缺嘴，則無疑將被編入「冷宮」去的了！</p>
+<p>這把戲，初看上來似乎很好玩兒，但要是我們仔細一想，為什麽這些好玩兒的把戲都弄在女性的頭上呢？這也就不難明其眞相了——其原因也無他，玩弄也。</p>
+<p>女性之可供人「玩弄」，似乎不是從今日始，而是自古巳然的了。但以女性化的名字作「招牌」的「生意眼」却好像還是近代「廣吿學家」的「心血結晶」吧！這，也就無怪弄廣吿術的朋友們就專門要在女人頭上「轉念頭」了。</p>
+<p>於是，有人就認為婦女之被人抬上了「九十九天」是「不祥的預兆」，其實，婦女們被人吃足了豆腐，尋足了開心，已經是寃枉之至，有苦說不出，（但婦女中能瞭解得這是對她們加以侮辱的，為數也眞不多。）而「道學先生」們猶擬加以「不祥」之稱，那才是倒霉透頂的了。</p>
+<p>但是，女性的勇敢者，到底也大不乏人，交了一個男朋友，再換一個，好像已經成了「社交」的必修課題，然而，因此而引起醋海風波者，眞是數見不鮮矣。今日（二十七日）報載白克路上擊碎價値五百元之汽車玻璃一方案，其原因，據說正是為此。</p>
+<p>這，眞叫「皇后」旣不易稱，交男朋友就更難了。而女性之難乎其為女性者，也眞是「於今為烈」得「莫過於此」的了！所以，取得經濟權利與義務上之平等，倒似乎要比談戀愛更必要一點！</p>
+<h3>天堂裏的地獄</h3>
+<p>— 春風</p>
+<p>據說「吃茶去」已經不時髦了，取而代之是「喝咖啡」，這是否是「舶來品」與「土貨」（咖啡館裏的是錫蘭紅茶）之別，抑或茶室裏的點心受了苞米粉的影響？不過喝咖啡也要上高貴之所，否則咖啡渣加水，色香味俱無，再加冲水牛奶和糖油，簡直是像大雨後的臭水浜，一團糟。時髦是抽象的，還是「可以淸心」來得悠然自得吧</p>
+<p>比較高貴的咖啡館還是高貴得很，煤價雖貴，照樣滿室生春，咖啡是CPC蛋糕上還是澆著厚厚的一層奶油，關在裏面，淺飮低嘗，會忘記在馬路上看見過倒路屍的。</p>
+<p>自然有了女伴，更為賞心樂事，那紅絲絨的沙發不會比電影院裏的「鴛鴦椅」有什麽缺憾，談談桃樂賽拉摩果然可以到好萊塢去兜一個圈子，就是講到最乏味的軋米問題，也可以從我家娘姨的本領上發生許多哈哈大笑的資料，於是下午悄然而逝，舖上潔白的桌布，吃脷腓牛排與鷄絲湯了。</p>
+<p>如果是一個人，那總以為是太寂寞了吧。但也不然，咖啡館主人的設想是頗為週到的，吃角子老虎就在向你招手。雖然那位「大王」被捕下獄了，他遺留給人們的功德還是如海之深。譬如隔壁的朋友運氣好而扳到了「傑克撲」，那就萍水相逢，一見如故。否則，也會互相惋惜一番，若有所感。</p>
+<p>最近大有人在慨歎上海之大，無奇不有，其實把什麽事情看得平淡一點，也就何奇之有了。上海根本是「天堂裏的地獄」！</p>
+<h3>餐風宿露圖</h3>
+<p>— 江棟良作</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.01</h1>
+<h3>Extremely Fierce Naval Battle Occurs in the Java Sea</h3>
+<p>Allied Fleet Attacks Wake Island</p>
+<p>Tokyo, 28th (Domei News Agency dispatch) - The Japanese General Headquarters announced at 4:45 PM today that at dawn on February 24th, an enemy fleet consisting of one aircraft carrier, two cruisers, and six destroyers attempted to attack Daitori Island (formerly Wake Island). They were repelled by the island's Japanese naval coastal artillery. One enemy cruiser caught fire, and one destroyer was hit in the stern, suffering heavy damage. One enemy large cruiser was bombed by Japanese aircraft, sustaining heavy damage to its rear deck. In the engagement between enemy aircraft and Japanese defending aircraft, five enemy aircraft were shot down. As the enemy fleet approached a point where it was heavily attacked by the Japanese Navy, it fled. One Japanese patrol boat sank, and military installations on the island sustained slight damage, with a few casualties.</p>
+<p>Tokyo, 28th (Domei News Agency dispatch) - The Imperial Japanese General Headquarters announced at 12:10 PM today that the Japanese fleet engaged in combat with an Allied fleet in the Java Sea yesterday, sinking one of their cruisers and three destroyers. The naval battle is still ongoing.</p>
+<p>London, 28th (Reuters dispatch) - According to a public statement issued by the headquarters of Admiral Helfrich in Batavia, Allied and Japanese warships are currently engaged in a major naval battle off the coast of Java. However, the only news released so far is that "a naval battle is developing in the Java Sea." Furthermore, a US Navy spokesperson announced that several US warships are also reportedly participating in the naval battle off Java, but the outcome is not yet known.</p>
+<p>Tokyo, 28th (Domei News Agency dispatch) - The Nichi Nichi Shimbun reports that enemy ships sailed out of Batavia yesterday, including three Dutch 3,000-ton warships, which were hit by bombs dropped by Japanese army aircraft in the Sunda Strait. One of them caught fire. On the same day, Japanese aircraft attacked Batavia's naval port, dropping bombs on four destroyers in the harbor.</p>
+<p>A certain Japanese military base, 27th (Domei News Agency dispatch) - Japanese naval aircraft bombed an enemy fleet 30 nautical miles off Batavia in the Java Sea today, including one cruiser and two light cruisers. One Exeter-class cruiser (8,339 tons) was heavily damaged, and the other two took the opportunity to escape.</p>
+<p>Tokyo, 28th (Haitong News Agency dispatch) - According to a military reporter for the Yomiuri Shimbun, if Japan can control the Bismarck Archipelago and Timor Island, any attempt by the US fleet to attack Japan from New Zealand and Australia will inevitably fail, and US aircraft carriers will also be sunk. Although Darwin and Port Moresby can be used as US naval bases, it will not be difficult for Japan to control Sydney, Melbourne, Newcastle, and Adelaide. If the US Air Force attempts to attack Japan from Alaska and the Aleutian Islands in the north, the US will risk its entire fleet, and there is still no hope of victory.</p>
+<h3>Japanese Paratroopers Make a Successful Landing in Dutch Timor; Japanese Forces Completely Occupy Kupang; Fierce Fighting Continues in Southern Celebes</h3>
+<p>A certain Japanese base, 28th (Domei News Agency dispatch) - Japanese naval paratroopers landed near Kupang, the capital of Dutch Timor Island, on February 20th and 21st, and with the assistance of the Japanese army, navy, and air force, completely occupied Kupang on February 22nd. The Japanese paratroopers are now being assisted by sailors in maintaining peace and order in Kupang. During the Japanese military operations in Dutch Timor Island, 24 mortars and 1,500 rifles and machine guns were captured.</p>
+<p>Saigon, 28th (Haitong News Agency dispatch) - According to news from Batavia last night, authoritative sources stated yesterday that fierce fighting is still ongoing in southern Celebes. The situation in Bali is unclear here, but it is believed that Japanese forces have completely occupied the island. Japanese forces are reinforcing Timor by sea and air, so there is fierce fighting in the area. The Dutch East Indies troops are implementing their "scorched earth policy" on the tin-producing island of Bangka.</p>
+<h3>Tojo Elaborates on Operational Strategy; Seizing Military Bases and Controlling Important Resources</h3>
+<p>Tokyo, 28th (Domei News Agency dispatch) - Prime Minister Tojo delivered a speech at the first meeting of the Greater East Asia Construction Committee yesterday afternoon, stating that the damage suffered by Britain and the United States is significant and difficult to recover. Japan's northern defenses are solid and can ensure security. Japan's strategy is first to seize military bases in East Asia, and then to control important resources, increase Japan's combat power, and then cooperate with Germany and Italy to launch an active offensive, in the hope of achieving the final goal of defeating Britain and the United States.</p>
+<h3>Commander-in-Chief of the Dutch East Indies Broadcasts Speech</h3>
+<p>Saigon, 28th (Haitong News Agency dispatch) - Lieutenant General Poorten, Commander-in-Chief of the Dutch East Indies Army, delivered a broadcast speech yesterday, stating that Javanese soldiers must engage in a steadfast war with blood and flesh. Poorten then addressed the Allied nations in English, saying, "I trust in our Allied nations. Soldiers of the British, American, and Australian armies have repeatedly demonstrated their power on many battlefields. Now, I hope that soldiers of the British, American, and Australian armies can also fight together on our land."</p>
+<h3>Japanese Ambassador to the Soviet Union, Tatekawa, Resigns; Successor Appointed as Sato</h3>
+<p>Tokyo, 28th (Domei News Agency dispatch) - The Japanese Ministry of Foreign Affairs announced today that Lieutenant General Tatekawa Yoshitsugu, Japanese Ambassador to the Soviet Union, has resigned due to ill health. His vacancy has been filled by Sato, an advisor to the Ministry of Foreign Affairs. Ambassador Sato served as Minister of Foreign Affairs in the Hayashi Cabinet in 1937 and has served as ambassador to Belgium and France.</p>
+<h3>Cripps' Broadcast to Europe</h3>
+<p>London, 27th (Reuters dispatch) - Lord Privy Seal Cripps delivered a broadcast speech to unnamed figures and workers in Europe at 10:00 PM tonight (Greenwich Mean Time), calling on workers in Germany, Czechoslovakia, France, the Netherlands, Belgium, and all oppressed countries to unite and fight. His speech was introduced by Colonel Blevin, leader of the V Army.</p>
+<h3>Sino-British Credit Committee Holds Regular Meeting</h3>
+<p>London, 27th (Reuters dispatch) - The Sino-British Credit Committee held a regular meeting in London today, chaired by Ambassador Gu Weijun. Attendees included Sir Frederick Leith-Ross, Lord Lyttelton, and other Chinese and British members. Guo Bingwen, the Chinese Vice Minister of Finance, and Mark Young, Executive Committee Member of the Sino-British Credit Loan Committee, reported on the work since the last meeting. The British government hosted a banquet for all committee members after the meeting, with Sir Frederick Leith-Ross representing the host.</p>
+<h3>Entire Northern Territory of Australia Placed Under Military Control</h3>
+<p>Canberra, 28th (Reuters dispatch) - The Australian Secretary of the Army has ordered the entire Northern Territory of Australia to be placed under military control. Previously, only the northernmost region of Australia, centered on Darwin, was under military control.</p>
+<h3>Portuguese President Cables Thanks to Chairman Lin</h3>
+<p>Chongqing, 28th - General Fogaça, President of the Portuguese Republic, was elected president for the third time. Chairman Lin of the National Government sent a telegram of congratulations. General Fogaça has now replied to Chairman Lin with a telegram of thanks. The original telegram reads as follows: To His Excellency Chairman Lin of the National Government, I hereby express my gratitude for the congratulations extended by Your Excellency on behalf of Your Excellency's Government upon my re-election and prompt assumption of the duties of President of this country. I wish Your Excellency's country prosperity and Your Excellency good health.</p>
+<h3>Venezuela Announces Protection of Dutch Islands</h3>
+<p>Caracas, Venezuela, 27th (Havas dispatch) - Official sources here announced today that the Dutch islands located off the coast of this country, especially Curaçao and Aruba, are important oil-producing areas and have recently been attacked by Axis submarines. In view of this, the Venezuelan government will henceforth use its naval, land, and air forces to assist in protecting these Dutch islands. It is reported that the United States has previously dispatched troops to land on Curaçao Island. As for Venezuelan military strength, the army has 6,000 regular troops and 87,000 trained reservists. The navy has six gunboats with a total displacement of 3,329 tons. The air force, as of 1939, had only 17 aircraft.</p>
+<p>Caracas, Venezuela, 27th (Havas News Agency dispatch) - It has just been officially announced that the British government has ceded sovereignty over Patos Island and jurisdiction over the waters of the Gulf of Paria to Venezuela. Patos Island is very small and is located in the Dragon's Mouth Strait between the Venezuelan coast and the British territory of Trinidad. The Gulf of Paria is located between Venezuela and Patos Island.</p>
+<h3>Brazil and the United States Sign Three Agreements</h3>
+<p>Buenos Aires, Argentina, 28th (Haitong News Agency dispatch) - As a result of Brazilian Finance Minister Costa's visit to the United States, three important agreements have been signed:  Regarding the development of rubber tree planting in the Amazon basin;  Regarding a US loan of 12 million US dollars for the construction of Brazilian railways;  Regarding the prompt shipment of raw materials stipulated in the Lend-Lease Act to be supplied.</p>
+<p>Washington, 27th (Havas News Agency dispatch) - Treasury Secretary Morgenthau and the Ecuadorian Minister to the United States signed an agreement here today stipulating the method of linking the Ecuadorian currency to the US dollar, thereby stabilizing the country's monetary system.</p>
+<h3>Roosevelt Discusses Convoy Issues</h3>
+<p>Washington, 27th (Havas News Agency dispatch)</p>
+<p>President Roosevelt stated, "We are now doing everything we can to protect Allied merchant ships traveling on all oceans. However, this protection is still a drop in the bucket. Other countries in the Americas are currently cooperating with the United States to protect convoys of merchant ships traveling between ports in the Americas. However, detailed information is not convenient to release at this time."</p>
+<h3>Two More American Oil Tankers Sunk</h3>
+<p>Washington, 28th (Havas News Agency dispatch) - The Navy Department announced that the American oil tanker "Anderson No. 1" was sunk by a submarine off the coast. Only one of the 23 crew members was rescued.</p>
+<p>Washington, 27th (Havas News Agency dispatch) - The Navy Department announced that the Socony-Vacuum Oil Company's oil tanker "R.P. Resor" (displacement 7,000 tons) was torpedoed in the Atlantic last night and immediately caught fire. Only two of the thirty-eight sailors were rescued and have landed at a certain port on the Atlantic coast.</p>
+<h3>France Offers Guarantees to the US, Reaffirming Neutrality Policy; US Still Awaits Further French Explanation on Security of French Territories</h3>
+<p>Washington, 28th (Reuters dispatch) - President Roosevelt told reporters yesterday afternoon that a Paris radio report claimed that US Ambassador to France Leahy had requested the French government to notify the US government in advance of the movements of its fleet, but Vichy had refused. However, according to the State Department's Intelligence Division, this propaganda is not true. In addition, the State Department issued a statement last night stating that the French government had presented a note to US Ambassador Leahy last Tuesday, reaffirming its neutrality policy. As for other important issues, the US government is still awaiting further explanation from the French government (it is understood that the so-called important issues refer to the security of Madagascar Island and French territories in Africa in the Indian Ocean). The statement also stated that President Roosevelt had sent a letter to Marshal Petain on February 10, stating that the US government had received reports that there would be contacts from mainland France to ship goods to North Africa for use by the Axis forces in Libya, and that he firmly believed that any assistance to the enemies of the American people was not what the French people wanted, and was also detrimental to the wishes of the French people. Marshal Petain replied that the French government would not provide any military assistance to any belligerent country in any theater of war. This statement was issued after lengthy discussions by the State Department, and its wording served as a final public warning from the United States to the Vichy government, and as a public assurance to the United States that the Vichy government would not go beyond the scope of the armistice agreement to aid the Axis powers.</p>
+<p>Welles' Remarks</p>
+<p>Washington, 27th (Havas News Agency dispatch) - Under Secretary of State Welles stated that the French government has provided new guarantees to the United States that any actions that would undermine its neutral status will be avoided and that it does not intend to provide military assistance to any belligerent country. The French note specifically stated that the so-called military assistance includes the use of the French fleet. It is reported that President Roosevelt warned France on the 10th of this month that if it supplied the Axis powers with military equipment or supplies, it would place itself among the enemies of the United States. The guarantees made by the French government now are in response to this warning.</p>
+<h3>Ju Zheng Arrives in Hengyang</h3>
+<p>Hengyang, 28th - Ju Zheng arrived in Hengyang from Guilin this morning and will proceed to Changsha to meet with Xue Yue and plans to go to the front line.</p>
+<h3>Hunan Provincial Government Rewards the Police Chief of the Provincial Capital</h3>
+<p>Changsha, 27th - The Hunan Provincial Government, in recognition of the outstanding achievements of Chen Zhenxiao, the Police Chief of the Provincial Capital, has awarded him a first-class merit and presented him to the Central Government for the award of a police medal to encourage him.</p>
+<h3>Iranian Cabinet Resigns En Masse</h3>
+<p>Tehran, Iran, 27th (Havas News Agency dispatch) - The entire Iranian cabinet submitted its resignation to the Prime Minister today. The motive is not officially stated, but it is understood that the entire cabinet made this decision after the Minister of Agriculture resigned due to illness.</p>
+<h3>Japanese General Sakamoto Passes Away</h3>
+<p>Tokyo, 28th (Domei News Agency dispatch) - Retired Japanese Army Lieutenant General Sakamoto Masauemon passed away on the 27th at his private residence in Shibuya at the age of 64. Sakamoto served as the Principal of the Army War College and the Commander of the 6th Division.</p>
+<h3>Lyon Supreme Court Continues Third and Fourth Sessions; Trial of National Traitors Daladier and Others</h3>
+<p>Lyon, 27th (Havas News Agency dispatch) - The Lyon Supreme Court opened its third session at 2:30 PM today to try national traitors. First, the President of the Court, Caous, read out the Supreme Court's documents, answering one by one the opinions put forward by the lawyers of the defendants. Then, Daladier was interrogated. Caous once again listed Daladier's crimes: That France failed to adequately prepare for war; That the Cabinet's attitude was ambiguous when discussing whether France had the strength to militarily intervene in the European situation on August 23, 1939; That Daladier only attended one cabinet meeting during this critical period. Daladier immediately replied, "According to French law, the Minister of the Army chairs the cabinet meetings when discussing issues related to the army's organization. During my tenure, the number of reservists called up into the army increased every year. In 1933, there were only 258,000, but by 1938, it had increased to 511,000. As for the issue of military equipment, I allocated huge sums of money to finance the production of military equipment. France's failure to have sufficient tanks is not my responsibility, but should be borne by others. I requested Parliament to allocate a total of 6.2 billion francs and did my best to increase the country's industrial output." Court President Caous stated that the government ordered 800,000 rifles from various munitions factories, but only 85,000 had been delivered by August 1, 1939. As far as I know, the government only ordered 157,000 rifles, and 101,000 were delivered by August 1, 1939 (at this point, another defendant, the former Director-General of Munitions Jacomet, interjected, emphasizing that the implementation of the rearmament plan by January 1, 1937, was actually six months ahead of schedule). As for the production of various military equipment, I proposed the formation of "mechanized divisions." The German army used these divisions as the vanguard of armored divisions. The production of 30-ton tanks was also my initiative. However, the General Staff did not pay attention to this. Senior generals such as Billotte and Doumenc did not use tanks according to the principles advocated by experts before the war. At this point, the prosecutor inquired about the military equipment manufacturing matter. Daladier replied in a evasive manner, "France's mobilization was not hampered by the lack of military equipment. The military equipment that I stipulated to be supplied to the army was more than what was stipulated in the mobilization plan." The court then adjourned at 5:45 PM and scheduled to open the fourth session tomorrow.</p>
+<h3>Allied Military Committee Discusses Operational Strategy</h3>
+<p>Melbourne, 27th (Havas News Agency dispatch) - The Allied Supreme Military Committee held a secret meeting here today. Military experts from various Allied countries attended. The subject of discussion has not been officially released, but semi-official sources say that the Japanese army will soon take action to prevent the Allies from using Australia as a base for a future counter-offensive.</p>
+<p>Stockholm, Sweden, 28th (Haitong News Agency dispatch) - According to news from Melbourne, Australia has convened an unprecedented meeting of advisors from various armies participating in the Imperial War Committee to discuss strategies for offensive warfare to defend against a Japanese invasion of Australia. Military experts from Australia and the Allied forces presented a detailed operational plan at this secret meeting, including plans for defending the Australian coast and attacking the Japanese army.</p>
+<p>Tokyo, 28th (Domei News Agency dispatch) - The Jiji Shimbun's Lisbon dispatch states that, according to news from London, Gu Weijun, the Chinese Ambassador to the United Kingdom, has been appointed as the Chinese representative to the Pacific War Council. The council will hold its first meeting soon.</p>
+<p>Special Article by This Newspaper</p>
+<h3>Wavell on Generalship (7)</h3>
+<p>A general's losing his temper with his subordinates does not necessarily harm his reputation or cause him to lose their faith; for familiarity breeds contempt, and (as someone wittily put it, "the licensed temper of senior officers"), and except for those directly involved, subordinates will not bear him a grudge, and sometimes even show respect for him as a result. However, the sarcasm of a superior is most hated and remembered by his subordinates. In the Iberian Peninsula campaign, the distinguished and eccentric light cavalry commander Craufurd was more feared by the soldiers than the rude and boisterous Picton, for the former spoke with sharp words, containing sarcasm and irony, while the latter merely roared when angry.</p>
+<p>Should a senior commander have a sense of humor? Although a sense of humor is beneficial to anyone, it must not be overused. In fact, many famous generals throughout history have not had a sense of humor. Allenby certainly had a sense of humor, but others did not dare to joke with him casually. He only revealed this emotion after retiring from public life. Wellington was the same. I don't think Haig had a sense of humor; I couldn't find a trace of it in Napoleon either. Only that eccentric Russian genius Suvorov can be considered a consistently humorous person; but rather than calling him a humorist, it would be more accurate to call him a braggart.</p>
+<p>On the other hand, British soldiers can be called one of the world's great humorists. After the last Great War, the humorless Germans conducted research into the causes of morale, and concluded that the endurance of the Allies was mostly due to a sense of humor. Therefore, they decided to instill a sense of humor into the minds of German soldiers, and military textbooks also contained orders to cultivate a sense of humor, with an example of a cartoon by Bruce Bairnsfather, depicting "Old Bill" sitting next to a house, with a huge shell hole in the wall, and a new comrade asking, "How did this happen?" Old Bill replied, "Mice did it," with a solemn note added below: "It wasn't mice, it was a shell."</p>
+<p>I have rambled on for a long time, and I am afraid I have not contributed much to you. What I am trying to tell you is that the entire history of war is a living event with flesh and blood, not just some charts or norms; nor is it just a struggle between machines and machines, but a struggle between people and people. In a French infantry school I once visited, there were a few words from Du Picq in the large lecture hall: "Man is the first weapon of war; let us study the soldiers in wartime, because it is these people who make the war happen. Only by studying the past can we gain a sense of reality and know how to fight in the future."</p>
+<p>If you study the history of war, you don't have to read strategic outlines or principles of war, you should read biographies, chronicles, and historical novels such as "Paths of Glory" or "La Chartreuse de Parme." What we need to study is the living history of war with flesh and blood, not its dry bones. Knowing that Napoleon! The campaign of 1796 was won by using interior lines of operation. Or similar names, have little use. If you can know how an unknown young man inspires a broken, hungry, and demoralized army to bravely move forward and fight hard, and how he suppresses senior generals with more experience and age, forcing them to obey his orders, then you can say that you have learned something. Napoleon was able to dominate the world mostly because he understood human nature in wartime, not just by memorizing a few rules or strategies. From an anecdote from his early years, we can see that he understood psychology very well. When Napoleon was an artillery officer, he built a battery in a completely exposed place during the Siege of Toulon. Those around him thought that no gunners would be willing to guard it. So he hung a sign at the edge of the battery, writing "Battery for those who are not afraid to die," and soldiers went forward one after another to guard it.</p>
+<p>To summarize the above points, I believe that all successful commanders, in their relationship with their subordinates, should adhere to the following principles: A general must maintain strict discipline, but must not be overly harsh.</p>
+<h3>Scenery of Batavia City</h3>
+<p>Batavia is divided into two areas, old and new. The old area is called the Old City or "Oud Batavia", while the new area is called Weltevreden. Because the old city is humid, government offices and European residences are located in the new area, which is a "garden city" with wide streets, shady trees, elegant houses, and fresh air. Weltevreden means "well content". The streets in the old district are narrower and the houses are more simple and old. However, foreign trading houses, banks, and warehouses are still located here. (Top picture) is Senen Street in the old district, with the De Javasche Bank building on the side. (Bottom picture) is the Tjiliwong River in the center of the old district, with clear waters and village women washing clothes, its style resembling the Washing Silk Stream in Hangzhou. According to yesterday's dispatches, a large-scale air battle took place over Batavia. The residents of both these new and old districts must have suffered a great deal of terror.</p>
+<h2>Page 3</h2>
+<h3>Amendment to Land Regulations and Bylaws: Storing Goods Requires a License; Operating Various Businesses Requires Prior Licensing and the Bureau May Stipulate Terms and Collect Deposits</h3>
+<p>The Shanghai Municipal Council has received notification from the Senior Consul that Article 53 of the Land Regulations Bylaws has been approved for amendment, changing the phrase "any goods that are retailed and subject to price control announced by the Municipal Council at any time" to "any goods that are bought, sold, or stored and subject to price control announced by the Municipal Council at any time." The amended text of the said bylaw is as follows:</p>
+<p>Regulations for Operating Controlled Goods</p>
+<p>"Any individual, partnership, or company that buys, sells, or stores any goods subject to price control announced by the Municipal Council at any time shall comply with the rules published by the Municipal Council regarding recording the quantity of such goods stored and the location of storage, or regarding the selling price. Any individual, partnership, or company that violates any provision contained in the rules promulgated by the Municipal Council in accordance with this bylaw shall be subject to 'A' the penalties prescribed in Article 17 of the Land Regulations, or other sanctions deemed fair by the competent court, or 'B' have the license issued to the individual, partnership, or company suspended or revoked by the Municipal Council, or both (A) and (B) may be implemented simultaneously." The bureau has already announced this yesterday for general knowledge.</p>
+<p>Various Businesses Must Obtain Licenses</p>
+<p>Furthermore, within the bureau's Announcement No. 5802, it is stated that the bureau has received notification from the Senior Consul that Article 34 of the Land Regulations Bylaws has been approved for amendment, adding the storage of goods in godowns, warehouses, and other places to the list of items requiring a license. The amended text stipulates that opening factories, storing goods, or opening markets, entertainment venues, restaurants, hotels, pawnshops, money exchanges, food stores, land and water transportation, etc., within the settlement requires a license. Foreign licenses must be countersigned by the consul, and terms may be stipulated and deposits collected at discretion. (The amended bylaw can be found in today's advertisement in this newspaper.)</p>
+<h3>Authorities Plan to Lower Meat Prices</h3>
+<p>The price of meat in the city soared by 75% during the Lunar New Year. The authorities of the International Settlement and the French Concession have begun investigating the possibility of lowering prices. The Shanghai Municipal Council and the French Municipal Council have not specifically established any committees to conduct this investigation; rather, it is being handled by the price control groups from each of the two bureaus. Before taking action to lower meat prices, it must be determined whether the increase is due to circumstances or illegal profiteering. The claim that the soaring meat prices are due to the closure of slaughterhouses during the Lunar New Year holiday is inaccurate. It is claimed that 16/10 of the meat consumed in the city comes from cold storage, and is not entirely dependent on slaughterhouses. At the same time, there was no significant change in meat prices yesterday.</p>
+<h3>Revised Figures for Workers' Cost of Living in February</h3>
+<p>In February of this year, the general index of the cost of living for Chinese workers in this city reached 1468.93, an increase of 11.70% compared to January. Among the classified indices, except for a slight decrease of 1.52% in the housing category, the food and miscellaneous categories rose by 15.66% and 16.80%, respectively. The miscellaneous category index has exceeded the 2000 mark.</p>
+<p>The selling price of foreign rice increased three times this month, and the amount sold each time was repeatedly reduced. On the 2nd of this month, the limit was two sheng per purchase, at a price of three yuan. On the 9th, it was one sheng per purchase, for one yuan and six jiao. On the 23rd, it increased again to one yuan and seven jiao. Starting from the 7th, the movement of "du mi" rice was not allowed to exceed two dou. The retail prices of goods soared this month. In the food category of this index, out of 30 items, 25 increased in price. In the clothing category, out of 11 items, 6 increased in price. In the housing category, the decrease in the price of waste firewood was greater than the increase in the price of matches, so the index decreased slightly. Soap and cigarettes rose sharply in price. The average prices of some major items this month are compared with those of last month to show a glimpse of the changes.</p>
+<p>Item Name　　Percentage Increase/Decrease　　Foreign Rice　　+ 15.43　　Soybean Sprouts　　+ 30.19</p>
+<p>White Radish　　+ 35.57</p>
+<p>Duck Eggs　　+ 18.67　　Waste Firewood　　- 16.88　　Native Cloth　　+ 9.32　　Cigarettes　　+ 30.22　　Flour　　+ 35.97</p>
+<p>Vegetables　　+ 82.30　　Beef　　+ 21.09</p>
+<p>Soy Sauce　　+ 57.47</p>
+<p>Bleached Cloth　　+ 16.18</p>
+<p>Soap　　+ 25.41</p>
+<h3>Huangsha Merchant Defrauded of Payment for Gasoline</h3>
+<p>Dai Xiatai, the owner of Ye He Ji at No. 19 Rongchang Lane, Huade Road, Pudong, reported to the French Concession police the day before yesterday that he is a merchant who deals in yellow sand, gravel, and contracting for road construction materials and needs gasoline. On January 11 of this year, he met a friend, Wang Chengfa, who claimed that his friends Chen Zhongyu, Chen Changlin, Xiao Zhenhua, etc., had a large quantity of gasoline for sale at home. The merchant believed him and contacted Wang to order 100 gallons of gasoline, priced at 2,400 yuan. On the afternoon of the 13th, he went with Wang to Li Fa Fruit Store on Xiaodongmen Street and paid the full amount of the goods to Wang et al., and obtained a receipt from Li Fa as proof. At that time, it was stated that the goods would be delivered the next day. Unexpectedly, the goods were not delivered afterward. When he contacted them, they kept making excuses. The merchant found out that Wang et al. were opening Room 19 at the Gongping Hotel on Avenue Edward VII, specializing in defrauding people. Therefore, he went to Wang to demand the return of the payment, but they accused the merchant of extortion. Therefore, this case was reported for investigation. After receiving the report, the police chief sent detectives to arrest the above four people. According to the interrogation of Wang and the two Chens and Xiao, the four people were duped by Lin A'er and a person surnamed Hu, who are at large. The rest of the statements were evasive. They were ordered to be detained for further investigation and handling.</p>
+<h3>Public Notice from the French Concession Administration Regarding Gas Poisoning, Urging Immediate Reporting to the Fire Department</h3>
+<p>The French Concession Administration issued a notice yesterday regarding precautions against gas poisoning, saying, "For the purpose of notification, gas poisoning incidents have occurred from time to time in recent weeks. Residents within the concession are hereby notified to pay special attention to the use of stoves, as they are prone to causing gas poisoning. Suffocation occurs very quickly, leading to the danger of being unable to call for help or open the windows. If using stoves for heating, the diameter of the chimney should be wide enough. When stoves are burning indoors, do not close the windows tightly when sleeping. In case of an accident, immediately notify the Fire Department of this bureau. The department is equipped with special emergency rescue equipment to respond to the scene. Please be aware of this. Signed, Bai Yi, Chief of Technical Administration."</p>
+<h3>Report on Donations to the Shen Bao Reader Scholarship Fund</h3>
+<p>Yesterday, this newspaper continued to receive donations for the reader scholarship fund, totaling 76 yuan and 8 jiao from Qiao Tian and 40 yuan from Fuchang Nihao Zhou Banghu (left out), for a total of 316 yuan and 8 jiao. Adding the previous balance of 66,084 yuan, 1 jiao, and 6 fen, the total is 66,400 yuan, 9 jiao, and 6 fen. We express our gratitude to all the donors.</p>
+<h3>Citibank's French Concession Branch to Cease Operations Today; Payments for Branch Depositors to Be Handled at the Head Office; Change in Opening Hours for the Chase Safe Deposit Boxes</h3>
+<p>Among the safe deposit boxes of Allied banks, four have already been opened: MacAlister, HSBC, Chase, and Banque Belge pour l'Etranger. There is still no news of Citibank's safe deposit boxes being opened. However, the operating hours and the time for opening the safe deposit boxes at Chase have recently been changed. The Chase reporter has recorded the following:</p>
+<p>Chase Changes Business Hours</p>
+<p>After the Chase Bank safe deposit boxes were opened, the time for renters to apply to open boxes was set at 10:00 AM to 12:00 PM and 2:00 PM to 3:00 PM. However, this has recently been changed to 11:00 AM to 1:00 PM. The bank's business hours have also been shortened from 10:00 AM to 12:00 PM to 10:30 AM to 12:00 PM. The extraction of items from safe deposit boxes will be handled in accordance with the previously announced procedures. There are still many safe deposit boxes at this bank, so the number of renters applying is quite crowded.</p>
+<p>Citibank Branch to Close Today</p>
+<p>The American-owned Citibank branch, located on Avenue Joffre in the French Concession, is scheduled to close today. Starting yesterday, a branch payment counter has been set up at the treasury department of the head office on Jiujiang Road to handle payments for branch depositors. MacAlister does not have a branch in the French Concession. HSBC and Chase banks also do not have branches in the French Concession. The opening and application procedures for safe deposit boxes at each bank remain the same.</p>
+<h3>Opium Den Cracked Down in the Da Zhonghua Hotel</h3>
+<p>Wang Shusen, the Chinese detective chief of the Narcotics Division of the Central Police Station, and detectives Zhao Baosheng and Guo Shouxin, discovered that someone had privately established a large-scale opium den in the Da Zhonghua Hotel on Rue Yu Ya Ching. They rushed to the hotel the day before yesterday and arrested Shang Zhaorong, Pang Guisheng, Shang Deshun, Tao Xinyu, Xian Wanrong, Mi Sihua, Duan Zhangwu, and 16 others in rooms 211 and 313. They confiscated 10 opium pipes, one opium lamp, 27 taels of opium, and 266 yuan in cash, which were all taken into custody for further investigation.</p>
+<h3>Birthday of Mr. Wen Lanting</h3>
+<p>Mr. Wen Lanting's 73rd birthday is on the fifteenth day of the first lunar month (the Lantern Festival). His students and followers number more than ten thousand, and all wish to pay their respects. Mr. Wen, witnessing the difficult times, does not wish to be extravagant. If anyone wishes to send birthday gifts, they should all be donated to the National Medical People's Hospital, which benefits the common people at the Xin Puyutang in the Shanghai Renji Charity Hall.</p>
+<h3>Case of Forged Pawn Tickets Uncovered, Suspects Arrested</h3>
+<p>Recently, the Haining Pawnshop on Haining Road in the International Settlement was deceived by forged pawn tickets, and a large number of valuable items were redeemed. After the shop discovered this, it reported the information to the Huishi Police Station. After receiving the report, the police station worked hard to investigate and arrested the suspects, Huang Jiafu, Wang Chengpei, Yu Zhuofu, and Shen Kebing, in Room 24 of the Anle Hotel on North Zhejiang Road yesterday. They also confiscated 25 forged pawn tickets and counterfeit seals. They were all taken back to the police station for interrogation.</p>
+<h3>Tram Stop Installed at the Sichuan Road Intersection</h3>
+<p>The Shanghai Tram Company has newly installed a tram stop at the intersection of Nanjing Road and Sichuan Road in the International Settlement. The stop is located on the southeast side of Nanjing Road. Therefore, trams traveling west on Nanjing Road from the Bund stop at this station for passengers to board and alight. However, trams traveling east on Nanjing Road toward the Bund do not stop.</p>
+<h2>Page 4</h2>
+<h3>Allied Banks Continue to Process Withdrawals; Banque Belge pour l'Etranger Makes Third Payment</h3>
+<p>Most Allied banks in this city are currently continuing to pay depositors with the second batch of deposits. However, Banque Belge pour l'Etranger has been disbursing the third batch of deposits since February 1. The procedure for the second batch of payments at other Allied banks is to allow withdrawals of half of the remaining amount after deducting the first 2,000 yuan. Banque Belge pour l'Etranger is different, limiting the second batch to 30% and paying another 20% in the third batch. Furthermore, according to disclosures from HSBC and Citibank, no merchant firms have yet been granted permission to claim maintenance fees. An HSBC employee stated that all bank operations remain unchanged and that the safe deposit boxes are still open in accordance with the established regulations. However, there is no word on whether the bank will soon disburse the third batch of deposits. Currently, only Chase Bank is still paying depositors with the first batch of deposits. The bank allows depositors to withdraw a maximum of 2,000 yuan from personal and company accounts as of December 6, and the safe deposit boxes have also been opened.</p>
+<h3>Selling Fake Butter, Fine Imposed</h3>
+<p>The Shanghai Municipal Council is strictly cracking down on unscrupulous merchants who violate price limits and deceive customers through fraudulent means. The Health Department of the bureau recently discovered that the Tongtai Foreign Wine and Food Store at 1211 Jing'an Temple Road was selling margarine mixed with butter, not only deceiving customers but also endangering public health. The bureau thoroughly investigated Chen Junxiu, the owner of the store, who resisted and failed to appear after being summoned. An order was issued to arrest and detain Chen. After deliberation, a lenient fine of 300 yuan was imposed as a warning.</p>
+<h3>Robbery Reports</h3>
+<p>At 7:40 PM last night, seven robbers suddenly broke into 146 Changchun Lane, Alabaster Road. Four of the robbers pulled out handguns and threatened the occupants not to make any noise. They were robbed of clothing, jewelry, and cash totaling more than 4,000 yuan.</p>
+<p>At 9:20 AM yesterday, four robbers suddenly broke into 159 Diandong Road. The leader of the robbers brandished a fake handgun and intimidated the occupants. They were robbed of more than 1,500 yuan in legal tender.</p>
+<p>Four armed robbers suddenly broke into the Qiantai Grain Store, Room 608, 6th Floor, Zhonghui Building, Avenue Edward VII, and robbed them of more than 7,000 yuan in legal tender.</p>
+<h3>Former Clerk Conspires with Thieves to Rob Paper Store</h3>
+<p>The day before yesterday, two thieves broke into the Zhida Paper Store at 23 Jiaotong Road and robbed them of 4,210 yuan in legal tender and 10 yuan in Japanese currency before fleeing. Meng Xianzhong, a Chinese detective from the Central Police Station, and a Chinese constable from Station 106 arrested Li A'jin, a Ningbo native, near the Renji Hospital on Shandong Road. All the stolen money was recovered. Li confessed that the idea for the crime came from Zhou Maoquan, a former clerk at the Zhida store. When the police went to arrest Zhou, he had already fled. Li was detained, and Zhou will be arrested and investigated further.</p>
+<h3>Pan Hengqiu, Accused of Assault, Suddenly Surrenders Herself</h3>
+<p>Pan Hengqiu, a woman residing at No. 37, Lane 197, Route Ghisi, French Concession, rented out her remaining rooms to others. Last winter, Pan wanted to increase the rent by 200 yuan and the transfer fee by 3,000 yuan to her tenant Chen Baojuan, and the two had a dispute. Pan ordered Chen to move out, but Chen refused, and Pan assaulted Chen. Chen filed a complaint for assault and intimidation. Because Pan failed to appear, an arrest warrant was issued. Pan Hengqiu suddenly surrendered herself yesterday with her defense lawyer Shen Ronghua. After a brief interrogation, she was released on bail with two reputable shopkeepers as guarantors pending further investigation.</p>
+<h3>Three Gambling Dens Raided in the Laoza Zhabei District</h3>
+<p>Cao Qishan, the Chinese detective chief of the Laoza Police Station, and detectives Yin Mengfei, Huang Cifu, and Cai Qinming separately took action the day before yesterday and raided several gambling dens in the district. At the Xinlu Club at 520 Tianjin Road, they arrested the owner, Ren Weichen, and 30 gamblers, and confiscated a large amount of gambling equipment and money. Except for the gamblers, who were allowed to be released on bail of 100 yuan each, Ren and the other three were detained for further investigation. In Room 332 of the Tianran Hotel at 60 Zhifu Road, they arrested the owner and gamblers Yao Ashui, Gu Yuechu, Chen Luchun, and 18 others. At 428 Guangxi Road, they arrested Cao Yuelin, Ma Zhaoxiang, and seven others, as well as gambling equipment and money, which were all taken into custody.</p>
+<p>Social Services</p>
+<h3>Seeking Treatment for Nasal Fungus</h3>
+<p>I have suffered from nasal fungus for ten years. Although I have had surgery, it has not been eradicated. I have tried making pills with dried pig fat, but it has not been effective. Now both nostrils are blocked and congested, making breathing difficult. Recently, both ears have also been painful and draining pus, and I am suffering from hearing loss. If there is a radical cure, I am willing to pay a reasonable fee. Ji Zhong (3)</p>
+<h3>Ear Discharge</h3>
+<p>My eldest son, Chun Gao, is eight years old. He had an eye disease when he was two or three years old. When he was five years old, he developed a disease in his left ear, with pus discharge and a foul odor. For several years, the left ear has sometimes dried up into a membrane and sometimes discharged pus. The skin inside the ear is white. The right ear is fine. Please inform readers of this newspaper of a treatment method. Ying Yongyu (4) Answer: How to Return to Your Hometown 1. You can personally request an application form from the Shanghai Municipal Council on Fuzhou Road or any agency that handles return-to-hometown permits. 2. You can bring simple luggage. 3. The return-to-hometown permit can only be used once for a one-way trip. If you wish to travel back and forth in the future, you must obtain another permit.</p>
+<p>Answer: Alleyway Sanitation Regarding alleyway sanitation, each household should be responsible separately. If an infant corpse is found in the alleyway, it can be reported to the nearby police station for handling.</p>
+<h3>Catholic Huangzhong Society Broadcast</h3>
+<p>The Catholic Huanglian Broadcasting Society has been broadcasting Catholic programs on the Shanghai French Radio Station for half a year. It has now switched to broadcasting in the Shanghai dialect and added children's programs, which are very interesting. This time, the broadcast is scheduled to begin at 9:00 PM on Sundays. Father Zhang Weiping will speak on a brief history of Catholic missions. It is said that Father Zhang will continue to speak on the situation of Catholic missions in our country. The children's program will feature Cai Jia, a young girl from the Catholic Service Group, with "Dusk Seashore," accompanied by Shen Caijun's piano and Cai Yuzhen's harmonica. There will also be children's stories by Miss Cai. The music program will feature a choir led by Father Bu and accompanied by the famous pianist Zhu Xisheng. The Shanghai French Radio Station's call sign is FFZ, with a weekly frequency of 1,400.</p>
+<h3>Establishment of Guohua Insurance Company</h3>
+<p>Famous giants in the insurance industry in this city are pooling resources to establish the Guohua Insurance Company, which is being established in full compliance with the regulations for joint-stock company insurance businesses. It is expected to be officially opened on a regular basis after the organization is ready. At that time, there will be a flourishing scene in the insurance industry in this city. The preparation office is located at Xiang Sheng Hang, No. 57 Qingyuan Lane, Beijing Road, telephone number 11961.</p>
+<h3>Shanghai French Radio Station Broadcasts Fundraising</h3>
+<p>For the Relief of Child Refugees</p>
+<p>According to a Havas World Telegraph Agency report from this city, the French Radio Station in this city is raising funds for the child refugee relief home established by the Salvation Army on Singapore Road. Thanks to the enthusiastic contributions of listeners from all walks of life, 4,500 yuan has been raised in three days. It has been decided to continue fundraising for one week. People from all walks of life are generously contributing to this good cause. The Chinese broadcast time of the radio station is from 4:00 PM to 4:50 PM every day. Those who wish to donate should notify the radio station by telephone or send the money to the radio station during this Chinese broadcast time. The address of the radio station is 193 Avenue Joffre, telephone number 80567. If it is outside of this broadcast time, please send it to the radio station's office at 36 Route Doumer between 9:00 AM and 5:00 PM, telephone number 79878.</p>
+<h3>Dr. Zhang Xuecheng Opens Practice</h3>
+<p>Dr. Zhang Xuecheng has served in the Department of Internal Medicine at the Second Hospital of the Shanghai Red Cross Society of China for six years, saving countless lives. He has considerable experience and research in internal medicine, pulmonology, and typhoid fever. He now has a clinic at No. 1, Lane 706, Avenue Joffre, where he sees patients from 4:00 PM to 5:30 PM every day.</p>
+<p>Yesterday's Newspaper Broadcast Time was 7:10 PM</p>
+<h3>Police Authorities Scheduled to Implement Alert Exercise for 20 Days</h3>
+<p>The police authorities of Shanghai have decided to implement a 20-day alert and terror exercise, and the preliminary notice is as follows: In order to prevent the occurrence of terrorist incidents, the authorities and citizens are implementing an exercise to arrest criminals. This exercise will be carried out repeatedly over a long period of time until the goal is achieved. The general public must abide by the following matters and cooperate to achieve the purpose of the exercise: Those who witness a terrorist incident occurring, Those who witness or hear about a terrorist incident occurring, should immediately report it to the nearest official or self-defense group. Telephone subscribers have an obligation to notify the authorities when they receive a report. Those who witness a terrorist incident occurring must remember the criminal's appearance, clothing, and direction of escape, and wait for the officials to arrive before automatically reporting. Individuals or groups who bravely pursue criminals or cooperate with officials will be appropriately rewarded by the authorities. Those who do not comply with the above items will be punished after being discovered by monitors. Exercise criminals wear a red and white armband on their left arm with the words "Exercise Criminal" written on it. It is not allowed to use violence against exercise criminals.</p>
+<p>Sports News</p>
+<h3>Chinese-Western Charity Football Match: Hualian Loses to Western United by One Goal, 2-3; Score Tied 1-1 at Halftime</h3>
+<p>The Chinese-Western Charity Football Match, the first sporting event at Yiyuan since its reopening, was held at Yiyuan on Avenue Albert yesterday at 2:00 PM. The audience exceeded ten thousand, and the event was a grand occasion. In the end, Hualian lost 2-3. The score was tied 1-1 at halftime. The main reasons for Hualian's loss were insufficient stamina and unfamiliarity with the game. Referee Shen Huichun. Seventeen minutes after the start of the game, Zhang Zhaopeng committed a foul for bumping into a player and was penalized with a twelve-yard penalty. Western United's Favansio took the penalty kick. Bi Gaobu calmly caught the incoming ball. Not three minutes later, Western United's Gain made a solo attack. Zhang Lingen made a mistake in blocking the ball and was scored on in the left corner. After forty-three minutes, Dai Linjing made a brilliant pass to Youliang. Western United's Gongshanfu did not know the way and scored the ball into the net, making the score 1-1 at halftime. The sides switched ends. Bao Saizhong received a pass from Su Ruozhi and kicked the ball from 30 yards out. Qin Bigaobu was unable to save the ball, and Western United took the lead again. Five minutes later, Hualian's Han Longhai passed to Xiao Jia. Western United's defender Luo Chailiao failed to defend effectively and carelessly lost the fortress, tying the score for the second time. Two minutes before the end of the game, Gain scored again, and Hualian lost to Western United 2-3.</p>
+<p>Western United: Luo Chailiao</p>
+<p>Gongshanfu, C. Lemmidi</p>
+<p>V. Su Ruo, Olivilia, J. Luo Chailiao</p>
+<p>Blada, Aozhizhong, Gain, Kelasha, Favansio</p>
+<p>Hualian: Qin Bigaobu</p>
+<p>Zhuang Youren, Zhang Lingen, Jiang Chao</p>
+<p>Ding Zhaocheng, Chen Xiaoping, Zhang Zhaopeng, Han Longhai</p>
+<p>Yuan Kuntian, Gao Baozheng, Dai Linjing, Jia Youliang, Fei Chunhua</p>
+<h3>Hequn Sports Association Football Tournament: Four Strong Teams to Meet Today</h3>
+<p>Hequn vs. Xuhui Golden Lions, vs. Aurora Hequn Sports Association is hosting a four-strong football tournament to raise funds for the association. It is scheduled to open today at 2:00 PM at the Aurora Stadium on Luban Road. The first match is Hequn vs. Xuhui. Hequn is an organization of students from the Dai Linjing training class. A'Dai himself will also participate in the battle. Xuhui is a leader among school teams. The second match is Golden Lions vs. Aurora. The former is the incarnation of the Blue Team and has a large number of Donghua famous players, such as Han Longhai and Jia Youliang. Tickets are one yuan and four yuan. All previously sold tickets are valid. Order is as follows: Hequn vs. Xuhui at 2:00 PM, Aurora vs. Yushi at 3:45 PM.</p>
+<h3>Little Football Dragon Team's First Battle Against Samsung Today</h3>
+<p>Exciting Program for the Lantern Festival: Little Football Today is the Lantern Festival, and a wonderful program has been scheduled to be held at the Guangxia Stadium. Starting at 2:00 PM, the prelude will be Little Dragons vs. Jianhua. Jianhua is the incarnation of the White Lions. The next act will be Guohua vs. Yingxing. The grand finale will be a battle between two giants, Samsung vs. Dragon Team, in a best-of-three series. Tickets are one yuan. The order is as follows:</p>
+<p>Little Dragons vs. Jianhua at 2:00 PM</p>
+<p>Yingxing vs. Guohua at 3:00 PM</p>
+<p>Samsung vs. Dragon Team at 4:00 PM</p>
+<p>Dragon Team: Qin Bigaobu, Fan Jinrong, Jiang Chao, Zhang Linzhen, Han Longhai, Zhang Zhaopeng, Yuan Kuntian, Zhao Yongfang, Cao Qinfang, Gao Baozheng, Fei Chunhua, Fang Keping, Zhou Wenkui.</p>
+<p>Samsung: Dong Jincai, Yue Renxiao, Tan Xingchun, Zhu Weizhong, Feng Shoupeng, Lu Penglin, He Jiatong, Xuan Shenghua, Xiao Ziwen, Wu Shaotai, Yu Zhenyue, Wu Zongkui.</p>
+<p>Business News</p>
+<h3>Cash Stable</h3>
+<p>Cash in the grey market has turned to a consolidation phase, hovering around 13,700 yuan. Amidst the struggle between buyers and sellers, the price ultimately increased slightly again. Confidence remains stable in all quarters. The opening price in the morning was 13,600 yuan, the same as the closing price of the previous day. A certain gold shop did transactions at 13,550 yuan. Dingcheng Securities Company and the gold shop helped to push up the price, and retail investors rushed to absorb the supply, causing the price to increase by 330 yuan to 13,880 yuan. Chengji and two other gold shops sold off aggressively, bringing the price down to 13,630 yuan. Mingfeng Shunyuan and another securities company absorbed the supply, pushing the price up by 220 yuan to 13,850 yuan. After 11:00 AM, retail investors and gold shops sold off, causing the price to fall back to 13,600 yuan. As supply met demand, the price rose slightly. The closing price at noon was 13,630 yuan, an increase of 30 yuan compared to the previous day. The range for the day was 330 yuan. The exchange price for gold jewelry in silver shops was increased by 50 yuan by Daxin and other shops to 1,450 yuan per tael (purchases were reduced by 150 yuan). Silver remained at 14 yuan, 12.5 yuan in the black market, and silver coins were 7.34 yuan each, all trending upwards.</p>
+<p>The foreign exchange market: The British and American gold pounds continued to rise by 5 yuan, the former to 350 yuan and the latter to 360 yuan. American dollar notes were 17.12 yuan. Hong Kong notes were 3 yuan, with large denominations decreasing by 5 cents. Military notes initially traded at 4.3 yuan, then rose to 4.42 yuan, and finally to 4.4 yuan.</p>
+<h3>Exchange Settlements Going Public</h3>
+<p>A Total of Fifty-Two Firms to Go Public, News of Đồng Dư Not Verified</p>
+<p>It is reported that fifty money firms (i.e., exchange settlements) under the membership of the Shanghai Money Trade Association will go public on the 19th of this month (Lunar New Year's Day 5). Jù Kāng Settlement will follow on the 23rd, and Dà Lài Settlement has already gone public on the 25th, making a total of fifty-two firms. As for Đồng Dư Yǒngjì Settlement, initially, due to differing opinions among shareholders, it was planned to change its business registration and choose an auspicious date to go public. However, it was later discovered that the accounts were in disarray and it was impossible to continue operations. A lawyer was entrusted to announce liquidation. Yesterday, a certain newspaper reported that the settlement was scheduled to continue going public yesterday, which seems inaccurate.</p>
+<h3>Foreign Bank (Continued) Check Clearing Procedures</h3>
+<p>The negotiable instruments that can be exchanged are checks, drafts, and matured fixed-term deposit certificates. The check clearing will commence daily at the following times: Monday to Friday, 1:00 PM; Saturday, 11:30 AM; the first business day of each month, 1:00 PM and 3:00 PM; the last business day of each month, 1:00 PM and 3:30 PM; if the first or last business day of the month falls on a Saturday, 1:00 PM. If a member's account balance is insufficient to cover the amount due, the cash payment must be made within the following times: Monday to Friday, before 3:00 PM; Saturday, before 1:30 PM; the first or last business day of each month, before 4:30 PM (but if the first or last business day of the month falls on a Saturday, then before 3:00 PM). If a member bank wishes to use the Yokohama Specie Bank account to make cash payments, the Yokohama Specie Bank has the right to instruct the bank owing the clearing difference to directly pay the required bank in cash. The Yokohama Specie Bank will then issue a check for the same amount to the bank making the cash payment so that this check can be deposited into the account to offset the clearing difference. Instruments rejected after clearing should be returned with a statement of reasons for rejection within the following times: Monday to Friday, before 5:00 PM; Saturday, before 2:00 PM; the first or last business day of each month, before 6:00 PM (but if the first or last day of the month falls on a Saturday, then before 4:00 PM). In addition, if sufficient reasons can be provided, the instrument may be returned before 10:00 AM the next morning. Non-member banks may have member banks act as their agents for clearing, provided that the clearing house is notified two days in advance, and the following three points must be noted: (A) The non-member bank must send its signature samples to the participating banks for verification; (B) Member banks involved in the exchange of valid instruments have the right to require the bank presenting the instrument to verify the endorsement made by the non-member bank; (C) Rejected returns should be handled directly between the member bank and the non-member bank. The Shanghai Banking Association Joint Reserve Committee represents the exchange banks of the association in the clearing. All "foreign bank instruments" received by the exchange banks of the association shall be presented for clearing by the association. Rejected instruments (submitted by the exchange banks of the association) shall be returned through the association. (End)</p>
+<h3>Public Debt Interest Division Becomes Focus of Buying and Selling Dispute</h3>
+<p>Yesterday, the public debt grey market continued its downward trend, with sellers being extremely active. It is rumored that the 12th interest coupon will soon be divided for buying and selling, but there is no agency in Shanghai to pay the interest coupon. If the division is calculated, the holder of the interest coupon is equivalent to being stuck with it. Moreover, if the market price is calculated with the interest division, it will inevitably decrease by about two or three yuan. This is another point of competition between the bulls and the bears. The buyers are willing to divide the interest coupon and reduce the market price slightly, while the bears are unwilling to divide the interest coupon and sell at a lower market price. However, the old bears are satisfied because the interest coupon, which cannot be paid in cash, has already been sold at a price. When it is replenished in the future, it is as if the price of the interest coupon has already been received. This is the focus of the dispute. However, regardless, it is generally believed that after the announcement of the winning numbers for the 13th Type A lottery bond, buying and selling will reasonably be based on the division of interest coupons. Therefore, yesterday, sellers such as Dà Zhōng, Héng Kāng, Dà Kāngchéng, Shùn Tài, Tóng Kāng, Héng Kāng, and Yù Xīng sold off one after another. Liánhé, Tóng Xīng, Xié Kāng, Rùn Dé, and retail investors covered their short positions, but it was difficult to reverse the downward trend. The market price fell directly by more than one to more than two yuan. There is temporarily no sign of recovery. The trading volume was about 400,000 to 500,000 yuan. A brief table is listed below.</p>
+<h3>Japanese Yarn Price Rises Significantly</h3>
+<p>The cotton yarn market continued to rise, and the upward trend was very strong. However, Chinese yarn was mediocre. The initial opening price for 20-count Double Horse Factory single yarn was 2,225 yuan, rising to 2,295 yuan, and then falling back slightly, with a price of 2,275 yuan. 42-count Blue Phoenix rose sharply by 200 yuan, with the initial trading price at 5,200 yuan, rising to 5,400 yuan. 32-count Blue Phoenix was 4,210 yuan, 32-count Fairy Peach was 4,610 yuan, 32-count Golden Star was 4,100 yuan, 32-count Collecting Sheep was 4,000 yuan to 4,150 yuan, 32-count Red Joy was 4,250 yuan, 20-count Moon Qin was 2,800 yuan, 20-count Water Moon was 3,000 yuan, Blue Phoenix was 3,050 yuan, 20-count Double Earth was 2,540 yuan, 20-count Double Tiger was 2,850 yuan, 23-count Golden Rooster was 2,620 yuan, and 10-count Red Double Horse was 1,200 yuan.</p>
+<h3>Fellow Traders and Speculators Drive Cotton Cloth Prices Up Without End</h3>
+<p>Factory cloth prices also tracked upwards yesterday due to the sharp rise in East Piece goods. White goods, both coarse and fine cloth, gradually increased in price, rising by two to three yuan per piece. 16-pound Earth coarse cloth was 115 yuan, Flying Swan was 107 yuan, 8-pound Zhenzhong was 64 yuan, and 12-pound Dapeng fine cloth was 100 yuan, and Fugui was 98 yuan. Earth fine cloth was 104 yuan, and trading was open. However, 16-pound Flower Butterfly coarse cloth was still quoted at 126 yuan, and Double Elephant was 124 yuan. Blue cloth poplin continued to rise uniformly, with Peach Blossom Ladies' Lawn at 172 yuan, White Cat print cloth at 95 yuan, and Three Sheep strip poplin at 4 yuan 4 jiao. Longevity poplin at 4 yuan 4 jiao and a half was extremely scarce.</p>
+<p>The upward trend in East cloth continued fiercely without end. Yesterday, the leading fine cloth factory order opened at 116 yuan and 5 jiao. Fellow traders and speculators pushed it up, driving it to a peak of 119 yuan and 5 jiao at closing. It rose sharply by 5 yuan and a half per piece. Spot and bank orders traded from 107 yuan to 110 yuan. Flying Fish colored balls rose to 110 yuan and 5 jiao, Yang Crane was 110 yuan, and Trumpet Five Blessings was 108 yuan. The rise in fine twill was relatively slow. Five Blessings Blue Double Fish traded at 100 yuan, and Baby was 98 yuan and 5 jiao. The new order for Jiao Junzi drill was quoted at 3 yuan 8 jiao 8 fen at noon, and the July to September orders were 3 yuan 7 jiao 3 fen. The spot market was mediocre, at only 3 yuan 7 jiao 1 fen.</p>
+<h3>Edible Oil Supply Gradually Improves</h3>
+<p>In recent months, the edible oil market in this city suddenly showed signs of panic. This was because the supply was restricted and the source was delayed due to insufficient shipping capacity. Some sauce and oil workshops stopped selling, while others mixed inferior oil and sold it at high prices. During the frying process, the odor was abnormal. It was not until the day before yesterday that oil was seen for sale in various oil workshops. Each person was limited to purchasing one market catty, and some limited each person to only one yuan. The official prices were: raw oil at 3 yuan 3 jiao and a half per market catty, soybean oil at 3 yuan 2 jiao and a half, clear oil and rapeseed oil at 3 yuan 1 jiao. It is also heard that 1,300 tons of raw oil from Qingdao and 5,000 tons of Dà Sù soybean oil that were previously ordered have arrived in port with 600 barrels yesterday, and the rest are being shipped to Shanghai. If this can be realized, the panic may be eliminated, but it still depends on the business ethics of the oil and sauce industry.</p>
+<h3>Coarse Grains Slightly Sold Off at High Prices</h3>
+<p>Because corn will soon be sold under unified control, buyers flocked to purchase corn flour yesterday. In places with a larger number of buyers, they also had to queue up to buy. It was sold for one yuan and one market catty, which was still coarse flour. Some were mixed with stone powder, which was simply harming people. But buying corn flour in the future will be like buying rice, so it is no wonder that buyers were crowded yesterday.</p>
+<p>Red beans were thinly traded and prices were weak. Yesterday, about 100 bags of Chongming sand red beans were sold from scattered stockpiles, with prices ranging from 136 yuan and a half to 134 yuan, which was two to three yuan lower than before.</p>
+<p>Sesame was scarce and uniquely sought after. Yesterday, over 100 bags of Kaiming Guangxue sesame were sold, with a price of 228 yuan.</p>
+<p>Soybean cake stockpilers sold more and bought less, and the market trend turned weak. Yesterday, 500 pieces of Kaili Character soybean cake warehouse orders for June were sold, with a price of 34 yuan. 1,000 pieces of Changji soybean cake warehouse orders for May were priced at 31 yuan to 30 yuan. 1,000 pieces of Hankou soybean cake were priced at 29 yuan. 5,000 pieces of Shenji soybean cake for May were priced at 36 yuan and a half, for June at 39 yuan to 37 yuan, for July at 37 yuan and a half, and new warehouse orders for February were priced at 42 yuan to 41 yuan 8 jiao.</p>
+<p>The market for yellow soybeans was weak for both stockpilers and sellers yesterday, with only scattered transactions. The market was flat and weak. It is estimated that 100 bags of Tianjin Jinyuan were sold, priced at 175 yuan. 50 bags of Wuhu yellow soybeans were priced at 155 yuan. 194 bags of Sangyuan yellow soybeans were priced at 159 yuan. 154 bags of Pinghu Dù beans were priced at 169 yuan.</p>
+<p>After successive sharp increases in bran prices in recent days, it has aroused the desire of holders to sell off at high prices. New stockpilers have lost their appetite. Yesterday, only a few rural villages and domestic distributors slightly purchased at flat prices. However, orchid guest bran, priced at 67 yuan, was still unsalable, while the early market price of 68 yuan 6 jiao and 8 fen for Sanxin large bag bran had fallen to 68 yuan 4 jiao in the afternoon, and the final price was 68 yuan, which was one yuan less than the previous market.</p>
+<h3>Southern Japonica Rice Slightly Recovers, Northern Japonica Rice Remains Firm</h3>
+<p>Although Southern japonica rice returned to flat yesterday, northern japonica rice was scarce and high-quality goods were instead raised. Kunxi special japonica rice opened at 295 yuan to 293 yuan and was moving towards the peak of 300 yuan again. However, due to continuous sunny days, the arrival of early round rice from the southern route in the nearby suburbs slightly increased, and due to the excessive price, the appetite of buyers weakened. Holders also sought to sell off at high prices, so there were declines of three to four yuan in both the morning and evening. Southern Gang Yinyuan was also brought in due to high prices, and the upward trend had been thwarted. Yesterday, Qingjiao Yinyuan opened at 275 yuan, Qingjiao thin rice was 275 yuan to 273 yuan and a half, and Southern Gang early rice was 274 yuan to 272 yuan.</p>
+<h3>Catechu Scarce</h3>
+<p>Catechu is extremely scarce due to the long absence of arrivals. The stock on hand at Cha No. Fang is also small. It is said that this item is widely needed for certain pills, so the market trend is extremely speculative, and the asking price is more than double that of last year, resulting in no transactions.</p>
+<h2>Page 5</h2>
+<p>Current Affairs</p>
+<h3>Honesty Gains Respect</h3>
+<p>— Xīng</p>
+<p>Honesty is the antonym of cunning and deceit. Those who are honest in their dealings are often taken advantage of and deceived by the cunning, so there is a saying that honesty is useless, which is generally rejected by society. However, at times, it is also respected. The reason for this respect is often flattery on the surface but slander in the heart. Those in high positions respect and exploit it. Those who are economically well-off respect and deceive it. Once an honest person loses their inherent power and becomes economically strapped, they are often rejected by the cunning: relatives become friends, friends become strangers, and even kick them when they are down, reversing the courteous manners of the past and avoiding them from afar. This is the adverse outcome for honest people. However, it is also the inevitable experience for those who have been in society for a long time. It can be seen that the respect gained by honest people is illusory, while being exploited and deceived is real. So why bother with honesty? Isn't it abandoned by society and heading towards elimination? Not so. But if honest people can remain consistent, not change their original intentions when exploited, and not change their normal state when deceived, always treating deception with sincerity and exploitation with honesty, then righteousness will overcome all evils, and in the end, they will surely gain respect and reap great rewards. As the saying goes: One must not have the heart to harm others, but one must have the heart to guard against others. This is also the way to be honest in the world, and it is also the reason why honesty gains respect. This is the positive harvest for honest people.</p>
+<p>The cunning see honesty as self-deception, while the honest see cunning as deceiving others. Different viewpoints lead to different paths. As the saying goes: Honesty does not deceive. Various businesses use this as their slogan. Whether they can achieve it is not discussed here, but it can be seen that honesty can not deceive, and only by not deceiving can honesty be seen. This is an undeniable argument. With sincerity, the mind becomes righteous. Proceeding according to the path and extending it, it leads to peace throughout the world. It can also be seen that the idea of ​​honesty, in small matters, can govern the family, and in large matters, can bring peace to the world. How can it be disregarded as out of touch with the times? It is appropriate that it is respected.</p>
+<p>Recently, seeing the widespread advertisement "Honesty Gains Respect" in the tram is like a sudden awakening, deeply inspiring people and enough to warn the cunning. However, with the decline of morality, people compete to be cunning, which may not be applicable to the society of Shanghai. However, in order to restore people's hearts, we still have to loudly proclaim: "Honesty Gains Respect!" May all the people of Shanghai endure it.</p>
+<h3>Stage and Screen</h3>
+<p>After "Dream of Peking," the Lafayette Theater will restage "Peking Man," but the role of Sī Yì, previously played by Yīng Yīn, is still being sought for the sake of prudence.</p>
+<p>Gù Yělǔ, Hè Bīn, Yán Huà, and others have also recently organized the "Eighth Art Troupe" and are preparing to perform at the Lyceum Theatre. The first play, "Love Suicide," will be directed by Lǐ Píngqiàn.</p>
+<p>After the widely acclaimed "Eternal Earth," comfortably written and directed by her, she decided to write and direct another detective film entitled "Case Within a Case," in which comfortably herself may star.</p>
+<p>Zhōu Yíbái, Mǎ Xú, Wéi Bāng, and others have joined Golden Star to work in the writing and directing department.</p>
+<p>"King of Chu" will be performed for a month at the Lyceum Theatre, and Yáo Kè will personally take the stage to play the role of Fàn Zēng in the coming days.</p>
+<p>— Qīng</p>
+<p>Qílín Tóng is scheduled for a month at the Golden Theater, with a fee of 3,600 yuan per performance, calculated day and night—7,200 yuan. Such a huge amount will indeed make the "Beijing Chao School" lose money. Huáng Guìqiū's fee is 18,000 yuan, Wáng Xīchūn's is 9,000 yuan, and Fúróng Cǎo's is 20,000 yuan per year. It is said that the Golden Theater sells 10,000 yuan for a full house, and these few stars take half of it.</p>
+<p>Guō Yùkūn's "Eighteen Arhats Fight Wukong" and "Wise Stimulation of the Monkey King," etc., "Li School" plays, are released several times and still have "work"; Xiǎo Yáng Yuèlóu is ultimately a man over forty, and the style of the "Investiture of the Gods" era is no longer there.</p>
+<p>The "Hongchun Society" at the Tianchan Theater also has some small gimmicks. Compared with the Shanghai Drama School, commentators say: each has its own merits. In my unprofessional opinion, performing martial arts plays requires the words "fire" and "explosion," and the beauty of group play patterns is also their unique feature.</p>
+<p>— Tàixū</p>
+<h3>Sharing a Boat Through Storms</h3>
+<p>— Hé Jiāzhī</p>
+<p>(1) An Evening of Wind and Rain</p>
+<p>Guó Fāng continued to take out biscuits and said, "Why are you all just talking and not eating? I'm afraid that melon seeds and peanuts have shells, which are inconvenient. These are for snacking, not for filling your stomach. I also have candy, but I won't take it out now. When you're tired of talking, I'll take it out to sweeten your mouths and invigorate you." Wéi Chéng laughed and casually put a biscuit in his mouth, saying, "Thank you, Miss Chén." Guó Fāng bumped her shoulder against Guó Qì and said, "Brother, he's thanking me, I can't stand it." Guó Qì said, "Only one thank you is allowed. When you bring out the coffee candy and toffee, Wéi Chéng won't be allowed to thank you anymore."</p>
+<p>Guó Fāng put half a biscuit in her mouth, and then half a piece, pinching it in her hand, as if she couldn't wait to swallow it all before speaking. Her eyes looked at Wéi Chéng, but she negotiated with Guó Qì, "Brother, since you have such a good friend, why haven't you mentioned it to me? Even at school, at home, there aren't any photos of Mister Yè on the desk." After expressing her opinion, she put another half a biscuit in her mouth before continuing, "My brother is saying good friends, this criticism is right, but why did we suddenly become distant? This responsibility shouldn't be borne by me alone." Yī Wéi Chéng said, "We made an appointment: during the Lunar New Year, please come with your brother and sister to Huā Gǎng. When you get to Huā Gǎng, ask the Yè family of Shì Dé Táng, as long as they are locals, no one doesn't know them." Guó Fāng, without waiting for her brother to agree, said, "We must go. Brother and your old friend can make up for the distance before. I… I can't say it." She let Guó Qì's shadow cover her face again.</p>
+<p>Guó Qì said, "Okay, my brother and sister will come to Huā Gǎng to see you first. Will you let us stay?" Wéi Chéng said, "Xú Rúxia Chén Fán's couch, is that necessary?" Guó Qì said, "Then we'll stay for one night. The next day, you'll come with us to Shuāng Qiáo. There are many things to do in Shuāng Qiáo: I know there's a festival during the New Year where you can watch the fair. We already have three people, let's get another person to play cards. I remember that the river in my hometown is always frozen three or four inches thick every New Year, so we can ice skate. The rest is eating and drinking. My grandmother can make a kind of Sū sugar, which is probably her unique skill. She brought it from her mother's house. No one in Shuāng Qiáo knows how to make it, only my grandmother knows how to make it. It tastes a bit loose and a bit sticky, and it's very delicious. She always wanted to pass this skill on to Guó Fāng, and she'll probably pass it on to her this time." (9)</p>
+<h3>About "Empress" and Others</h3>
+<p>— Wén Dàshēng</p>
+<p>The theater is called "Empress," the photo studio is called "Empress," and even the guide agency is called "Empress"...there are really too many to list. But people never pay attention to this kind of common name. However, in this inattention, we can deduce its reason—the reason is nothing more than expressing "respect" for women. And the "glory" that women get from the word "Empress" can be said to be "supreme." Because we have never seen an "Emperor" theater or an "Emperor" something hall.</p>
+<p>Therefore, in schools with co-educational students, the "school flower" is "crowned" and honored as "Empress," which seems to be a "refined fashion" that must be popular. And on the dormitory door, the one with the pretty face is written with the words "First Palace," followed by "East Palace," "West Palace," "South Palace," and "North Palace" in order, while the one with pockmarks and a cleft lip will undoubtedly be assigned to the "Cold Palace"!</p>
+<p>This trick seems to be fun at first glance, but if we think carefully, why are these fun tricks all done on women? It is not difficult to understand the truth—the reason is nothing more than playing with it.</p>
+<p>It seems that women have not been available for people to "play with" since today, but since ancient times. But the "business eye" of using feminine names as "signs" seems to be the "brainchild" of modern "advertising experts"! This also explains why friends who engage in advertising techniques specialize in "thinking about ideas" on women.</p>
+<p>Therefore, some people think that it is an "unlucky omen" for women to be lifted to the "ninety-ninth heaven." In fact, women have been taken advantage of and made fun of, which is extremely unjust, and they cannot express their suffering. (But there are really few women who understand that this is an insult to them.) And the "moral gentlemen" still want to call it "unlucky," which is really extremely unlucky.</p>
+<p>However, there is no lack of brave women. Dating a boyfriend and then changing to another seems to have become a required course in "socializing." However, it is not uncommon for this to cause a storm of jealousy. Today (27th), it was reported that a case of smashing car glass worth 500 yuan on Bai Ke Road, and the reason, it is said, was precisely for this.</p>
+<p>This really makes it difficult to be called "Empress," and it is even more difficult to make a boyfriend. And it is "more intense than ever" for women to be difficult to be women! Therefore, obtaining equal economic rights and obligations seems to be more necessary than talking about love!</p>
+<h3>Hell in Paradise</h3>
+<p>— Chūnfēng</p>
+<p>It is said that "Let's go drink tea" is no longer fashionable, and "Let's drink coffee" has replaced it. Is this the difference between "imported goods" and "local goods" (the Ceylon black tea in coffee shops), or are the snacks in tea rooms affected by corn flour? However, drinking coffee also requires going to an upscale place, otherwise, coffee grounds plus water, with no color or aroma, plus milk and sugar oil, is simply like a stinking ditch after a heavy rain, a complete mess. Fashion is abstract, or "being able to clear the mind" is more leisurely and contented.</p>
+<p>Relatively upscale coffee shops are still very upscale. Although coal prices are expensive, the room is still full of spring. The coffee is CPC, and the cake is still covered with a thick layer of cream. Being locked inside, sipping and tasting slowly, will make you forget that you saw a corpse on the road.</p>
+<p>Naturally, having a female companion makes it even more enjoyable. The red velvet sofa is no less lacking than the "lovers' seats" in the cinema. Talking about Dorothy Lamour can indeed go to Hollywood for a spin. Even talking about the most boring rice milling problem can generate a lot of laughter from the skills of my nanny. Thus, the afternoon quietly passes, and a clean tablecloth is laid to eat tongue and liver steak and chicken shredded soup.</p>
+<p>If you are alone, you will always think it is too lonely. But it is not necessarily so. The coffee shop owner's idea is quite thoughtful, and the slot machine is waving to you. Although that "King" has been arrested and imprisoned, the merits he left to people are still as deep as the sea. For example, if a friend next door is lucky and wins the "Jackpot," then they will meet by chance and become acquainted at first sight. Otherwise, they will also regret each other, as if they have gained something.</p>
+<p>Recently, many people are sighing that Shanghai is so big that there is nothing strange. In fact, if you look at everything calmly, there is nothing strange. Shanghai is basically "Hell in Paradise"!</p>
+<h3>Picture of Eating the Wind and Sleeping in the Dew</h3>
+<p>— Jiāng Dòngliáng made</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.02.28.html", "next": "1942.03.02.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

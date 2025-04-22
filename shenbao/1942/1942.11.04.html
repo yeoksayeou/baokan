@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.11.04 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 511 - 4924650</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>阿拉眠戰線後方　英軍圖登陸失敗　前綫戰事則達最高潮　義各式飛機全部出動</h3>
+<p>柏林三日海通社急電　此間消息靈通方面昨夜宜稱、英軍在德軍阿拉眠前綫後方之登陸企圖、已於上夜被吾軍挫敗、</p>
+<p>瑞典京城三日哈瓦斯社電　據交戰國雙方消息、埃及前綫戰事、現已達最高潮、其猛烈情形、實為前所未有，柏林半官方面謂、英軍攻勢、原擬將埃及戰局決一勝負、激戰六日後、已吿失敗、惟德軍總司令部則巳承認戰事猛烈、較前益甚、義軍總司令部今晨戰報、亦作同樣表示、但謂敵軍攻勢已被軸心軍遏止、軸心軍且已迭次反攻、此外、空戰猛烈情形、亦屬罕見、同時英國中東軍總司令部則稱、協約國步兵師昨在海岸之南有重大進展、雙方戰車昨日大戰竟日、其猛烈情形至今未減、海岸方面軸心軍猛攻、已被擊退、英國空軍轟炸敵方陣地、予以重大損失昨日一日之中、英機損失十三架、德方容克斯飛機被擊落者至少有五架、其他飛機被擊落者四架、中彈起火者七架、</p>
+<p>德元首行營三日海通社電　今午德軍戰報稱、埃及戰事益烈、衝入阿拉眠戰綫北段之敵坦克車隊、被我軍猛烈反攻、不能進展、德義空軍不斷轟炸英機械化部隊、敵砲軍陣地及後方交通、地中海方面英機被擊落五架、內有一架係被德潛艇擊落、</p>
+<p>羅馬三日海通社電　義軍司令部今午文吿稱、埃及前方戰事、昨日又趨激烈、大隊敵生力軍向軸心陣地進迫、我軍奮勇抗戰、並屢次反攻、敵方受重創、喪失坦克車達九十餘之多、我方損失亦重、目下戰事方酣、我軍調遣各式飛機、猛攻敵兵及敵軍後方、空戰多次、我驅逐機擊落敵機三架、德機擊落敵機十二架、同時德義飛機當護送運船之時、擊退數度進襲之敵機、並擊落雙馬達之敵機四架、我海軍亦曾擊沉敵潛艦一艘、</p>
+<p>柏林三日海通社急電　昨晨英坦克車隊開始大舉進攻、激戰二十四小時、終被擊潰、阿拉眠方面之英軍、今又停止進迫之活動、</p>
+<p>瑞典京城三日海通社電　倫敦各報評論北非戰局以爲協約國攻勢之成功、依頼海面及天空之控制、一旦獲勝、即可調遣大批軍艦及飛機赴其他戰綫、</p>
+<h3>戰事入第二階段　協約軍二千被俘</h3>
+<p>柏林二日哈瓦斯社電　此間頃發表埃及前綫戰况如下、英軍發動攻勢之第六日淸晨、自加泰拉窪地以迄海岸一帶軸心國陣地、仍在德義聯軍手中、英方兩度猛攻結果、得在極狹窄地帶突破軸心陣地、但此次攻勢旋被擊退、敵方損失重大、倉皇退走、竟至放棄其原來陣地、當軸心軍在埃及開始反攻後、德方某部孤軍、即與主力軍恢復聯絡、該部以寡敵衆、作戰時空前壯烈、其所據「刺蝟」陣地、極爲重要英方大軍因而遭受牽制、其突破軸心陣綫之企圖、遂吿頓挫、昨日惡戰結果、其他各據點孤軍交通錢亦已恢復、當即會同德義聯軍「奔閃部隊」主力進攻、同時據此間半官方面宣稱、本月三十一日拂曉、英軍再度發動攻勢以還、戰事已入於第二階段、德方對於戰局前途、已有把握、英方此次最後攻擊、抄襲故技、但仍不能遠越軸心國前哨站、戰事現在軸心軍主要防綫進行中、截至目下爲止、前綫並無任何地點發生祖克車會戰、昨日阿拉眠區上空發生空戰多次、寇蒂斯」及「噴火式」機羣、企圖襲擊軸心軍各陣地、但未及到達目的地、即被我梅塞斯密特」機羣攔擊、當在高空將敵機驅散、敵機損失四架、另有英方轟炸機一隊、亦被我方驅逐機及高射砲逐退、未能逞其轟炸企圖、至於德國俯　轟炸機在阿立眠鐵路站附近攻擊英方坦克車、叫甚爲得手、</p>
+<p>柏林三日海通社電　據此間宣稱、最近兩日內、德·義聯軍在阿拉眠前綫北部反攻、俘獲敵軍二·〇〇〇人、奪獲平射砲五十一尊及大批給養品、並擊毀坦克車百輛、</p>
+<p>里斯本二日中央社電　英第八軍自在阿拉眠戰錢發動攻勢後、頻遭軸心空軍砲兵猛烈攻擊、已受挫折、是以近兩三日來、英軍紛紛自開羅、亞歷山大方面大批增援、德羅美爾將軍爲實施消耗戰略、故意避免銳勢、僅以重砲猛轟英反攻部隊、並以戰車砲粉碎英軍戰車兩三日來英戰車遭德軍破壞者已達百輛、自反攻開始以來英戰車被毀者達四百輛、目前已以阿拉眠西北地區爲中心展開地上激戰、軸心軍一俟以砲擊戰術消耗英軍戰車部隊後、即將發動全面攻勢、</p>
+<p>柏林三日海通社電　旋風式飛機三架、在北非沿海公路上空襲擊德軍汽車隊時、被德軍機關槍擊中一架、該機受重創、被迫降落、澳洲飛行員被俘獲、</p>
+<h3>新任顧問　石渡抵京</h3>
+<p>南京三日同盟社電　新仟顧問石渡昨日抵此、今日上午十一時訪在主席於其官邸、由日大使重光葵介紹、在主席正式請石渡就任國府最高財政顧問之職、石渡當予接受、雙方會談的歷半小時、</p>
+<h3>日國發練成大會　昨日閉幕</h3>
+<p>東京三日中央社電　第十三次明治神宮國民練成大會、自十月二十九日開幕後、迄今業已六日、連日舉行、經過情形良好、參加大會日本全國選手及特別參加之滿洲國選手、在此大東亞戰爭下、情緒尤爲熱烈、節目精彩、比賽表演於下午三時五十分吿終、四時舉行閉幕典禮、全體選手四六一九二名、職員二四〇八人、總計四八六〇〇人、在陸軍巨山學校軍槍隊前導繞會塲遊行一週、合唱大會會歌、並齊呼萬歲後、當由森體育官宣佈閉會、在暮色蒼茫中大會圓滿結束、</p>
+<h3>財政當局闢謠　外傳幣制改變說不確</h3>
+<p>南京三日中央社電　連日市上發生謠諑、傳說幣制不久又有改革、以中儲券四元或五元折換新幣、上海方面愈傳愈盛、以致人心恐慌、物價高漲、於金融前途、所關甚鉅、記者特往訪財政當局探詢究竟、承吿政府對於幣制問題早經確定方針、決無絲臺變更之意、近又公佈新舊幣最後交換限期一個月、以免人民感受損失而使中儲券得以普遍推行、成爲唯通貨、市上所傳、決無其事萬勿輕信謠傳致滋紛擾等語、用特發表、以息謠傳、務望各界切勿輕聽、以免自受損失</p>
+<h3>大東亞文學家大會　昨在東京揭幕</h3>
+<p>東京三日同盟社電　大東亞文學家大會、三日上午十時在此間帝國劇塲隆里舉行開幕典禮、出席中日滿三國代表議員及大會參與員來賓等二十餘人、行禮如儀後、由日本文學報國會事務局長久米正雄致開會詞、繼大會全體議員公推日本代表下村宏任大會主席並致就任詞，即由情報局奥林次長·大東亞省大臣代表陸軍省谷荻報道部長·海軍省平出伐報道部課長·翼贊會後藤事務總長代表等分致祝辭、復由中華民國代表周化人·錢稻孫·扎布·滿洲國代表古丁·日本代表菊池寬等先後相繼致辭、並宣讀泰國·越南·緬甸·各文學家代表致大會文、末由議員代表齋藤宣誓後、禮成散會、正午、日本文學報國會假大東亞會館歡宴全體、下午在帝國劇塲觀劇後、晚間仍在大東亞會館應情報局歡宴、全體代表、定四日·五日·在東亞會館舉行會議、</p>
+<p>東京三日同盟社電　大東亞文學家大會行開慕典禮時、日情報局奥村次長致詞、大意稱、當此英美侵略勢力己被逐出東亞之時、亞細亞之存在、自有其洋洋前途、今日所謂文化之危機者、不外操縱於英美手中之現世界文化而已、但在今後新的亞洲文化已開始更生、故亦無文化危機之可言、吾人再一觀英美之文化、則唯以文化爲護得生活之手段、此種文化僅爲高利貸的非勤勞文化、亦爲榨取性的商人文化、相反亞洲的文化是撒生於生活之最後目的中、而爲一種崇高的敬愛人類及敬愛勞動的文化、此種文化不但表現於生活中、也表現於藝術中和宗敎中、所以亞洲的文化是宗敎政治敎育渾然一體的文化、是綜合統一的文化、與英美分割主義的文化截然不同、在現實情努下、「全亞一致」業已實現、今後當以共同之理想與道德、以實現同甘共苦共存共榮、因此要全亞民族覺悟亞洲之偉大並增强其自信、故深望諸位均能作謨罕默德第二、孔子第一、釋迦牟尼第二、</p>
+<h3>重光大使來滬　卽將返國</h3>
+<p>南京三日同盟社電　日本駐國府大使重光葵於今夜十時三十分偕大使館秘書淸水啟程赴滬、然後飛往東京、俾與中樞當局磋商大東亞省成立後、日政府在華機關之改組事宜、</p>
+<h3>日高赴北京</h3>
+<p>南京三日同盟社　新任日本駐義大使日高、於今日上午十時三十分離此赴北京、將在該地勾留數天、向各方辭行、然後啟程赴羅馬、</p>
+<h3>日全國紀念　明治節</h3>
+<p>東京三日中央社電　今日爲日本明治節、日本全國一致追念明治天皇之偉業、當日明治神宮自上午八時起由勅使循例嚴肅舉行祭典、十一時明治節祭開始舉行、七時宮中在天皇陞下親臨下舉行明治節祭典明治神宮自凌晨起、參詣者絡繹於途、東條首相亦於上午六時起、親詣神宮敬虔致祭、明治神宮等十三次國民鍊成大會、今日爲最後一日、各會塲均熱烈展開各項比賽、</p>
+<h3>南京政院會議</h3>
+<p>南京三日中央社電　行政院三日舉行一三五次會議、主席在院長、秘書陳春圃（甲）報告事項、（一）宣讀一三四次會議記錄、（二）院長報吿、依照新運促進委會組織規程第三條之規定、指派維君强·陳昌祖·黃自强·兼新運促進委會委員、（乙）討論事項、（一）院長交議、據秘書處簽呈、奉交審查敎部呈請增加中國靑年團及中國童子軍事務委會本年十至十二月份支出槪算一案、遵經招集財敎兩部及新運促進委會會同審查、簽具意見請鑒等情、請公決案決議照審查意見通過幷呈中政會、（丙）任免事項、（一）院長提、准軍委會函擬請任命陶飛吳揖百·高祚新·劉誠·爲本會參贊武官公署少將參贊武官案、決議通過、（二）司法行政部長羅君强提、本部簡任秘書陳恩普另有任用、擬請免職、並擬請任命陳恩普爲本部刑事司司長、夏敦履爲簡仟秘書案、決議通過、（三）宣傳部長林柏生提、本部國際宣傳處處長李更生另有任用、擬請免職、遺缺並擬請任命湯承佑充任案、決議通過、餘略、</p>
+<h3>浙清鄉會　軍警聯席會議</h3>
+<p>嘉興二日中央社電　太湖東南二期淸鄉工作、自展開後已屆一月、迄今已進人第一工作階段、茲悉駐浙辦事處、爲使黨政軍一致推行以期淸鄕完成、特定四日九時召開太湖東南二期淸鄉軍警聯席會議、討論今後淸鄕工作之新計劃及方針、現已由駐浙辦事處黨務辦事處保安司令部準備提案、以便討論、</p>
+<h3>直布羅陀港　美軍登陸</h3>
+<p>里斯本二日同盟社電　維希無錢電臺據西班牙近直布羅陀之賴里尼埃報吿、謂美國軍隊在直布羅陀登陸、此項軍隊係乘若干商船、由英艦保護、渡大西洋抵此、</p>
+<p>馬德里三日海通社電　西班牙政府已宣佈、造船業享受特權、納稅較低、材料之供給、亦享優先權、但造船業必須改良設備、增加資本、呈報造船計劃、並於三年內實現上述各項條件、</p>
+<h3>奧康諾任西北區　美軍司令</h3>
+<p>里斯本三日海通社電　紐約雷訊、管理新近通車之阿拉斯加公路及北太平洋共他交通綫之奥康諾將軍、業已奉令指揮西北區之美國軍隊、渠之司令部現設於英屬哥倫比亞之聖瓊斯港、由該處管理阿拉斯加公路南段之建設工作、極爲便利、奥康諾將軍前曾建築菲列濱柯列基陀要塞工程之地下入口、</p>
+<h3>蘇駐土大使　卽將返任</h3>
+<p>斯丹埠三日海通社電　此間昨日獲悉、蘇聯駐土大使維諾格拉杜夫、將於短期內自庫　希夫回任、按蘇使係於六月廿五日返抵庫壁希夫</p>
+<h3>羅斯福向國會　提新咨文　廢除關稅條例等</h3>
+<p>里斯本三日海通社電　據華盛頓消息、羅斯福總統於昨日向國會提出咨文、要求新權力、消除阻礙協約國經濟合作之各項困難、希望廢止各項法規與關稅條例、使軍火與其他給養品流通於美國及其他協約國之間、</p>
+<p>里期本三日海通社電　華盛頓電訊、美國農務部昨宣稱、美國將於一九四三年對若干種糧食、加以嚴厲之限制、此因美國須履行租借協定之義務、以糧食接濟協約國及供養日形膨脹之軍隊、故有採取此項措施之必要、</p>
+<p>里斯本三日海通社電　華盛頓電訊、美國陸軍鑒於缺乏素有訓練之技術人員、現正擬接收各大學及專門學校、，使之成爲訓練陸軍特務人員之機關、此項計劃之詳細內容、現尙不得而知、</p>
+<h3>阿根廷決保　中立政策</h3>
+<p>阿根廷京城三日哈瓦斯社電報載總統加斯蒂談話稱、阿根廷之中立蚊策、當不惜任何代價、予以保持、</p>
+<h3>土政府將組　特別法庭　審判投機商人</h3>
+<p>土京三日海通社電　土耳其今日舉行閣議、歷五時之久、總理薩拉卓格魯自任主席、此次討論之主要事務、涉及伊斯美總統新頒關於避免經濟危機之諸條例衆信、政府擬組織特別法庭、審判投機及走私之奸商、</p>
+<h3>里昂馬賽等處　發生炸案</h3>
+<p>日內瓦三日哈瓦斯社電　今日據里昂來客談、法國未被佔領區域、日來又復發生炸彈案數起、其中計里昂發生三起、維希發生二起、克萊蒙費朗、馬賽及列馬治各發生一起、物質損失不大、列馬治方面並有一人殲命及三人受傷、</p>
+<h3>瑞典國會　舉行會議　外交政治問題將會秘密討論</h3>
+<p>瑞典京城三日海通社電　瑞典國會之四日會議、昨日舉行第一日會議、農民黨在上院要求對總理漢森投「不信任票」、上下二院昨所討論者以供應情形及軍事問題爲主要、今日將繼續辯論、並訂本月五已討論外交政治問題、屆時將以秘密會議舉行之、</p>
+<p>瑞典京城三日海通社電　瑞典內閣總理漢森、昨向議會報吿限制物價及防止通貨膨脹之政策、爲防止物價之續漲、將避免工資之變動、</p>
+<h3>印度洋中　英船沉沒</h3>
+<p>西貢三日海通社電　據孟買消息、官方宣稱、英國運兵船「巴黎市」號（一〇〇九〇二噸）、已在印度洋沉沒、該船載有印度第七軍及英國軍官十六人、殆係駛往埃及、</p>
+<p>瑞典京城三日海通社電　加拿大司法部長兼檢察長賴波印特昨日宣稱、本年夏季在聖勞倫斯河被潛艇擊沉之船隻、約在十艘至十五艘之間、</p>
+<p>柏林三日海通社電　德軍司令部頃發表自一九四一年六月一日後德潛艇所擊沉英貨船之名單如下、却塞號五七九二噸、柯庇塞號一〇九六噸、克興達爾號六二六噸、麥克伐蘭號六一九三噸、捷斯托却伐號一九七一噸、奥泰斯號一三七四噸、塞文蒂斯號一八〇〇噸、柯菲爾德號一七九一噸、浙江號一一七二噸、卡狄達號八二三七噸、雪克洛浦斯號九〇七六噸、成都號二二一九噸、茂杜契號五九五〇噸、卡判培號四八九〇噸、康蘇洛號四八四七噸、柯狄勒拉號六八六五噸、好望角號四九六三噸、克勒薩杜號一一二八噸、狄洛斯號四一一三噸、狄昂尼安號六四三四噸、</p>
+<h3>哈里法克斯次子　在埃作戰陣亡</h3>
+<p>里斯本三日同盟社電　　美京報吿、美駐英大使哈里法克斯之次子彼得伍特少校、在埃及作戰車亡、</p>
+<h3>印度颶風為災</h3>
+<p>盤谷三日海通社電　加爾各答息、印度孟加拉省各處於十月中旬遭颶風所襲、遇難居民達一萬一千人之多、全省畜類百分之七十五被毀、颶風發生於十月十六日晨、賡續達二十四小時之久、沿海區域並有海嘯、</p>
+<h3>葡萄牙某婦產　四腿女孩</h3>
+<p>里斯本三日海通社電葡國北部之弗里蒙德、有某婦產四腿女孩、其中兩腿較短小、現已彌月矣、醫師均望繼續維持其生命、</p>
+<h2>Page 3</h2>
+<h3>通高加索山路　已被德軍截斷　伏爾加河岸兩軍砲戰納爾克蘇承認陷落</h3>
+<p>柏林三日海通社電　德軍在泰雷克前綫佔領阿拉基爾後、奥興尼基德斯已感威脅、奥塞蒂安之軍用公路、亦已截斷矣、因高加索山脈中部、高達四·〇〇〇公尺、秋季已難通過、泰雷克河與伊爾勃魯資山間之蘇軍、絕少脫逃之機會、斯達林格勒方面戰事沉寂、德軍工程隊在伏爾加河西岸工業區略有進展、該城蘇軍之接濟日益困難、</p>
+<p>柏林三日海通社電　此間宣稱、貫通中高加索之唯一山路，奥眾蒂安軍用公路、已因德軍佔領阿拉基爾而遭切斷、該公路長二百九十三公里、按阿拉基爾位於奥興尼基德斯迤西五十公里、係維斯托夫格洛斯尼鐵路之終站、附近土地極爲肥沃、城內設有小兵工廠及化學工廠、該　南面鉛鑛甚富、</p>
+<p>桂林三日海通社電　裏海於上週屢遭德機轟炸、巴庫爲裏海航運之中心、每年輸出煤油九·〇〇〇·〇〇〇　、但裏海北部每年結冰約三個月、航運頗受阻碍、最近英·美戰具亦由伊朗經一裏海運至蘇聯、估計裏海蘇船約一二〇艘、包括運油船的七十五艘、</p>
+<p>東京三日中央社電　柏林特電稱、據德軍部方面消息、斯城之最後一橋樑、二日於德空軍猛炸及德重砲隊不斷轟擊下、已被德軍完全破壞、又伏爾加河西岸之德砲兵部隊、亦於一日猛轟東岸之蘇軍砲兵陣地、德軍砲兵陣地地勢上、較對岸蘇軍砲兵陣地爲高、故兩軍砲戰之情勢、德軍遙佔優勢、又該河西岸之德軍有力高射砲陣地、自積極構築以來、已於最近完成、</p>
+<p>土京三日海通社電　莫斯科電訊、德軍上星期四佔領納爾契克城後、蘇軍司令部昨夜始在戰報中承認該城業已陷落、</p>
+<p>斯城巷戰仍進行中</p>
+<p>德元首行營三日電今午德軍戰報稱、高加索西部、戰事甚爲激烈、我軍反攻、獲得進展、斯洛伐克軍隊、殲滅被包圍之敵軍、阿拉吉爾迤東之德軍、繼續進攻，深入敵地雷區及堅强防地、敵軍被我機投彈、損失慘重、敵鐵甲火車一列被擊毀、卡爾摩克山地之德軍、一度反攻、擊退進襲之騎兵、敲傷亡不少、斯達林格勒城內激烈之巷戰、仍在進行中、我急降轟炸機襲擊城北敵事之堅强據點、敵又失地、屢次反攻無效、我戰鬥機羣猛炸伏爾加河東鐵路、敵渡河之設備、蘇軍企圖由數處偷渡頓河、被羅義匈軍痛擊未逞、義機低飛轟炸蘇軍陣地、匈軍擊毀頓河東岸之蘇軍碉堡多次、俘敵多名、伊爾門湖東南之敵軍、仍在沼澤低地繼續頑抗、前月德機擊沉蘇運船及貨船、共三十三艘、內有運油船多艘及巡邏船一艘、另有貨船三十二艘及軍艦多艘受創、</p>
+<h3>美州長議員昨選舉　不致有意外結果　預料民主黨仍可佔多數</h3>
+<p>華盛頓二日哈瓦斯社電　依照美國憲法規定、衆議院全體議員及參議員三分之一、每二年改選一次、本年適爲改選之年、已定於本月之第一個星期二舉行投票、任期屆滿之州長亦須同時改選、故是日全國人民均將忙於投票、據此間政治觀察家談稱、此次投票不致有驚人結果、預料共和黨在參議兩院、均能獲得右干議席、但民主黨仍可佔有多數、此次選舉中、最惹人注意之事、厥爲紐約州長之改選該州檢察官杜威、爲共和黨候選人、而裴納特則爲民主黨候選人、查羅斯福總統最初支持參議員梅特爲候選人、後遭亞爾巴尼與紐約兩州民主黨支部之反對、愛乃決定贊助裴納特、按梅特參錢員平時擁護新政、不遺餘力、而裴納特則爲民主黨中之保守份子、民意測騐院最近舉行民意測騐、其結果百分之五十三贊成共和黨候選人杜威、百分之三十九贊成民主黨候選人裴納特其餘百分之八、則贊成美國工黨候選人亞爾芳格、杜威明日倘能當選則一九四四年總統大選時共和黨將有極大希望、政府要人及民主黨員、又以爲杜戚對於戰後復興計劃所抱見解、與羅斯福總統之見解、完全不符、故對於杜威獲選一層、認爲非常危險、民主黨方面業已表示意見、以爲杜戚倘於現行戰爭結束之後、當選爲美國總統、「則一九一九年之錯誤、又將重演、」是故共和黨在下屆總統大選中、倘能獲勝、則其候選人、當以威雨基最爲適宜、至少在外交政策方面、其見解與羅斯福總統完全一致云、</p>
+<h3>澳將限制　民用品消耗</h3>
+<p>西貢三日海通社電　　梨電訊、澳大利亞物價統制專員格浦蘭昨宜稱、澳洲再將進一步限制民用品之消耗、並集中生產工作、所有投資僅許應戰爭之需要、私人工廠須接受政府之合作條件、</p>
+<p>里斯本三日海通社電　據華盛頓消息、美國於今日選舉州長三十二人、參議員三十五人、及衆議員四三四人、美國民衆、均漠然不感興趣、一般人以爲共和黨將略有所獲、紐約州州長之共和黨候選人杜　、或將當選、共和黨領袖勃里扣競選沃海沃州州長、渠等均反對羅斯福之政策、並有被舉爲一九四四年總統候選人之希望、</p>
+<p>西貢三日海通社電　據雪梨消息、澳洲官員之工作時間、將自每週五日半增至六日、藉以抽調壯丁、參加國防工作、星期六午後倘不工作、則平時將延長工作、官吏約一五·〇〇〇人、將受此項法令之影響、</p>
+<h3>美統一　情報宣傳　將設最高機關</h3>
+<p>里斯本三日海通社電　據最近出版之美國「新聞週刋稱、美國不日將宣布成立宣傳及情報之最高機關、該機關將接收美國各部有關情報之組織、如台維斯主持之美洲事務處理局皆在裁併之列、該新機關主要工作之一為統一美國之廣播系統、私有我線電臺十四處、在戰事期內、將由政府接收、並新設短波無線雷臺廿二處、此項無線電台將分爲二組、其一爲從事於心理上之作戰行為、其二為播送新聞節目、以固激勵海外美軍及協約國軍隊之精神</p>
+<h3>風雲變幻中之非洲　埃及—大戰重心的第二門戶（三）</h3>
+<p>英人明知道保衛的計劃，並不專在拱守局部，能够多推出幾層外圍，比較拱守局部更爲安全。今歲春問不是在里比亞節節推進嗎？後來第八軍鎭守不住，終於在六月間把亞力、山大都鉗碎了，辛辛苦苦打出來的外圍，一層層被人破去，這時　當然要設法整頓人馬。</p>
+<p>據我們統觀全局，德軍左螯旣已準備渡冬，現在的文章，定然是要把全力部傾注在右螯上。而英人方面，旣要保衛埃及，同時還要把地中海的實力充實起來；如若得手的話，還想巡一步建立第二戰塲，或是希臘，或是義大利，都有可能。這麼看來，雙方的使命都有萬鈞之軍，是毫無二疑義的了。現在要問雙方的準備，目下到了什麼程度。</p>
+<p>這種軍事上的布置，局外人本來無從推測，可是從報紙的電訊上，一鱗半爪，搜集起來，也可糢糢糊糊有個大略。我們且先看一看斯末　將軍在倫教所說的兩句話：「過去四年，戰爭係取防守姿態，已吿結束；現則開始最後之進攻矣……」，又說「拚死之鬥爭已臨，吾人應當仁不讓……」。</p>
+<p>這個口氣利害得很，「最後之進攻「拼死鬥爭」，這都不是單爲埃及目前的局部戰事而言；乃是一個龐大決戰的肇端。由此而觀，在準備上，必定相當充足。眼面前所知道在埃及的英軍只有十師，不過二十來萬人馬，較之去歲德蘇一千五百哩戰綫上的一二千萬人馬，數目上相差得太遠。</p>
+<p>在德人夏季攻勞發動的時候，我們似乎聽得說過，英美蘇在近東高原上準備下了一個火藥袋袋，好像黃眉羅漢的乾坤袋一樣，這種袋袋陣需要的人馬，決不會只有幾十萬。從這一點看，也許所謂英軍十師的說法，僅僅是指着第一綫而言。</p>
+<p>再看德義把兄弟二人的現况如何；據電訊上統計，現下由羅美爾將軍指揮的，有戰車二師，步兵二師，義軍七師；統統在內，約爲二十來萬人馬，可是羅美爾　軍回　與希氏晤談，中文章，不外乎添兵增將。所以現在已亦疆塲的兵卒，也僅是第一綫。</p>
+<p>從攻守的形勢上看，德義方面，目下是以義人的里比亞爲根據　，前綫在阿拉眠附近，目標是亞歷山大·開羅·蘇彝士：而給養和援軍等等，都要從德義本土飛跨地中海而來，其中不免有些吃力，譬如中途的邀擊，和沿海岸綫常遭英海軍的襲擊，都要打些折扣</p>
+<p>至於英美聯軍方面，除了從埃及可以就聽取得大部的給養外。軍火方面，在近東一帶，　備下的，大概也不少。同時在沿海一帶利用海軍，時常可以鬧鬧登陸的玩意兒。大的計劃方面，如西非南非布置得手，美國的供應可由達加爾或里比利亞直運埃及蘇丹再抵埃及前綫。所以從雙方局而上看來，這一次的北非戰事，將成爲很够熱鬧的一本戲。也許世界戰局，將在北非一帶打個定局，也未可知。</p>
+<p>以上囉囉哆哆，抱泥帶水的說了不少廢話，可始終把前文提出的埃及門戶上的三把鑰匙，沒有交帶出來，抱歉得很</p>
+<p>這三把鑰匙，其一是運輸錢的埃及蘇丹公路，其二是歐亞交通孔道的蘇彝士，其三是軍事重鎭的亞歷山大等等，前文指點出來過了，這　預備逐一提出看看，這幾把鑰匙，究竟是些什麼東西。</p>
+<p>關於第一把鑰匙，牽扯的範圍很廣，如要詳細分析，勢必要從三皇五帝講起，例如埃及蘇丹的歷史·風土·人情·變革·山川土木，如何而有埃及與埃及蘇丹的劃分等等。這麼一來，又要弄得廢話連天，而且讀者只要把非洲地誌略一翻閱，比較淸楚得多了。</p>
+<p>這裏只想把蘇丹公路的形成，略表一下，然又顧到下篇里比亞的重復叙述，所以只能略而又略的說幾　。</p>
+<p>埃及蘇丹的局面自經英人經營以來本來極其複雜而微妙。自從央人允許埃及獨立，而維護着一段不了的姻緣，何以又不肯將蘇丹部分造成同樣的局面呢？第一，英人天性慳吝，不輕易痛痛快快的放棄在手的利權。第二，在蘇丹以南，整個的非洲東南半壁，除了葡屬摩贊俾克，和海上的法屬馬達加斯加之外，都是英屬的範圍，所以分出一部埃及來獨立，已是担了很重的心事，豈能又讓蘇丹脫手？</p>
+<p>况且，一九三六年夏天，土耳其人在蒙特羅會議席上爭回了韃靼尼爾海峽的武裝，是由於英人幕後搗鬼的功勞。却未料到這一着棋引起了義大利出兵羅　斯島，同時義人爲了防息未然，又在里比亞增駐大軍，英人瞧着義人的種種行動，也就在埃及大整軍備，以爲對抗之計。殊不知這一來，把埃及的民衆騷擾得言三語四起來，英國紳士爲了要消弭埃人這種感情的衝動，所以毅然在一九三六年根據一九二二和一九三〇年的條件，成立協定，允許埃及正式獨立，並允許埃人無限制的移民到埃及蘇丹。</p>
+<h3>尼羅河大鐵橋</h3>
+<p>埃及首都開羅，乃尼羅河畔最大之回敎域市，非洲人，東方人與歐洲人居於此者逾百萬，冬令游客尤盛、圖爲開羅之尼羅河上大鐵橋島瞰，風片片，往來如穿梭。</p>
+<h2>Page 4</h2>
+<h3>亟應改善油糖零售　解除市民苦痛　當局派員監視食糖另售食油門市即可恢復常態</h3>
+<p>近一週來、本市食油供應、頗感不足、上月三十日雖曾向軍配處領得若干、但因數量過少、未幾即吿售罄、是以大半另售處、已吿斷擋、據可靠方面消息、最近之無油配給、並非存油過少、實係興亞院改組、暫停辦公所致、預料不久、當仍能恢復一週前現狀、</p>
+<p>取締黑市</p>
+<p>食油黑市、現兩租界警務當局已在攷慮取締辦法、同時希望市民協助檢舉、一經查明屬實、即停止配給、幷予以其他懲罰、關於計口授油有否可能一事據食油同業辦事處、定於本月六日舉行理事會議、澈底討論、查最近各界市民對於油市情形、極感不滿、而於油業辦事處內部機構、更多指摘、蓋食油黑市、實因大戶油商同業間興風作浪之故、而市民購買食油之困難、與日俱增、希望食油給配當局、從速採取必要步驟、以解除公衆痛苦。</p>
+<p>監督售糖</p>
+<p>糖商合作營業處為澈底消減食糖黑市、嚴格監督甲種零售商普遍發售食糖、以杜流弊、而維正當民食計、已派定監售員監查員稽查員一百十六人、對派糖三十包以上之九十六家零售商、每家特派監售員一名駐店監售、對派糖三十包以下之三百餘家零售商、隨時派監查員稽查員輪流抽查經售賬目、凡正當食戶購置食糖、必須持有市民證或居住身份證購買、此外並嚴飭各甲種零售商店不得暗中抬高價格、及短少分量、攬雜情事、准許購　人舉發、以資究辦、英文泰晤士列隊候購英文泰晤士報云、上海糖商合作營業處、已在華文報紙公吿從十一月一日起、市民可憑市民證、向各該區內之零售店購糖五元、然星期日與昨日（二日）全市各食糖店　、仍見居民列隊候購、且捷足居先者、始購得食糖僅半磅、聞食糖現仍有黑市交易、若干糖販、竟以每磅七元之暗盤、一次售糖十磅、或二十磅以至五十磅、一般居民則須在食糖店前鵠候數小時之久、尙未依次輪到時、即見「糖已售完」之通吿牌高懸者、屢見不鮮</p>
+<p>供不應求</p>
+<p>故公衆現仍要求當局干涉、許多人士均認爲唯市政機關加以十涉、計口授糖、始能控制食糖情勢、查糖商合作營業處之通吿中、宣布各區居民可出市民證購糖五元、並重申存糖足敷長期需用、然據記者調查所知、此種情形並不存在、列隊候於各食糖店前之中外居民、反而日見其多、多數零售店每晨售糖時間、不過十至十五分　、靜安寺路若干零售店、於淸晨八時啟門、即開始售糖、十分鐘內即售盡其配給量、</p>
+<p>每人半磅</p>
+<p>某店經理稱、該店之每日配給量爲二十四磅、分爲半磅裝之四十八包出售、而不照糖商合作營業處所定每人購糖五元（一磅半）之辦法、其他零售店亦以半磅售予每一顧客、各店前之中外顧客、分爲兩行、更有全家老幼、均雜於長行中、候購食糖、以應日常需用者、中區某南貨店發售食糖、仍强迫顧客搭購同量之其他貨品、實違背糖商合作營業處所訂之條例、</p>
+<h3>江灣路至愛多亞路　行駛公共汽車</h3>
+<p>同盟社本埠息、據上海每日新聞報吿、華中公共汽軍公司在蘇州河南開闢新路綫、自上海神社起經江灣路、吳淞路·海寗路·北四川路·四川路至愛多亞路止星期二晨七時、已見第一輛公共汽車駛過四川路橋、此新駛共公汽車、名爲二十五路、全程長兩公里、票價計軍票兩角、約每五分鐘至十分鐘駛過一輛、每日七時至十時間、均有來去、</p>
+<h3>燈火管制演習　即將繼續舉行</h3>
+<p>英文泰晤士報云、公共租界警務處防空科某員聲稱、上海之燈火管制演習、殆將於本月中旬恢復舉行、謠傳於四日或六日舉行、並小確實、下次燈火管制演習、將突然舉行、故當局或僅刊布吿於各報、宣布燈火管制將於某日與某日之間實行、居民咸應隨時準備、以免臨時措手不及、</p>
+<h3>米店發售口糧米　竟有攙雜行為</h3>
+<p>計口授糧、每期除配給整米外、輒搭以碎米、但最近若干米店、在所發售之碎米中、攙以黃沙碎石或粗粟之類、企圖漁利、此種所攙之雜質、因碎米原極碎雜、非至淘時、不能發現、因如粗沙之類、經水冲洗、即吿沉沒方能除去、又於整米中攙雜碎米者、此種圖利行爲、旣違當局調劑民食之初衷、又影響居民之營養與健康、深盼米店從速覺悟、否則當局、自將設法取締、</p>
+<h3>南市稽征處主任　姜炳泉繼任</h3>
+<p>財政局南市稽征處主任陳夢賚氏、頃奉令調任崇明區財務專晨、遺缺業經局長袁厚之氏另委姜炳泉機任聞於十一月六日履新、查姜氏長於財政、歷任蘇省財政等職、</p>
+<h3>徵募寒衣運動</h3>
+<p>上海女靑年會鑒於嚴風苦寒天氣將屆、一般貧苦同胞、求食尙覺乏力、安有餘力、以謀禦寒衣服、該會爲未雨綢繆、繼續歷年分發寒衣本旨、特發起徵募寒衣運動、希望縫製新棉衣五百套（一千件）、每套需款六十元、（如有餘力當增製其數）共計中儲劵三萬元、徵集舊棉衣五千至一萬件、現正由委員籌劃、縫製分發、凡社會中樂善好施仕女、願捐贈金錢·布匹·棉花·舊衣服·鞋·襪·帽子·手套等物、而協力共襄盛舉者、不勝歡迎、該會地址威海衛路六三八號、</p>
+<h3>鎮江同鄉會　辦理小本貨金</h3>
+<p>本市鎭江旅滬同鄕會爲救濟貧苦同鄕無力謀生起見、特組織小本貸金委員會、第一批本金一萬元、貸金計分四種、甲種二百元·乙種一百五十元·丙種一百元·丁種五十元、定於本月十日起開始申請、凡鎭江籍貧苦同鄕、如缺乏資本謀生者、可用書面向芝罘路三號二樓該會請求。</p>
+<h3>融五社七十次講經</h3>
+<p>融五請經社第七十次、洪淸道人講道法略云、一陰一陽之謂道、大道演化、始自老君、一　旣判、淸濁攸分、鴻濛闢後、五老上帝於以治世、繼之以五子、上元紫微、大帝稱天官、即唐堯也、中元淸虛大帝稱地官、即虞舜也、下元洞陰大帝稱水官、即夏禹也、三元循環、以治神州、東爲準諦、西屬接引、皆元始道祖之徒、上禀先天無極道祖之敎也、軒轅而後、金天氏治三十三天中央之主宰、是爲金闕玉皇、四方三二天環拱之、每天各有一上帝以治其所傳之敎衆、不相通也、淸虛大帝位居中央、啟迪貧道、演化大法、將以特建先天、淸極正宗一敎、以轉刦運而濟有緣也、講畢、宜佈下期楊中一君講易經研究、趙布明君講儒釋耶三敎之本原云、</p>
+<h3>許行彬壽儀興學</h3>
+<p>兩浙名記者前省議員許行彬、今年農曆十月十日七秩大慶、門弟子張徐諸君謀爲之稱觴、許君堅不允、旅滬友好如程學川·孫厪才·兩太史、同鄉如徐申如·沈勉夫諸君、以許君七十述懷一年辛苦爲誰忙、多半犧牲在地方」、及「安排好景栽桃李、乞借新陰護梓桑」句、擬在許君珂里周王廟地方興辦學校一所、爲許君壽省去壽辰一切舖張、即移壽儀爲敎育基金、以副許君，稱觴且待故鄕回」之意、上海收款處爲北京路福興里元昌莊、杭州爲忠淸大街五源莊、硤石爲中寗巷永興莊、</p>
+<h3>青年女畫家　李青萍畫展</h3>
+<p>女畫家李靑萍女士、爲中國西洋畫家中傑出人材、畢業於上海新華藝專、戰前曾執敎於本市安徽等中學、後應南洋坤成女中之聘、旋赴南洋執敎、女士於西洋畫造詣頗深、其風景畫尤爲名貴、會於吉隆坡漢口等地舉行展覽、頗得各界贊評、藝術大師徐悲鴻氏譽爲中國最有希望之靑年畫家、此次來滬應友好之請、於昨日起假大新公司四樓畫廳舉行展覽一星期、歡迎各界前往參觀、</p>
+<h3>王家棟會計師開業</h3>
+<p>王君家楝、歷任會計師幫辦及銀行要職、嗣任糧食管理委員會簡任技正、及上海辦事處處長、近辭去職務、來滬執行會計師、已於三日開業昨日前往道賀者計有潘仰堯·潘桐雲·李文杰·孫瑞璜·李權時·張一凡·任筱珊·朱知方·姚仲拔·林漢甫·郭雨東·沈雷春·等百餘人、頗極一時之盛、</p>
+<h3>遺失米票待領</h3>
+<p>茲在工部局總辦處拾得第十六期米票三張、及現鈔一元、如能指出票上所註米店登記號碼者、請向江西路二〇九號工部局第一五四號辦公室張菊生君洽領可也、</p>
+<h2>Page 5</h2>
+<h3>蒐羅豐富的六大圖書館巡禮（三）</h3>
+<p>中外各家圖書可稱全備　希望大眾養成讀書嗜好</p>
+<p>查目須知</p>
+<p>要找需要的書，可以查閱書目有的書目是書本式。的，有的書目是卡片式的。新亞的書目卡已隨着閱覽室　而鎖掉，僅藉圖書目錄來查考，所以增訂數次，新書並有加入。鴻英的圖書雜誌和明復的西文書雖有書目，但都因有卡片的輔助，所以年久失修，有許多書名是沒有列入的，所以查閱書目，當以卡片爲宜。卡片之中分分類卡·書名卡·作一者卡·三種，查閱時只須查其類屬，書名或作者某一項即可查到。但幾大圖書館的書目卡，往往不十分完備，工部局的中文書目卡和鴻英的雜誌種類卡，常有遺漏，震旦無著者卡。鴻英的叢書集成之部亦然。且其叢書集成中二書合訂者，以後數本卡片，每付缺如，非查原目不可，這些都是初來者所該注意的。查卡片的方法和查辭典一般，多按筆畫分類，這是很容易的，不過國文書名上有「增廣「最新」等字者須略去，英文書名的The亦然。</p>
+<p>或翻目錄，或入書庫，便沒有這樣易尋，此處便非知道一些圖書館的門徑不可。圖書依着書碼排列，書碼則由分類碼書名著者三碼台成。現在普通採用的書碼根據杜威氏十進分類法，即以0至9十個字代表十類。即哲學·宗敎·社會·語文·自然·應用（包括農醫家事）·藝術·文學而殿以歷史，這九項知識的排列，大略有一點自然的順序，所以稍加注意是頗易記憶的。在此九項之外的，便都歸入0，放在1的前面，名爲總類·圖書·叢書之學便包括在這總類內。至於這十類中再分細目，一直分至小數爲止。只關於這些細目，巳成一册大書，其複雜可知。我們却只須略知大槪已便利不少了。</p>
+<p>國文書的著者碼普通用王雲五四角號碼法，是照著者名字首字來排的。英文書的第二碼，第一字爲大寫字母即著者第一字，以下阿刺伯字爲根據其名字字母代出的數碼，最後一字母則爲書名首字，所以要查某人所著之書，即在該類中找某人名字第一字母的部分即可。</p>
+<p>要查期刊刊載的文字中找需要的篇目，須有索引。鴻英圖書館旣以搜藏期刊著稱，它的業誌索引　很有用。不過以前所用的人文雜誌索引（該館前名「人文」出過人文雜誌）是分期刊載的，零零碎碎，頗不易查，最好查該館的卡片，卡片上所有的篇目，其雜誌即爲該館所藏者。此外其他外埠大圖書館所編的索引，普通的如嶺南的中文雜誌索引，北平的國學論文索引，專門的如農學論文，地學論文，昆轟論文，文學論文，心理論文，以至於淸人文獻，都有索引。他如科學敎育一雜誌有專門的索引，也有在索引中附記該交大意的，便叫提要（abstraet），關於史學論文從前大夏有過提要，其他似未見過，</p>
+<p>借書手續</p>
+<p>在目錄上查好書名，便可寫在借書單上，號碼要照樣抄下不可寫錯，否則便往往借不到。初去借書的人，往往不注意這些，所以很感麻煩。其實號碼的意義明白以後，寫起來便不易錯了。</p>
+<p>每次借書大約可借兩三部，各館略有不同，有的地方有限定，有的地方沒有限定。</p>
+<p>六圖書館中鴻英·海關·明復三處的書都不能借出館外，只司在館內閱覽。但明復圖書館本供中國科學社社員之用，對於捐款五百元以上的僩人或團體，贈送全年借書　張普通不能借出。震旦的書借出要　臨時保設金，中文書是十元，西文書是二十元，並限於單行本子，叢書不在內。新亞的書大部很，如果咨價高的，要看超出保證金的價目多少來決定。因爲加入先後的遲早，該館借書證的保證金自二元至五元，又改爲新幣五元，中間有許多等級，所以臨時保證金的數目也各各不同。工部局的書除參考書及叢書外。都可借出，因爲入館時已有學校或店舖負責擔保，所以就沒有別的保證金了。（待續）　（按本稿係李忙人君所撰，第一篇誤署「劍」宇，特爲勘正。</p>
+<p>昨日本報發報時間六點十五分</p>
+<p>體育新聞</p>
+<h3>又一盛大足球賽　正在推動中本週末或可實現　保甲自警賽催促保方繳票款</h3>
+<p>本市公共租界保甲指導委員會主辦之保甲及自警兩大足球盃賽、旣順利宣吿結束、關於球賽部分之一應收支賬目、已在着手結算中、昨據該會負責人稱、此次保甲及自警盃之舉辦、承各界熱忱贊助、踴躍輸將、至爲感荷、門券收入、成績彌佳、打破歷來爲公益或慈善事業而舉辦義賽之紀錄、惟此次門券之推行、除預售乃門售外、榮譽券及特別券兩項、由各委自動認銷或熱忱推銷者、截止目前爲止、普通券因僅供門售及預售、故數字已可結出、其他兩項、尙有一小部份劵資迄未繳來、約計門票與賽球拍賣之總和、約數當在二十五萬元左右、該會爲加緊結束起見、特再促請各方儘速於三日內將票款彙激福州路二百號該會、或電話一〇一四五通知、當可派員收取、又悉保甲指導部常任幹事程志良徐湘生及王瑞龍諸君、日來又在推動另一盛大比賽球隊對象及塲地、正在接洽中、如進行順利、本週尾即可實現、</p>
+<h3>晨友盃籃球賽</h3>
+<p>中靑主辦之第二屆晨友盃籃球賽、昨晚在八仙橋該會球塲舉行、壓軸白隊藍隊之役、白隊節節勝利、結果藍隊敗北、昨賽結果如下、</p>
+<p>晨籃勝晨紅四五—十六</p>
+<p>晨白勝晨黑四三—十一</p>
+<p>白隊勝藍隊四四—廿二</p>
+<p>今晚秩序</p>
+<p>强雄—晨黃（乙中）七時卅分</p>
+<p>老爺—晨綠（乙靑）八時一刻</p>
+<p>藥光—冰隊（甲組）下午九時</p>
+<h3>百樂門籃球隊　恢復雄姿</h3>
+<p>百樂門籃球隊、因許文奎已自港歸來、馮念華重爲馮婦、五虎上將、（許馮及張少卿陳祥龍陸鍾恩）已再度叙首、以原有班底、已可恢復昔年全盛時代之雄姿、故已整飭師旅、準備接受各界戰書、一九四二年之籃球盛况、將與足球媲美、</p>
+<h3>上海健身學院　學員參加踴躍</h3>
+<p>靜安寺路一四九一號上海健身學院、爲體育家趙竹光所創辦、歷有年數、爲滬上有數之健身塲所、設備完善、敎法新頴、院務極爲發達、現有學員三百餘人、趙氏現任指導、歷年由該院育成之壯健靑年、何止千人、趙氏並著譯有有肌肉發達法、體格鍛鍊法及最新鐵啞林鍛鍊法等書、內容豐富、文筆流暢、値得愛好體育諸君一讀、</p>
+<h3>現代體育二期出版</h3>
+<p>曾維祺君主編現代體育館出版之現代體育月刊、內容豐富切實、姿態前進、立論正確、極受追求健康大衆之歡迎、其第一卷二期已於昨日出版、圖文並茂、一切較第一期更爲進步、各報攤書店運動器具公司均有出售、每册二元五角、</p>
+<h3>持螯賞菊</h3>
+<p>蟹是不幸的介族，它虛有其表，號稱「鐵甲將車」，却是一無腸公子」。披着一身盔甲，滿擬橫行江海。人類畢竟聰明，投其所好，搆搭蟹舍，挑燈誘捕，於是成羣結隊，自投陷阱·這幾天籬畔菊黃，蟹亦上市，不免瞎扯一轉，聊應時景。</p>
+<p>蟹的產地，大別可分海洋·長江·內河·海水味鹹，所產的蟹，怪模怪樣，有的大如石皷，或則一對巨螯，形似魔掌，肉老味劣，非胃納奇佳者不屑問鼎。長江水活波淸，產蟹極多，味亦鮮美。不過上海人所貴，却在內河，這裏所說內河，其實指太湖流域一帶，即所謂「大閘蟹」者是。而洋澄湖所產，尤足珍奇，名氣之大，可與河南風陵渡黃河鯉；松江秀雅橋下四鰓鱸；富春江釣臺附近紅鱗鰣比擬。據說天地靈氣所鍾，獨具異徵，靑甲·白肚·金爪·黃毛·脂滿肉肥，鮮美無匹。更有故神其說的，背紋有深顯『王』字，爬行玻璃上，八足撑起，臍部懸空，的括不同凡品云。於是，蟹販咸以「洋澄湖」爲號召，而上海人吃蟹，也有非「洋澄湖」不可之勢！然據調查，洋澄湖產蟹不豐，即在大年，也不過八百担至一千担，以之分銷京滬綫各地，上海能幾何？又息够老饕大嚼？這且不去管它，反正吃個名氣，也是快意的事。</p>
+<p>秋冬之交，南市大碼頭，十六舖，虹口頭壩，老閘橋沿浜，情緒分外緊張。蓋因長江下水輪船，蘇·錫·崑·太·杭·嘉·松·湖·航船傍岸，必有各地產蟹運來。蟹販鵠候已久，一見貨到，蜂擁上前，選購所需要的貨色，待銀貨兩訖，然後選擇大小，配搭雌雄，分置鐵絲籠裏，陳列街頭，供大衆購取。</p>
+<p>除小菜塲外，熱鬧馬路口，以及菜館酒肆門前，胥爲蟹攤集中地。其中日昇樓一區，規模尤大，自先施公司迤北至北京路，兩邊人行道門面，全給佔據，蔚成蟹國。同行旣多，竸爭勢所才然，有的以霓虹管為廣告；有的以大喉嚨作招徠，除概稱眞正道地洋澄湖淸水大蟹外，還有把「蟹大王」爲標凖的，所謂蟹大王，每只重的七八兩，定價CRB二十元正。廣式酒家，佈置購究，向不讓人，這一時更鄭重將事，選取一二只大蟹，熱帶魚暫請出屋，養在玻璃缸裏，吸引食客。</p>
+<p>燒蟹之法，近年大有進步。已往用水燒煮，蟹在鑊中受熟不住，必翻騰亂竄，致膏脂走散，肉老味淡。十年前，四馬路高長與發明紮煮法，下水之前，騐明正身，縛以五花大纔，使蠻動彈不得，如對付斬犯一般。此法傳，大爲風行，但仍未可謂盡美畫善。因爲用水燒煮，鮮味終必外溢，滲入湯中。於是更事改良，形成今日最講究的隔水蒸法及炭烤法。而炭烤法允稱二十世紀東方食譜唯一重大發明，燒熟的蟹，味鮮肉嫩，膏脂脹滿，色香味三者俱佳。</p>
+<p>吃的藝術，由野蠻進步而爲文明，乃自然之過程，但在極端文明之中，略帶野蠻方式，原始風味，往往別有情趣。叫化鷄突然爲士大夫激賞，北方烤羊肉必一手持白干，一條腿擱在凳上，日烤且吃，方才够味。大觀園十二金釵山珍海味嘗得膩了，偷偷地弄來一塊鹿肉，胡亂燒熟，大家你爭我奪，興高彩烈，似乎那時的金陵，猪肉也有黑市，吃蟹的方式，無疑是較爲野蠻的，而情趣也正在野蠻之叩</p>
+<p>俗諺有「叫化子吃死蟹隻隻好。」可見吃蟹有品，大槪最够風雅的，則是一面持螯，一面賞菊。戰前，江灣小觀園，浦東市立農塲，漕河涇冠生園農塲，都以藝菊者名，佳種極富。年年今日，必開菊花展覽會，供人賞覽，要是跟園主熟識，或托熟人介紹的話，還可以載酒携蟹前往，賞花之餘，借地宴飮。冠生園農塲更代客設想，附設飲食部，特派專員採辦洋澄湖蟹，在塲烹售。此種豪情勝概，已成陳迹，渺不可得。記者以爲持螯賞菊，情趣固然不錯，但亦不必勉强併爲一事。上海獨多附庸風雅之徒，好像賞菊非持螯不歡；持螯非賞菊不雅。妓院裏一年一度菊花大會，號爲盛舉，硬生生把菊花枝幹屈曲，紮成一斛珠，滿天星，已够俗濁，再堆疊成山。花酒雙台，俗骨一羣，酒醉飯飽之後，草草吃幾個蟹腔，如是而謂雅致，委實不敢恭維！（待續）</p>
+<p>商業新聞</p>
+<h3>公債久疲思振</h3>
+<p>公債暗盤、昨市稍起回風、惟大跌小回、脚地仍未見穩定、不過投機家做臨時投機交易而已、空方亦有抵補、致行市回好一元數角、趨勢恐釀成欲抑先揚之局、初開時行市仍覺疲軟、丁戊種均在五十元以內、用乙種亦比隔日爲小、趨高後復又瀉至隔日價以下、收盤時多方竭力拉抬、稍稍回好、消息方面、仍係一貫政策、認五十元以上為不合法、不過倘跌至五十元關口、恐有較久的盤旋局面、即將來衆業公所開做時、當局亦不尤其在五十元以上開做、此爲公債市價癥結所在、亦即漲跌原因之所在、本來在票面以上、本報早經伸述在先、惟一般人猶在執迷、不爲人所重視耳、市價結果、一致回漲一元至二元、九六交易極少、獨漲三元一角爲最多、成交的計爲三百萬元之譜、茲列簡明表於後、</p>
+<h3>華股升降不一</h3>
+<p>昨華商股票市况、先漲後回、乃有實貨見高吐售也、但有數種老股仍在向上進展中、永祥印書及民誼藥廠有認三樂實業新股之權利、投資仍盛、其他各股終升降不一、紡織業最爲軟弱、永安紡織僅開一千八百五六十元、軋小六十元、美綸毛絨上海棉織·大中華織造·均回小五角至二角半、百貨業永安國貨各軋升一元、新新挫爲一百三十九元半、內衣低五角、新藥業民誼見九十四元半、又升二元、中法·新亞各小二元左右、明星香水升七元半、達二百五十五元、文化股商務又升十元、中華升五角、世界已回小五元半、永祥一鳴驚人、出現三十元高價、後二十八元、軋升一三元之巨、南洋姻草升爲一百十二元半、大中華火柴二百六十八元、勢已轉穩、公用業閘北水電升五角、華商電氣趨平、公信電器大戶搜購昨見十七元半高價，維他富仍在二十五元左右、公利客車新華噴漆堅挺、交易平常、今紀市價表於後、</p>
+<h3>飾金不動</h3>
+<p>昨本市銀樓業大新同行首飾金門市每兩兌出掛牌、仍二千五百五十元未更、（收進减三百元左右）、同業互做價少變動、初仍二千三百十元、俄稍升爲一二千三百十五元、旋即回下、正午二千三百十元、與上日價同、成交淸稀、最後價爲二千三百二十元銷挺、至首飾紋銀每兩仍　十四元未更、同業互做價十二元三五角為供求價云、昨錢業公會拆息迄少變遷、仍褂一角四分、</p>
+<p>昨外幣市况、日軍票趨平、同業互做價五元五角五分五七厘、銀號與小錢莊門市售出五元五角六分及六分半、收進五分左右云、</p>
+<h3>布疋根子仍緊</h3>
+<p>廠布　昨市氣復昂、貨根續緊、十六磅地球粗布二二五元、同磅飛鴻三一元、九磅新字一二五元、八磅振中一二二元、十二磅地球細布午盤一八四元、後市須一八六元、大鵬富貴新單喊盤一八三元至四元、銀行單一七七元、有人要、桃花女士林午收價二七〇元五角、下午做過二七四元七角半、雛雞士林二六五元、又安安藍深色二一〇元、均有求無供、</p>
+<p>東布　初平後漲、價俱上升、十二磅龍頭細布新新單一九三元至四元半、銀行單一八五元二角半、彩球一八五元半、均缺俏、四君子嗶嘰紅單七元三角七八分、升至七元四角五六分、午收後因細紗報漲七元五角三四分、尙有需要、</p>
+<h3>豆餅銷路價挺</h3>
+<p>雜糧市况、昨因到貨仍稀、僅有豆餅做開、行倩均見趨挺、計開昌記豆餅五百片、價七十三元、又二禮拜交一千片、價七十三元半、元隆豆餅一車、價七十四元、肥字豆餅三車、價七十五元至七十六元</p>
+<h3>商業簡訊</h3>
+<p>軟餅看緊　前批到貨已近售罄、據客電後批有數十件裝出在途、候輪轉申、成本比前至少須加百餘碼、如果餅坯軟糯而色澤紅亮者、勢必續升、金山枝略鬆賤茲以去化稍滯、市氣回平、昨聞號方開出二百餘件、比前略跌、而貨品微有上落、高低相差二十碼、當即開通、惟查產價仍硬、而來源不易、後市無過鬆之望、</p>
+<p>中粒甘貝平定　行盤售五千一二百元、三角甘貝質缺、聞組合方面已有運到一批、尙未開出、</p>
+<p>日用品供少求多　日用品市面、如肥皂存貨日枯聲中、貨主扳持愈力現爲增厚存底、造成供少求多之象、致價愈抬越高、計固本皂升至三百七十五元、白祥茂三百二十元、黃祥茂二百八十元、剪刀皂三百三十元、較前迭升五元至十元不等、火柴暫吿堅穩、計美麗二千五百五十元、鳳凰二千三百五十元、金鼎二千二百五十元、雜牌一千八百五十元、無甚榮辱、洋燭市勢仍俏、計白禮氏船牌高達一百八十元、儈帽牌一百五十五元、雜牌一百三十元、藥品市價潛勢甚勁、一般係囤戶作崇、再傳八卦丹化學復製種種利買傳說、故執貨者居奇尤甚、而價日漲、計八卦丹昂至二十六元、萬金油三十元、頭痛粉二十五元五角、均照每打價計、鶴鴣菜五十八元、龍虎人丹二十四元、無敵牙粉九元五角、賣價一致趨漲、</p>
+<h2>Page 6</h2>
+<p>經濟專刊</p>
+<h3>論李玉芝之前程</h3>
+<p>— 蘇少卿</p>
+<p>李玉芝乃北平戲校坤旦四玉之一。北平戲校第四班以玉名，旦角下一字皆用奇花香草，四玉獨著，四玉者，侯玉蘭李玉茹白玉薇李玉芝也，前三玉皆次第來滬，載譽而去，獨玉芝最後至。或疑玉芝何以遲遲其來？此中有故，玉芝年最少，四玉南來，若遣嫁然，嫁之次序，先長後幼，少小者常俟諸姊妹綠樹成陰，始得作新娘子，此古禮也，若亂次以濟，則於理未合。考生理慣例，姊妹多人，幼者獨聰慧而貴，楊貴妃姊秦國號國二夫人，何嘗不絕美，然尙遜貴妃二分。又不觀戲劇之王寳釧乎？二姊金釧鋃釧，聰慧識力，皆不及三妹，名貴亦不逮，此其鐵證，四玉雖非親姊妹，事例或將同焉。又聞玉芝一病年餘，亦爲未能早日圖南之主因。</p>
+<p>吾觀玉芝戲雖不多，然可以斷其前途，將蛟彼三玉更有遠大希望，何以言之，吾觀其聰明較高，而靑衣花旦能兼演，嗓音唱腔姿色做工，全在水平綫上也。今日戲界風氣，演成一身須兼三種角色，始能應看客之要求，如旦角能靑衣花旦刀馬三行技藝，又要嗓音，扮相，武工俱佳，乃得稱爲全才，然三者不可得兼，則靑衣能演花旦戲而有風趣，亦可大紅，若徒工靑衣戲，每不易受羣衆歡迎。玉芝旣以靑衣唱工見長，又兼擅花旦各戲，吾見其雙瞰　有風神，頰上有兩酒渦，每一發笑，好看異常，身材玲瓏，宜於轉折，如「梅龍鎭」「文章會」，等戲，伊人自信絕有把握，蓋大生花旦人才也。彼三玉者，或能靑衣不宜花且，或只長花且，唱工嗓子不佳，尙能載譽享名，由此觀之，玉芝前程，豈可量耶？</p>
+<h3>梨園動態</h3>
+<p>更新舞臺刻已約就童芷苓遲世恭閻世善，以繼李宗義李玉芝李多奎之後，至於現有配角，如傅德威關德咸慈少泉王玉讓殷金振高德松等，准全部挽留，惟小生周維俊，則易以江世玉，因周在平另有他約，不便久留海上也。</p>
+<p>天蟾舞臺最近已邀就楊寳森鄭冰如，楊鄭二人，言明合作，不分前後，戲單兩面分印，以示並牌之意。一昨冰如來函，謂公事業已說妥，款亦收訖，准本月六日乘機甫下，登臺當在十日左右。</p>
+<p>黃金吳素秋葉盛章，演至本月六日打住，不再蟬聯，七日起將由富連成小班接演夜塲，至於程硯秋之秋聲社，已決定十一日夜塲開始登臺，老生貫盛習及配角塲面等，准於日內乘火車南來，明後日即可到達滬埠。</p>
+<p>吳素秋離滬後，將先至天津，應中國大戲院之邀演唱短局，小生俞振飛將隨之偕行，聞兪此次願加入吳劇團，係由北平戲劇報社長朱復昌君所拉攏，每月包銀，大約爲聯準票六千元云。宋寳羅宋紫萍在蘇州開明大戲院出演，一再賡續，售座仍盛，現經情商挽留，准再續演十天，至本月十日滿期，即率隊北歸，一說將赴寗演唱短局。</p>
+<h3>李健吾「雲彩霞」獻演</h3>
+<p>— 逸香</p>
+<p>夏霞雕滬前最後演出　顧徳剛東山再起合演</p>
+<p>上海劇壇漸漸形成天下三分的局面，「上藝」鎭坐「卡爾登」以「大馬戲團」奠定復興的基礎，「中中」劇因內備居「麗華」，聘吳仭之等加入力圖振作，而「蘭心」在十月六日起由新興的藝光劇團演出。「藝光」由「華藝」蛻變而成，但再由夏霞，顧　剛，林彬等加入，聲勢大有後來居上，第一個劇目決定爲李健吾編劇，朱瑞鈞導演之「雲彩霞」。</p>
+<p>「雲彩霞」是一個五幕大悲劇，把一個聞名遐邇的紅女伶生活爲背景。同時介紹當時一般闊人先生們的捧角在，和京戲班後台的風光。使人想起了「秋海棠」的小說也是如此，而很受人歡迎。「雲彩霞」非但與「秋海棠」有異曲同工之妙，而有許多地方情節曲折，故事動人，實在是最近劇目所少見的。演員有夏霞，蓋蘭，黃宗江，黃宗英，蔣天流，王祺等，還是有一個使人興奮的消息，當上海劇藝社以「人之初」定天下時，那時梁主角顧德剛的演技深得各界擁護，闊別劇壇三年之久，這次加入客串，的確可以使「雲彩霞」生色不少。</p>
+<p>夏霞決定在最近期內遠行一次，約期就在這個月裏面，恐怕非短時間內重能返滬，「雲彩霞」是她離滬前的最後演出，愛看夏霞演技的觀衆，一定願意多看一次她的作品的。</p>
+<h3>防癆影展　明日開幕</h3>
+<p>— 良</p>
+<p>沉默了好久的攝影界，明日起又將充分地活躍起來，因爲上海防癆運動委員會主辦的攝影名作展覽大會，將在梅蘭芳博士揭幕和海上二十餘位名媛翦綵所交織的塲合下，向全市市民行見面禮。</p>
+<p>靜安寺路大華路口新厦眞是最適宜於攝影展覽了！三層樓全部九大房間，佈滿了大小照片約三百幀。最精彩的就是攝影界名宿郞靜山的傑作六十餘幀，奇麗的風景，細膩的人像，顯示了近代攝影藝術的飛速進步，它全帶給人們理想和靈感，深深地佈全到人間眞善美的綜合表現。餘如盧施福，陳傳霖，胡伯翔等的作品，亦可說是藝術的結晶，它的每一角面反射出人類的聰明，智慧和技巧。展覽日期約十天，雖然並非「不取分文」，但是要知道它的內容，而親眼先睹的人，以爲化數元門票和二三個鐘頭把自己融解在對藝術的欣賞中，間接幫助了貧苦的肺癆病人，一舉數得，那是很上算的</p>
+<h3>王熙春　重返銀壇</h3>
+<p>正當中聯改組時王熙春却因在新婚燕爾期內並沒有加入，然而不論在中聯當局或萬千影迷，無不希望王熙春仍繼續在水銀燈下工作，現在，還願望終於是實現了，王熙春在重重情誼下，已與中聯正式簽訂特約合同，第一部戲也已決定了，那是屠光啟導演的梅娘曲」。「梅娘曲」不是陳燕燕主演嗎？爲什麼要調動呢？那是有原因的，陳燕燕自一蝴蝶夫人」至「芳華虛度」，都是大悲劇，「梅娘曲」的內容，又是苦盡慘絕，所以陳燕向公司提出要求來演幾部喜劇，恰巧王熙春加入，「梅娘曲」就作王熙春重返銀壇第一聲，其他演員如嚴俊張琬等都不動。</p>
+<h3>梅壽</h3>
+<p>— 筱</p>
+<p>梅蘭芳博士，前日在私邸度其四九誕辰，梨園中人，程硯秋等及親友數十人，紛往道賀：惟外客到者寥寥，蓋梅氏以世變方殷，不欲舖張揚厲。益以感受風寒，患傷風甚劇，近亦極少酬應，外傳其短鬚已薙，並非事實。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一〇）　飛來峰</p>
+<p>維城去所父親的遺像拿下，父親的遺像，可不比母親的遺像，掛上去的日子久了，釘子是跟着銹了，繩子也有些爛了，繩子上和框緣的灰塵，也積得更厚了。維城才把鏡框抬得一抬「拍」一聲，那鏡框便掉到地下來，連伸手去搶，都搶不住。他忙着隨了鏡框俯身下去，把鏡框端起來，回身放在桌上。可是一方玻璃，已經碎成了七八方，有幾方已經不在框子裏，維城張了嘴，心中有了說不出的慚愧。他想着家裏還有好幾個鏡框，不知道尺寸是不是和像片相符。他把框子翻到背而來，去了一塊底板，想把父親的遺像取出來，另外去裝框　，可是驚人的發現，就發現在這時候。</p>
+<p>在底板和像片的中間，夾着一張不是四寸便是六寸的男子半身像片。有這麼十張像片，是不奇，奇就奇在像片旁邊的題款，右邊是「惠芬女士惠存「六個宇，左邊是程炳謹贈」四個字。他眼簾裏耀進惠芬和程炳字樣，不由得不驚異了，驚異得幾乎要使他發在了。惠芬是葉大太太的名字，程炳是有殺父之仇的仇人，如何不要驚異。他突然的走到門口，把兩扇門掩上了，再回到桌子旁邊來，捧起像片來，細細一看。一看，是看程炳　字，並沒有錯誤；再看，看那影中人程炳，倒也方面大耳，在二十歲到三十的年齡。他把左手揑了像片，右手却握了個拳頭，對程炳臉上試一試；，一邊又咬緊了牙齒，咬得的吱吱吱的。如果眼睛裏眞能出火的話？他的火早已冒出來了。他的心，在腔子裏卜通卜通的跳，把奉頭拍着胸脯口，想吐一口氣，可又悶的吐不出來。他再一看時，程炳的臉，像是在那裏見過的，只是想不起在那裏見過。把像片放在桌子上，捧了頭思索一下，在屋子裏走來走去，　對像片看看，終於被他想出來了。（二二〇）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.11.04</h1>
+<h3>After the Al Alamein Front, British Attempted Landing Fails, Frontline Battles Reach Climax, Italian Aircraft of All Types Deployed</h3>
+<p>Reuter Dispatch from Berlin, 3rd: Well-informed sources here claimed last night that the British attempt to land behind the German Al Alamein front line was thwarted by our forces last night.</p>
+<p>Havas Dispatch from Stockholm, 3rd: According to reports from both belligerent parties, the battles on the Egyptian front have now reached their climax. The intensity is unprecedented. Semi-official sources in Berlin stated that the British offensive, originally intended to decide the Egyptian campaign in one decisive battle, has failed after six days of intense fighting. However, the German High Command has acknowledged that the fighting is intense, even more so than before. The Italian High Command's battle report this morning also indicated the same, but stated that the enemy's offensive had been contained by the Axis forces, and that the Axis forces had launched repeated counter-attacks. In addition, the intensity of the air battles is also rare. Meanwhile, the British Middle East Command stated that Allied infantry divisions made significant progress south of the coast yesterday. The intense tank battles between the two sides raged throughout the day yesterday, and the intensity has not diminished. Axis attacks on the coastal front have been repelled. The British Air Force bombed enemy positions, inflicting heavy losses. Yesterday, British aircraft lost thirteen planes, while at least five German Junkers aircraft were shot down, four other aircraft were shot down, and seven caught fire after being hit.</p>
+<p>Reuter Dispatch from the German Führer's Headquarters, 3rd: Today's German war report stated that the Egyptian battles are intensifying. Enemy tank units that penetrated the northern sector of the Al Alamein line were unable to advance due to our forces' fierce counter-attacks. German and Italian air forces are continuously bombing British mechanized units, enemy artillery positions, and rear lines of communication. Five British aircraft were shot down in the Mediterranean, one of which was shot down by a German submarine.</p>
+<p>Reuter Dispatch from Rome, 3rd: The Italian High Command announced this afternoon that the battles on the Egyptian front became more intense yesterday. Large formations of fresh enemy troops advanced towards the Axis positions. Our forces fought bravely and launched repeated counter-attacks, inflicting heavy casualties on the enemy, with losses of over ninety tanks. Our side also suffered heavy losses. The battles are currently raging. Our forces are deploying all types of aircraft to attack enemy troops and the enemy's rear lines. In multiple air battles, our fighter planes shot down three enemy planes, and German planes shot down twelve enemy planes. At the same time, while escorting transport ships, German and Italian aircraft repelled several attacking enemy aircraft and shot down four twin-engine enemy aircraft. Our navy also sank one enemy submarine.</p>
+<p>Reuter Dispatch from Berlin, 3rd: Yesterday morning, British tank units launched a large-scale offensive, which was crushed after twenty-four hours of intense fighting. The British forces on the Al Alamein front have now ceased their offensive activities.</p>
+<p>Reuter Dispatch from Stockholm, 3rd: London newspapers commented on the North African campaign, stating that the success of the Allied offensive depends on control of the sea and air. Once victorious, large numbers of warships and aircraft can be redeployed to other fronts.</p>
+<h3>Battle Enters Second Phase, 2,000 Allied Soldiers Captured</h3>
+<p>Havas Dispatch from Berlin, 2nd: The following report on the situation on the Egyptian front has just been released here: On the sixth morning of the British offensive, the Axis positions from the Qattara Depression to the coast are still in the hands of the German-Italian allied forces. As a result of two fierce British attacks, the Axis positions were broken through in a very narrow area, but this offensive was quickly repelled. The enemy suffered heavy losses, retreated in panic, and even abandoned their original positions. When the Axis forces began their counter-offensive in Egypt, a German detachment, isolated, re-established contact with the main force. This detachment, outnumbered, fought with unprecedented bravery. The "hedgehog" position it held was extremely important, and the large British forces were thereby constrained, thwarting their attempt to break through the Axis lines. As a result of the fierce fighting yesterday, the communication lines for other isolated strongholds have also been restored. They immediately joined forces with the main force of the German-Italian "blitz unit" to attack. At the same time, semi-official sources here claim that since the British launched another offensive at dawn on the 31st of this month, the battle has entered its second phase. The German side is confident about the future of the battle. This final British attack copied old tactics, but still could not go far beyond the Axis outposts. The battle is now taking place on the Axis main defensive line. So far, there has been no tank battle anywhere on the front line. Yesterday, multiple air battles took place over the Al Alamein area. Groups of "Curtiss" and "Spitfire" aircraft attempted to attack Axis positions, but before reaching their destination, they were intercepted by our "Messerschmitt" aircraft. The enemy aircraft were dispersed in the high altitude, and four enemy aircraft were lost. Another team of British bombers was also driven back by our fighter planes and anti-aircraft guns, failing to carry out their bombing attempt. As for the German dive bombers, they attacked British tanks near the Al Alamein railway station and were very successful.</p>
+<p>Reuter Dispatch from Berlin, 3rd: It is claimed here that in the recent two days, the German-Italian allied forces counter-attacked in the northern Al Alamein front, capturing 2,000 enemy soldiers, seizing 51 anti-tank guns and a large number of supplies, and destroying 100 tanks.</p>
+<p>Central News Agency Dispatch from Lisbon, 2nd: Since the British Eighth Army launched its offensive on the Al Alamein front, it has been frequently subjected to fierce attacks from the Axis air force and artillery, and has been frustrated. Therefore, in the past two or three days, large numbers of British troops have been reinforced from Cairo and Alexandria. General Rommel, in order to implement a war of attrition strategy, deliberately avoids the main force, only using heavy artillery to bombard the British counter-attacking troops, and using tank guns to destroy British tanks. In the past two or three days, the number of British tanks destroyed by the Germans has reached 100. Since the start of the counter-offensive, the number of British tanks destroyed has reached 400. Currently, fierce ground battles are unfolding with the northwest Al Alamein area as the center. Once the Axis forces have used artillery tactics to exhaust the British tank units, they will launch a full-scale offensive.</p>
+<p>Reuter Dispatch from Berlin, 3rd: Three Hurricane aircraft attacked a German motorcade on the coastal highway in North Africa. One of the aircraft was hit by German machine gun fire. The aircraft was severely damaged and forced to land. The Australian pilot was captured.</p>
+<h3>New Advisor, Ishiwatari Arrives in Nanjing</h3>
+<p>Domei Dispatch from Nanjing, 3rd: The newly appointed advisor, Ishiwatari, arrived here yesterday. At 11:00 AM today, he visited Chairman Wang at his official residence, accompanied by Japanese Ambassador Mamoru Shigemitsu. Chairman Wang formally invited Ishiwatari to take office as the highest financial advisor to the National Government. Ishiwatari accepted. The meeting lasted for half an hour.</p>
+<h3>National Training Convention Ends Yesterday in Japan</h3>
+<p>Central News Agency Dispatch from Tokyo, 3rd: The 13th Meiji Shrine National Training Convention, which opened on October 29th, has now been held for six days. It has been held daily, and the progress has been good. The Japanese athletes from all over the country and the athletes from Manchukuo who participated specially, were particularly enthusiastic under this Greater East Asia War. The program was wonderful, and the competition performances ended at 3:50 PM. The closing ceremony was held at 4:00 PM. A total of 48,600 people, including all 46,192 athletes and 2,408 staff members, paraded around the venue for a week led by the army's Jushan School military gun team, sang the convention song together, and chanted Banzai. Then, the closing of the convention was announced by Sports Officer Mori. The convention ended successfully in the twilight.</p>
+<h3>Financial Authorities Deny Rumors: Reports of Currency System Change are Inaccurate</h3>
+<p>Central News Agency Dispatch from Nanjing, 3rd: Rumors have been circulating in the market for days, saying that the currency system will soon be reformed, with Central Reserve Bank notes being exchanged for new currency at a rate of four or five yuan. The rumors have become increasingly prevalent in Shanghai, causing panic among the people and rising prices, which is of great concern to the financial future. The reporter specifically visited the financial authorities to inquire about the matter. It was reported that the government has already determined its policy on the currency system and has no intention of making any changes. Recently, the government announced a final exchange deadline of one month for old and new currencies to avoid losses to the people and to allow the Central Reserve Bank notes to be widely promoted and become the sole currency. The rumors circulating in the market are completely unfounded and should not be easily believed to avoid causing disturbances. This is specially published to dispel the rumors. It is hoped that all sectors will not listen lightly to avoid suffering losses.</p>
+<h3>Greater East Asia Writers' Conference Opened Yesterday in Tokyo</h3>
+<p>Domei Dispatch from Tokyo, 3rd: The Greater East Asia Writers' Conference was solemnly opened at the Imperial Theater here at 10:00 AM on the 3rd. More than twenty representatives and assembly participants and guests from China, Japan, and Manchukuo attended. After the formalities, Kume Masao, Director of the Japan Literary Patriotic Association, delivered the opening address. Subsequently, all the delegates of the conference unanimously elected Japanese representative Hiroshi Shimomura as the chairman of the conference and delivered his inaugural address. Then, Sub-Director Okumura of the Information Bureau, Director Taniwaki of the Army Ministry's Press Department representing the Minister of the Greater East Asia Ministry, Section Chief Hirade of the Navy Ministry's Press Department, and Secretary-General Goto of the Imperial Rule Assistance Association delivered congratulatory speeches. Representatives from the Republic of China, Zhou Huaren, Qian Daosun, Zhabu, and representatives from Manchukuo, Gutin, and Japanese representative, Kan Kikuchi, delivered speeches one after another and read out the texts addressed to the conference by representatives from Thailand, Vietnam, and Burma. Finally, after an oath was taken by delegate Saito, the ceremony was adjourned. At noon, the Japan Literary Patriotic Association hosted a banquet for all at the Greater East Asia Hall. In the afternoon, they watched a play at the Imperial Theater, and in the evening, they attended a banquet hosted by the Information Bureau at the Greater East Asia Hall. All representatives are scheduled to hold meetings at the East Asia Hall on the 4th and 5th.</p>
+<p>Domei Dispatch from Tokyo, 3rd: At the opening ceremony of the Greater East Asia Writers' Conference, Okumura, the Sub-Director of the Japanese Information Bureau, said in his speech that as the forces of Anglo-American aggression have been driven out of East Asia, Asia's existence has a bright future. The so-called cultural crisis of today is nothing more than the existing world culture manipulated by the United States and Britain. However, a new Asian culture has begun to regenerate in the future, so there is no cultural crisis to speak of. If we look at the culture of the United States and Britain again, we find that they only use culture as a means to protect their lives. This kind of culture is only a usurious, non-laboring culture, and also an extractive commercial culture. In contrast, Asian culture is born from the ultimate purpose of life and is a noble culture of respect for humanity and respect for labor. This culture is not only expressed in life, but also in art and religion. Therefore, Asian culture is a culture in which religion, politics, and education are integrated, and is a comprehensive and unified culture, which is completely different from the divisive culture of the United States and Britain. Under the current situation, "Pan-Asian unity" has been realized. In the future, we must use common ideals and morals to achieve shared happiness and hardship, co-existence and co-prosperity. Therefore, it is necessary for all Asian nations to realize the greatness of Asia and enhance their self-confidence. Therefore, it is hoped that all of you can become the second Muhammad, the first Confucius, and the second Sakyamuni.</p>
+<h3>Ambassador Shigemitsu Comes to Shanghai, Will Soon Return Home</h3>
+<p>Domei Dispatch from Nanjing, 3rd: Japanese Ambassador to the National Government Mamoru Shigemitsu departed for Shanghai at 10:30 tonight with Embassy Secretary Kiyomizu, and will then fly to Tokyo to consult with central authorities on the reorganization of Japanese government agencies in China after the establishment of the Ministry of Greater East Asia.</p>
+<h3>Hidaka Goes to Beijing</h3>
+<p>Domei Dispatch from Nanjing, 3rd: The newly appointed Japanese Ambassador to Italy, Hidaka, left here for Beijing at 10:30 this morning. He will stay there for a few days to bid farewell to all parties before departing for Rome.</p>
+<h3>National Commemoration of Meiji Day in Japan</h3>
+<p>Central News Agency Dispatch from Tokyo, 3rd: Today is Meiji Day in Japan. The entire country is united in commemorating the great achievements of Emperor Meiji. On the same day, Meiji Shrine solemnly held a memorial service presided over by an imperial envoy starting at 8:00 AM as usual. The Meiji Day festival began at 11:00 AM. At 7:00 PM, the Meiji Day festival was held in the palace with the Emperor present. From early morning, worshippers streamed to Meiji Shrine. Prime Minister Tojo also personally visited the shrine at 6:00 AM to offer his respects. The 13th National Training Convention at Meiji Shrine, etc., is the last day today. Various competitions are being enthusiastically held at various venues.</p>
+<h3>Nanjing Executive Yuan Meeting</h3>
+<p>Central News Agency Dispatch from Nanjing, 3rd: The Executive Yuan held its 135th meeting on the 3rd. Chairman Wang, the President of the Executive Yuan, Secretary Chen Chunpu (A) reported on the following matters: (1) Reading of the minutes of the 134th meeting; (2) Report by the President of the Executive Yuan: In accordance with Article 3 of the Organizational Regulations of the New Life Movement Promotion Committee, Wei Junqiang, Chen Changzu, and Huang Ziqiang are designated as members of the New Life Movement Promotion Committee. (B) Matters for discussion: (1) The President of the Executive Yuan submitted for discussion, according to the Secretariat's report, requesting the review of the Ministry of Education's request to increase the estimated expenditures for the China Youth Corps and China Boy Scout Affairs Committee for the months of October to December of this year. After gathering the Ministries of Finance and Education and the New Life Movement Promotion Committee for joint review, the opinions were signed and requested for approval. The resolution of the case was passed in accordance with the review opinions and submitted to the Central Political Council. (C) Appointments and dismissals: (1) Proposed by the President of the Executive Yuan: Approval of the Military Affairs Commission's letter requesting the appointment of Tao Fei, Wu Yibai, Gao Zuoxin, and Liu Cheng as Major General Military Attachés of the Military Attaché Office of this Commission. The resolution was passed. (2) Proposed by Luo Junqiang, Minister of Judicial Administration: Chen Enpu, a Senior Secretary of this Ministry, has another appointment, and it is proposed to dismiss him from his current position. It is also proposed to appoint Chen Enpu as the Director of the Criminal Department of this Ministry, and Xia Dunlv as a Senior Secretary. The resolution was passed. (3) Proposed by Lin Baisheng, Minister of Propaganda: Li Gengsheng, Director of the International Propaganda Department of this Ministry, has another appointment, and it is proposed to dismiss him from his current position. It is also proposed to appoint Tang Chengyou to fill the vacancy. The resolution was passed. Others omitted.</p>
+<h3>Zhejiang Rural Reconstruction Committee, Joint Military-Police Conference</h3>
+<p>Central News Agency Dispatch from Jiaxing, 2nd: The second phase of the rural reconstruction work in southeastern Taihu has been underway for a month since it began, and has now entered the first phase of work. It is learned that the Office in Zhejiang, in order to ensure the consistent promotion of the party, government, and military to complete the rural reconstruction, has specifically scheduled a joint military-police conference on the second phase of rural reconstruction in southeastern Taihu for the 4th at 9:00 AM to discuss new plans and directions for future rural reconstruction work. The Office in Zhejiang, the Party Affairs Office, and the Security Headquarters are now preparing proposals for discussion.</p>
+<h3>American Troops Land in Gibraltar</h3>
+<p>Domei Dispatch from Lisbon, 2nd: The Vichy radio station, quoting a report from La Línea, Spain, near Gibraltar, said that American troops landed in Gibraltar. These troops arrived on several merchant ships, protected by British warships, crossing the Atlantic to this point.</p>
+<p>Reuter Dispatch from Madrid, 3rd: The Spanish government has announced that the shipbuilding industry enjoys privileges, with lower taxes and priority in the supply of materials. However, the shipbuilding industry must improve its equipment, increase capital, submit shipbuilding plans, and realize the above conditions within three years.</p>
+<h3>O'Connor Appointed Commander of U.S. Forces in Northwest District</h3>
+<p>Reuter Dispatch from Lisbon, 3rd: New York dispatch: General O'Connor, who manages the newly opened Alaska Highway and other transportation lines in the North Pacific, has been ordered to command the US forces in the Northwest District. His headquarters is now located in Port St. John's, British Columbia, from where he manages the construction of the southern section of the Alaska Highway, which is very convenient. General O'Connor previously built the underground entrance to the Corregidor Fortress in the Philippines.</p>
+<h3>Soviet Ambassador to Turkey Will Soon Return to Post</h3>
+<p>Reuter Dispatch from Istanbul, 3rd: It was learned here yesterday that the Soviet Ambassador to Turkey, Vinogradov, will return to his post from Kuibyshev in the near future. According to reports, the Soviet ambassador returned to Kuibyshev on June 25.</p>
+<h3>Roosevelt Submits New Message to Congress, Abolishing Tariff Regulations, etc.</h3>
+<p>Reuter Dispatch from Lisbon, 3rd: According to Washington reports, President Roosevelt submitted a message to Congress yesterday, requesting new powers to eliminate various difficulties hindering Allied economic cooperation. He hopes to abolish various laws and tariff regulations to allow arms and other supplies to flow between the United States and other Allied countries.</p>
+<p>Reuter Dispatch from Lisbon, 3rd: Washington dispatch: The US Department of Agriculture announced yesterday that the United States will impose strict restrictions on certain types of food in 1943. This is because the United States must fulfill its obligations under the Lend-Lease Agreement to supply food to the Allied countries and to support the growing military forces, so it is necessary to take this measure.</p>
+<p>Reuter Dispatch from Lisbon, 3rd: Washington dispatch: In view of the lack of trained technical personnel, the US Army is now planning to take over universities and specialized schools to make them institutions for training army special agents. The details of this plan are currently unknown.</p>
+<h3>Argentina Decides to Maintain Neutral Policy</h3>
+<p>Havas Dispatch from the Capital of Argentina, 3rd: President Castillo said in a telegram that Argentina's neutral policy will be maintained at all costs.</p>
+<h3>Turkish Government to Form Special Court to Try Speculators</h3>
+<p>Reuter Dispatch from Turkish Capital, 3rd: Turkey held a cabinet meeting today, lasting five hours. Prime Minister Saracoğlu chaired the meeting. The main issues discussed related to President İsmet İnönü's newly issued regulations to avoid economic crises. The government plans to form a special court to try speculators and smugglers.</p>
+<h3>Bombings Occur in Lyon, Marseille, and Other Places</h3>
+<p>Havas Dispatch from Geneva, 3rd: Today, according to visitors from Lyon, several more bombing incidents have occurred recently in the unoccupied area of France, including three in Lyon, two in Vichy, and one each in Clermont-Ferrand, Marseille, and Limoges. The material losses were not great. In Limoges, one person was killed and three were injured.</p>
+<h3>Swedish Parliament Holds Meeting, Foreign and Political Issues to be Discussed in Secret</h3>
+<p>Reuter Dispatch from Swedish Capital, 3rd: The Swedish Parliament's fourth meeting was held yesterday on the first day. The Peasant Party in the Upper House demanded a "vote of no confidence" in Prime Minister Hansson. The main issues discussed by the Upper and Lower Houses yesterday were supply conditions and military issues. The debate will continue today, and it is scheduled to discuss foreign and political issues on the 5th of this month, which will be held in a closed session.</p>
+<p>Reuter Dispatch from Swedish Capital, 3rd: Swedish Prime Minister Hansson reported to Parliament yesterday on the policies of restricting prices and preventing inflation. To prevent further price increases, changes in wages will be avoided.</p>
+<h3>British Ship Sinks in the Indian Ocean</h3>
+<p>Reuter Dispatch from Saigon, 3rd: According to reports from Bombay, officials announced that the British troop transport ship "City of Paris" (10,090 tons) has sunk in the Indian Ocean. The ship was carrying the Indian Seventh Army and sixteen British officers, presumably bound for Egypt.</p>
+<p>Reuter Dispatch from Swedish Capital, 3rd: Canadian Minister of Justice and Attorney General Lapointe declared yesterday that the number of ships sunk by submarines in the St. Lawrence River this summer was between ten and fifteen.</p>
+<p>Reuter Dispatch from Berlin, 3rd: The German High Command has just released the list of British cargo ships sunk by German submarines since June 1, 1941: Cete 5792 tons, Copse 1096 tons, Cexendale 626 tons, Macfarlane 6193 tons, Gestofte 1971 tons, Ottar 1374 tons, Cervantes 1800 tons, Coffield 1791 tons, Chekiang 1172 tons, Cardita 8237 tons, Cyclops 9076 tons, Chengtu 2219 tons, Maudouchet 5950 tons, Cap Padang 4890 tons, Consuelo 4847 tons, Cordillera 6865 tons, Cape Horn 4963 tons, Clessadrone 1128 tons, Delos 4113 tons, Dionian 6434 tons.</p>
+<h3>Halifax's Second Son Killed in Action in Egypt</h3>
+<p>Domei Dispatch from Lisbon, 3rd: Report from Washington D.C., Major Peter Wood, the second son of US Ambassador to Britain Halifax, was killed in action in Egypt.</p>
+<h3>Hurricane Causes Disaster in India</h3>
+<p>Reuter Dispatch from Bangkok, 3rd: Calcutta reports that various parts of Bengal Province, India, were hit by a hurricane in mid-October, with as many as 11,000 residents killed. 75% of the province's livestock were destroyed. The hurricane occurred on the morning of October 16 and continued for 24 hours. There were also tsunamis in coastal areas.</p>
+<h3>A Portuguese Woman Gives Birth to a Four-Legged Girl</h3>
+<p>Reuter Dispatch from Lisbon, 3rd: A woman in Freamunde, northern Portugal, gave birth to a four-legged girl, two of whose legs are shorter. She is now a month old. Doctors hope to continue to sustain her life.</p>
+<h2>Page 3</h2>
+<h3>Intercepted the Mountain Road of Transcaucasia by the German Army; Artillery Fights between Two Armies on the Banks of the Volga River; Nalcrucknowledge fell</h3>
+<p>Berlin, 3rd, Havas News Agency: After the German army occupied Alagir on the Terek front, Okhiniki is threatened, and the Ossetian military road has also been cut off. Because the central Caucasus Mountains are as high as 4,000 meters, it is difficult to pass in the autumn. The Soviet army between the Terek River and Mount Elbrus has little chance of escaping. The fighting in the Stalingrad area is calm. The German engineering team has made slight progress in the industrial area on the west bank of the Volga River. The supply of the Soviet army in the city is becoming increasingly difficult.</p>
+<p>Berlin, 3rd, Havas News Agency: It is claimed here that the only mountain road through the Central Caucasus, the Ausztians military road, has been cut off due to the German occupation of Alagir. The highway is 293 kilometers long. Alagir is located 50 kilometers west of Okhiniki. It is the terminal station of the Weistoff Grosny Railway. The surrounding land is extremely fertile. There are small arsenals and chemical plants in the city. The lead mine in the south is very rich.</p>
+<p>Guilin, 3rd, Havas News Agency: The Caspian Sea has been bombed by German aircraft many times last week. Baku is the center of Caspian Sea transportation. It exports 9,000,000 tons of kerosene every year. However, the northern Caspian Sea freezes for about three months every year, which hinders shipping. Recently, British and American war equipment has also been transported from Iran to the Soviet Union via the Caspian Sea. It is estimated that there are about 120 Soviet ships in the Caspian Sea, including 75 oil tankers.</p>
+<p>Tokyo, 3rd, Central News Agency: A special telegram from Berlin stated that, according to sources from the German military headquarters, the last bridge in Stalingrad was completely destroyed by the German army on the 2nd under the fierce bombing of the German air force and the continuous bombardment of the German heavy artillery. In addition, the German artillery units on the west bank of the Volga River also fiercely bombarded the Soviet artillery positions on the east bank on the 1st. The terrain of the German artillery positions is higher than that of the Soviet artillery positions on the opposite bank, so the German army has a clear advantage in the artillery battle between the two armies. In addition, the powerful anti-aircraft artillery positions of the German army on the west bank of the river have been completed recently since they were actively built.</p>
+<p>Ankara, 3rd, Havas News Agency: Moscow telegram, after the German army occupied the city of Nalchik last Thursday, the Soviet military headquarters only admitted in the war report last night that the city had fallen.</p>
+<p>Street fighting in Stalingrad is still going on</p>
+<p>German Head of State's Camp, 3rd: Today's German military report stated that the fighting in western Caucasus is very fierce. Our army's counterattack has made progress. The Slovak army annihilated the surrounded enemy. The German army east of Alagir continued its offensive, penetrating deep into the enemy's minefields and strong defenses. The enemy army suffered heavy losses from our planes bombing. An enemy armored train was destroyed. The German army in the Kalmuk Mountains once counterattacked, repelling the invading cavalry, causing many casualties. Fierce street fighting in Stalingrad is still going on. Our rapid-descent bombers attacked the enemy's strongholds north of the city. The enemy lost ground again. Repeated counterattacks were ineffective. Our fighter squadrons bombed the railway east of the Volga River and the enemy's equipment for crossing the river. The Soviet army attempted to cross the Don River from several locations, but was severely beaten by the Romanian and Hungarian armies. Italian aircraft bombed Soviet positions at low altitude. The Hungarian army destroyed Soviet bunkers on the east bank of the Don River many times, capturing many enemies. The enemy army southeast of Lake Ilmen is still resisting stubbornly in the swampy lowlands. Last month, German aircraft sank a total of 33 Soviet transport ships and cargo ships, including many oil tankers and one patrol ship. In addition, 32 cargo ships and many warships were damaged.</p>
+<h3>US Governor and Congressman Elections Yesterday; No Unexpected Results Expected; The Democratic Party is Expected to Still Hold a Majority</h3>
+<p>Washington, 2nd, Havas News Agency: According to the provisions of the US Constitution, all members of the House of Representatives and one-third of the senators are re-elected every two years. This year is the year of re-election, and the vote has been scheduled for the first Tuesday of this month. Governors whose terms have expired must also be re-elected at the same time. Therefore, the people of the country will be busy voting on that day. According to political observers here, this vote will not have surprising results. It is expected that the Republican Party will win some seats in both the Senate and the House of Representatives, but the Democratic Party will still hold a majority. The most noteworthy event in this election is the re-election of the Governor of New York. The State Attorney, Dewey, is the Republican candidate, while Bennett is the Democratic candidate. President Roosevelt initially supported Senator Mette as a candidate, but was opposed by the Democratic branches of Albany and New York. He decided to support Bennett. Senator Mette usually spares no effort to support the New Deal, while Bennett is a conservative member of the Democratic Party. A recent public opinion survey showed that 53% of the people supported the Republican candidate Dewey, 39% supported the Democratic candidate Bennett, and the remaining 8% supported the American Labor Party candidate Arfang. If Dewey is elected tomorrow, the Republican Party will have great hope in the 1944 presidential election. Government officials and Democrats also believe that Dewey's views on the post-war reconstruction plan are completely different from President Roosevelt's views. Therefore, they believe that Dewey's election is very dangerous. The Democratic Party has expressed its opinion that if Dewey is elected President of the United States after the current war ends, "the mistake of 1919 will be repeated." Therefore, if the Republican Party can win the next presidential election, its candidate should be Wiggy, at least in terms of foreign policy, his views are completely consistent with President Roosevelt.</p>
+<h3>Australia will limit consumption of civilian goods</h3>
+<p>Saigon, 3rd, Havas News Agency: A telegram from the Pear states that the Australian Commissioner of Price Control, Goplan, yesterday announced that Australia will further limit the consumption of civilian goods and concentrate production. All investments are only allowed to meet the needs of the war. Private factories must accept the government's cooperation conditions.</p>
+<p>Lisbon, 3rd, Havas News Agency: According to Washington news, the United States elected 32 governors, 35 senators, and 434 representatives today. The American people are indifferent and uninterested. The general public believes that the Republican Party will gain a little. Dewey, the Republican candidate for governor of New York, may be elected. Republican leader Bretton is running for governor of the state of Okhai, and they are all opposed to Roosevelt's policies and hope to be nominated as presidential candidates in 1944.</p>
+<p>Saigon, 3rd, Havas News Agency: According to news from Sydney, the working hours of Australian officials will be increased from five and a half days per week to six days, in order to transfer strong men to participate in national defense work. If they do not work on Saturday afternoon, they will extend their working hours at ordinary times. About 15,000 officials will be affected by this decree.</p>
+<h3>The United States Unifies Intelligence Propaganda and will Establish a Supreme Authority</h3>
+<p>Lisbon, 3rd, Havas News Agency: According to the latest issue of the American "Newsweek", the United States will announce the establishment of a supreme authority for propaganda and intelligence soon. The authority will take over the intelligence organizations of various departments of the United States, such as the American Affairs Processing Bureau presided over by Davis. One of the main tasks of the new authority is to unify the American broadcasting system. Fourteen private radio stations will be taken over by the government during the war, and 22 new short-wave wireless stations will be established. These radio stations will be divided into two groups, one for psychological warfare and the other for broadcasting news programs to inspire the spirit of overseas American troops and Allied troops.</p>
+<h3>Africa in the Midst of Change: Egypt - The Second Gateway of the Center of the War (3)</h3>
+<p>The British knew that the defense plan was not just about guarding a local area, and that it would be safer to push out a few more outer layers than to guard a local area. Wasn't it advancing step by step in Libya this spring? Later, the Eighth Army could not hold it, and finally crushed Alexandria in June. The outer layers that had been painstakingly built were broken one by one. At this time, of course, we had to find a way to reorganize the troops.</p>
+<p>According to our overall view, since the German army's left claw is preparing to spend the winter, the current article must be to pour all its strength on the right claw. On the British side, they must protect Egypt and enrich the strength of the Mediterranean Sea. If they succeed, they still want to establish a second battlefield, either Greece or Italy. It is possible. From this point of view, both sides have a mission of great importance, which is undoubtedly true. Now we need to ask how far the preparations of both sides have reached.</p>
+<p>The outsider originally had no way to speculate on this kind of military deployment, but from the news on the newspapers, we can collect a little bit of information to get a rough idea. Let's first take a look at the two sentences spoken by General Smuts in London: "The past four years of war have taken a defensive stance and have come to an end; now the final offensive has begun..." and said, "The struggle to the death has arrived, we should not give way...".</p>
+<p>This tone is very serious, "the final offensive" and "the struggle to the death" are not just for the current local war in Egypt; it is the beginning of a huge decisive battle. From this point of view, the preparations must be quite sufficient. What we know in front of us is that there are only ten British divisions in Egypt, but about 200,000 troops, which is too far from the 12 million troops on the 1,500-mile front of Germany and the Soviet Union last year.</p>
+<p>When the German summer offensive was launched, we seemed to have heard that the British, American, and Soviet Union had prepared a gunpowder bag on the Near East plateau, like the Universe Bag of the Yellow-Eyebrowed Arhat. The troops needed for this kind of bag formation will never be only a few hundred thousand. From this point of view, perhaps the so-called ten British divisions only refer to the front line.</p>
+<p>Let's take a look at the current situation of the German and Italian brothers; according to the statistics on the news, at present, General Rommel commands two tank divisions, two infantry divisions, and seven Italian divisions; all in all, there are about 200,000 troops, but Rommel met with Mr. Shi, and the article was nothing more than adding troops and generals. So the soldiers on the battlefield are only the front line.</p>
+<p>From the perspective of the offensive and defensive situation, the German and Italian side is currently based on Libya, the front line is near Alamin, and the goals are Alexandria, Cairo, and Suez: and supplies and reinforcements, etc., must fly across the Mediterranean from the German and Italian mainland, which is inevitable Some are laborious, such as ambushes in the middle, and the British navy often attacks along the coastline, which will have some discounts.</p>
+<p>As for the British and American Allied forces, in addition to being able to obtain most of the supplies from Egypt. In terms of ammunition, there are probably not a few prepared in the Near East. At the same time, the navy can be used along the coast to make some landing tricks. In terms of large plans, if West Africa and South Africa are arranged successfully, the American supply can be directly transported from Dakar or Liberia to Egypt, Sudan, and then to the Egyptian front line. Therefore, from the perspective of both sides, this North African war will become a very lively drama. Perhaps the world war will be settled in the North African region, which is unknown.</p>
+<p>The above is a lot of nonsense, but I still haven't explained the three keys to the Egyptian gateway mentioned in the previous article. I'm very sorry.</p>
+<p>These three keys are the Egyptian-Sudan Highway for transportation, the Suez for the Eurasian transportation hub, and Alexandria for the military stronghold. I have pointed them out in the previous article. I am going to take a look at each of them to see what these keys are.</p>
+<p>The first key involves a wide range. If you want to analyze it in detail, you must start from the Three Emperors and Five Emperors, such as the history, customs, human relations, changes, mountains and rivers of Egypt and Sudan, how Egypt and Egyptian Sudan are divided, etc. In this way, there will be a lot of nonsense again, and readers only need to flip through the African geography, which is much clearer.</p>
+<p>I just want to briefly describe the formation of the Sudan Highway here, but I also consider the repeated narration of Libya in the next article, so I can only briefly say a few words.</p>
+<p>The situation in Egyptian Sudan has been extremely complicated and subtle since it was operated by the British. Since the British allowed Egypt to be independent and maintained a never-ending marriage, why are they unwilling to create the same situation in Sudan? First, the British are naturally stingy and will not easily give up the rights and interests in their hands. Second, in the south of Sudan, the entire southeastern half of Africa, except for Portuguese Mozambique and the French Madagascar on the sea, are all British territories, so it is a very heavy matter to separate a part of Egypt to be independent. How can we let Sudan get out of hand?</p>
+<p>Moreover, in the summer of 1936, the Turks regained the armament of the Dardanelles Strait at the Montreux Conference, thanks to the British's behind-the-scenes efforts. Unexpectedly, this move caused Italy to send troops to Rhodes, and at the same time, Italy stationed a large army in Libya in order to prevent future troubles. The British saw Italy's various actions and also carried out large-scale military preparations in Egypt as a countermeasure. However, this disturbed the Egyptian people so much that the British gentlemen, in order to eliminate this emotional impulse of the Egyptians, resolutely established an agreement in 1936 based on the conditions of 1922 and 1930, allowing Egypt to be formally independent and allowing Egyptians to immigrate to Egyptian Sudan without restrictions.</p>
+<h3>The Great Nile Iron Bridge</h3>
+<p>Cairo, the capital of Egypt, is the largest Islamic city on the Nile River. More than one million Africans, Orientals, and Europeans live here. There are many tourists in winter. The picture shows a bird's-eye view of the great iron bridge over the Nile River in Cairo. The wind is blowing, and people come and go like shuttles.</p>
+<h2>Page 4</h2>
+<h3>It is Urgent to Improve the Retail of Oil and Sugar, Relieve the Suffering of Citizens; The Authorities Dispatched Personnel to Monitor the Sale of Sugar and the Separate Sale of Edible Oil, and the Market Can Restore to Normal</h3>
+<p>In the past week, the supply of edible oil in the city has been insufficient. Although some were obtained from the military distribution office on the 30th of last month, they were sold out soon due to the small quantity. Therefore, most of the separate sales offices have been out of stock. According to reliable sources, the recent lack of oil rations is not due to too little oil in stock, but due to the reorganization of the Asia Development Board and the temporary suspension of the office. It is expected that the situation will soon be restored to what it was a week ago.</p>
+<p>Crack down on the black market</p>
+<p>The police authorities in the two concessions are now considering ways to crack down on the edible oil black market. At the same time, they hope that citizens will assist in reporting. Once it is verified, the distribution will be stopped and other penalties will be imposed. Regarding the possibility of distributing oil according to the population, the Edible Oil Industry Office is scheduled to hold a council meeting on the 6th of this month to thoroughly discuss it. Recently, citizens from all walks of life have been extremely dissatisfied with the oil market situation, and there has been more criticism of the internal structure of the Oil Industry Office. The edible oil black market is actually caused by the big oil merchants in the industry. The difficulty for citizens to buy edible oil is increasing day by day. It is hoped that the edible oil distribution authorities will take necessary steps as soon as possible to relieve public suffering.</p>
+<p>Supervise sugar sales</p>
+<p>In order to thoroughly eliminate the sugar black market and strictly supervise the widespread sale of sugar by Class A retailers to eliminate malpractices and maintain proper food for the people, the Sugar Merchant Cooperative Business Office has appointed 116 supervisors, inspectors, and investigators. Each of the 96 retailers who distribute more than 30 bags of sugar will be assigned a supervisor to be stationed in the store to supervise the sales. The more than 300 retailers who distribute less than 30 bags of sugar will be randomly checked by inspectors and investigators to check the sales accounts from time to time. Ordinary food households must hold a citizen's certificate or residence identity certificate to purchase sugar. In addition, all Class A retail stores are strictly ordered not to secretly raise prices, reduce the amount, or engage in mixed situations. Purchasers are allowed to report them for investigation. The English "The Times" queued up to buy. The English "The Times" reported that the Shanghai Sugar Merchant Cooperative Business Office has publicly announced in the Chinese newspapers that from November 1st, citizens can purchase 5 yuan of sugar from the retail stores in their respective districts with their citizen's certificates. However, on Sunday and yesterday (2nd), residents were still seen queuing up to buy in sugar stores all over the city, and only those who were quick were able to buy only half a pound of sugar. It is heard that there are still black market transactions in sugar. Some sugar dealers actually sell 10 pounds, 20 pounds, or even 50 pounds of sugar at a secret price of 7 yuan per pound at a time. Ordinary residents have to wait for several hours in front of the sugar stores, and when it is not their turn, they often see the notice board "Sugar Sold Out" hung up high.</p>
+<p>Supply is less than demand</p>
+<p>Therefore, the public is still asking the authorities to intervene. Many people believe that only municipal organs can intervene and distribute sugar according to the population can control the sugar situation. According to the announcement of the Sugar Merchant Cooperative Business Office, residents of each district can purchase 5 yuan of sugar with their citizen's certificates, and it is reiterated that there is enough sugar in stock for long-term needs. However, according to the reporter's investigation, this situation does not exist. The number of Chinese and foreign residents queuing up in front of the sugar stores is increasing day by day. Most retail stores only sell sugar for 10 to 15 minutes every morning. Several retail stores on Jing'an Temple Road open at 8:00 am and start selling sugar, and sell out their allocation in ten minutes.</p>
+<p>Half a pound per person</p>
+<p>A manager of a store said that the store's daily allocation is 24 pounds, which is sold in 48 packages of half a pound each, instead of following the method of purchasing 5 yuan (one and a half pounds) of sugar per person set by the Sugar Merchant Cooperative Business Office. Other retail stores also sell half a pound to each customer. Chinese and foreign customers in front of each store are divided into two rows. Some families, old and young, are also mixed in the long line, waiting to buy sugar to meet their daily needs. A certain southern goods store in the Central District still forces customers to buy the same amount of other goods, which violates the regulations set by the Sugar Merchant Cooperative Business Office.</p>
+<h3>Public buses operate from Jiangwan Road to Edward Road</h3>
+<p>The United News Agency's local news reported that, according to the Shanghai Daily News, the Huazhong Public Bus Company has opened a new route south of Suzhou Creek, starting from the Shanghai Shrine and passing through Jiangwan Road, Wusong Road, Haining Road, North Sichuan Road, Sichuan Road to Edward Road. The first public bus was seen passing Sichuan Road Bridge on Tuesday morning at 7:00 am. This new public bus is called Route 25, with a total length of 2 kilometers and a fare of 2 military notes. A bus runs every 5 to 10 minutes. There are buses going back and forth every day from 7:00 am to 10:00 pm.</p>
+<h3>Blackout Exercise to Continue Soon</h3>
+<p>The English "The Times" reported that an officer from the Air Defense Section of the Public Concession Police Department claimed that the blackout exercise in Shanghai will be resumed in mid-month. The rumors that it will be held on the 4th or 6th are not true. The next blackout exercise will be held suddenly, so the authorities may only publish an announcement in the newspapers announcing that the blackout will be implemented between a certain day and a certain day. Residents should be prepared at any time to avoid being caught off guard.</p>
+<h3>Rice shops sell ration rice with adulteration</h3>
+<p>In addition to the whole rice allocated for each period of population rationing, it is often mixed with broken rice. However, recently, some rice shops have mixed yellow sand, gravel, or coarse millet in the broken rice they sell in an attempt to make a profit. This kind of adulterated substance is extremely broken and mixed because the broken rice is extremely broken and mixed. It cannot be discovered until it is washed. Because substances such as coarse sand can only be removed after being washed away by water and sinking. Also, those who mix broken rice in whole rice, this kind of profiteering behavior not only violates the original intention of the authorities to regulate food for the people, but also affects the nutrition and health of residents. I hope that the rice shops will realize this as soon as possible, otherwise the authorities will take measures to crack down on them.</p>
+<h3>Jiang Bingquan appointed as Director of the Nanshi Collection Office</h3>
+<p>Chen Menglai, director of the Nanshi Collection Office of the Bureau of Finance, was recently ordered to be transferred to the Chongming District Financial Specialist. The vacancy has been filled by Yuan Houzhi, director of the bureau, who has appointed Jiang Bingquan as the director. It is said that he will take office on November 6th. Jiang is good at finance and has served in financial positions in Jiangsu Province.</p>
+<h3>Winter Clothing Drive</h3>
+<p>The Shanghai YWCA, in view of the approaching cold weather, believes that the general poor compatriots are still struggling to find food, and how can they have the surplus to seek winter clothing. The association is preparing for the future and continues the purpose of distributing winter clothing in previous years. It has launched a winter clothing drive, hoping to sew 500 sets of new cotton clothes (1,000 pieces), each set costing 60 yuan (if there is a surplus, the number will be increased), totaling 30,000 Central Reserve Certificates, and collect 5,000 to 10,000 pieces of old cotton clothes. The committee members are now planning the sewing and distribution. All kind-hearted ladies in the society who are willing to donate money, cloth, cotton, old clothes, shoes, socks, hats, gloves, etc. and cooperate to make this a great event are welcome. The association's address is 638 Weihaiwei Road.</p>
+<h3>Zhenjiang Fellow Association Handles Small-Scale Loans</h3>
+<p>The Zhenjiang Fellow Association in Shanghai has organized a Small-Scale Loan Committee to help poor fellow villagers who are unable to make a living. The first batch of principal is 10,000 yuan. The loans are divided into four types: Type A 200 yuan, Type B 150 yuan, Type C 100 yuan, and Type D 50 yuan. Applications will start on the 10th of this month. Poor fellow villagers from Zhenjiang who lack capital to make a living can write to the association at No. 3 Zhifu Road, 2nd Floor, to request.</p>
+<h3>Rongwu Society 70th Sutra Lecture</h3>
+<p>The 70th sutra lecture of the Rongwu Sutra Society, Hong Qingdao, said in his lecture on the Taoist method: "The principle of Tao is one yin and one yang. The evolution of the great Tao begins with Lao Tzu. Once the void is judged, the pure and turbid are separated. After the creation of Hongmeng, the Five Old Emperors govern the world. Then there are the Five Sons, the Shangyuan Ziwei, the Great Emperor, called the Tianguan, who is Tang Yao. The Zhongyuan Qingxu Great Emperor is called the Diguan, who is Yu Shun. The Xiayuan Dongyin Great Emperor is called the Shuiguan, who is Xia Yu. The Three Origins circulate to govern Shenzhou. The East belongs to the Zhunti, and the West belongs to the reception. They are all disciples of the Yuanshi Daozu, who reported the teachings of the Xiantian Wuji Daozu. After Xuanyuan, the Jintian Clan ruled the central master of the thirty-three heavens, who is the Jinque Jade Emperor, surrounded by the three and two heavens in the four directions. Each heaven has an Emperor to govern the people of his teachings, which are not connected to each other. The Qingxu Great Emperor is located in the center, enlightening the poor and evolving the great law, which will be used to specially build the Xiantian, Qingji Orthodox sect, to turn the fortunes of plunder and save those who are destined." After the lecture, it was announced that the next lecture will be given by Mr. Yang Zhongyi on the study of the Book of Changes, and Mr. Zhao Buming will talk about the origin of Confucianism, Buddhism, and Christianity.</p>
+<h3>Xu Xingbin's Birthday Celebration for Education</h3>
+<p>Xu Xingbin, a famous reporter from Zhejiang and former provincial assemblyman, will celebrate his 70th birthday on the tenth day of the tenth lunar month this year. His disciples Zhang and Xu and others plan to celebrate his birthday. Xu firmly refused. Friends in Shanghai, such as Cheng Xuechuan, Sun Jincai, and two historians, and fellow villagers, such as Xu Shenru and Shen Mianfu, used Xu's words "Who is busy for a year in Shu Huai at seventy, most of the sacrifices are in the locality" and "Arrange a good scene to plant peach and plum trees, and beg for new shade to protect the Zisang" to propose to build a school in Xu's village Zhouwang Temple as a birthday gift for Xu, saving all the pomp of the birthday celebration, and using the birthday celebration as an education fund to fulfill Xu's intention of "Celebrating the birthday and waiting for the return to the hometown". The collection offices in Shanghai are Yuanchangzhuang, Fuxingli, Beijing Road, Hangzhou is Wuyuanzhuang, Zhongqing Avenue, and Xiajiashi is Yongxingzhuang, Zhongning Lane.</p>
+<h3>Young Female Painter Li Qingping's Art Exhibition</h3>
+<p>Ms. Li Qingping, a female painter, is an outstanding talent among Chinese Western-style painters. She graduated from the Shanghai Xinhua Art Academy and taught in middle schools in this city and Anhui Province before the war. Later, she was invited to teach at Nanyang Kuncheng Girls' High School and went to Nanyang to teach. Ms. Li has profound attainments in Western painting, and her landscape paintings are particularly valuable. She has held exhibitions in Kuala Lumpur, Hankou, and other places, which have been highly praised by all sectors. The art master Xu Beihong praised her as the most promising young painter in China. This time, she came to Shanghai at the invitation of friends and held an exhibition on the fourth floor of the Great New Company department store for a week starting yesterday. All sectors are welcome to visit.</p>
+<h3>Accountant Wang Jiadong Opens His Business</h3>
+<p>Mr. Wang Jiadong has served as an assistant accountant and held important positions in banks. Subsequently, he served as a senior technician of the Grain Management Committee and director of the Shanghai Office. Recently, he resigned from his position and came to Shanghai to practice as an accountant. He opened his business on the 3rd. Those who went to congratulate him yesterday included Pan Yangyao, Pan Tongyun, Li Wenjie, Sun Ruihuang, Li Quanshi, Zhang Yifan, Ren Xiaoshan, Zhu Zhifang, Yao Zhongba, Lin Hanfu, Guo Yudong, Shen Leichun, and more than one hundred others, which was quite a grand occasion.</p>
+<h3>Lost Rice Tickets Awaiting Collection</h3>
+<p>Three 16th-period rice tickets and one yuan in cash were found at the General Office of the Public Works Department. If you can point out the registered number of the rice shop on the ticket, please contact Mr. Zhang Jusheng at Office No. 154 of the Public Works Department at 209 Jiangxi Road to collect them.</p>
+<h2>Page 5</h2>
+<h3>A Tour of Six Major Libraries with Rich Collections (3)</h3>
+<p>Complete Collections of Chinese and Foreign Books</p>
+<p>Hoping the Public Cultivates a Love of Reading</p>
+<p>Instructions for Checking the Catalog</p>
+<p>To find the books you need, you can consult the catalog. Some catalogs are in book form, and some are in card form. The card catalog of New Asia has been locked away with the reading room and can only be consulted through the book catalog. Therefore, it has been revised several times, and new books have been added. Although Hongying has catalogs of books and magazines, and Mingfu has catalogs of Western books, they have not been maintained for many years because of the assistance of cards, and many book titles are not included. Therefore, it is advisable to consult the card catalog. The cards are divided into three types: classification cards, title cards, and author cards. When consulting, you only need to check one of the categories, titles, or authors to find it. However, the card catalogs of several major libraries are often not very complete. The Chinese book card catalog of the Public Works Department and the magazine type card catalog of Hongying often have omissions, and Zhen Dan has no author card. The same is true for the series collection of Hongying. Moreover, in the series collection, if two books are bound together, the subsequent cards are often missing, so you must check the original catalog. These are all things that newcomers should pay attention to. The method of checking cards is the same as checking a dictionary, mostly classified by stroke count, which is very easy. However, words such as "增廣" (enlarged) and "最新" (latest) should be omitted from Chinese book titles, and "The" should be omitted from English book titles.</p>
+<p>Whether flipping through the catalog or entering the book depository, it is not so easy to find. Here, you must know some of the ways of the library. Books are arranged according to book codes, which are composed of classification codes, title codes, and author codes. The book codes currently commonly used are based on the Dewey Decimal Classification, which uses the ten digits 0 to 9 to represent ten categories: philosophy, religion, society, language, natural science, applied science (including agriculture, medicine, and domestic affairs), art, and literature, with history at the end. The arrangement of these nine categories of knowledge roughly follows a natural order, so it is easy to remember with a little attention. Everything outside of these nine categories is classified as 0 and placed before 1, called general works. The study of books and series is included in this general category. As for the further division of these ten categories into subcategories, all the way down to decimals, it has become a large book, and its complexity can be imagined. However, we only need to know the general outline to facilitate a lot.</p>
+<p>The author code for Chinese books commonly uses the Wang Yunwu Four-Corner Numeral System, which is arranged according to the first character of the author's name. For the second code of English books, the first letter is the capital letter of the author's first name, and the following Arabic numerals are the numerical code based on the letters of the name. The last letter is the first letter of the book title. Therefore, to find a book written by someone, just find the part of that category with the first letter of the person's name.</p>
+<p>To find the articles you need in periodicals, you must have an index. Since the Hongying Library is known for its collection of periodicals, its journal index is very useful. However, the humanities magazine index (the library was formerly named "Humanities" and published the Humanities Magazine) used before was published in installments, piecemeal, which was not easy to check. It is best to check the library's cards. All the articles on the cards are from magazines collected by the library. In addition, other major libraries in other cities have compiled indexes, such as the Lingnan Chinese Magazine Index, the Beiping National Studies Paper Index, and specialized indexes such as agricultural science papers, geographical science papers, Kunming papers, literary papers, psychological papers, and even Qing Dynasty documents. Other magazines such as Science Education have specialized indexes, and some also attach a summary (abstract) of the articles in the index. Daxia used to have summaries of historical papers, but others seem to be unseen.</p>
+<p>Borrowing Procedures</p>
+<p>After checking the book title in the catalog, you can write it on the borrowing slip. The number must be copied exactly, otherwise, you will often not be able to borrow it. People who borrow books for the first time often do not pay attention to these things, so they feel a lot of trouble. In fact, after understanding the meaning of the number, it is not easy to make mistakes when writing it.</p>
+<p>Each time you can borrow about two or three books. Each library is slightly different. Some places have restrictions, and some places do not.</p>
+<p>Among the six libraries, the books of Hongying, Customs, and Mingfu cannot be borrowed outside the library and can only be read in the library. However, the Mingfu Library is intended for members of the China Science Society. For individuals or organizations that donate more than 500 yuan, a full-year borrowing card is given, but ordinary people cannot borrow it. Borrowing books from Zhen Dan requires a temporary deposit. Chinese books are ten yuan, and Western books are twenty yuan, and it is limited to single copies, not including series. Most of the books in New Asia are very expensive. If the price is high, it depends on how much the price exceeds the deposit. Because of the early or late addition, the deposit for the library card of the library ranges from two yuan to five yuan, and then changed to five yuan in new currency. There are many levels in between, so the amount of the temporary deposit is also different. All the books of the Public Works Department can be borrowed except for reference books and series. Because the school or shop has already provided a guarantee when entering the library, there is no other deposit. (To be continued) (Note: This manuscript was written by Mr. Li Mangren. The first article was mistakenly signed "劍" (sword), which is specially corrected.)</p>
+<p>Yesterday, this newspaper's news release time was 6:15 p.m.</p>
+<p>Sports News</p>
+<h3>Another Grand Football Match is Being Promoted This Weekend or May Be Realized The Baojia Self-Defense Match Urges the Baojia Side to Pay the Ticket Money</h3>
+<p>The Baojia and Self-Defense Cup, two major football tournaments organized by the Baojia Guidance Committee of the Public Concession of this city, have been successfully concluded. The accounts of the expenses related to the football matches are being settled. According to the person in charge of the committee yesterday, the holding of the Baojia and Self-Defense Cup was enthusiastically sponsored and actively supported by all sectors, which is very grateful. The ticket revenue was excellent and broke the record of charity matches held for public welfare or charitable causes. However, the promotion of tickets this time, in addition to pre-sales and door sales, honorary tickets and special tickets, which were automatically recognized or enthusiastically promoted by various committees, as of now, ordinary tickets are only for door sales and pre-sales, so the numbers can be concluded. The other two items still have a small part of the ticket money that has not been paid, and the total amount of tickets and football auctions is estimated to be around 250,000 yuan. In order to speed up the ending, the committee once again urges all parties to remit the ticket money to the committee at 200 Fuzhou Road within three days as soon as possible, or call 10145 to notify, and personnel can be sent to collect it. It is also learned that the permanent director of the Baojia Guidance Department, Cheng Zhiliang, Xu Xiangsheng, and Wang Ruilong, have been promoting another grand match, and the target of the team and the venue are being negotiated. If it goes smoothly, it can be realized at the end of this week.</p>
+<h3>Morning Friends Basketball Tournament</h3>
+<p>The second Morning Friends Basketball Tournament organized by Zhongqing was held at the club's stadium in Baxianqiao last night. In the final match between the White team and the Blue team, the White team won every quarter. As a result, the Blue team lost. The results of yesterday's match are as follows:</p>
+<p>Morning Basketball wins Morning Red 45-16</p>
+<p>Morning White wins Morning Black 43-11</p>
+<p>White Team wins Blue Team 44-22</p>
+<p>Tonight's Schedule</p>
+<p>Qiangxiong vs. Morning Yellow (B Middle) 7:30 p.m.</p>
+<p>Lao Ye vs. Morning Green (B Youth) 8:15 p.m.</p>
+<p>Yao Guang vs. Ice Team (A Group) 9:00 p.m.</p>
+<h3>The Paramount Basketball Team Resumes Its Heroic Posture</h3>
+<p>The Paramount Basketball Team, because Xu Wenkui has returned from Hong Kong, and Feng Nianhua is a wife again. The five generals (Xu, Feng, Zhang Shaoqing, Chen Xianglong, and Lu Zhongen) have reunited again. With the original team, it can restore the heroic posture of its heyday in the past. Therefore, it has rectified its troops and is preparing to accept challenges from all sectors. The basketball grand occasion in 1942 will rival football.</p>
+<h3>Shanghai Fitness Academy Students Participate Enthusiastically</h3>
+<p>The Shanghai Fitness Academy at 1491 Jing'an Temple Road was founded by the physical educator Zhao Zhuguang and has been in operation for many years. It is a well-known fitness place in Shanghai with complete equipment, novel teaching methods, and extremely developed academy affairs. There are currently more than 300 students. Mr. Zhao is currently the instructor, and the number of strong and healthy young people cultivated by the academy over the years is more than a thousand. Mr. Zhao has also authored and translated books such as Muscle Development Method, Physical Exercise Method, and the Latest Dumbbell Exercise Method, which are rich in content and fluent in writing and are worth reading for all those who love sports.</p>
+<h3>Modern Sports Issue 2 Published</h3>
+<p>The Modern Sports Monthly edited by Mr. Zeng Weiqi and published by the Modern Sports Center has rich and practical content, a progressive attitude, and correct arguments, and is very popular among the health-conscious public. Its first volume and second issue was published yesterday, with both pictures and texts, and everything is more advanced than the first issue. All newspaper stands, bookstores, and sports equipment companies have it for sale, and each copy costs 2.5 yuan.</p>
+<h3>Holding Crabs and Appreciating Chrysanthemums</h3>
+<p>Crabs are an unfortunate species of shellfish. They have a false appearance, claiming to be "armored generals," but they are "gutless wonders." Wearing a suit of armor, they intended to roam the rivers and seas. Humans are clever after all, catering to their preferences, building crab houses, and luring them with lights. So, in groups, they throw themselves into the trap. These days, chrysanthemums are yellow beside the fence, and crabs are also on the market. I can't help but make a random chatter, just to suit the season.</p>
+<p>The producing areas of crabs can be roughly divided into ocean, Yangtze River, and inland river. Seawater is salty, and the crabs produced are strange-looking, some as big as stone drums, or with a pair of giant claws, shaped like magic hands. The meat is old and the taste is inferior, and those who are not exceptionally stomach-endowed would not bother to ask about them. The Yangtze River has lively and clear water, producing a large number of crabs, which are also delicious. However, what Shanghainese value is in the inland river, which actually refers to the Taihu Lake basin, which is what is called "Dazha crabs". And those produced in Yangcheng Lake are even more rare, and their reputation can be compared with the Yellow River carp in Fenlingdu, Henan; the four-gilled perch under the Xiuyabridge in Songjiang; and the red-scaled shad near the Diaoyutai in Fuchun River. It is said that the spirit of heaven and earth is concentrated there, with unique characteristics: green shell, white belly, golden claws, yellow hair, full of fat and fleshy, unparalleled in freshness. There is even a story of deifying them, with a deep "王" (king) character on their backs, crawling on glass, with eight feet propping up, and the navel hanging in the air, which is indeed different from ordinary products. Therefore, crab vendors all use "Yangcheng Lake" as a slogan, and Shanghainese eat crabs, and they must be "Yangcheng Lake"! However, according to the investigation, Yangcheng Lake does not produce many crabs. Even in a big year, it is only 800 to 1,000 dans, which are distributed to various places on the Beijing-Shanghai line. How many can Shanghai get? How can enough satisfy the gluttons? Let's not worry about it for now. Anyway, eating the reputation is also a happy thing.</p>
+<p>At the turn of autumn and winter, the big wharves in Nanshi, the 16th Pier, the Hongkou Touba, and the old Zhage Bridge along the bank are particularly tense. Because the Yangtze River boats, Su, Xi, Kun, Tai, Hang, Jia, Song, and Hu boats, must have crabs from various producing areas brought in. The crab vendors have been waiting for a long time. Once the goods arrive, they swarm up to select the goods they need. After the silver and the goods are exchanged, they choose the size, match the male and female, and place them in iron cages, displayed on the street for the public to buy.</p>
+<p>In addition to the small vegetable markets, the lively road intersections, and the entrances of restaurants and taverns, all are concentrated places for crab stalls. Among them, the Risheng Building area is particularly large, from the Ciro's department store north to Beijing Road. The sidewalks and entrances on both sides are all occupied, forming a crab kingdom. Since there are many in the same industry, competition is inevitable. Some use neon tubes for advertising; some use loud voices to solicit customers. In addition to generally referring to the genuine Yangcheng Lake clear water crabs, there are also those who use "Crab King" as the standard. The so-called Crab King, each weighing seven or eight taels, is priced at CRB 20 yuan each. Cantonese restaurants, which are particular about decoration, have always been reluctant to let others. At this time, they are even more serious and choose one or two big crabs, and temporarily ask the tropical fish to move out of the house and keep them in glass tanks to attract diners.</p>
+<p>The method of cooking crabs has greatly improved in recent years. In the past, they were boiled in water. The crabs could not stand the heat in the wok and would inevitably turn and scramble, causing the fat to scatter, and the meat to become old and tasteless. Ten years ago, Gao Chang and his partner invented the tying and cooking method on Fourth Malu. Before putting them in the water, they were tied with colorful ropes to make them unable to move, just like dealing with a cut criminal. This method spread and became very popular, but it is still not perfect. Because when boiled in water, the fresh taste will eventually overflow and seep into the soup. So, more improvements have been made, forming today's most sophisticated steaming and charcoal grilling methods. And charcoal grilling can be called the only major invention in the 20th-century Oriental diet. The cooked crabs are fresh, tender, and full of fat, and the color, aroma, and taste are all excellent.</p>
+<p>The art of eating, progressing from barbarism to civilization, is a natural process. But in extreme civilization, with a slightly barbaric way, the original flavor, is often unique. Beggar's chicken is suddenly appreciated by the literati. When eating roasted mutton in the north, you must hold a glass of white wine in one hand and put one leg on the stool to taste good. The twelve beauties in the Grand View Garden are tired of tasting delicacies, so they secretly get a piece of venison, cook it randomly, and everyone fights for it, happy and excited. It seems that at that time, there was also a black market for pork in Nanjing. The way of eating crabs is undoubtedly more barbaric, and the fun is in the barbarism.</p>
+<p>There is a common saying that "beggars eat dead crabs, every one is good." It can be seen that eating crabs has a style. The most elegant thing is to hold a crab and appreciate chrysanthemums at the same time. Before the war, Xiaoguan Garden in Jiangwan, the Municipal Agricultural Ground in Pudong, and the Guanshengyuan Agricultural Ground in Caohejing were all famous for cultivating chrysanthemums, with a rich variety of good varieties. Every year on this day, a chrysanthemum exhibition must be held for people to admire. If you are familiar with the garden owner, or introduce yourself through acquaintances, you can also bring wine and crabs to enjoy the flowers and hold a banquet on the spot. Guanshengyuan Agricultural Ground even thinks of customers and has a catering department, which specially sends people to purchase Yangcheng Lake crabs and sell them on the spot. This kind of heroic victory has become a thing of the past and is nowhere to be found. The reporter thinks that holding crabs and appreciating chrysanthemums is certainly a good fun, but it is not necessary to force them into one thing. Shanghai has too many people who are fond of elegance, as if appreciating chrysanthemums is not pleasant without holding crabs; and holding crabs is not elegant without appreciating chrysanthemums. The annual chrysanthemum meeting in the brothel is hailed as a grand event, and the branches and trunks of chrysanthemums are forcibly bent and tied into a dipper of pearls and baby's breath, which is vulgar enough, and then piled up into a mountain. Wine and flower stands, a group of vulgar bones, after being drunk and full, casually eat a few crab cavities, and if this is called elegant, it is really dare not flatter! (To be continued)</p>
+<p>Business News</p>
+<h3>Public Bonds are Tired of Thinking About Revival</h3>
+<p>The public bond grey market rebounded slightly yesterday, but the big drop and small rebound did not show stability. However, speculators only did temporary speculative transactions, and short sellers also made up for it, resulting in a rebound of one yuan and several angles in the market. The trend may lead to a situation of suppressing first and then raising. The market was still weak at the opening, and both Ding and Wu types were within 50 yuan. The use of Type B was also smaller than the previous day. After rising, it fell back to below the previous day's price. At the close, the bulls tried their best to pull it up, and it rebounded slightly. In terms of news, it is still a consistent policy to consider anything above 50 yuan as illegal. However, if it falls to the 50 yuan level, there may be a longer period of hovering. That is, when the Public Enterprise Exchange opens in the future, the authorities will not open it especially above 50 yuan. This is the crux of the public bond market price, and the reason for the rise and fall. Originally, it was above par, and this newspaper had already stated it in advance, but the general public was still obsessed and did not pay attention to it. As a result, the market price rose by one yuan to two yuan across the board, and there were very few 96 transactions. The only exception was a rise of 3.1 yuan, which was the most. The total transaction volume was about 3 million yuan. The summary table is listed below:</p>
+<h3>Chinese Stocks Rise and Fall Unevenly</h3>
+<p>Yesterday, the Chinese stock market rose first and then fell back, which was due to the actual goods being sold high. However, several old stocks are still progressing upward. Yongxiang Printing and Minyi Pharmaceutical have the right to recognize the new shares of Sanle Industrial, and investment is still strong. Other stocks eventually rose and fell unevenly. The textile industry was the weakest. Yongan Textile only opened at 1,856 yuan, a small drop of 60 yuan. Meilun Woolen, Shanghai Cotton Weaving, and Dazhonghua Weaving all rebounded by a small amount of 0.5 to 2.5 jiao. In the department store industry, Yongan and Guohuo rose by one yuan each, and Xinxin fell to 139.5 yuan. Underwear fell by 0.5 jiao. In the new pharmaceutical industry, Minyi saw 94.5 yuan and rose by 2 yuan again. Zhongfa and Xinya each fell by about 2 yuan. Star Perfume rose by 7.5 yuan to 255 yuan. In cultural stocks, Commercial Press rose by another 10 yuan, and Zhonghua rose by 0.5 jiao. The world has rebounded by a small amount of 5.5 yuan. Yongxiang was a blockbuster, appearing at a high price of 30 yuan, and then at 28 yuan, a huge rise of 13 yuan. Nanyang Yan Cao rose to 112.5 yuan, and Dazhonghua Matches was 268 yuan, and the trend has stabilized. In the public utility industry, Zhabei Water and Electricity rose by 0.5 jiao, and Huashang Electric was flat. Daxin Electrical Appliances, a large household, saw a high price of 17.5 yuan yesterday, Vita Wealth is still around 25 yuan, and Gongli Bus and Xinhua Lacquer are firm, and the transaction is normal. The market price list for today is recorded below:</p>
+<h3>Jewelry Gold Unchanged</h3>
+<p>Yesterday, the gold shops in this city and the Da Xin industry issued a price of 2,550 yuan per tael of jewelry gold (about 300 yuan less for purchases), which has not changed. The inter-industry price has little change. It was initially 2,310 yuan, and then it rose slightly to 1,2315 yuan, and then fell back. At noon, it was 2,310 yuan, the same as the previous day. The transaction was sparse, and the final price was 2,320 yuan, which was quite high. As for jewelry and patterned silver, it was still 14 yuan per tael, which has not changed. The inter-industry price was 12.35 yuan for supply and demand. Yesterday, the Qianye Gonghui's discount rate changed little and remained at 1.4 jiao.</p>
+<p>Yesterday's foreign exchange market, the Japanese military ticket trended flat, and the inter-industry price was 5 yuan, 5 jiao, 5 fen and 57 li. The silver shop and the small money shop sold it at 5 yuan, 5 jiao, 6 fen and 6.5 fen, and bought it at about 5 fen.</p>
+<h3>Cloth Still Tight</h3>
+<p>Factory Cloth The market rose again yesterday, and the goods continued to be tight. 16-pound Earth coarse cloth was 225 yuan, the same pound of Feihong was 31 yuan, 9-pound Xinzi was 125 yuan, 8-pound Zhenzhong was 122 yuan, 12-pound Earth fine cloth was 184 yuan at noon, and the afternoon market needed 186 yuan. Dapeng Fugui Xin Dan shouted at 183 yuan to 4 yuan, and the bank order was 177 yuan, and someone wanted it. Taohua Nvshi Lin received the price at 270.5 yuan in the afternoon, and 274.75 yuan was traded, and Chuji Shilin was 265 yuan, and An An Lan was 210 yuan in dark color, all with demand and no supply.</p>
+<p>Dong Cloth The price rose after the initial flat, and the prices rose. 12-pound Longtou fine cloth Xinxin Dan was 193 yuan to 4.5 yuan, the bank order was 185.25 yuan, and Caiqiu was 185.5 yuan, all short of supply. Sijunzi Serge Hong Dan was 7 yuan, 3 jiao, 78 points, and rose to 7 yuan, 4 jiao, 56 points. After the noon closing, the fine yarn was reported to rise to 7 yuan, 5 jiao, 34 points, and there was still demand.</p>
+<h3>Bean Cake Sales are Strong</h3>
+<p>In the miscellaneous grain market, the arrival of goods was still sparse yesterday, and only bean cakes were traded. The market situation was trending strong. It is estimated that 500 pieces of Kai Changji bean cakes were priced at 73 yuan, and 1,000 pieces were delivered in two weeks at 73.5 yuan. One cart of Yuanlong bean cakes was priced at 74 yuan, and three carts of Fei Zi bean cakes were priced at 75 yuan to 76 yuan.</p>
+<h3>Commercial Briefs</h3>
+<p>Soft Cakes are Tight The previous batch of arrivals has been almost sold out. According to the customer's telegram, several dozen pieces of the next batch are being shipped and are on the way to Shanghai. The cost must be at least 100 yards more than before. If the cake blank is soft and glutinous and bright in color, it will definitely continue to rise. Jinshan branches are slightly loose and cheap, and the market has returned to flat due to the slightly sluggish sales. Yesterday, I heard that the number was more than 200 pieces, slightly lower than before, and the goods fluctuated slightly, with a difference of 20 yards high and low, which was immediately opened. However, the production price is still hard, and the source is not easy. There is no hope of excessive loosening in the future.</p>
+<p>Medium-Grained Ganbei is Flat The market sells for 5,100 to 200 yuan. Triangular Ganbei is in short supply. I heard that the consortium has already transported a batch, but it has not yet been opened.</p>
+<p>Daily Necessities Have Less Supply Than Demand In the daily necessities market, such as the dwindling inventory of soap, the owners are trying harder to thicken the bottom, creating a situation where there is less supply than demand, causing the price to rise higher and higher. Gu Ben soap has risen to 375 yuan, Bai Xiangmao is 320 yuan, Huang Xiangmao is 280 yuan, and Scissors soap is 330 yuan, which is 5 to 10 yuan higher than before. Matches are temporarily stable, with Meili at 2,550 yuan, Phoenix at 2,350 yuan, Jindin at 2,250 yuan, and miscellaneous brands at 1,850 yuan, with no honor or disgrace. The candle market is still popular, with White Reeve's Ship Brand reaching 180 yuan, Hump Cap Brand at 155 yuan, and miscellaneous brands at 130 yuan. The pharmaceutical market has a strong underlying trend, which is generally caused by hoarders. There are also rumors of gossip Dan's chemical reproduction and various profitable purchases, so those who hold the goods are even more profitable, and the price is rising daily. Bagua Dan is priced at 26 yuan, Mentholatum is 30 yuan, and headache powder is 25.5 jiao, all priced per dozen. Crane Vegetable is 58 yuan, Longhu Rendan is 24 yuan, and Invincible Tooth Powder is 9.5 jiao, and the selling prices are all trending upward.</p>
+<h2>Page 6</h2>
+<p>Economic Special Issue</p>
+<h3>On Li Yuzhi's Future</h3>
+<p>— Su Shaoqing</p>
+<p>Li Yuzhi is one of the four famous female Dan performers from the Beiping Opera School. The fourth class of the Beiping Opera School was known for its "Jade" (玉) designation, with the female roles each named after beautiful flowers and fragrant herbs. Among them, the "Four Jades" were particularly prominent: Hou Yulan, Li Yuru, Bai Yuwei, and Li Yuzhi. The first three Jades had already come to Shanghai in succession, leaving with great acclaim, with Li Yuzhi being the last to arrive. Some wondered why Yuzhi was so late in coming. There is a reason for this: Yuzhi is the youngest. The arrival of the Four Jades in the South resembles a kind of "marriage," with the order of marriage following the rule of "eldest first, then youngest." The younger ones usually wait until their older sisters have achieved success before becoming brides themselves. This is an ancient custom, and deviating from this order would not be appropriate. Examining common principles, among many sisters, the youngest is often the most intelligent and favored. Yang Guifei's sisters, the Duchess of Qin and the Second Duchess, were undoubtedly beautiful, but still paled in comparison to Guifei. Furthermore, consider the drama of Wang Baochuan. The two older sisters, Jin Chuan and Yin Chuan, were less intelligent and capable than the third sister, and their fame was also less. This is irrefutable proof that, although the Four Jades are not blood sisters, the precedent might be similar. It is also rumored that Yuzhi was ill for over a year, which was a major reason for her inability to seek opportunities in the South earlier.</p>
+<p>Although I have seen few of Yuzhi's performances, I can predict that her future holds even greater promise than the other three Jades. Why do I say this? I observe that she is more intelligent and capable of playing both Qingyi and Huadan roles. Her voice, singing, appearance, and stage skills are all above average. In today's opera world, a performer must be able to play three types of roles to satisfy the audience's demands. For example, a Dan role should be proficient in Qingyi, Huadan, and Daoma (female warrior) techniques, and possess excellent voice, appearance, and martial skills to be considered a "complete" performer. However, it is difficult to excel in all three. A Qingyi role who can also perform Huadan roles with flair can also become very popular. Simply focusing on Qingyi roles is often not well-received by the public. Yuzhi excels in Qingyi singing and is also skilled in various Huadan roles. I see her eyes sparkle with spirit, and she has dimples on her cheeks. Every time she smiles, she is exceptionally beautiful. Her figure is petite and suitable for agile movements. In plays like "Mei Long Zhen" and "Wen Zhang Hui," she is confident and certain to succeed. She is truly a budding Huadan talent. The other three Jades either excel in Qingyi but are unsuitable for Huadan roles, or are only good at Huadan roles with poor singing and voice. They have still gained fame and recognition. Considering this, how can Yuzhi's future be measured?</p>
+<h3>Opera World News</h3>
+<p>The Gengxin Stage has already engaged Tong Zhiling, Chi Shigong, and Yan Shishan to succeed Li Zongyi, Li Yuzhi, and Li Duokui. As for the existing supporting actors, such as Fu Dewei, Guan Dexian, Ci Shaoquan, Wang Yurang, Yin Jinzhen, and Gao Desong, they will all be retained. However, the young male actor Zhou Weijun will be replaced by Jiang Shiyu because Zhou has other engagements in Beiping and cannot stay in Shanghai for long.</p>
+<p>The Tianchan Stage has recently engaged Yang Baosen and Zheng Bingru. Yang and Zheng have agreed to collaborate without prioritizing each other. The playbills will be printed with both names equally to show their partnership. Yesterday, Bingru sent a letter stating that the agreement has been finalized, and the payment has been received. She will arrive by plane around the 6th of this month, with her stage debut expected around the 10th.</p>
+<p>Huangjin, Wu Suqiu, and Ye Shengzhang will perform until the 6th of this month and will not continue their engagement. Starting from the 7th, the FULIANCHENG Little Class will take over the evening performances. As for Cheng Yanqiu's Qiu Sheng Society, they have decided to start performing on the evening of the 11th. The leading actor, Guan Shengxi, and the supporting cast are expected to arrive in the South by train in the next few days and should reach Shanghai soon.</p>
+<p>After leaving Shanghai, Wu Suqiu will first go to Tianjin to perform short plays at the invitation of the China Grand Theatre. The young male actor Yu Zhenfei will accompany her. It is rumored that Yu's decision to join Wu's troupe was facilitated by Zhu Fuchang, the president of the Beiping Drama Newspaper, with a monthly salary of approximately six thousand yuan from the Federal Reserve. Song Baoluo and Song Ziping are performing at the Kaiming Grand Theatre in Suzhou. Their engagement has been extended repeatedly, and ticket sales remain strong. After repeated requests, they have agreed to extend their performances for another ten days, until the 10th of this month. They will then lead their troupe back north, with one report suggesting they will perform short plays in Ningbo.</p>
+<h3>Li Jianwu's "Yun Caixia" Premieres</h3>
+<p>— Yi Xiang</p>
+<p>Xia Xia's Last Performance Before Leaving Shanghai; Gu Degang Makes a Comeback to Co-star</p>
+<p>The Shanghai theater scene is gradually forming a three-way split. "Shangyi" is stationed at the Carlton, establishing its resurgence with the "Great Circus." The "Zhongzhong" Theater relies on its internal resources at the Lihua, hiring Wu Renzhi and others to strengthen its efforts. The "Lyceum" will be staging performances by the emerging Yiguang Theater Company starting on October 6th. "Yiguang" is a transformation of "Huayi," but with the addition of Xia Xia, Gu Degang, Lin Bin, and others, its momentum is strong. The first play is Li Jianwu's "Yun Caixia," directed by Zhu Ruijun.</p>
+<p>"Yun Caixia" is a five-act tragicomedy set against the backdrop of the life of a renowned female opera star. It also depicts the patrons of wealthy gentlemen and the backstage life of Peking Opera troupes. It reminds one of the novel "Qiu Haitang," which was also very popular. "Yun Caixia" not only shares similarities with "Qiu Haitang" but also has many intricate plots and moving stories, which are rare in recent plays. The cast includes Xia Xia, Gai Lan, Huang Zongjiang, Huang Zongying, Jiang Tianliu, and Wang Qi, among others. There is also exciting news that Gu Degang, the leading actor who won widespread support when the Shanghai Drama Society established itself with "Ren Zhi Chu," has joined as a guest performer after being away from the stage for three years. This will undoubtedly add much to "Yun Caixia."</p>
+<p>Xia Xia has decided to take a trip in the near future, around this month. It is likely that she will not return to Shanghai for a while. "Yun Caixia" is her last performance before leaving Shanghai. Audiences who enjoy Xia Xia's acting will surely want to see her work one more time.</p>
+<h3>Anti-Tuberculosis Film Exhibition Opens Tomorrow</h3>
+<p>— Liang</p>
+<p>The film industry, which has been silent for a long time, will be fully active again starting tomorrow. The Shanghai Anti-Tuberculosis Movement Committee's exhibition of famous photographic works will be opened by Dr. Mei Lanfang and twenty famous socialites, ushering in the event for the city's residents.</p>
+<p>The new building at the intersection of Jing'an Temple Road and Dahua Road is truly ideal for photographic exhibitions! All nine rooms on the three floors are filled with approximately three hundred photographs of various sizes. The most outstanding are the more than sixty masterpieces by renowned photographer Lang Jingshan. The stunning scenery and delicate portraits showcase the rapid progress of modern photographic art. They bring people ideals and inspiration, deeply permeating the comprehensive expression of truth, goodness, and beauty. Works by Lu Shifu, Chen Chuanlin, Hu Boxiang, and others can also be described as artistic crystallizations, with each facet reflecting human intelligence, wisdom, and skill. The exhibition will last for about ten days. Although it is not "free of charge," those who know its content and see it with their own eyes believe that spending a few yuan on tickets and two or three hours immersing themselves in the appreciation of art, indirectly helping impoverished tuberculosis patients, is a very worthwhile endeavor with multiple benefits.</p>
+<h3>Wang Xichun Returns to the Silver Screen</h3>
+<p>While the China Film Studio was being reorganized, Wang Xichun did not join due to being in the early stages of her marriage. However, both the studio and countless fans hoped that Wang Xichun would continue to work under the spotlight. Now, that wish has finally come true. Wang Xichun has officially signed a special contract with the China Film Studio under strong public support. Her first film has also been decided upon: "Meiniang Ballad," directed by Tu Guangqi. Isn't "Meiniang Ballad" supposed to star Chen Yanyan? Why is it being reassigned? There is a reason for that. From "Madame Butterfly" to "Fanhua Xudu," Chen Yanyan has starred in several tragedies. The content of "Meiniang Ballad" is also filled with suffering and despair. Therefore, Chen Yanyan requested the company to allow her to act in some comedies. Coincidentally, Wang Xichun joined the studio, so "Meiniang Ballad" will mark Wang Xichun's return to the silver screen. The other actors, such as Yan Jun and Zhang Wan, will remain the same.</p>
+<h3>Mei Shou</h3>
+<p>— Xiao</p>
+<p>Dr. Mei Lanfang celebrated his 49th birthday at his private residence the day before yesterday. People from the opera world, including Cheng Yanqiu and dozens of relatives and friends, went to offer their congratulations. However, there were few foreign guests, as Mei did not want to make a lavish display due to the changing times. Furthermore, he has been suffering from a severe cold and has been responding to external engagements less often. Rumors that he has shaved off his short beard are not true.</p>
+<h3>Sharing the Same Boat Through Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(10) Feilai Peak</p>
+<p>Wei Cheng took down his father's portrait from the wall. His father's portrait had been hanging for longer than his mother's. The nails were rusty, and the rope was frayed. The dust on the rope and frame was also thicker. Just as Wei Cheng lifted the frame, "clatter" it fell to the ground. He couldn't even catch it in time. He hurriedly followed the frame down, picked it up, and placed it back on the table. But the glass had shattered into seven or eight pieces, and some had fallen out of the frame. Wei Cheng opened his mouth, filled with indescribable shame. He thought that there were several other frames at home and wondered if the sizes would match the photo. He turned the frame over, removed a piece of the backing, and wanted to take out his father's portrait to reframe it. But an astounding discovery was made at that moment.</p>
+<p>Between the backing and the photo was a half-length portrait of a man, either four or six inches in size. Having ten of these photos would not be unusual, but what was strange was the inscription next to the photo. On the right were the words "To Madam Huifen for her safekeeping," and on the left were the words "From Cheng Bingjin." The sight of the names Huifen and Cheng Bing entered his mind, and he couldn't help but be surprised, so surprised that he almost became paralyzed. Huifen was the name of the eldest Mrs. Ye, and Cheng Bing was the enemy with whom he had a vendetta for his father's death. How could he not be surprised? He suddenly walked to the door and closed both panels, then returned to the table, picked up the photo, and examined it carefully. He looked to see if the character Bingjin was correct, and there was no mistake. Then he looked at the person in the photo, Cheng Bing, who had a square face and large ears and was between twenty and thirty years old. He held the photo in his left hand and clenched his right fist, trying to hit Cheng Bing's face. He gritted his teeth so hard that they creaked. If fire could truly come out of one's eyes, his would have already been blazing. His heart was pounding in his chest. He beat his fist against his chest, wanting to exhale, but he was so suffocated that he couldn't. When he looked again, Cheng Bing's face seemed familiar, but he couldn't remember where he had seen it before. He put the photo on the table, held his head, and thought for a moment. He walked back and forth in the room, looking at the photo, and finally, he remembered. (220)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.11.03.html", "next": "1942.11.05.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

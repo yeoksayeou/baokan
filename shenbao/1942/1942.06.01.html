@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.06.01 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 358 - 4924497</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>北非騎士橋爭奪戰　已達最激烈階段　德義稱戰事進行中</h3>
+<p>德兀首行營三十一日海通社電　今午戰報稱、北非戰事仍在進行中、德·義空軍擊落英機二十五架、</p>
+<p>羅馬三十一日海通社電　義軍司令部今午文吿稱、馬馬利卡之戰事、在進行中、敵又遭遇慘重之損失、俘虜已逾二千、內有克朗將軍及旅長一名、敵損毀坦克車三百四十五輛、鐵甲偵察車二十一輛、軍用載重汽車二百餘輛、杜白魯克遭遇猛烈之空襲、英機被德、義空軍擊落十六架、</p>
+<p>羅馬三十日同盟社電　據義軍司令部發表戰况稱、北非西列內加戰綫之德、義軍、正以步兵及坦克車部隊、與抵抗中之敵軍展開激戰、德義空軍並與地上部隊相呼應、對敵軍前綫及兵站加以猛烈轟炸、當將地上之敵軍坦克車鐵甲車及卡車等、完全擊毀、其補給基地及飛行塲等、亦被炸受損甚重、</p>
+<p>開羅三十一日路透社電　今日英方中東公報稱、北非方面騎士橋（里比亞海岸附近之交叉路口）之爭奪戰歷四日後、巳達最激烈階段、結果「並非不利於英將李契之第八軍、進攻之德軍昨整日遭英軍不斷攻擊、受有重創、公報全文如次、昨日騎士橋週圍區繼續作戰、更趨激烈、軸心鐵甲軍遭英陸空軍不絕攻擊、英軍地雷陣被德軍衝破之隙口、現有惡戰、惟德軍利用此等隙口、困難極大、是役進行已歷四天、頃巳達最據烈程度、戰局並非不利於英軍、</p>
+<p>開羅三十日哈瓦斯社電　英軍界對於北非西列內加戰事、極為樂觀、惟對於英軍苦戰情形及此役之決定性、並不隱瞞、據聞昨夜前方陣地並無變更、</p>
+<h3>卡柯夫前綫　戰事將近結束　伊齊姆巴文科夫方面蘇稱對德進行防禦戰</h3>
+<p>德元首行營三十一日海通社電　今午德軍戰報稱、東歐中路及北路之德軍、進攻獲勝、匈軍在蘇軍後方力戰兩星期、殲滅若干紅軍游擊隊、敵軍除被俘多各外、陣亡者逾四千三百名、戰砲損毀廿一尊、塹壕臼砲損毀九十七尊、機關槍損毀若十挺、其他軍械軍需損失無算、</p>
+<p>柏林三十一日海通社　德軍司令部稱、在卡柯夫以南之戰事中、蘇軍不惜犧牲大量之人力與物力、以圖拯救被圍之蘇軍未逞、僅有一處蘇軍以數量上之優勢、進佔軍峪要點一處、德軍步兵營當此危急之時、勇敢反攻、卒將蘇軍擊退、使之退回原有陣地、東綫南路之大戰已吿結束、自五月二十八日起東綫中、北兩路之戰事中、德軍又獲戰果、中路之德軍經數日之激戰後、將敵軍包圍成功、現已在殲滅中、</p>
+<p>莫斯科三十一日路透社電蘇方今日公報稱、五月三十日夜間、伊齊姆與巴文科伏方面、蘇軍對德坦克車與步兵從事防禦戰、前綫他區、未有要事發生、又補充公報稱、加里寗前綫蘇軍佔領有居民之要地一處、並擊退三次反攻、</p>
+<p>倫敦三十一日路透社電　蘇聯情報局昨夜特別宣布、卡柯夫方面蘇軍展開攻勢、旨在防阻德軍在羅斯托夫前綫取攻勢、以窺高加索之計劃、而蘇軍指揮部之計劃中、並不包括收復卡柯夫城、事緣若干時前、蘇軍司令部得悉德軍指揮官關於軸心軍將在羅斯托夫前綫一區展開大攻勢之計劃、德方在此區集中步兵三十師、坦克車六師、及大批砲隊與飛機、蘇方為防阻此種計劃、並予軸心軍以打擊起見、遂在卡柯夫方面展開攻勢、佔據卡柯夫則不在蘇軍司令之計劃中、前敵此區發生據戰歷兩週、至今將近結束、而蘇軍司令預定之主要任務、即予軸心軍以打擊、業已履行、同時聞卡柯夫週圍血戰仍在進行中、莫斯科無綫　臺傳、蘇軍在衝入卡柯夫前綫某城之半部、猛烈巷戰已在進行中、</p>
+<h3>英機千餘架　空襲德境</h3>
+<p>倫敦三十一日路透社電　航空部公報稱、英轟炸機千餘架、昨夜猛炸德國魯爾區與萊因區目標、主要被襲區為哥龍、詳報尙未接獲、惟據機員之初步報吿、此次襲擊、頗獲成就、直至拂曉、猶見荷蘭海岸綫上濃烟滾滾、據今晨偵察報吿、被襲目標冒烟、高達一萬五千呎、英機出襲時、另有英轟炸機指揮部、戰鬬機指揮部與海岸指揮部之飛機、猛襲德方飛機塲及企圖截擊之德戰鬬機、英機失蹤者共四十四架、按英空軍出襲、動用飛機達千架者、尙屬初次、此前歷次襲擊、出動飛機最多約三百架、德空軍襲英最烈時、所用德機五百架、</p>
+<h3>墨西哥灣美艦隊　新任司令　英美貨船續沉沒</h3>
+<p>華盛頓三十日哈瓦斯社電頃據海軍部宣佈、政府業已任命考夫曼海軍少將、為墨西哥灣美國艦隊司令、「務使我國軍艦在該區搜捕潛水艇時、收效益宏」、所有自約克遜維爾港、至墨西哥灣一帶之美國軍艦、均歸其節制云、按考夫曼海軍少將原仟冰島區美國艦隊司令</p>
+<p>華盛頓三十日哈瓦斯社電海軍部宣佈、又有美國商船一艘、在墨西哥灣被魚雷擊沉、所有獲救船員、均巳在某港登陸、</p>
+<p>里斯本三十一日海通社電華盛頓電訊、美海軍部宣佈、美國及英國中型貨船一艘、巳分別在北大西洋及大西洋岸沉失、美船係在數星期前被沉、脫險水手、巳在美國東岸某港登陸、英船共有水手八十一名、其中七十二名、巳被救起、</p>
+<h3>墨西哥宣戰案　正待總統簽署</h3>
+<p>阿根廷京城三十日同盟社電此間聯合通信社今日消息稱、墨西哥參院於今晨十時三十分通過總統卡馬卓所提對軸心國宣戰之請求、參院並通過議案、以戰時特權授予總統、該國正式宣戰、今祗待總統簽署、衆信簽署之舉將於今日午後採取、置墨國於對軸心國日、德、義正式交戰之狀態中、據非正式方面消息、參院係以五十三票對零票、一致通過議案、授予卡馬卓之權、包括停止言論·報紙·集會與在國內旅行之自由·攜帶武器之權利·及對企業與私人產業之保證、墨參院集會約六小時後、於下午五時二十四分休會、會議時參院主要議員詆責潛艇放魚雷轟擊墨國運油船、參院書記謂兩案將交還衆院、儘可能範圍從速轉達總統、</p>
+<h3>緬甸鐵道幹綫　修復通車</h3>
+<p>緬甸前綫某地卅日同盟社電</p>
+<p>緬甸鐵道幹綫、經日軍鐵道部隊及工兵隊之努力、業已全部恢復三十日正午舉行通車典禮、仰光至瓦城、及臘戌間之公路及鐵路、巳早於廿三日恢復、在此路綫上之兩大鐵橋、亦築就半永久性之復舊工程、該路綫被破壞之全部橋樑、計共十四座、所費之修理時間、僅為一月、目下全緬三千三百公里之鐵道、巳有二千八百公里完全恢復、車輛方面、則全緬三分之一車輛、亦已在使用之中、船隻方面、則伊洛瓦底汽船公司、巳將奪獲之大小百餘艘船隻開始航運、</p>
+<h3>傳美機自印度　運物資赴重慶　赫爾與宋子文簽協定</h3>
+<p>廣州三十一日同盟社電　此間所得之報告稱、美國最近與重慶簽訂協定、允許以大隊超等飛機自印度載運貨物之方法、援助重慶、此項協定由美國務卿赫爾與宋子文簽訂、此種援助之效力、殊成疑問、因載運之貨物、祇能限於輕軍器、藥品及化學物品、而重慶所希望之重軍器、在此長程中載運、完全為不可能、據此報吿稱、巳有飛機二十架集中、</p>
+<h3>南非首相抵英</h3>
+<p>里斯本三十日同盟社電　據倫敦電、南非聯邦首相斯末資將軍、本日乘機抵英、</p>
+<h3>金華蘭谿失陷後　日前鋒續向前趨　日陸軍機轟炸衡陽</h3>
+<p>東京卅日同盟社電　此間朝日新聞載中國浙江前綫來報日軍攻陷金華蘭溪後、其前鋒力向前趨、五月廿九日陷龍游、又稱別一枝日軍擊退重慶八六·八七兩師、日並在浙贛鐵路上佔據湯溪、</p>
+<p>瑞士京城　十日同盟社電　美國聯合通訊社重慶消息、重慶陸軍發言人正式承認守軍於五月二十八日退出金華、</p>
+<p>日本空軍根據地三十日同盟社電　昨日陸軍飛機襲湘省之衡陽、以炸彈及機關槍轟射飛近地面、投彈焚毀軍儲等物、</p>
+<h3>義外長闡述　外交政策</h3>
+<p>羅馬三十一日海通社電　義外長齊亞諾昨向參議院財政委會發表演說、闡述外交政策之基本原則、略稱、義國之對英政策、為隨時隨地對英帝國作戰、美國正式參戰、在六個月以前、而實際上美國於最近兩年內已非中立國家、名義上之中立、僅係援英之掩蔽而已、巴西京城之泛美會議、並無結果、義國對阿根廷及智利之友好關係、愈益增進、阿根廷及智利均能維持獨立之外交政策、齊亞諾繼述對蘇關係、申言墨索里尼於西班牙內戰時期已感組織反蘇陣綫之必要、目前戰爭、為防禦布爾希維克主義之戰爭、與義國生活具有密切關係之文化是否能繼續維持、將由戰爭之結果加以決定、義軍英勇作戰、已著戰績、並將作更大之貢獻、巴爾幹各國對於義國之利益、具有決定之重要性、義國藉一九四〇年及一九四一年之外交與軍事步驟、巳與東南歐各國一致團結、對蘇作戰、南斯拉夫崩潰後、墨索里尼決定下列各項原則、　解決亞德里亞海問題、保證義國對亞德里亞海之控制、　確立門的內哥羅之完全自治、　確定阿爾巴尼亞之領土、　義國與克羅特密切合作、希臘缺乏糧食、各項發展、均受阻碍、義國已採取各項措置、减除希臘之困難、就政治而言、由於義國軍事與民政當局之活動、甚為平靜、阿爾巴尼亞民衆、對於義希戰事之態度、殊堪欽佩、阿爾巴尼亞已具有最大之信心、阿爾巴尼亞兼併南斯拉夫土地後、人口已增加八〇〇·〇〇〇人、齊亞諾檢討法·義兩國停戰後之關係、以為法·義關係甚為融洽、義國對土耳其·瑞士及西班牙等國、亦保持友好關係、西班牙在目前戰事中、已表示友好之態度、齊亞諾力言義國對德·義繼續合作、戰塲雖分散於各處、仍為共同之戰爭、三國之共同計劃、已表現於東綫·北非·地中海·東亞及太平洋方面、戰事將繼續進行、敵軍雖頑抗、將遭遇更能堅苦作戰之軍隊、此項戰鬥精神、為勝利之最好保證、</p>
+<h3>羅斯福　檢閱軍隊</h3>
+<p>華盛頓三十日哈瓦斯社電羅斯福總統本日檢閱美國軍隊、自現行戰爭爆發以來、羅斯福出現公共塲所、此為第一次、</p>
+<h3>紐西蘭　限制購買衣履</h3>
+<p>里斯本三十一日海通社電據倫敦消息、紐西蘭當局、已下令立即限制衣履之購置、並採用英國之限制辦法云、</p>
+<h3>正金台灣負責　復興南方經濟　兩行營業區域亦加劃定</h3>
+<p>東京三十一日同盟社電　關於南方各地之經濟復興工作、日政府與現地當局、業經愼重檢討、並指定橫濱正金台灣兩銀行、首先在南方各地積極整理金融機構、以展開復興工作、同時台灣銀行因此又有增資三千萬元之計劃、以期確保在南方區域中之活動、至該兩行之營業地區、亦經決定、計正金為越南·泰國·馬來·蘇門答臘·英屬婆羅洲·台灣銀行為海南島·菲律賓·荷屬婆羅洲·西里伯·新幾內亞·及南洋委任統治地域、</p>
+<h3>馬丁尼克島外　潛艇一艘炸沉</h3>
+<p>聖裘安（波多黎各）三十一日路透社電　第十海軍當局昨日宣布、星期三在馬丁尼克島外炸沉軸心國潛艇一艘、海軍飛機駕駛員稱、渠從五十呎至百呎之低空、在四分鐘內向該潛艇投下炸彈四枚、此項宣布、證實前傳軸心潛艇一艘沉沒之消息、惟該潛艇是否即係近曾襲擊美驅逐艦白拉克萊號者、則未明瞭、</p>
+<h3>美國汽車行駛　大見減少　汽油橡膠俱缺</h3>
+<p>倫敦三十日哈瓦斯社電　國內汽車行駛、雖因汽油匱乏、而大見减少、但據最後統計、人民因父通失愼而死傷者、為數仍多、四月份計死五百六十五人、傷二千人、此在一九四一年四月、則僅有一百六十一人死亡、</p>
+<p>紐約三十日哈瓦斯社電　此間商業界人士頃談稱、美國全國所有私人汽車、因橡膠匱乏之故、至少三分之二、將於兩年內絕跡、據專家佔計、美國公路汽車所用車胎、共計一百萬噸、汽油雖實行限制辦法、但每日消耗仍不下六百噸、又　經濟專家談稱、因日常用品例如橡膠·汽油·及糖等缺少之故、美國經濟機構行將發生重大變化、橡膠對於汽車工業及汽車交通業、頗為重要、而橡膠匱乏、初非一時現象、除非人造橡膠能大量生產、否則此項問題、當非在最短期內所能解決、羅斯福總統最近曾向報界談稱、人造橡膠、不久即能代替天然橡膠云、</p>
+<h3>希特勒勗勉　青年軍官</h3>
+<p>柏林三十一日海通社電　德元首希特勒昨在此間體育館對德國海、陸、空軍最近升級之軍官及行將被委之後補軍官一萬人發表演說、德元首開始以德國歷史上之敎訓、給予靑年軍官以工作之箴言、由於去冬大戰中之經騐、證明眞正之領袖必須具有堅忍之精神及克服困難之力量、德元首最後要求靑年軍官切記渠等在前綫之態度、為德國之命運所繫、故德國軍官及其部下無論在作戰時或休息時、必須時以德國之寄托、銘記於心、</p>
+<h3>法國缺煤　鐵路交通問題尙無解決之望</h3>
+<p>克萊蒙費朗城三十一日哈瓦斯社電　法國東北部鐵路、因戰事毀壞、修復不易、法國中部與巴黎間、巳無法交通、且以國外煤斤進口缺乏、火車行駛極少、當局已禁止人民乘坐火車游覽、目下火車大多用以運輸食物、關於鐵路限制使用情形、可于下列數字觀之、　戰前火車每月駛行四十萬英里、去年縮至十萬英里、現又縮至九萬英里、　一九四一年鐵路行馳貨車數目、僅及一九三八年之百分之七十九、目下因燃煤缺乏、鐵路交通問題、尙無解決之望、政府現正計劃用電氣火車頭、代替現行蒸氣火車頭、俾節省燃料、</p>
+<h3>基多秩序恢復</h3>
+<p>基多三十日哈瓦斯社電　頃據官方宣佈、赤道國昨日所發生之「革命運動」、業已失敗、正規軍在此次事變中、效忠政府、始終不渝叛黨領袖均已被捕、前任國防部長普拉柴將軍、前任司令烏蒂亞上校、暨前任駐秘魯公使奎佛杜、均在其內、預料、政府不久即將發表此事經過、此間及各地、均巳恢復秩序</p>
+<h3>澳陸長福特　再度警告澳人</h3>
+<p>里斯本三十日同盟社電　據康白拉消息、澳洲陸長福特今日再度警吿人民、切弗懈怠、略謂澳洲之地位、雖已大為改善、但仍瞬將遭遇危險、澳政府刻正盡其所能、在澳洲本國境內加速製造配備、並以更多之戰鬥機、轟炸機與高射砲源源運往海外、</p>
+<h3>加爾各答　公共交通受阻</h3>
+<p>瑞典京城三十一日海通社電</p>
+<p>據倫敦標準晚報載稱、加爾各答已漸為戰雲所籠罩、現城中巳無公共汽車、電車因工人耍求加薪、而宣吿罷工、故城市所見者、僅脚踏車及人力車耳、</p>
+<h3>美進出口銀行　貨款委內瑞拉</h3>
+<p>里斯本三十一日海通社電據華盛頓消息、美國之進出口銀行、已決定貸款二千萬與委內瑞拉、以為興建公共工程之用、但該項借款協定、尙未經委內瑞拉國會核准、亦未公布云</p>
+<h3>倫敦海德公園　鐵柵溶鐵塊　建造坦克車</h3>
+<p>倫敦二十日哈瓦期社電</p>
+<p>此間海德公園之鐵柵、自去年拆除之後、業已溶成鐵塊四百五十噸、將作為建造坦克車之用、</p>
+<h2>Page 3</h2>
+<h2>Page 4</h2>
+<h3>銀錢業昨開會　商討法幣問題　公吿各界准六月一日實行銀行停業及限制提存不確</h3>
+<p>本市銀錢業聯合會因南京當局布吿法幣更換中儲券辦法、特開會討論、茲將各情分詰如下、</p>
+<p>開會情形</p>
+<p>銀錢業同業會員臨時聯合委員會、於昨日下午五時、在香港路銀行公會召集緊急會議、到吳蘊齋·葉扶宵·王伯元·瞿季剛·朱博泉·陸書臣·王懷康等八十餘人、首由主席報告開會宗旨後、對各項辦法議決遵照辦理、至七時許始散會、其決議辦法為　各行莊對於五月三十一日以前對外債權債務、均自六月一日起一律按照二對一之比率換算改以中備券為本位、即（一）各行莊舊法幣現鈔存款、按二比一改為中儲券現鈔存款、（二）舊法幣劃頭存款、按二比一改為中儲券劃頭存款、　在六月七日前、凡以舊法幣償還債務者、照規定辦法、以中央中國交通三行之舊法幣為限、凡印有上海以外地名之舊法幣、及其他行發行之舊鈔概不收受、又該會負責人最後對記者鄭重聲明云「前數日市上謠傳銀錢業有休業三天及限制提存、並存戶存款要搭付公債等說、刻已由負責當局鄭重發表聲明絕對不確」云云、（該會公吿見今日廣告）</p>
+<p>佈告內容</p>
+<p>略謂、茲將中央儲備銀行發行之鈔券、定為統一通貨、於六月八日起先在蘇浙皖三省及南京上海兩市開始實施共辦法分列如左、　中央儲備銀行發行之鈔券為唯一法幣、所有舊幣非經特准、不得正式使用、　收回舊幣以二對一之比率、換給中央儲備銀行券、但得以同額之公　代替之、並得作為同額之存款存於銀行、前項交換之舊幣、為中央中國及交通銀行之鈔券、但券面印有上海以外之地名者及舊輔幣券、均不在交換之列、舊輔幣券暫准照中儲輔幣券之半價流通之、　交換舊幣所付之公債、特設特種會計辦理還本付息事宜、以便計劃迅速償付、如有正當用途、並可向中央儲備銀行照額面擔保借款、　凡以舊幣單位訂立或約定之債權債務、應以舊幣二對一之比率改為中儲券單位處理之、此後舊幣單位之契約、一概無效、　凡由和平區以外運往和平區以內之舊幣、此後一律嚴加取締」、</p>
+<p>兌換辦法</p>
+<p>據同盟社訊、正式調換儲鈔處為　中央儲備銀行、　滬寗等地即將籌設之中儲行辦事處、　日商銀行、　特別指定之匯兌店與錢莊、其名稱將分別宣布、上述各金融機關收回法幣之方法如下、　凡欲以不足萬元之舊幣調換中儲券者、可向上述各銀行、兌換店與錢莊照二合一比率調換、時期以十四天即從六月八日至六月二十一日為限、此等銀行兌換店與錢莊均須在上述期間、以其收得之舊幣轉交中儲行、照正式兌換率獲取中儲券、凡持有一萬元以上之舊幣者、應於六月八日至二十一日向中儲行及其指定各銀行（共名稱將分別宣布）申請兌換、中儲行及其指定銀行當照二合一之正式兌換率收受、作為中儲券現鈔存款、各指定銀行則將以上述期間收得之舊幣、交予中儲行、作為現鈔存款、華人商業銀行·兌換店·錢莊與信託公司等金融機關、須在六月十日前、將其所持有之舊幣暨六月七日所持有舊幣紀額之報吿書一併轉交中儲行、該行從此等行莊收得之舊幣、將照二合一之正式兌換率、改成中備券其中半數發給安定金融公債、其餘半數作為現鈔存款、中儲行並得將若干金融機關所繳舊幣總額之一部份、作為劃頭存款、付給年息三厘、並得於三個月內、將劃頭存款改為同額之現鈔存款、</p>
+<p>周佛海談</p>
+<p>周佛海氏昨發表談話、要點如次、　關於金融公債之頒發、僅限於銀錢界、數額為全數之半、即二分之一、而此項公債、且隨時可作現金支付、而無週轉不靈之弊發生、其他一般工商人民之存款、不論存額多寡、概不兼付公債、　關於外界謠傳限制提存之說、全屬無稽、唯數在一萬元以上者、作為現鈔存款、一萬元以下者、作為現款、即屬一萬元以上者、隨時仍可支付、　現款與劃頭之分別、自此之後、毫無歧視、不論其舊幣數額之多寡、均以二對一之比率、掉換新法幣、人民對於貼現損失、因此即可消除、　一切債務所訂契約、自六月一日起、亦均以二對一之比率新法幣償付之、嗣後如仍以舊幣訂約、概作無效、　整理舊幣自六月一日起實行、　掉換新法幣期限、自六月八日起、至六月二十一日止、限以中央·中國·交通三行之舊法幣、其他雜鈔、概不掉換、過期之後、決不再予展期、</p>
+<h3>法租界麥蘭路　米棧今日開放</h3>
+<p>法租界麥蘭捕房門前空地上之米棧、法租界當局宣布、巳定今曰起重行開放、該米棧之米、規定祇供給有三十人以上、經常在內膳食之學校醫院及工廠等、至於私人住宅或機關、雖僱用多人、而不長期供給膳食者、概不發給、又據法當局宣布、各捕房之收受此項申請書、限於六月一日星期一、至四日星期四、及六月八日星期一、至十一日星期四之上午、</p>
+<h3>公共租界零售稅　今日開始徵收　法租界今起徵收賬單稅</h3>
+<p>工部局定自今日起、在公共租界內開征另售稅百分之二、據官方透露、此種新稅全年所得可達五百五十萬元、凡公共租界內經營商業或貿易之人、不論其形式為個人行家或集團公司，概須由工部局征收百分之二之另售稅、並自本月起應將每月另售數額編繕淸單兩份、連同應繳之百分之二稅額總數現款、或即期支票、送繳由工部局指定之收款地點、</p>
+<p>免稅營業共計三類</p>
+<p>豁免征收另售稅者、為　已被征收賬單稅之放館及菜館等、　被征收照會費之食物攤、及水菓攤暨公共菜塲內之菜攤等等、此等悉由工部局佈告第五九〇四號規定之、　米店因應征之稅巳包括在米價內、其如逃避捐稅或　報數額者、工部局將予以嚴厲之處置、</p>
+<p>法公董局徵賬單稅</p>
+<p>法公董局自今日起、開征法租界內旅館菜館等賬單稅、其稅率為百分之十、至征收範圍、包括旅館房金之收入、旅館·菜館·茶室·酒吧·公寓·及舞塲等出售飲料食品之收入、舞塲舞票等三大類、凡公寓及設有傢具之房屋、包括房間九間以上者、以旅館計、按公共租界於上月八日起即　征此稅、</p>
+<h3>轉租房屋執照　各分發處結束　歸工部局內一處發給</h3>
+<p>工部局房屋轉租執照、今日起祗獨處發給、已將各分辦事處撤消、茲錄於后、</p>
+<p>各分發執照處結束</p>
+<p>工部局轉租房屋執照、共分中西北東五區發給、其分發執照地點、計有　工部局大厦、　愛文義路、　勞勃生路、　麥根路、　新閘路、　極司非爾路、　北福建路、　海寗路、　舟山路、　齊物沛路等十處、除極司非爾路·愛文義路·麥根路·北福建路四處、已於日前結束外、其他各處除工部局大厦外、亦於昨日全部辦理結束停止發照</p>
+<p>派員分赴各區調查</p>
+<p>今日起、僅江西路工部局大厦下層五〇六號捐稅股、仍照常發給執照、同時該局房屋轉租管理處、已派員分赴中西北東各區嚴厲調查有無將餘屋出租、而尙未領取執照情事、至自四月一日起至五月底止、發出執照數仍不滿四萬二千張、又已領執照之二房東、　將執照磁牌以及轉租清單表格、　掛於屋內顯明之處、違即予以懲處、</p>
+<h3>工部局興建　抽水站六處</h3>
+<p>工部局工務處已在積極推進各項防水工程、最近復在中西北三區內、分別建築抽水站六所、其分佈地點、計中區三所、位於愛多亞路二洋涇橋·　洽卿路泥城橋　·及福建路老閘橋　、西區一所、位於麥根路靠蘇州河處、北區　所、位於靶子路靠橫浜處、及乍浦路二白渡橋北　、共建築之目的、即預備與暴風雨及高潮　時發生時、不斷將馬路流入陰滿之雨水、大量抽送至江河中、其中福建路一所、係用以宣洩永安公司一帶之馬路積水者、此種抽水站、深入地下數尺、而　起地面者丈餘、中空、外側圍以圓形儼如堡壘、目前二洋涇橋之一所、大體已吿完工、</p>
+<h2>Page 5</h2>
+<h3>法商電車　今日增加票價　三等起碼二角頭等五角</h3>
+<p>法租界電車票價、今日起又吿漲價、三等起碼為法幣二角、頭等起碼為法幣五角、茲錄於後、</p>
+<p>公司通告</p>
+<p>上海法商電車公司通吿云、一茲因滙兌更動、本公司通吿公衆，新訂車票價格、將自一九四二年六月一日起實行、並揭示新訂車價表於各車輛上、以便搭客一</p>
+<p>票價一覽</p>
+<p>茲將今日起實行電車票價摘錄於下、無軌十七路大世界至打浦橋、三等起碼法幣二角、最高法幣六角、頭等起碼五角、最高一元一角、廿四路西門至福煦路、三等起碼二角、最高六角、頭等起碼五角、最高一元三角、有軌一路·十六舖至徐家滙、三等起碼二角、最高八角、頭等起碼五角、最高一元三角、十路·十六舖至盧家灣、三等起碼二角、最高七角、頭等起碼五角、最高一元一角、</p>
+<p>公共汽車</p>
+<p>至法租界廿　路公共汽車、亦定今日起增價、票價計起碼為法幣五角、最高為法幣一元三角、均照舊價提增一倍、仍以舊法幣計算、</p>
+<p>陶允藏設奠誦經</p>
+<p>江寗陶允藏先生、字子仲、旅滬垂四十年、平素樂善好施、推重鄕里、詎天不假　、突於本年四月三十日以肺病溘逝、聞者惻然、其哲嗣昌榮昌富爰定今日假茄勒路法藏寺設奠誦經、</p>
+<h3>女青年會見兒童健康比賽</h3>
+<p>基督敎女靑年會為引起一般家長注意兒童健康起見、特舉行兒童健康比賽、參加者頗為踴躍、各兒童均請專科醫師、查體格、共分四組、第一組為四歲以下、第二組五歲至八歲、第三組九歲至十二歲、第四組十三歲至十六歲每組各有成績優良者三名得獎、昨日（三十一日）下午三時舉行給獎禮、由梁徐秀英主席、並請周倪翰芳女士演講「兒童健康與習慣」、至四時許散會、</p>
+<h3>解決一切問題工部局新機構（十）　上海人民的前途將在他們掌腕中決定</h3>
+<p>直接供售</p>
+<p>除了由米店分售之外，米糧辦事處也直接供給僱有經常中國職員三十人以上的工廠或公司。此等機關應提供僱用人數等詳情向辦事處申請。在大多數情形中，並應由工部局指定之會計師開具證書證明申請書上所列人數的正確無誤。然後方能依照局定每人每日的必需量將食米撥派給該公司。</p>
+<p>所有局米出棧時，購買者都領有搬運許可證一紙，以便自棧中移運至目中地。搬運完畢，許可證便應立即交還米糧辦事處。若於出貨二十四小時後延不交還許可證者，當將在領證前所付每袋十元的保證金沒收。這是為防免許可證被人利用而設的必耍措置。</p>
+<p>特種機關團體</p>
+<p>公用事業各公司·慈善機關·學校與醫院都與上述工廠同屬一類。從最初實施派米辦法時起，便巳直接從米糧辦事處領得供給。在每種情形中，該項派米全必經過嚴密之查對，藉以辨明確係用以供給所述的需要。除開這些機關團體，每天在辦事處付款領出貨單的約有三四百人。　「分配食米，在你自己並無存貨，須從散處界內的各堆棧提取的時候，當然格外更麻煩了，」立基氏道，「十二月八日之前，工部局僅向極少數幾個賣戶購米。但自正式徵買開始，工部局實際交易着的為數幾有數白。換句話，我們得淸算並付給數百家存米被收購的公司行號的賬款。」</p>
+<p>徵購方法</p>
+<p>米糧辦事處在未收買之前，必先取得寄存各棧內存米棧單的號數與嘜頭。收買之時，各所有人之米均由過磅人分別過磅並記錄。此後便根據此項重量付款。</p>
+<p>「為了這個徵買計劃，這裏動用了大批人員，」這位米糧統制者說，「我們不但得查對所接到的米的品質與重量，還得查明申請發還米款的人確實是此項存米的所有人。」</p>
+<p>因為上面這種種原因，職員百餘人每天辛苦地工作着，從上午九時一直到下午六·七時。</p>
+<p>除了米，這辦事處也負收買玉蜀黍之責。就只撥派給牧場的是例外，所有收買來的玉蜀黍，全行磨碎，然後經由米店分配給大衆，作為食米的一種補助。此項玉蜀黍的收購與分配辦法，同食米的絕對相同</p>
+<p>「當事情組織起來之後，立基氏最後說道，「它便容易得多，可是這裏工部局所遇到的工作是突如其來的。幾乎並未有時聞來作發動機械的準備。這不僅是一個收購與發售的問題——整個地說來，是統制食米分配的問題。假使這不過是一件「愈賣掉多愈好」的事情，上每不會發生糧食問題，而工部局也就無用限定售價，管理分配了。不幸地，事實並不如此……這便是人生。」（完）昨日本報發報時間六點十五分</p>
+<h3>夏光杯籃球最近形勢　強星冰隊兩組稱雄</h3>
+<p>夏光盃籃球聯賽、昨因天氣不佳，不克成賽、所有各塲順延下週舉行、夏組最近形勢以强星Ｖ隊佔優、兩組形勢如下、</p>
+<h3>梅生盃周四總決　小威萬隆交鋒</h3>
+<p>梅生盃小小足球總決、已成小威瑞龍萬隆三隊分組冠軍、爭奪魁元、因採用單循環制、自上週小威瑞龍媾成和局後、定本周四下午五時在慕爾嗚路光夏中學展開第　幕奪標賽、由小威出戰萬隆、本周末萬隆再戰瑞龍、前途以萬隆最佔優勢、</p>
+<h3>夏光中學校慶　舉行盛大球賽</h3>
+<p>本市大通路愛文義路口夏光中學、自二十六年創立以來、成績蜚然、後日（三日）為該校五周紀念、特於是日舉行隆重紀念下午一時起有遊藝大會、三日有各項體育表演、及四塲籃球比賽、由影星戰百聯、Ｖ隊對强星、愛國女中戰餘聲華南鬥夏光、</p>
+<h2>Page 6</h2>
+<p>經濟專刊</p>
+<h3>金融大轉變前夜潛勢吃緊　各業市場波濤迭起</h3>
+<p>渡過上週，已非容易。讀昨晚各銀行前佈吿，則過去兩週來之金融風潮，本週巳入總解決時期。前途如何？尙難逆覩。姑將過去一週市塲上之重要情形，述評如后。</p>
+<p>幣跌一半貨漲一倍</p>
+<p>中儲券原與法幣等價，本年三月廿三日起增値為七七折：即法幣百元合中儲券七十七元；五月廿日前此率不變，之後一週間每日一縮：廿日貶為七十四元：廿一日貶為七十一元；廿二日六十六元；廿三日六十元；廿四日雖係星期無市，亦由報端預吿定廿五日（即上週一）貶為五十三元；至廿六日又貶至五十元；此後迄今，續貶方止。</p>
+<p>七七折初次掛脾，市上即有六六折之說；人猶視為謠言，物價已以此為上漲鵠的，且復過之。如分七七折前後及五〇折後三期比較，可知幣値進度不若物價上漲之速，外幣漲度不弱物價已以此為上漲鵠的，且復過之。如分七七折前後及五〇折後三期比較，可知幣值進度不若物價上漲之速，外幣漲度不弱</p>
+<p>籌碼外流劃頭趨鬆</p>
+<p>掛牌停止於五〇折，關係當局又發表聲明，市況方漸歸平定。不料市間忽又捕風捉影，謠言大起，終又演成週末一天半提存風潮。幸本市銀錢界久歷風霜，臨危不亂：尤以聯合準備制運用靈活，應付有方，未致釀成大禍；殊堪慶幸。</p>
+<p>者每談投機，　指游資作祟；今次游資因提存而大量流入市場，投機性物價反呈激落之狀。殊堪注意。茍非新交易少而又有　額出籠？曷克臻此？是則過去之交易何以多？今日之出籠又所為何來？足饒興味之問題也。</p>
+<p>一個多月前劃頭對現鈔昇水，今又一變而為貼水。何其相煎之急？幣價慘落之週一，劃頭貼水竟暴漲到每百需　一十六元之鉅；劃頭貼水愈高，物價上漲尤力；因領導物價者為投機性市塲，投機性市塲均以劃頭為計算單位故也。銀錢界當局現已展開弭平貼水之步驟，誠屬當務之亟。惟平掉計劃限於銀錢同業　據交換之差額淸算時，普通持票人只能向公開市塲貼現，故仍難免貼水。不過同業差額平掉，已予整個劃頭貼水市場以有力影響；加以現鈔因提存而流入市場者殊夥，對此更能發生積極作用。週末劃頭貼水回降者蓋此。</p>
+<h3>股票猛昇　債市三漲三停</h3>
+<p>先就證券言：華股票面都用法幣，資產則隨物價。貨幣名目變，資產不變；價堅。貨幣名目不變，資產評價因幣價貶血反比例漲，價亦貴。週初漲風極巨，其後未漲者漲，過漲者縮，此係人心之調整；故全週趨勢果堅，上落則甚兇。新藥各股及內衣股均先盛後衰，如五洲有五十元之上下；其他實業股都先平後俏，金融股不動，獨中國銀行與中一信託有一成進出。洋股週初均漲，入後暴跌，變動殊烈；各有一成上落。但不論華股洋股，與前週比均屬出色；華股上週內均有空前高峯出現，外股亦大都打破去年同期紀錄。</p>
+<p>債市翻雲覆雨，角逐最烈。週一各債均漲逾四元，卒吿全部漲停板。盡掃一二月來萎靡不振之氣。週二乙丙丁戊續漲不衰，再吿二次漲停板；統甲亦漲起三元三。有此兩日暴漲，週三後之回風，亦屬意中事。是日各債均跌三元以上，僅丁種只跌元半。週四跌風未止，甲種且再跌四元後停板；但多方逢低即呑，故週五跌勢已衰，週六乃又見甲乙兩種之漲停板，一週三漲三停，堪稱奇觀；</p>
+<h3>黃金愈盤越高　外幣漲得發紫</h3>
+<p>金屬貨幣思想尙在人間，則幣價挫跌，金價勢必暴漲，况又有逃避資本之活動。惟週一　赤竟見四萬兀空前高峯，究屬跳得過火，目貶値又以五〇折而止；是以獲利多頭羣起出籠，氣勢稍殺。但全週市價仍徘徊於三萬五千元左右，較今次貨幣風潮前已激漲一萬餘元。</p>
+<p>外幣鎊貨隨金價疾昇，週末美金鎊高達八白元，尤堪驚人。軍票一度飛昇至十四元，扣除劃頭貼水，亦達十二元以上。按軍票與儲鈔聯繫；以儲鈔百元合軍票十八圓，法幣一元合儲鈔一元計，則漲力可知。（紗布及其他商品行市從略）</p>
+<h2>Page 7</h2>
+<p>自由談</p>
+<p>風土</p>
+<h3>高加索之火</h3>
+<p>— 劍農</p>
+<p>那雄巍高峻從西北斜向東南綿亙到一千二百公里的高加索山，它的意義是「光明」。它怎樣得到這種名稱呢？普通地理書上的解釋，以為：除了它的主峯厄爾布魯士山以外，還有九個在雪錢以上的高峰，它們全是常年積雪不消，冰河閃爍的，所以被喚作「光明之山」。然而人却忘了高加索山一帶，尤其是巴庫所在地的亞浦西倫半島，是世界上數一數二的煤油田的中心：光明之山的名稱，正是從這裏得來的。請伸其說·</p>
+<p>據史籍所記，那巴庫北面不遠的蘇拉喀尼小村，—現在油井的集中地—是在公元前六百年就以「永明之火」馳名遐的；這「永明之火」熊熊炎炎高約數十百丈，會燃燒至數百年而不熄。古人對於這『不吃食物而自能焚燒的火」，是莫明其所以然的；於是有不少崇拜光明的拜火敎徒，不遠千里的來到這「永明之火」跟前，頂禮膜拜，以表示他們的虔誠。光明之山的名稱，你能說和「永明之火』沒有關係麼？</p>
+<p>法國大地理學家Elisce　Rrclus，在一八八一年出版的巨著世界地理上，對於亞浦西倫半島，也有以下的描述說：「在半島的好幾處地方，人只要在土地的浮面上發掘，就可以叫那可燃的煤氣突冒而出。一星的火花就　起大火，而這大火繼續的燃燒下去，一直到一個强烈的風潮或一陣大雨纔能把它熄滅。有的時候火燄自然而然的就產生了；在暴風雨之夜裏，人會見片片火舌，把它們那高高下下的燐光，滿佈在遠近的山坡上。......」光明之山的名稱，能說同這些火燄沒有關係麼？</p>
+<p>再根據希臘神話，那從天上把火種盜竊下來以惠贈世人的大神普　美德，是受了宇宙之主周比特大神的嫉視，被鎖困在高加索山上邊，以　他那大鷹啄食其肝的艱險日子的。這或者也是因為希臘人見到高加索山上那些慴熠的光明，纔塑造出來這種故事吧？以為那搖曳在山坡上面的火燄就是普羅美　的化身吧？</p>
+<p>無　怎樣，光明之山的名稱同積雪冰河的關係是非常疏淺，却是可以斷言的。—然而這「永明之火」的所在地啊！你是否要經受住這暴風雨的到來呢？</p>
+<p>小品</p>
+<h3>雷</h3>
+<p>— 雷開前</p>
+<p>一到夏天，第一個使我記起來的，就是夏晚的雷。</p>
+<p>天氣愈是熱悶，就愈是容易使人懷念到雷聲。因為雷聲一響，熱悶的空氣便一下子可給一陣大雨冲散了。</p>
+<p>你說在雷雨的時候，終不免有不幸的事情發生，因此你對雷聲的猛響，便常常起一層害怕之感。但在我却頗不以為然，因為我想，在雷雨中犧牲，終較在　住着氣的夏晚慢性地悶死，爽直得多。更何况被雷擊斃，畢竟是少數中的少數。</p>
+<p>我是始終愛雷的，我尤其愛那熱悶的夏晚上的第一聲的雷。</p>
+<p>每當炎炎的夏晚，熱悶的空氣，咄咄逼人的時候，我常常喘着難耐的氣，打開所有的窗子，抬起頭，側着耳，希望聽到一陣淸亮的雷聲。</p>
+<p>這雷聲應該是世界上最美妙的音樂，牠不但會使人心曠神怡，而且，我想牠一定能使我久抑了的肺葉伸展，然後灌溉我以新鮮的氣息。</p>
+<p>季節的脚步，又踏到夏的階段了；那熱悶的空氣，那難耐的夜晚！我渴望有一聲雷，從天邊突然響起，然後振澈到我們的地面。</p>
+<p>發明</p>
+<h3>室內日光燈</h3>
+<p>— 沈雄</p>
+<p>日光對於人體健康的重要巳是大家熟知的事了，所以有識之士紛紛提倡日光浴。但由於習俗及其他原因，這一運動未能十分發達。如今科學家發明了一種適應家用的日光燈，足不出戶就能享受到日光浴了。這一設備普通螺絲式的承座即可應用，所放出的人造日光包含紫外光及熱綫。據設計者說，室內日光燈並不傷眼，所以無需帶黑眼鏡，普通電力在一百十至一百二十五弗打　即可裝用。耗電約為二百七十五瓦。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（五）拔來報往</p>
+<p>國器給維城說得笑起來道：「我的思想和你的思想不同，我歡喜急進，你歡喜緩進。就是這樣吧，你什麼時候到上海來，等你到上海來的時候，你帶了令叔母的同意出來，大概你取到令叔母同意，我們兄妹也取得家父的同意了。今天不談了，你那舅舅，喚什麼名字？」國器問維城舅舅名字，就稱是另闢蹊徑的談話，不再把婚姻問題談下去。維城吿訴了他，回到自己床上，各自躺下。約摸隔了十幾分鐘，維城聽國器還沒熟睡，笑道：「國器，你還沒睡着嗎？你向來沒擇席病的，便是那天狂風暴雨，在船裏，你也睡着了一會。國器道：「今天晚上，不知是什麼緣故。算來也該疲倦了。」維城在枕上昂起臉來，對半明半滅的燈看了看，說道：「我敎給你一個方法　你只要默念着一二三四五六七八九十，到一百二百三百，便自然而然睡着了。」國器嗤嚇一笑道：「那麼你為什麼不把這個方法來試騐自己？」維城也跟着一笑道：「我知道你是明於責人而闇於責己，你給我和國芳打算，是打算得盡善盡美了；你也有意思要我給你打算嗎？」國器道：「道是什麼話？我不是像你說的那樣人。盡了義務，便想享權利。我每逢到晚上睡不着了，就是想起家，想起國，家國事只是能助人悽惋，一些也不能叫人興奮。」維城從被裏坐了起來道：「家，你的家怎麼樣？你是庶母，怎麼，你有難言之隱嗎？」國器伸了一雙手出來，向維城搖搖，他吿訴維城的，只是「不談不談」四個字。　（九〇）</p>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.06.01</h1>
+<h3>North African Knightsbridge Battle Reaches Fiercest Stage, Germany and Italy Claim Battle is Ongoing</h3>
+<p>German Headquarters, May 31st, Huitong News Agency Dispatch: This afternoon's battle report stated that the North African battle is still ongoing. German and Italian air forces shot down twenty-five British aircraft.</p>
+<p>Rome, May 31st, Huitong News Agency Dispatch: The Italian military headquarters announced this afternoon that the battle of Marmarica is ongoing. The enemy has suffered heavy losses, with over two thousand captured, including General Krone and a brigade commander. The enemy has destroyed 345 tanks, 21 armored reconnaissance vehicles, and over 200 military trucks. Tobruk has been subjected to heavy air raids, with sixteen British aircraft shot down by the German and Italian air forces.</p>
+<p>Rome, May 30th, Allied News Agency Dispatch: According to a battle report released by the Italian military headquarters, the German and Italian forces on the Western Cyrenaica front in North Africa are engaged in fierce battles with the resisting enemy forces, using infantry and tank units. The German and Italian air forces are also coordinating with ground troops, heavily bombing enemy front lines and supply stations, completely destroying enemy tanks, armored vehicles, and trucks on the ground. Their supply bases and airfields have also been severely damaged by bombing.</p>
+<p>Cairo, May 31st, Reuters Dispatch: Today's British Middle East communique stated that the battle for Knightsbridge (a crossroads near the Libyan coast) in North Africa has reached its fiercest stage after four days. The outcome is "not unfavorable to British General Ritchie's Eighth Army." The attacking German forces were constantly attacked by British forces throughout yesterday and suffered heavy casualties. The full text of the communique is as follows: "Fighting continued around Knightsbridge yesterday, becoming more intense. Axis armored forces were constantly attacked by British land and air forces. There is fierce fighting in the gaps where German forces broke through British minefields. However, it is extremely difficult for German forces to exploit these gaps. This battle has been going on for four days and has now reached its most intense level. The situation is not unfavorable to the British forces."</p>
+<p>Cairo, May 30th, Havas News Agency Dispatch: British military circles are extremely optimistic about the battle in Western Cyrenaica, North Africa, but do not conceal the arduous fighting conditions of the British forces and the decisiveness of this battle. It is reported that there were no changes in the front lines last night.</p>
+<h3>Kharkov Front, Battle Nearing End, Soviet Union Claims Defensive War Against Germany in Izyum-Barvenkovo Area</h3>
+<p>German Headquarters, May 31st, Huitong News Agency Dispatch: This afternoon's German military report stated that German forces on the central and northern sectors of the Eastern Front achieved victorious advances. Hungarian forces fought fiercely behind Soviet lines for two weeks, annihilating several Red Army guerrilla units. In addition to many prisoners, the enemy suffered over 4,300 dead, 21 artillery pieces destroyed, 97 trench mortars destroyed, and scores of machine guns destroyed, with countless other military equipment and supplies lost.</p>
+<p>Berlin, May 31st, Huitong News Agency: The German High Command stated that in the battle south of Kharkov, Soviet forces spared no effort in sacrificing manpower and resources in an attempt to rescue the surrounded Soviet forces, but failed. Only one Soviet unit, with numerical superiority, managed to occupy a key point in the military valley. At this critical moment, a German infantry battalion bravely counterattacked and finally repelled the Soviet forces, forcing them to retreat to their original positions. The great battle on the southern sector of the Eastern Front has come to an end. Since May 28th, the German forces have achieved further victories in the central and northern sectors of the Eastern Front. After several days of fierce fighting, the German forces in the central sector successfully encircled the enemy and are now in the process of annihilating them.</p>
+<p>Moscow, May 31st, Reuters Dispatch: Today's Soviet communique stated that on the night of May 30th, Soviet forces engaged in defensive battles against German tanks and infantry in the Izyum and Barvenkovo areas. No major events occurred in other areas of the front. A supplementary communique stated that Soviet forces on the Kalinin front occupied a populated key location and repelled three counterattacks.</p>
+<p>London, May 31st, Reuters Dispatch: The Soviet Information Bureau announced last night that the Soviet offensive in the Kharkov area was aimed at preventing the German offensive on the Rostov front and their plan to seize the Caucasus. The Soviet command's plan did not include recapturing the city of Kharkov. Some time ago, the Soviet High Command learned of the German commanders' plans for a major offensive by Axis forces in the Rostov front area. The Germans concentrated 30 infantry divisions, six tank divisions, and a large number of artillery units and aircraft in this area. In order to prevent this plan and strike a blow against the Axis forces, the Soviets launched an offensive in the Kharkov area. Occupying Kharkov was not part of the Soviet commander's plan. Fierce battles have been taking place in this area for two weeks and are now nearing completion. The main task predetermined by the Soviet commander, to strike a blow against the Axis forces, has been fulfilled. At the same time, it is reported that bloody battles are still ongoing around Kharkov. Moscow radio reports that Soviet forces have broken into half of a certain city on the Kharkov front, and fierce street fighting is underway.</p>
+<h3>Over a Thousand British Aircraft Bomb German Territory</h3>
+<p>London, May 31st, Reuters Dispatch: The Air Ministry announced that over a thousand British bombers heavily bombed targets in Germany's Ruhr and Rhineland areas last night. The main area attacked was Cologne. Detailed reports have not yet been received, but according to preliminary reports from aircrew, the attack was quite successful. Until dawn, thick smoke could still be seen rolling along the Dutch coastline. According to reconnaissance reports this morning, smoke from the attacked targets reached as high as 15,000 feet. When the British aircraft launched the attack, aircraft from the British Bomber Command, Fighter Command, and Coastal Command also heavily attacked German airfields and German fighters attempting to intercept them. A total of forty-four British aircraft went missing. This is the first time that the British Air Force has launched an attack using a thousand aircraft. In previous attacks, the maximum number of aircraft deployed was about 300. When the German Air Force launched its most intense attack on Britain, it used 500 German aircraft.</p>
+<h3>New Commander of U.S. Fleet in Gulf of Mexico, British and American Cargo Ships Continue to Sink</h3>
+<p>Washington, May 30th, Havas News Agency Dispatch: The Navy Department announced that the government has appointed Rear Admiral Kauffman as commander of the U.S. Fleet in the Gulf of Mexico, "to ensure that our warships are more effective in searching for submarines in the area." All U.S. warships from Jacksonville to the Gulf of Mexico will be under his command. Rear Admiral Kauffman was previously the commander of the U.S. Fleet in the Iceland area.</p>
+<p>Washington, May 30th, Havas News Agency Dispatch: The Navy Department announced that another American merchant ship was sunk by a torpedo in the Gulf of Mexico. All rescued crew members have landed in a certain port.</p>
+<p>Lisbon, May 31st, Huitong News Agency Dispatch: A Washington dispatch states that the U.S. Navy Department announced that one American and one British medium-sized cargo ship have been lost in the North Atlantic and off the Atlantic coast, respectively. The American ship was sunk several weeks ago, and the rescued sailors have landed in a certain port on the American East Coast. The British ship had a crew of eighty-one, of whom seventy-two have been rescued.</p>
+<h3>Mexico's Declaration of War Awaiting Presidential Signature</h3>
+<p>Argentina, the Capital, May 30th, Allied News Agency Dispatch: The United Press reported today that the Mexican Senate passed President Camacho's request to declare war on the Axis powers at 10:30 this morning. The Senate also passed a bill granting the president wartime privileges. The country's formal declaration of war is now awaiting the president's signature. It is expected that the signing will take place this afternoon, placing Mexico in a state of formal war with the Axis powers of Japan, Germany, and Italy. According to unofficial sources, the Senate unanimously passed the bill granting Camacho powers by a vote of 53 to 0, including the suspension of freedom of speech, the press, assembly, and travel within the country, the right to bear arms, and guarantees for businesses and private property. The Mexican Senate adjourned at 5:24 PM after a meeting of approximately six hours. During the meeting, key senators denounced the submarine torpedoing of Mexican oil tankers. The Senate Secretary stated that the two cases will be returned to the House of Representatives to be conveyed to the President as soon as possible.</p>
+<h3>Burma Railway Main Line Restored and Open to Traffic</h3>
+<p>A certain place on the Burma Front, May 30th, Allied News Agency Dispatch:</p>
+<p>The Burma railway main line has been fully restored through the efforts of the Japanese railway troops and engineers. A ceremony was held at noon on the 30th to celebrate the opening of traffic. The highways and railways between Rangoon and Mandalay and Lashio were restored as early as the 23rd. The semi-permanent restoration of the two major railway bridges on this route has also been completed. A total of fourteen bridges on the route were destroyed, and the repair time was only one month. Currently, 2,800 kilometers of the 3,300 kilometers of railways in Burma have been completely restored. As for vehicles, one-third of all vehicles in Burma are already in use. Regarding ships, the Irrawaddy Flotilla Company has begun operating over a hundred large and small captured ships.</p>
+<h3>Rumor that American Aircraft from India are Transporting Supplies to Chongqing, Hull and Soong Tzu-wen Sign Agreement</h3>
+<p>Guangzhou, May 31st, Allied News Agency Dispatch: According to reports received here, the United States recently signed an agreement with Chongqing, allowing the use of a large number of super-class aircraft from India to transport goods to assist Chongqing. This agreement was signed by U.S. Secretary of State Hull and Soong Tzu-wen. The effectiveness of this assistance is questionable, as the goods transported can only be limited to light weapons, medicines, and chemicals, while the heavy weapons that Chongqing hopes for are completely impossible to transport over this long distance. According to this report, twenty aircraft have been concentrated.</p>
+<h3>South African Prime Minister Arrives in Britain</h3>
+<p>Lisbon, May 30th, Allied News Agency Dispatch: According to a London dispatch, South African Prime Minister General Smuts arrived in Britain by plane today.</p>
+<h3>After the Fall of Jinhua and Lanxi, the Japanese Vanguard Continues to Advance, Japanese Army Aircraft Bomb Hengyang</h3>
+<p>Tokyo, May 30th, Allied News Agency Dispatch: The Asahi Shimbun reported from the Chinese Zhejiang front that after the Japanese army captured Jinhua and Lanxi, its vanguard advanced vigorously, capturing Longyou on May 29th. It also stated that another Japanese unit repelled the Chongqing 86th and 87th Divisions. The Japanese also occupied Tangxi on the Zhejiang-Jiangxi Railway.</p>
+<p>Swiss Capital, May 10th, Allied News Agency Dispatch: The United Press in Chongqing reported that the Chongqing Army spokesman officially admitted that the defending forces withdrew from Jinhua on May 28th.</p>
+<p>Japanese Air Force Base, May 30th, Allied News Agency Dispatch: Yesterday, army aircraft attacked Hengyang in Hunan Province, firing bombs and machine guns close to the ground, bombing and burning military stores and other items.</p>
+<h3>Italian Foreign Minister Elucidates Diplomatic Policy</h3>
+<p>Rome, May 31st, Huitong News Agency Dispatch: Italian Foreign Minister Ciano delivered a speech to the Senate Finance Committee yesterday, elucidating the basic principles of Italian foreign policy. He briefly stated that Italy's policy towards Britain is to wage war against the British Empire anytime, anywhere. The United States formally entered the war six months ago, but in reality, the United States has not been a neutral country for the past two years. Nominal neutrality was merely a cover for supporting Britain. The Pan-American Conference in the capital of Brazil produced no results. Italy's friendly relations with Argentina and Chile are increasingly strengthened. Argentina and Chile are both able to maintain an independent foreign policy. Ciano continued to discuss relations with the Soviet Union, stating that Mussolini felt the need to organize an anti-Soviet front during the Spanish Civil War. The current war is a war to defend against Bolshevism, and whether the culture closely related to Italian life can continue to be maintained will be determined by the outcome of the war. The Italian army has fought bravely and achieved victories, and will make even greater contributions. The Balkan countries are of decisive importance to Italy's interests. Through diplomatic and military steps in 1940 and 1941, Italy has united with the countries of Southeastern Europe. After the collapse of Yugoslavia in the war against the Soviet Union, Mussolini decided on the following principles: 1. To resolve the Adriatic Sea issue and guarantee Italy's control over the Adriatic Sea. 2. To establish the complete autonomy of Montenegro. 3. To define the territory of Albania. 4. Close cooperation between Italy and Croatia. Greece lacks food, and all developments are hindered. Italy has taken various measures to alleviate Greece's difficulties. Politically, the situation is very calm due to the activities of the Italian military and civil administration. The Albanian people's attitude towards the Italo-Greek war is admirable. Albania has the greatest confidence. After Albania annexed Yugoslav territory, its population increased by 800,000 people. Ciano reviewed the relationship between France and Italy after the armistice, believing that the relationship between France and Italy was very harmonious. Italy also maintains friendly relations with countries such as Turkey, Switzerland, and Spain. Spain has expressed a friendly attitude in the current war. Ciano strongly emphasized the continued cooperation between Germany and Italy. Although the battlefields are scattered in various places, it is still a common war. The common plan of the three countries has been manifested in the Eastern Front, North Africa, the Mediterranean, East Asia, and the Pacific. The war will continue. Although the enemy is resisting stubbornly, they will encounter even more tough fighting troops. This fighting spirit is the best guarantee of victory.</p>
+<h3>Roosevelt Inspects Troops</h3>
+<p>Washington, May 30th, Havas News Agency Dispatch: President Roosevelt inspected American troops today. This is the first time Roosevelt has appeared in public since the outbreak of the current war.</p>
+<h3>New Zealand Limits Purchase of Clothing and Footwear</h3>
+<p>Lisbon, May 31st, Huitong News Agency Dispatch: According to London sources, the New Zealand authorities have ordered the immediate restriction of the purchase of clothing and footwear, and have adopted the British restriction measures.</p>
+<h3>Yokohama Specie Bank and Bank of Taiwan Responsible for Reviving Southern Economy, Operational Areas of the Two Banks Also Defined</h3>
+<p>Tokyo, May 31st, Allied News Agency Dispatch: Regarding the economic revival work in various southern regions, the Japanese government and local authorities have carefully reviewed the matter and have designated the Yokohama Specie Bank and the Bank of Taiwan to actively organize financial institutions in the southern regions to carry out revival work. At the same time, the Bank of Taiwan has a plan to increase its capital by 30 million yen to ensure its activities in the southern region. The operational areas of the two banks have also been determined. The Yokohama Specie Bank will be responsible for Vietnam, Thailand, Malaya, Sumatra, and British Borneo, while the Bank of Taiwan will be responsible for Hainan Island, the Philippines, Dutch Borneo, Celebes, New Guinea, and the South Seas Mandate Territory.</p>
+<h3>Submarine Sunk off Martinique Island</h3>
+<p>San Juan (Puerto Rico), May 31st, Reuters Dispatch: The Tenth Naval District announced yesterday that an Axis submarine was sunk off Martinique Island on Wednesday. Naval aviators stated that they dropped four bombs on the submarine from a low altitude of 50 to 100 feet within four minutes. This announcement confirms previous reports of the sinking of an Axis submarine, but it is unclear whether the submarine was the one that recently attacked the U.S. destroyer Blakeley.</p>
+<h3>Great Reduction in Automobile Travel in the United States Due to Shortage of Gasoline and Rubber</h3>
+<p>London, May 30th, Havas News Agency Dispatch: Although automobile travel within the country has been greatly reduced due to the shortage of gasoline, according to the latest statistics, the number of people killed and injured due to traffic accidents is still high. In April, 565 people died and 2,000 were injured. In April 1941, only 161 people died.</p>
+<p>New York, May 30th, Havas News Agency Dispatch: Business circles here recently stated that at least two-thirds of all private cars in the United States will disappear within two years due to the rubber shortage. Experts estimate that the tires used by automobiles on American highways total one million tons. Although gasoline rationing has been implemented, daily consumption is still no less than 600 tons. Furthermore, economic experts stated that major changes are about to occur in the American economic structure due to the shortage of daily necessities such as rubber, gasoline, and sugar. Rubber is very important to the automobile industry and automobile transportation industry, and the rubber shortage is not a temporary phenomenon. Unless synthetic rubber can be produced in large quantities, this problem will not be solved in the very short term. President Roosevelt recently told the press that synthetic rubber will soon be able to replace natural rubber.</p>
+<h3>Hitler Encourages Young Military Officers</h3>
+<p>Berlin, May 31st, Huitong News Agency Dispatch: German Head of State Hitler delivered a speech yesterday in the gymnasium here to 10,000 newly promoted officers and prospective officers of the German Navy, Army, and Air Force. The German Head of State began by using lessons from German history to give the young officers maxims for their work. The experiences of last winter's war proved that true leaders must have perseverance and the ability to overcome difficulties. The German Head of State finally asked the young officers to remember that their attitude on the front line is tied to the fate of Germany. Therefore, German officers and their subordinates, whether in combat or at rest, must always keep Germany's hopes in mind.</p>
+<h3>Coal Shortage in France, No Hope for Resolution of Railway Transportation Problems</h3>
+<p>Clermont-Ferrand, May 31st, Havas News Agency Dispatch: The railways in northeastern France are difficult to repair due to war damage. There is no way to travel between central France and Paris. Furthermore, due to the lack of imported coal, trains run very infrequently. The authorities have banned people from traveling by train for sightseeing. Currently, trains are mostly used to transport food. The extent of railway restrictions can be seen from the following figures: Before the war, trains traveled 400,000 miles per month. Last year, this was reduced to 100,000 miles, and now it has been reduced to 90,000 miles. In 1941, the number of freight cars running on the railways was only 79% of the number in 1938. Currently, due to the lack of coal, there is no hope for a resolution to the railway transportation problem. The government is now planning to use electric locomotives to replace existing steam locomotives in order to save fuel.</p>
+<h3>Order Restored in Quito</h3>
+<p>Quito, May 30th, Havas News Agency Dispatch: According to official announcements, the "revolutionary movement" that occurred in Ecuador yesterday has failed. The regular army remained loyal to the government throughout the incident. The leaders of the rebellion have all been arrested, including former Minister of Defense General Plaza, former Commander Colonel Urdia, and former Minister to Peru, Quevedo. It is expected that the government will soon release a report on the incident. Order has been restored here and in other locations.</p>
+<h3>Australian Army Minister Ford Again Warns Australians</h3>
+<p>Lisbon, May 30th, Allied News Agency Dispatch: According to a Canberra dispatch, Australian Army Minister Ford again warned the people today not to be slack, stating that although Australia's position has greatly improved, it still faces imminent danger. The Australian government is doing everything it can to accelerate the manufacture and equipment of forces within Australia and is shipping more fighters, bombers, and anti-aircraft guns overseas.</p>
+<h3>Public Transportation Disrupted in Calcutta</h3>
+<p>Swedish Capital, May 31st, Huitong News Agency Dispatch</p>
+<p>According to the London Standard, Calcutta is gradually being shrouded in the clouds of war. There are currently no buses in the city, and streetcars have announced a strike due to workers demanding higher wages. Therefore, only bicycles and rickshaws are seen in the city.</p>
+<h3>U.S. Export-Import Bank Loans to Venezuela</h3>
+<p>Lisbon, May 31st, Huitong News Agency Dispatch: According to a Washington dispatch, the U.S. Export-Import Bank has decided to loan 20 million to Venezuela for the construction of public works. However, the loan agreement has not yet been approved by the Venezuelan Congress and has not been announced.</p>
+<h3>Iron Railings in London's Hyde Park Melted into Iron Ingots to Build Tanks</h3>
+<p>London, May 20th, Havas News Agency Dispatch</p>
+<p>The iron railings in Hyde Park here, which were removed last year, have been melted into 450 tons of iron ingots, which will be used to build tanks.</p>
+<h2>Page 3</h2>
+<h2>Page 4</h2>
+<h3>Silver and Banking Industries Held a Meeting Yesterday to Discuss the Legal Tender Issue: Public Notice Clarifies that Reports of Banks Closing and Restricting Withdrawals Starting June 1st Are Inaccurate</h3>
+<p>The Shanghai Silver and Banking Association held a special meeting to discuss the Nanjing government's announcement regarding the exchange of legal tender for Central Reserve Bank notes. The details of the meeting are outlined below:</p>
+<p>Meeting Details</p>
+<p>The temporary joint committee of silver and banking industry members convened an emergency meeting at the Hong Kong Road Banking Association at 5:00 PM yesterday. Over eighty individuals were present, including Wu Yunzhai, Ye Fuxiao, Wang Boyuan, Qu Jigang, Zhu Boquan, Lu Shuchen, and Wang Huaikang. The chairman began by reporting the purpose of the meeting, followed by resolutions on various measures to be implemented. The meeting adjourned around 7:00 PM. The resolutions were as follows: Starting June 1st, all debts and credits between banks and firms prior to May 31st would be converted at a ratio of two to one, using Central Reserve Bank notes as the standard. Specifically: (1) Old legal tender cash deposits at all banks and firms would be converted to Central Reserve Bank note cash deposits at a ratio of two to one. (2) Old legal tender current account deposits would be converted to Central Reserve Bank note current account deposits at a ratio of two to one. Before June 7th, those repaying debts with old legal tender would be limited to the old legal tender issued by the Central Bank of China and the Bank of Communications, according to regulations. Old legal tender bearing place names other than Shanghai, and old notes issued by other banks, would not be accepted. Lastly, the association spokesperson solemnly declared to reporters: "The recent rumors circulating in the market regarding the silver and banking industries closing for three days, restricting withdrawals, and requiring depositors to purchase public bonds are absolutely inaccurate," as officially clarified by the responsible authorities. (The association's public notice can be found in today's advertisements.)</p>
+<p>Content of the Announcement</p>
+<p>Briefly stated, the banknotes issued by the Central Reserve Bank are designated as the unified currency. Implementation will begin in Jiangsu, Zhejiang, Anhui provinces, and the cities of Nanjing and Shanghai on June 8th. The specific measures are as follows: Banknotes issued by the Central Reserve Bank are the sole legal tender. All old currency must not be officially used without special permission. Old currency will be exchanged for Central Reserve Bank notes at a ratio of two to one, but public bonds of the same value may be substituted, or it may be deposited in banks as a deposit of the same amount. The old currency eligible for exchange is limited to banknotes issued by the Central Bank of China and the Bank of Communications, but banknotes bearing place names other than Shanghai and old subsidiary currency notes are not included in the exchange. Old subsidiary currency notes will temporarily be allowed to circulate at half the value of Central Reserve Bank subsidiary currency notes. A special account will be established to handle the redemption of principal and interest on public bonds issued in exchange for old currency, to facilitate prompt repayment. For legitimate purposes, loans may be obtained from the Central Reserve Bank using these bonds as collateral at face value. All debts and credits denominated or agreed upon in old currency units shall be converted to Central Reserve Bank note units at a ratio of two to one. Hereafter, contracts denominated in old currency units will be invalid. The transportation of old currency from outside the Peace Zone to within the Peace Zone will be strictly prohibited from now on."</p>
+<p>Exchange Methods</p>
+<p>According to a Tongmeng News Agency report, the official locations for exchanging Central Reserve Bank notes are: The Central Reserve Bank, the Central Reserve Bank offices soon to be established in Shanghai and Nanjing, Japanese banks, and specially designated exchange shops and money houses. The names will be announced separately. The methods for the above financial institutions to recover legal tender are as follows: Those wishing to exchange old currency for Central Reserve Bank notes up to 10,000 yuan may do so at the above banks, exchange shops, and money houses at a ratio of two to one. This period is limited to fourteen days, from June 8th to June 21st. These banks, exchange shops, and money houses must, during this period, transfer the old currency they receive to the Central Reserve Bank and obtain Central Reserve Bank notes at the official exchange rate. Those holding old currency worth more than 10,000 yuan should apply for exchange to the Central Reserve Bank and its designated banks (names to be announced separately) from June 8th to June 21st. The Central Reserve Bank and its designated banks will accept these at the official exchange rate of two to one, as Central Reserve Bank note cash deposits. The designated banks will then deliver the old currency received during the above period to the Central Reserve Bank as cash deposits. Chinese commercial banks, exchange shops, money houses, and trust companies must submit a report of their holdings of old currency as of June 7th to the Central Reserve Bank before June 10th. The old currency received by the Central Reserve Bank from these banks and firms will be converted to Central Reserve Bank notes at the official exchange rate of two to one, with half issued as public bonds for financial stability and the other half as cash deposits. The Central Reserve Bank may also convert a portion of the total amount of old currency submitted by certain financial institutions into current account deposits, paying annual interest of three percent, and may convert the current account deposits into cash deposits of the same amount within three months.</p>
+<p>Zhou Fohai Speaks</p>
+<p>Zhou Fohai made a statement yesterday, the main points of which are as follows: The issuance of public bonds for financial stability is limited to the silver and banking industry, amounting to half of the total, or one-half. These bonds can be used as cash payments at any time, without the risk of illiquidity. Deposits from ordinary industrial and commercial people, regardless of the amount, will not be accompanied by public bonds. Rumors circulating about restricting withdrawals are completely unfounded. However, amounts over 10,000 yuan will be treated as cash deposits, while amounts under 10,000 yuan will be treated as cash. Even amounts over 10,000 yuan can still be paid out at any time. There is no distinction between cash and current accounts from now on, regardless of the amount of old currency. New legal tender will be exchanged at a ratio of two to one. This will eliminate people's losses from discounting. All contracts for debts are to be paid with new legal tender at a ratio of two to one from June 1st. Any subsequent contracts made in old currency will be invalid. The reorganization of old currency will take effect on June 1st. The deadline for exchanging new legal tender is from June 8th to June 21st. Only old legal tender from the Central Bank, the Bank of China, and the Bank of Communications will be exchanged. Other miscellaneous notes will not be exchanged. There will be no extensions granted after the deadline.</p>
+<h3>French Concession, Route Mayran: Rice Depot to Reopen Today</h3>
+<p>The French Concession authorities have announced that the rice depot located on the open space in front of the Route Mayran police station will reopen today. The rice from this depot will be provided only to schools, hospitals, and factories that regularly feed more than thirty people. Private residences or organizations that employ many people but do not provide long-term meals will not be eligible. The French authorities have also announced that applications will be accepted by the various police stations from Monday, June 1st, to Thursday, June 4th, and from Monday, June 8th, to Thursday, June 11th, in the morning.</p>
+<h3>Retail Tax in the International Settlement to Begin Today; French Concession to Begin Collecting Bill Tax Today</h3>
+<p>The Shanghai Municipal Council has decided to implement a 2% retail tax in the International Settlement starting today. According to official sources, the annual revenue from this new tax is expected to reach 5.5 million yuan. All individuals, firms, or corporations engaged in commerce or trade within the International Settlement will be subject to a 2% retail tax levied by the Shanghai Municipal Council. Starting this month, a detailed list of monthly retail sales, in duplicate, along with the total amount due in 2% tax, in cash or current check, should be submitted to the collection point designated by the Shanghai Municipal Council.</p>
+<p>Three Categories of Tax-Exempt Businesses</p>
+<p>The following are exempt from retail tax: Restaurants and food stalls already subject to bill tax; food stalls, fruit stalls, and vegetable stalls in public markets subject to license fees, as stipulated by the Shanghai Municipal Council Announcement No. 5904. Rice stores will have the tax included in the rice price. The Shanghai Municipal Council will severely punish those who evade taxes or underreport sales.</p>
+<p>French Municipal Council to Collect Bill Tax</p>
+<p>The French Municipal Council will begin collecting bill tax on hotels, restaurants, etc., within the French Concession starting today. The tax rate is 10%. The scope of collection includes revenue from hotel room charges, and revenue from the sale of beverages and food in hotels, restaurants, tea rooms, bars, apartments, and dance halls, and dance hall ticket sales. Apartments and furnished houses with more than nine rooms will be treated as hotels. The International Settlement has been collecting this tax since the 8th of last month.</p>
+<h3>Subletting Licenses: All Distribution Points Closed; Issuance Centralized at One Location in the Shanghai Municipal Council</h3>
+<p>The issuance of subletting licenses by the Shanghai Municipal Council will be centralized at one location starting today. The various distribution points have been closed. The details are as follows:</p>
+<p>Closure of Various License Distribution Points</p>
+<p>The Shanghai Municipal Council's subletting licenses were previously issued in five districts: central, northwest, east. The locations for issuing licenses were: the Shanghai Municipal Council Building, Avenue Edward VII, Robison Road, Brenan Road, Szechuen Road, Jessfield Road, North Fukien Road, Haining Road, Chusan Road, and Chih Wu Pei Road. Except for the four locations on Jessfield Road, Avenue Edward VII, Brenan Road, and North Fukien Road, which were closed previously, all other locations, except the Shanghai Municipal Council Building, were closed yesterday.</p>
+<p>Sending Personnel to Investigate Various Districts</p>
+<p>Starting today, only the Taxation Section, Room 506, lower floor of the Shanghai Municipal Council Building on Kiangse Road will continue to issue licenses. At the same time, the Shanghai Municipal Council's subletting management office has sent personnel to various districts (central, northwest, east) to strictly investigate any cases of subletting remaining rooms without obtaining a license. From April 1st to the end of May, less than 42,000 licenses were issued. Second landlords who have obtained a license must display the license plate and the subletting list in a prominent place in the house, or they will be punished.</p>
+<h3>Shanghai Municipal Council to Build Six Pumping Stations</h3>
+<p>The Shanghai Municipal Council's Public Works Department is actively promoting various flood prevention projects. Recently, it has started constructing six pumping stations in the central, northwest districts. The locations are: three in the central district, located at Avenue Edward VII and the Second Yangjing Creek bridge, Chapei Road and the Nicheng bridge, and Fukien Road and the Laozha bridge; one in the west district, located on Brenan Road near the Suzhou Creek; one in the north district, located on Range Road near the Yokohama Creek, and North Szechuen Road and the Second Garden Bridge north. The purpose of the construction is to continuously pump rainwater flowing into the sewers from the streets into the rivers during storms and high tides. The one on Fukien Road is intended to drain the accumulated water on the streets around the Wing On Company. These pumping stations are several feet deep underground, and the above-ground part is over ten feet high, hollow, and surrounded by a circular structure resembling a fortress. The one at the Second Yangjing Creek bridge is generally nearing completion.</p>
+<h2>Page 5</h2>
+<h3>French Tramways to Increase Fares Today: 20 Cents for Third Class, 50 Cents for First Class</h3>
+<p>Tram fares in the French Concession will increase again starting today. The minimum fare for third class will be 20 cents in legal tender, and the minimum fare for first class will be 50 cents in legal tender. The details are as follows:</p>
+<p>Company Notice</p>
+<p>A notice from the Shanghai French Tramways Company states: "Due to exchange rate fluctuations, the company hereby informs the public of the newly revised ticket prices, which will take effect on June 1, 1942. The newly revised fare table will be displayed on all vehicles for the convenience of passengers."</p>
+<p>Fare Summary</p>
+<p>The tram fares effective today are summarized below: Route 17 (trolleybus) from the Great World to Dapu Bridge: Third class, minimum 20 cents in legal tender, maximum 60 cents in legal tender; First class, minimum 50 cents, maximum 1.10 yuan. Route 24 from West Gate to Avenue Foch: Third class, minimum 20 cents, maximum 60 cents; First class, minimum 50 cents, maximum 1.30 yuan. Route 1 (tram) from the Bund to Xujiahui: Third class, minimum 20 cents, maximum 80 cents; First class, minimum 50 cents, maximum 1.30 yuan. Route 10 from the Bund to Lokawei: Third class, minimum 20 cents, maximum 70 cents; First class, minimum 50 cents, maximum 1.10 yuan.</p>
+<p>Public Buses</p>
+<p>The French Concession Route 20 public bus will also increase fares starting today. The minimum fare will be 50 cents in legal tender, and the maximum fare will be 1.30 yuan in legal tender, both doubled from the old prices, still calculated in old legal tender.</p>
+<p>Memorial Service and Sutra Chanting for Tao Yunzang</p>
+<p>Mr. Tao Yunzang, courtesy name Zizhong, from Jiangning, had resided in Shanghai for forty years. He was known for his charity, benevolence, and respect for his fellow villagers. Tragically, he passed away suddenly from lung disease on April 30th of this year. Those who heard the news were saddened. His sons, Changrong and Changfu, have arranged a memorial service and sutra chanting today at the Faci Temple on Avenue Ghislain.</p>
+<h3>YWCA Holds Children's Health Competition</h3>
+<p>The YWCA held a children's health competition to raise awareness of children's health among parents. There was enthusiastic participation. Specialist physicians examined the physical condition of each child. The children were divided into four groups: the first group was under four years old, the second group was five to eight years old, the third group was nine to twelve years old, and the fourth group was thirteen to sixteen years old. Three children in each group with outstanding results received awards. The award ceremony was held at 3:00 PM yesterday (May 31st), chaired by Liang Xu Xiuying. Ms. Zhou Ni Hanfang gave a speech on "Children's Health and Habits." The meeting adjourned around 4:00 PM.</p>
+<h3>The Shanghai Municipal Council's New Organization for Solving All Problems (10): The Future of the People of Shanghai Will Be Decided in Their Palms</h3>
+<p>Direct Supply</p>
+<p>In addition to retail sales through rice stores, the Rice and Food Office also directly supplies factories or companies employing more than thirty permanent Chinese staff. These organizations should apply to the office, providing details such as the number of employees. In most cases, a certificate from an accountant designated by the Shanghai Municipal Council is required to prove the accuracy of the numbers listed in the application. Only then can rice be allocated to the company in accordance with the bureau's fixed daily per capita requirement.</p>
+<p>When all bureau rice leaves the warehouse, the purchaser receives a transport permit to move it from the warehouse to its destination. Upon completion of the transport, the permit should be returned to the Rice and Food Office immediately. Failure to return the permit within 24 hours of shipment will result in the forfeiture of the ten-yuan deposit paid per bag before the permit was issued. This is a necessary measure to prevent the misuse of permits.</p>
+<p>Special Organizations</p>
+<p>Public utility companies, charities, schools, and hospitals belong to the same category as the above-mentioned factories. They have been receiving supplies directly from the Rice and Food Office since the initial implementation of the rice allocation measures. In each case, the rice distribution must undergo strict verification to ensure that it is used to meet the stated needs. In addition to these organizations, about three or four hundred people pay and collect shipping orders at the office every day. "Distributing rice is certainly more troublesome when you have no inventory yourself and have to withdraw it from scattered warehouses within the settlement," said Mr. Liki. "Before December 8th, the Municipal Council only purchased rice from a very small number of vendors. But since the formal requisition began, the Municipal Council has actually transacted with several hundred. In other words, we have to clear and pay the accounts of hundreds of companies that had their rice stocks requisitioned."</p>
+<p>Requisition Method</p>
+<p>Before purchasing, the Rice and Food Office must first obtain the numbers and marks of the warehouse receipts for the rice stored in each warehouse. At the time of purchase, the rice of each owner is weighed and recorded separately by weighers. Payment is then made based on this weight.</p>
+<p>"A large number of people were used for this requisition plan," said the rice control officer. "We not only have to check the quality and weight of the rice we receive, but also have to verify that the person applying for the return of the rice payment is indeed the owner of this stock."</p>
+<p>For these reasons, more than one hundred staff members work hard every day from 9:00 AM to 6:00 or 7:00 PM.</p>
+<p>In addition to rice, this office is also responsible for purchasing maize. With the exception of what is allocated to pastures, all maize purchased is ground and then distributed to the public through rice stores as a supplement to rice. The method of purchasing and distributing maize is exactly the same as for rice.</p>
+<p>"Once things are organized," Mr. Liki finally said, "it becomes much easier, but the work the Municipal Council encountered here came suddenly. There was almost no time to prepare to start the machine. This is not just a matter of purchasing and selling—in general, it is a matter of controlling the distribution of rice. If it were just a matter of 'the more you sell, the better,' there would never have been a food problem, and the Municipal Council would not have had to set prices and manage distribution. Unfortunately, the reality is not so... This is life." (End) Yesterday's newspaper dispatch time was 6:15 PM.</p>
+<h3>Recent Situation in the Xia Guang Cup Basketball Tournament: Qiang Xing and Bing Teams Dominate in Two Groups</h3>
+<p>The Xia Guang Cup Basketball League matches were not held yesterday due to inclement weather. All matches have been postponed to next week. The recent form of the Xia Group is dominated by the Qiang Xing V team. The situation in the two groups is as follows:</p>
+<h3>Mei Sheng Cup Finals on Thursday: Xiao Wei and Wanlong Face Off</h3>
+<p>The Mei Sheng Cup mini-football finals have been formed by the group champions Xiao Wei, Rui Long, and Wanlong in a round robin system. After Xiao Wei and Rui Long drew last week, the first game of the championship will be held this Thursday at 5:00 PM at the Guangxia Middle School on Muirhead Road, with Xiao Wei playing Wanlong. Wanlong will then play Rui Long this weekend. Wanlong has the best chance of winning.</p>
+<h3>Xia Guang Middle School Anniversary: Grand Sporting Events Held</h3>
+<p>Xia Guang Middle School, located at the intersection of Datong Road and Avenue Edward VII in the city, has achieved remarkable results since its founding in 1937. The school's fifth anniversary is the day after tomorrow (June 3rd). A grand celebration will be held on that day. There will be a carnival starting at 1:00 PM, and various sports performances and four basketball games on the 3rd. The games will feature Movie Stars vs. Bai Lian, V Team vs. Qiang Xing, Patriotic Girls' Middle School vs. Yu Sheng, and China South vs. Xia Guang.</p>
+<h2>Page 6</h2>
+<p>Economic Supplement</p>
+<h3>Financial Upheaval Looms: Tensions Run High on the Eve of a Major Transformation, Markets Experience Tumultuous Waves</h3>
+<p>Surviving the past week has been no easy feat. Reading the notices posted in front of the various banks last night reveals that the financial storm of the past two weeks has entered a period of overall resolution this week. What the future holds is difficult to predict. The important events in the market over the past week are reviewed and commented on below.</p>
+<p>Currency Falls by Half, Prices Double</p>
+<p>The Central Reserve Bank note was originally equal in value to the legal tender. Starting on March 23rd of this year, it increased in value to 77% of legal tender: that is, 100 yuan of legal tender equaled 77 yuan of Central Reserve Bank notes. This rate remained unchanged until May 20th. In the week that followed, it depreciated daily: it depreciated to 74 yuan on the 20th, 71 yuan on the 21st, 66 yuan on the 22nd, and 60 yuan on the 23rd. Although the 24th was a Sunday and there was no market, it was announced in advance in the newspapers that it would depreciate to 53 yuan on the 25th (i.e., last Monday). It then depreciated to 50 yuan on the 26th. Since then, the depreciation has stopped.</p>
+<p>At the initial announcement of 77%, there was talk in the market of 66%. People still regarded it as a rumor, but prices had already taken this as a target for increases, and even exceeded it. If we compare the three periods before and after the 77% discount and after the 50% discount, we can see that the currency depreciation was not as fast as the rise in prices, and the rise in foreign currency was no weaker.</p>
+<p>Capital Outflow, Current Accounts Become Loose</p>
+<p>The listing stopped at 50%, and the relevant authorities issued a statement, and the market gradually stabilized. Unexpectedly, rumors suddenly arose, culminating in a withdrawal rush for one and a half days over the weekend. Fortunately, the city's silver and banking industry has long been weathered and remained calm in the face of danger. In particular, the joint reserve system was flexible and coped effectively, preventing a major disaster. This is very gratifying.</p>
+<p>When people talk about speculation, they often point to hot money as the culprit. This time, however, hot money flowed into the market in large quantities due to withdrawals, and speculative prices actually fell sharply. This is noteworthy. Is it because there are few new transactions and a large amount of credit has been released? How else could this be achieved? Why were there so many transactions in the past? And what is the reason for the release of credit today? This is an interesting question.</p>
+<p>More than a month ago, current accounts were at a premium to cash, but now they have changed to a discount. How quickly they turn against each other! On Monday, when the currency price plummeted, the current account discount soared to as much as 16 yuan per hundred. The higher the current account discount, the greater the upward pressure on prices, because the speculative market leads prices, and the speculative market uses current accounts as its unit of calculation. The silver and banking authorities are now taking steps to eliminate the discount, which is indeed a matter of urgency. However, the elimination plan is limited to the clearing of the difference in exchanges between silver and banking counterparts, so ordinary billholders can only discount on the open market, and therefore cannot avoid the discount. However, the elimination of the difference between counterparts has had a powerful impact on the entire current account discount market. In addition, a large amount of cash has flowed into the market due to withdrawals, which will have a more active effect. This is why the current account discount fell back over the weekend.</p>
+<h3>Stock Prices Soar, Bond Market Sees Three Rises and Three Pauses</h3>
+<p>First, regarding securities: the face value of Chinese stocks is in legal tender, but the assets follow prices. When the currency denomination changes, the assets do not change, so the price is firm. When the currency denomination does not change, the asset evaluation rises in inverse proportion to the currency depreciation, so the price is also high. The initial rise of the week was enormous, and then those that had not risen rose, and those that had risen too much contracted. This was an adjustment of people's minds, so the overall trend of the week was indeed firm, but the fluctuations were very violent. New medicine stocks and underwear stocks both rose and fell, such as Wu Zhou, which fluctuated by 50 yuan. Other industrial stocks were flat and then bullish, while financial stocks did not move. Only the Bank of China and China United Trust had a 10% gain. Foreign stocks rose at the beginning of the week and then fell sharply, with drastic changes, each fluctuating by 10%. But regardless of Chinese stocks or foreign stocks, they were outstanding compared to the previous week. Chinese stocks reached unprecedented highs during the week, and foreign stocks also largely broke the records of the same period last year.</p>
+<p>The bond market has been turbulent, with intense competition. On Monday, all bonds rose by more than four yuan, eventually reaching the daily limit. This swept away the sluggishness of January and February. On Tuesday, B, C, D, and E continued to rise, reaching the daily limit for the second time. A also rose by 3.3 yuan. With these two days of sharp rises, the return wind after Wednesday was expected. On that day, all bonds fell by more than three yuan, with only D falling by 1.5 yuan. The fall did not stop on Thursday, and A even fell by another four yuan before reaching the daily limit. However, many parties took advantage of the low prices to buy, so the fall had weakened by Friday, and on Saturday, A and B saw the daily limit again. A week of three rises and three pauses can be called a spectacle.</p>
+<h3>Gold Prices Rise Higher and Higher, Foreign Currencies Turn Purple</h3>
+<p>The idea of metallic currency is still alive, so if the currency price falls, the gold price will inevitably soar, and there are also activities to escape capital. However, on Monday, the gold price saw an unprecedented high of 40,000 yuan, which was too much. The depreciation was then stopped at 50%, so bullish traders took profits and the momentum subsided slightly. However, the market price for the whole week still hovered around 35,000 yuan, which is more than 10,000 yuan higher than before the currency turmoil.</p>
+<p>Foreign currencies (British pounds) rose rapidly along with the gold price. At the weekend, the US dollar and British pound reached as high as 800 yuan, which is even more astonishing. Military scrip once soared to 14 yuan, which, after deducting the current account discount, also reached more than 12 yuan. The military scrip is linked to the Central Reserve Bank note. With 100 yuan of Central Reserve Bank notes equal to 18 yuan of military scrip, and 1 yuan of legal tender equal to 1 yuan of Central Reserve Bank notes, the strength of the rise can be seen. (Cloth and other commodity market prices omitted)</p>
+<h2>Page 7</h2>
+<p>Free Talk</p>
+<p>Folklore</p>
+<h3>The Fire of the Caucasus</h3>
+<p>— Jian Nong</p>
+<p>The majestic Caucasus Mountains, stretching 1,200 kilometers from the northwest to the southeast, their name means "Light." How did they get this name? Common geography books explain that, besides the main peak Mount Elbrus, there are nine peaks above the snow line, all covered in perpetual snow and shimmering glaciers, hence they are called the "Mountains of Light." However, people forget that the Caucasus region, especially the Apsheron Peninsula where Baku is located, is one of the world's leading oil field centers: the name "Mountains of Light" actually comes from here. Please let me explain further.</p>
+<p>According to historical records, the small village of Surakhani, not far north of Baku—now a concentration of oil wells—was already famous as the location of the "Eternal Fire" in 600 BC. This "Eternal Fire" burned fiercely to a height of tens or hundreds of feet and could burn for hundreds of years without being extinguished. The ancients were baffled by this "fire that could burn without consuming fuel," and many Zoroastrian fire worshippers traveled thousands of miles to the "Eternal Fire" to prostrate themselves and show their devotion. Can you say that the name "Mountains of Light" has nothing to do with the "Eternal Fire"?</p>
+<p>The great French geographer Élisée Reclus, in his monumental work "Universal Geography" published in 1881, also described the Apsheron Peninsula as follows: "In several places on the peninsula, one only needs to dig in the topsoil to release flammable gas. A spark can ignite a great fire, which continues to burn until a strong gale or a downpour extinguishes it. Sometimes the flames arise spontaneously; on stormy nights, one sees tongues of fire scattering their flickering phosphorescence across the hillsides near and far..." Can you say that the name "Mountains of Light" has nothing to do with these flames?</p>
+<p>Furthermore, according to Greek mythology, Prometheus, the great god who stole fire from the heavens to bestow it upon humanity, was envied by Zeus, the lord of the universe, and was chained to the Caucasus Mountains, enduring the hardship of having his liver devoured by an eagle every day. Perhaps this is also because the Greeks saw the flickering lights on the Caucasus Mountains and created this story? Believing that the flames flickering on the hillsides were the embodiment of Prometheus?</p>
+<p>Regardless, it can be asserted that the relationship between the name "Mountains of Light" and snow-covered glaciers is very tenuous. But oh, the location of this "Eternal Fire"! Will you withstand the coming storm?</p>
+<p>Short Piece</p>
+<h3>Thunder</h3>
+<p>— Lei Kaiqian</p>
+<p>When summer arrives, the first thing that comes to my mind is the thunder of summer evenings.</p>
+<p>The hotter and more stifling the weather, the easier it is to miss the sound of thunder. Because once the thunder rolls, the oppressive air can be scattered by a downpour.</p>
+<p>You say that during thunderstorms, unfortunate things inevitably happen, so you often feel a sense of fear towards the loud thunder. But I disagree, because I think that sacrificing oneself in a thunderstorm is much more refreshing than slowly suffocating on a hot, airless summer night. Moreover, being struck by lightning is, after all, a minority of the minority.</p>
+<p>I have always loved thunder, especially the first clap of thunder on a hot, stifling summer evening.</p>
+<p>Whenever the summer evenings are sweltering and the air is oppressively stifling, I often pant with unbearable breath, open all the windows, raise my head, and cock my ear, hoping to hear a clear clap of thunder.</p>
+<p>This thunder should be the most beautiful music in the world. It not only makes people feel relaxed and happy, but also, I think, it must be able to stretch my long-suppressed lungs and then irrigate me with fresh air.</p>
+<p>The footsteps of the seasons have once again stepped into the stage of summer; that stifling air, that unbearable night! I long for a clap of thunder to suddenly sound from the horizon and then resonate across our land.</p>
+<p>Invention</p>
+<h3>Indoor Sunlight Lamp</h3>
+<p>— Shen Xiong</p>
+<p>The importance of sunlight to human health is well known, so enlightened people have advocated sunbathing. However, due to customs and other reasons, this movement has not been very developed. Now scientists have invented a sunlight lamp suitable for home use, so you can enjoy sunbathing without leaving your home. This device can be used with ordinary screw-type sockets, and the artificial sunlight it emits contains ultraviolet light and heat rays. According to the designers, indoor sunlight lamps do not harm the eyes, so there is no need to wear sunglasses. Ordinary electricity at 110 to 125 volts is sufficient for use. The power consumption is about 275 watts.</p>
+<h3>Sharing a Boat in Storms</h3>
+<p>— He Jiazhi</p>
+<p>(5) Retaliation</p>
+<p>Guoqi laughed at what Weicheng said, "My thoughts and your thoughts are different. I like to advance rapidly, and you like to advance slowly. That's it. When will you come to Shanghai? When you come to Shanghai, bring your aunt's consent. Probably, once you get your aunt's consent, we brothers and sisters will also get our father's consent. Let's not talk about it today. What's your uncle's name?" Guoqi asked Weicheng's uncle's name, claiming it was a new topic, no longer discussing the marriage issue. Weicheng told him and returned to his bed, and they each lay down. After about ten minutes, Weicheng heard that Guoqi was not yet asleep and laughed, "Guoqi, are you still not asleep? You never have trouble sleeping away from home. Even that day in the storm, you fell asleep for a while on the boat." Guoqi said, "Tonight, I don't know why. I should be tired." Weicheng raised his face on the pillow and looked at the half-lit lamp, saying, "I'll teach you a method. You just need to silently recite one, two, three, four, five, six, seven, eight, nine, ten, to one hundred, two hundred, three hundred, and you will naturally fall asleep." Guoqi chuckled and laughed, "Then why don't you try this method on yourself?" Weicheng also laughed, "I know you are good at blaming others but bad at blaming yourself. You have planned everything perfectly for me and Guofang; do you also want me to plan for you?" Guoqi said, "What are you saying? I'm not the kind of person you're talking about, who wants to enjoy rights after fulfilling obligations. Whenever I can't fall asleep at night, I think of my family and my country. Family and national affairs can only help people feel sad and cannot excite them." Weicheng sat up from the quilt and said, "Family, how is your family? You have a stepmother, what's wrong, do you have some unspeakable secrets?" Guoqi stretched out his hands and waved them at Weicheng. He only told Weicheng the four words "Don't talk, don't talk." (90)</p>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.05.31.html", "next": "1942.06.02.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

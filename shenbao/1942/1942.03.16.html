@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.16 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 417 - 4924420</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>華盛屯頓將舉行會議　商討遠東新戰略　協約國均將派代表參加保衛印度澳洲亟待增援</h3>
+<p>倫敦十五日路透社社電　泰晤士報外交記者稱、關於同盟國在太平洋聯合作戰之新戰略、中印美印紐澳諸國政府正在考慮中、短期內即將舉行會商、由於戰爭形勢之變遷、舉凡太平洋作戰會議機構之調整、以及參謀部人員更迭問題、均將提出討論、會議地點或在華盛頓舉行、澳洲及印度儘速建設爲同盟國强大之反攻根據地、澳政府現派遣外長伊瓦特博士前往華盛頓、在伊氏尙未抵美以前、太平洋作戰會議之新組織及其戰略、不致作最後決定、其後渠或將遄赴倫敦、繼巴區爵士之後代表澳洲參加英帝國戰時內閣、</p>
+<p>倫敦十五日路透社電　澳洲駐英特使裴奇昨夜宣稱、澳洲與印度、均須火速加以增援、亟須更多之軍艦運輸糧食軍火、亟須更多之戰鬭機　炸機·運輸機訓練機、亟須各種砲與輕重戰車、尤須幹練有決斷之軍事長官之指導吾人如何戰死而不放棄寸土云、</p>
+<p>德國東進策應日本</p>
+<p>瑞士京城十四日哈瓦斯社電　「巴塞爾新聞報」頃載有駐倫敦訪員來電稱、據英國軍政界人士所見、德國行將派遣大批軍隊前往中東、企控制伊拉克與伊朗之煤油區、至其最後目的、則在直搗印度、俾與日軍取得聯絡云、</p>
+<p>澳相寇丁對美廣播</p>
+<p>華盛頓十四日專電　昨晚此間收聽澳總理寇丁自康白拉廣播之演辭、寇丁詳述澳洲對日作戰之各種準備工作、並重申保持澳洲爲同盟國反攻根據她之決心、寇丁旋即宣佈澳外長伊瓦特行將赴美、討論太平洋戰事問題、</p>
+<h3>英美聯合公布　爪哇海戰經過　協約國艦十二艘喪失杜爾曼少將殆已陣亡</h3>
+<p>葡京十五日海通社電　據華盛頓消息、英美兩國海軍部於昨日發表聯合公報稱、協約國海軍於二月二十七日在泗水附近海戰中、損失巡洋艦及驅逐艦十二艘、</p>
+<p>倫敦十五日路透社電　據悉、協約國艦隊司令杜爾曼少將、恐已在爪哇海戰中陣亡、少將享年五十三歲、原任荷屬東印度海軍航空部隊司令、嗣調任艦隊司令、</p>
+<p>倫敦十五日路透社電　海軍部昨夜宣布爪哇海戰經過情形稱、關於上月廿七日爪哇海戰前後種種、全部報吿雖尙未彙集、但有可得而言者、即在是日午後、協約國　隊中有澳洲巡洋艦「坡斯」號·英國巡洋艦「埃克斯脫」號、美國巡洋艦「霍斯頓」號及荷蘭巡洋艦「特萊脫」號與「爪哇」號、在泗水北面駐防、此項巡洋艦隊並由英國驅逐艦、「伊勒克屈拉」號、「求必他」號一恩康脫號·及荷蘭巡洋艦「柯屯尼亞」號衛護、艦隊司令爲杜爾曼少將、午後四時十四分此項艦隊與日本艦隊接觸、日方立即以驅逐艦隊進攻、協約國巡洋艦隊　亦即開砲迎擊、未幾、日方另一驅逐艦隊施放魚雷進攻、協約國方面各艦雖設法躱避、但其中英國巡洋艦「埃克斯脫」號已被八英寸魚雷擊中、退出戰綫、移時荷蘭巡洋艦「柯厄尼亞」號相繼被擊沉、至此、英國驅逐艦三艘乃奉令反攻、戰果不詳、惟「伊勒克屈拉」號駛入煙幕即無踪影、想已沉失、杜爾曼司令乘坐旗艦「特萊脫」號率隊繞至東北方面、但未能與日艦隊接觸、入晚、協約國巡洋艦隊瞥見日艦數艘、即與之交戰、戰果亦不詳、杜爾曼司令又擬率隊　至日艦後方以冀攻擊日方　　隊、卒因日艦駛行甚速、未果、乃率隊折而南下、靠近爪哇海岸、然後沿海岸西南、以冀攔截日方運輸隊、半小時後、「求必他」中彈重創、歴四小時而沉沒、夜問十一時三十分、協約國巡洋艦叉在隆木賓北面約十二英里處、瞥見日本巡洋艦隊、已在協約國艦隊與爪哇海岸之間、雙方即行交戰、「特萊脫」號、被中一彈、並爲躱避魚雷起見、曾大轉　駛行、協約國各艦重行佈陣時、「特萊脫」號與「爪哇」號同時中魚雷炸裂沉沒、日艦損失如何無法證明、澳洲巡洋艦「坡斯」號受有相當創損、於二十八晨七時開回某港、日方至此乃在爪哇北面海空兩方取得絕對優勢、是日夜間、「坡斯」號擬乘黑夜駛過巽他海峽、但據報即在十一時三十分左右遭遇日艦數艘、該艦及美艦「霍斯脫」號此後即昔訊沓然、同時、「埃克斯脫」號由驅逐艦「恩康脫」號及美國驅逐艦「濮普」衛護駛出泗水、至三月一日晨、據「埃克斯脫」號報吿、已見日巡洋艦數艘、向之進攻、此後即無報吿、日艦損失如何亦不詳云、</p>
+<p>海軍均勢大受打擊</p>
+<p>華盛頓十五日路透社電　由各方面報告觀之、協約國艦隊在爪哇海戰損失慘重、已在此間發生深刻印象、太平洋方面海軍均勢叉已大受打擊、在開戰之初、彼以爲日本空軍無用者、原已不攻自破、嗣以爲日本海軍無能者、茲亦證明適得其反矣、牛油大砲宜知抉擇</p>
+<p>倫敦十五日路透社電　樸資茅斯要塞司令哲姆斯上將昨日宣稱、兩星期前爪哇海戰、實爲有史以來最猛烈之血戰、荷英美三國水兵以寡敵衆、曾戰至最後一彈而後已、在昔、吾人於大砲與牛油之間、選擇牛油、軸心國則擇大砲、在今、吾人應在趕迭艦艇與損失一切所愛者之問、知所抉擇矣、</p>
+<h3>史丹萊赴蘇前　羅斯福面授機宜　英使寇爾抵庫璧希夫</h3>
+<p>里斯本十五日海通社電　華盛頓電訊、羅斯福總統昨在白宮召見新任駐蘇大使史丹萊海軍上將面授機宜、會談內容未予宣佈、按史丹萊業於二日前向總統辭行、故昨日延見一事、極爲外界所注意云、</p>
+<p>安加拉十五日海通社電　據此問接到消息、新任英駐蘇大使寇爾爵士、業於咋日抵庫壁希夫、按寇氏前爲駐華大使、</p>
+<h3>克里普斯　啓程赴印</h3>
+<p>倫敦十五日哈瓦斯社電　璽大臣克里普斯爵士、今日啟程前往印度、</p>
+<p>紐約十四日路透社電　美國小說家賽珍珠今日接見路透社記者談稱、今日世界最好之希望、厥爲克里普斯爵士即將飛赴印度、女士旅華多年、渠談及「中國印度」時、略謂、蔣委員長最近赴印、足以預示當此歷史上最黑暗之時代、民主主義將變爲何種新形態也、</p>
+<h3>印度各省代表　定期集議　討論食糧問題</h3>
+<p>新德里十四日哈瓦斯社電　印度政府定於四月六日、召集各省各邦代表舉行會議、討論如何增加糧食及飼料之產量、據路透社消息、自緬甸南部陷落之後、糧食自遠省運來、頗見困難、故有增加生產必要云、</p>
+<h3>日機轟炸　星期四島</h3>
+<p>墨爾缽十五日哈瓦斯社電　官方頃宣布、日本　炸機羣、本日森炸「星期四島」、該島距澳掌洲本部約二十五英里、</p>
+<h3>德在東綫調集大軍　準備發動攻勢　蘇軍五師反攻德軍陣地南部前綫戰事復趨劇烈</h3>
+<p>瑞典京城十四日哈瓦斯電　每日新聞頃載有駐倫敦訪員來電稱、據英國軍界人士談稱、德軍在蘇聯前綫發動春季攻勢時、其所調集之部隊、將不下二百八十師之衆、至蘇聯紅軍是否提早反攻、以破壊德國現正進行之準備工作、則頗屬疑問云、</p>
+<p>土耳其京城十五日路透社電　昨據土耳其方面來客談、日來有德軍兩師之衆、假道羅馬尼亞、開往蘇聯方面、其中大部份係自希臘方面調回、</p>
+<p>柏林十五日海通社電　此間昨夜宣稱、大隊蘇軍前日進犯寇爾許半島前綫、結果被吾軍予以擊退、蘇軍進犯兵力約有五師之衆、並有坦克車八十輛、蘇軍砲兵助戰甚力、發砲至少有二萬響、德軍抵抗與之發生白刃戰、結果炸毀敵坦克車四十六輛、蘇軍士兵傷亡甚衆云、</p>
+<p>柏林十五日海通社電　德軍負責人士咋向海通社訪員發表如下之補充戰報稱、東綫克里米亞戰事復趨劇烈、蘇軍雖猛力進犯、但均爲吾軍予以重創擊退、羅馬尼亞軍隊與德軍駢肩作戰、從事防禦戰極爲得手、東綫中路氣候仍寒、影響　甚鉅、但德空軍仍極活　、</p>
+<p>瑞典京城十四日哈瓦斯社電　東錢北路蘇軍、於本月九日向諸班進攻、德軍在桂多佛以北展開反攻、大收蘇軍、現戰綫又恢復伏爾柯夫河之綫、蘇軍現企圖在該河西岸保持若干橋頭云、</p>
+<h3>處理德軍械增產　斯比爾獲全權</h3>
+<p>柏林十四日哈瓦斯社電　德國四年經濟計劃獨裁者戈林上將、　授權軍械部長斯比爾、全權處理因增加軍備生產所引起之各項問題、</p>
+<h3>德義兩國　簽訂經濟協定　提高原料交易數量促進兩國軍務生產</h3>
+<p>羅馬十四日哈瓦斯社電　德義兩國本日簽訂經濟協定、藉以提高一九四二年內兩國原料交易數量、從而促進軍備生產、質言之、德國今後當增加煤斤及鋼鐵之輸義數量、同時規定凡關於軍事必需品之出口、不因付款問題而受有限制、此外德義兩國於討論以接濟品運往希臘事宜時、決定儘力減輕該國之財政負担、</p>
+<p>柏林十四日哈瓦斯社電　此間經濟界人士頃乘德義兩國簽訂新經濟協定之便、特就雙方在商務上之成就加以檢討、咸謂一九四一年兩國貿易總額、曾達十萬萬馬克以上、義大利之輸出品、以菓品·菜蔬·亞麻生絲·人造絲·鉛·水銀·食品等爲大宗、德國則以煤·鐵機器·軍需品·化學品·藥品·運往義國、就中煤斤一項·每月即達一百萬噸以上、因之鐵路運輸、亦創最新紀錄、預料本年更當績有增加、此外義國工人、現有二十萬名、在德國服務、每日匯回本國之家用款項、約百萬馬克總之、德國曾努力使義國對德之輸出增加，現在德國不但可自義國獲得大宗食物、且可獲得重要軍需原料云、</p>
+<h3>德國追悼　陣亡將士　希特勒發表演說</h3>
+<p>柏林十五日海通社電　今日爲德國先烈紀念日、希特勒元首今午發表演說、鄭重保證德國及其與國將繼續作戰、至敵軍被殲滅而後已、預測今夏蘇軍將被擊敗、甚至有被殲減之可能、又稱、德軍及聯盟軍經過冰天雪地之嚴冬、再接再厲、毅力之堅强不難想見、今後將不容共產主義者立足於歐洲、一九一八年英法美各國政治家喪心病狂、竟堅決主張不容德國在任何情勢之下復興經濟之繁榮、在經濟生活方面享有平等權、基於此種誤解、乃有種種不公正之措施、凡業已喪失自信心之德國人民、無法改變所罹之厄運、須知逆來順受、永無脫離厄運之日、惟有精誠團結奮鬥到底、始能摧毀之、德國人民爲最勤勞善作之人民、德國經濟之衰微、對於敵人並無利益、德國困窮之後、他國並不能即臻繁榮、因此受猶太人操縱之資本主義國家、亦有工人失業之苦痛、甚至失業之人數、反較德國爲多、然彼國人士旣爲猜忌之念所朦蔽、復惟猶太人馬首是瞻、宜其終執迷而不悟也、國社主義秉政後、彼等猶不知取法德國在經濟社會方面之措施、祇知舊恨重提、作種種宣傳、鼓動人民準備再戰、而今吾人皆知一九三五年及一九三六年、英法美各國內有勢力之猶太人及政界領袖、固已決定再戰矣、但此當歸咎於各該國之人民不事反抗此項瘋狂之企圖、而譴責軍事準備之未充、德國於所有關於軍縮及廢除軍備之建議被拒絕後、即不得不從事於軍事之準備、以便應付第二次之戰事、庶不致再蹈一九一四年世界大戰之覆轍、故於一九四〇年吾人紀念先烈時、吾人已在戰事中獲得初步之勝利、並有最大之信心、以冀在第二階段之戰事中保持勝利、在事實上、至一九四一年三月止之一年來之戰事、已創歷史上無比之偉績、在北歐及西歐之戰事中、歐洲已擊潰大陸上之敵軍、義大利並已加入吾方、爲吾人之忠實同志、以作此存亡相關之戰事、今日世界操縱政治之猶太人已連成一起、以民主政治與布爾雪維克主義相聯繫、企圖作集體之攻擊、以爲全歐可被其毀滅、幸上蒼佑我、令吾人在對猶太馬克斯主義及資本主義之各戰塲上皆獲勝利、吾人必須感恩上帝、若非上帝之佑我蒼生、則吾人雖勤勉與勇敢亦屬徒然、過去一年來、不僅發生世界有史以來最大之戰役、抑且予吾人以最艱苦之鍛鍊、此項鍛鍊不僅於戰綫之上、抑且於吾人之國內、根據德國之歷史、證明德國之人民不畏他人之威脅、在此次戰事中、德國人民不惟當與敵人之武器及敵人不竭之兵力相周旋、更須與殘暴之自然相奮鬥、去冬之嚴寒、為一百四十年來中歐及東歐所未有、軸心國聯軍在過去之四個月內、蓬盡艱辛、昭示其毅力、德軍於一九四一年在巴爾幹獲得勝利後、即開入蘇聯領域、屢戰屢勝迭建奇勳、再接再厲之敵軍一敗再敗、不乏被殲減者、德軍及聯軍入敵境之深、佔疆域之廣、亘古未有、豐功偉績、足以流芳千古矣、嚴冬旣過、吾人益有克敵制勝之把握、去冬蘇軍不能擊敗聯軍、則今夏難保不被聯軍殲滅、吾人將遠逐蘇聯、使之不能與吾人在歐洲接壤、吾人感覺所生時代之偉大、世界在重新建設之中、在東亞方面、日本人民曾被欺侮、經濟曾被壓制、而今策動海陸空之攻擊、摧毀民治主義及資本主義者之壁　、總之、勤勞耐苦而又具有高等文化之數萬萬生靈、斷難仰承少數猶太人及資本主義者之鼻息、而長此容忍之、是以解決之方法無他、力戰以俟永久之和平獲得保障而後已、易言之、須俟和平之敵、悉被　滅、始能善罷干休耳、歐陸以外之國家繼續有干涉歐洲事務之企圖、尤其對吾人之事務橫加參與、現渠等之企圖已遭吾人一勞永逸之阻止矣</p>
+<h3>毛澤東　被刺未中</h3>
+<p>澳門十五日海通社電　據重慶某報載稱、中國共產黨最高領袖毛澤東將軍、三星期前在延安新生活菜館前、偕其曾任電影明星之妻藍蘋下車之時、曾被靑年工人所刺未中、至於暗殺之原因則不詳、</p>
+<h3>綏西發生戰事</h3>
+<p>重慶十五日電　軍息、綏西新城王愛昭（新民堡北）西二道盤一帶有激戰、</p>
+<h3>中國人文科學社　重慶分社成立</h3>
+<p>重慶十五日電　中國人文科學社重慶分社、十五日上午十時、在沙坪　中央大學正式成立、當選舉武克·李泰華·黃正銘等七人爲理事、按該社總社設昆明、爲武大·中大·西南聯大·等校教授所發起組織、出版有當代評論人文及書曁叢刋等、</p>
+<h3>劉文島抵泰和</h3>
+<p>泰和十五日電慰　勞第三團團長劉文島、十五日由贛縣抵泰、此行乃兼程前來出席曹主席浩森十六日就職典禮、代表中央監誓、</p>
+<h3>贛省平抑物價</h3>
+<p>吉安十四日電　贛省府以邇來物價上漲、影響民生至巨、爲切實平抑計、決設調整物價機關、並令各縣辦理糧食公賣、藉收實效、</p>
+<h3>土耳其京城　外交活動頻繁　對東南歐政治發展土國立塲即可決定</h3>
+<p>保加利亞京城十四日哈瓦斯社電　此間政治觀察家認爲土耳其對於東南歐洲之政治發展取何立塲、即將有所決定、或於下星期召開駐外使節會議時加以決定、亦未可知、土京最近外交活動頻繁、該國駐伊朗·西班牙·羅馬尼亞各國使節、業已相繼返國、尙有駐外代表數人將陸績回國、俾向政府報告一切、</p>
+<h3>美國商船　損失重大</h3>
+<p>柏林十五日海通社電　德軍司令部昨夜宣稱、自美國參戰迄今、在大西洋已被擊沉船隻一百萬餘　、計商船一百五十一艘、共一百零二萬九千噸、其中有油船五十八艘、計四十四萬二千噸、其中商船十二艘、　於最近數日間被德潛艇所擊沉</p>
+<h3>吳主席達詮出　巡黔東各縣</h3>
+<p>貴陽十五日電　吳主席達詮、爲督導各縣保甲國民敎育及築路造林各項要政、定十六日出巡黔東各縣、</p>
+<h3>緬甸的舊京</h3>
+<p>緬甸的舊京是曼德禮，充滿了佛國的情調。「曼德禮」是緬名，意義為「百寶之光，」英國文學家吉百齡說，「曼德禮是緬甸的象和孔雀，金，與紅朱的美妙城，」　是具有鮮　悅目的美色和詩情畫的　圍。曼德禮王宮，至今尚巍然存在，王城高約三丈，周圍約一又四分之一哩，城壕寬約十丈，深六丈。這幀圖片是緬后蘇巴耶律Queen　Supaya的墳墓，建於一八八〇年，完全採用麻栗樹木料造成的，自遠眺望非常莊嚴而偉大。</p>
+<h2>Page 3</h2>
+<h3>十二處堆棧今出米　供給米號零糶　法租界亦宣佈禁國米入境</h3>
+<p>工部局自宣佈於十四日起、禁止國米運入租界後、法當局則始於昨日宣布、與工部局取一致步驟、連日國米售價、業已回平、工部局米糧辦事處前日簽出搬運證、指定由鼎和·金源第二倉庫·浙江實業·浙江興業·公記。和記·華盛（碼頭）·祥生（汽車）·大東（烟草）·東方·瑞豐··等十二處堆棧、提取之洋米、已由米號於當日出竣一部份外、大部份可於今日出竣、以供門售零　、</p>
+<h3>本埠各典當　增加典息</h3>
+<p>由二分五厘增爲三分本埠當舖、有典當與押當之分別、亦猶錢業之有匯劃莊與錢兌店、典當一律按月起息、滿期爲十二個月、押當則多屬按旬起息、滿期自數個月至十二個月不等、昨據大通社記者向典當業公會探悉、該業已自今年度起將月息由每元二分五厘增爲三分、至該業頻年因物價之繼漲增高、故滿期貨變價、輙能超過當本數倍、故營業狀况、較有起色、尤以押當　利、更見優厚、</p>
+<h3>羅斯福碼頭堆棧　催促貨主登記</h3>
+<p>向法租界外灘四四號辦理本埠十六舖外灘羅斯福碼頭、通吿貨主或提貨人指曁執有棧單者、迅速前往碼頭寫字間登記事、凡存於法租界本碼頭棧房內之貨主或提貨人執有提單（Bills　of　Lading貨單（Delivery　Order）分棧單（Sub　Dorder）或存　單（Lading　Account）者、請從速携帶該單至法租界外灘本碼頭寫字　登記、</p>
+<h3>破獲路刦匪黨　各處徒刑</h3>
+<p>劇盜江北人齊家發許榮貴·張金生·張守·等、因於去年十一月至本年二月之間、糾黨持械搶刦戈登路十六號張高氏、及在小沙渡路·澳門路·勞勃生路·草鞋浜等處、路刦行人財物、剝取大衣棉袍、共値價國幣二千餘元、案發、被普陀路捕房華探長尙武·幹探李文釗先後逮捕、吊到大衣一襲（元緞裏子）、駱駝絨棉袍一件、値價五百餘元、一併帶入捕房、依刑法結夥强盜罪、提起公訴、該案一昨判決、齊家發·許榮貴·張金生各處徒刑五年、張守讓處四年、嫌疑犯魏其士開釋、大衣棉袍兩件、因無失主到案、暫存捕房候一領、</p>
+<p>甬人李朝江、西裝咀套、專在洪北一帶路刦行人財物、上月十三至本月六日之間、糾同在逃之友張阿寶、在北四川路·北蘇州路·北河南路搶刦甬人鄭志才及不知名刦案兩起、共法幣四百餘元、案發、被虹口捕房拘獲、依法起訴、一咋判決、李朝江處徒刑二年示儆、</p>
+<h3>八里橋街美成里　離奇棄嬰　鼻子及下部已爲人割去</h3>
+<p>昨晨七時許、法租界八里橋街美成里二號後門口、發現被人遺棄之包裹一個、嗣經崗捕啟視、則包內有一男性嬰孩、生約二三個月、撫之氣息尙存、且其下部及鼻子似被人用刀割去、後腦部亦有刀傷一處、嗣即由捕車送廣慈醫院救治、至於該孩抑係被害、或屬父母無力撫養拋棄、現正由法捕房調查來歷、</p>
+<h3>製造煤球商有辦法　增加派貨數量　七煤球廠停止影響供應</h3>
+<p>本市各大煤公司鑒於煤球係貧富居民每日不可或缺之必需燃料、一旦缺貨停售、非特攸關居民炊煮、抑且引起公衆不安、爰即積極籌商善後辦法、以期煤球發售、恢復常態、昨向煤業界探悉、茲各煤公司對於煤球供應商有辦法、昨日起義泰興國華南洋等煤球廠增加各零售商號派貨數量、較諸過去數日、約增一倍、並可望繼續增加、</p>
+<p>停製各廠尙未恢復</p>
+<p>前因煤屑存底不充、各煤球廠即相繼减低生產、光華中國兩廠、遂吿被迫停製煤球、茲悉　檳榔路北洋·源華·東方·越東·　東京路南洋分廠、均因種種關係、亦已先後停止製球、惟自各該廠停製煤球後、影響煤球供應量尤鉅、</p>
+<p>無貨發售被迫停業</p>
+<p>自各機製煤球廠次第減低生產後、全市燃料即發生嚴重恐慌、千餘家零售商號、均因無法車得大宗現貨煤球、在門市照價發售、迄令已將　句、但各經　號咸爲顧全燃料前途、及便利居民購　出見、仍勉維原狀、按日將車得之煤球、限制出售、昨　煤業界消息、今各煤柴炭號維持日感困難、資本較薄者、業已被迫停止營業、倘各廠能大量供給、方能恢復發售云、</p>
+<h3>華界人口　調查竣事</h3>
+<p>計一百五十八萬人</p>
+<p>一月份人口總數爲一五八一五七一人、以與最近發表之公共租界人口總數相較、僅少四千餘人、此外法租界人口八十餘萬人、滬西區人口估計二十餘萬人、如是合計、則全上海人口仍有四百萬以上、太平洋戰前之上海人口總數、一般均佔計爲五百萬餘、依照此項數字、則以往三閱月內、自動或受逍散離滬者、常遠在五十萬人以上、過去數日內、此項疏散運動仍繼續進行、且以物價與生活費之飛漲、疏散者益趨增多、每晨外灘一帶碼頭、均擁有無數返鄉居民、</p>
+<h3>上海天主教區　一百週年紀念　自三月五日至四月五日舉行復新敎友生活運動</h3>
+<p>十九世紀的中業，中國天主敎史上有一件重要的記錄，便是耶穌會傳敎士二度到江南，時在道光二十二年，中英成立「南京條約」的前夕，距今恰滿整整的一百年。上海徐家匯聖依納爵堂，特於本月份起舉行慶祝「上海敎區百週紀念」，推行「復新敎友生活運動」。</p>
+<p>天主敎傳入中國境內，第一個傳敎區成立於十三世紀的末葉，中間經過三世紀的　路藍縷。到十六世紀未，利瑪寶到了中國，才定奠了近代耶穌會在江南一帶傳敎　業的基礎</p>
+<p>天主敎中有很多的傳敎會，都是各種修會的集團，隸屬在唯一的天主敎公敎敎會中，並不像路得派雜督敎中的聖公會，長老會等各樹一幟。在中國工作的天主敎傳敎會，目下共有幾十個，其中歷史悠久成續卓著的，有多敏我會，巴黎外方傳敎會，方濟各會，遣使會，和耶穌會等。耶穌會於十八世紀中葉在歐洲解散，該會在中國的傳敎事業也吿消滅，一直到一八一四年耶穌會始行恢復。一八四二年七月十一日，耶穌會捲土重來中國，在上海徐家匯創立了復興上海敎區的總部。</p>
+<p>上海敎區的主敎　濟良，從前年起即準備要在今年慶祝耶穌　次來華傳敎百週紀念，木來要熱烈地舉行盛典，但爲了遭受戰事的影響，決定省去了外表的舉動，而勵行精神紀念。從三月五日起至四月五日復活節止，在徐家匯大敎堂內，推行復新敎友生活一月運動，其日程表如左：</p>
+<p>（三月五日至八日）兒童　練（八日）復新運動開幕（八日至十四日）女敎友復運週（十五日）復運惟進日（十五至二一十一日）男教友復運週（二十二日）復運祈禱宗會日（二十二日至二十四日）聖母會女會友避靜（二十三日）敎區亡者追念日（二十三至二十八日）職工訓練（二十四日）聖母會會友日（二十九日）公進會員日（四月一日）聖體軍日（五日）復運閉慕</p>
+<p>女敎友復運週已舉行過了，從三月十五日起至二十一日止，爲男敎友週，每日上午七下三刻，下午一下二刻，七下五十分，在依納爵大堂內傳道，其講題爲：「復運週的意義」，「生命剖視」，「永遠一瞥」，「死亡管測」，「生活的檢討」，「生活的調整」，「生活的革新」，「信望愛三德精」，「服務盡職精神」，「傳敎救人精神」等。</p>
+<p>統計上海天主敎區，現今有男女信友十四萬人，該敎對於社會服務方面可以稱道的事業，有敎育·慈善·科學·出版等。比較一百年前都有很卓著的貢獻和成績。</p>
+<p>上海天主敎區在一百年中，歷經許多阻礙艱難，但是靠了傳敎士們的苦鬥，和敎徒們的戮力合作，却依然有蓬勃的氣象。上　敎區領袖惠主敎，會在「復新生活」公函中剴切曉論上海十數萬的教徒道：「在遭受戰禍嚴重壓迫的時候，我們該堅信：我們的靈魂是永存不滅的。在世界上不論吃什麼苦，不論享什么福，都是快要過去，只有死後的天堂永福，或地獄、永苦，才是永久的，眞正的公義，也慣常是在這世界上找不到的，只在至公天主的審判臺前，才見到善惡的賞罰是絲毫不爽的」。「天主上智的奇妙宰制，每借肉驅的災難困苦，磨煉我們，本教區受戰事的影響，本主敎不但慨歎重大損失和困難，也關心你們的家庭和個人的種種痛苦。但是你們決不可垂頭喪氣，相反，本主敎勸勉你們，振作心志，復新你們的敎友生活！」（寄客）</p>
+<h2>Page 4</h2>
+<h3>葡萄牙僑民組織　葡僑中央協會　擬就遠大事功計劃援助生活困難葡僑</h3>
+<p>英文泰晤士報云、據本報記者探悉、本埠葡萄牙僑民、爲援助生活狀况轉爲困難之葡僑起見、業已成立「葡僑中央協會」、該會並已擬就遠大之行事計劃、租界當局亦保證與之合作、該協會係由葡萄牙駐華公使里瑪氏主持、本年一月七日即於里瑪氏寓所內、擬成創辦協會之具體計劃、而救濟組織始組具規模、</p>
+<p>協會係屬持久性質</p>
+<p>常時公使曾謂、彼所籌備之協會、不僅爲一慈善團體、或一處理暫時危局之急賑機關、此協會之組成、乃爲持久性質、故共於米來數月內固有價値、　即至時局平復後、仍將繼續存在、以處理葡僑之需求、當此創辦伊始、固應全力以赴目前之艱危、然將來較目前更重要、亦不可疏忽、</p>
+<p>目的在求葡僑福利</p>
+<p>該協會之目的、即爲研究並實施各項有益全體葡僑之措施、該協會決集中一切活動、以求事半功倍、該協會之永久性質、使之必須研究有關改善僑民知識文化程度之問題、該會希望以更堅固之防禦給予本埠葡僑、使能對付任何或將造成之新局面、</p>
+<p>密切研究生活問題</p>
+<p>該協會現正密切研究之問題中　包括求業求學與衣食住等問題、該會企圖取得大批之主要食糧、使葡僑享受批購之利益、設立公共廚房事亦在慎密考慮中、此舉如成功、則可幫助葡僑居戶、解決廚司工資·燃料費·與浪費問題、惟公共廚房之設立、全賴適當之支助、並須待統計表列成後決定之、</p>
+<p>葡籍成人均可入會</p>
+<p>該協會對於上海全體葡僑完全公開、一切葡萄牙成人、均可將寄送彼等之空白表格塡就、申請入會、該協會復懇切請求僑民與之合作、供給各項所要求之情報、該協會極願對有關共工作之各事、說明解釋、以是遂有情報部之設立、將以協會之活動情形、傳達全體會員、該協會會長已選定爲格透來氏、並由蘇石任秘書長、</p>
+<h3>蘇同鄉　公祭韓紫石　定期本月廿六日</h3>
+<p>海安韓紫石氏、道德文章、當代推崇、年來治水賑災、並提創實業、尤昭昭在人耳目、去冬作古、此間同鄉耆舊、以氏功在桑梓、擬爲之立一私謚、以副崇德報功之意、現定本月二十六日、假靜安寺舉行公祭、紫老友好中、倘有意參加、可於是日下午新鐘二時，逕赴該寺預祭、</p>
+<h3>死亡率增加　提倡清潔　厲行防鼠設備</h3>
+<p>法公董局衛生處發表、兩月份法租界內死亡人數、較一月份略增、約計增加百分之·二二、此完全由於吸毒者死亡數之增多、同仁輔元堂二月份收屍數、計增加百分之·九、上月份之傳染病亦有顯著增加、此乃由於依蝨傳染之疾病、回歸熱於外僑華人中均有發見、華人患之者有三分之一死亡、傷寒亦有發生、感冒與腦膜炎兩種病症亦頗堪注意、傷寒一症、似漸猖獗、故必需預先採取防範、四五月內、尤應竭力防範、當局現提倡身體淸潔、並擬採取嚴厲之除鼠措置、如緊閉垃圾箱蓋、住屋裝置防鼠設備、阻塞壁洞隙縫、利用捕鼠器、毒鼠藥等、養育捕鼠之貓狗、亦所歡迎、至於種痘運動、現繼續順利進行中、已受種痘人數、已有四九·三八三名、衛生處並利用華人排隊購米之良好機會、施種牛痘、</p>
+<h3>懸賞尋覔女孩　無賴謊報騙款</h3>
+<p>寓居北河南路三百〇六弄九號甬婦李王氏之六歲女金蘭、前日上午十一時半、在門首游玩、忽然失踪、四處找尊無看、氏情急、貼條各馬路、有人將乃女送回、當酬款一百元、是日下午二、時、有十九歲高郵靑年朱芬蘭往氏家、偽稱李女金蘭渠知悉在閘北歐陽路六號王安子家、擬騙取賞金百元、嗣氏報告匯司捕房一千三百三十三號華捕、將渠逮捕赴歐陽路六號門牌調查、並無王安子其人、而朱犯又稱李女或在新閘路某處藏匿、又往該處、亦無李女蹤跡、遂將渠帶入捕房、依刑法誘拐幼女及　欺取財罪起訴、押候解究、</p>
+<h3>樂觀第十一期出版</h3>
+<p>樂觀三月號出版之期、適逢梅花盛放之時、故樂覜小晝報特刊梅花節專號、梅畫梅椿、古色古香、另闢香雪海文字特輯、圖文對照、更有情趣、封面三色版精印影人周曼華近影、華美無比、上海特輯與游於藝二欄、頗多佳作、長篇小說三種已進入最精彩之階段、該期暫售一元二角、訂閱者可向白克路二五〇號該社接洽、電話九二〇四二、</p>
+<h3>社會服務</h3>
+<p>收轉新普育堂捐款　呂班路蒲柏坊五十一號未具名君鑒、來函附法幣五元、囑轉捐新普育堂、經轉去取得收條送奉矣、服務攔啟、十五日、</p>
+<p>治小兒肺炎　小兒最易患肺炎、西醫常以安福藥膏治之、雖十九見效、惟藥價則極昂貴、前歲余有，一兒曾患肺炎、即請西醫診治、敷膏打針、終於無效夭折、友人姚君有女二齡、亦患肺炎、初請西翳診治、日益綿篤、改請中醫、均謂無救矣、有老嫗口授一秘方、用生蚌一個、鑽一小孔、以銀針調之、滴蚌汁於磁杯內、隔水蒸之、令蚌汁微溫灌小兒服之、病即痊可、願借貴報一角、公之當世、亦小兒福音也、黃亞伯敬啟十三日、（服務欄按、小兒肺炎、必須確信科學醫治、如醫治無效、只能目爲科學未臻昌明、至於秘方、其有效力者、吾人仍盼能以科學證明之、上項治法因何見效、盼醫家　加以研究、）</p>
+<p>連日　接署名「滬東難民」「一羣待助者」「某處住戶」等來函、無論其所述內容有關公衆福益、但旣無住址與眞實姓名、依照本欄投函規約、恕不刊載、服務欄啟、</p>
+<h3>胡亞光敎畫近訉</h3>
+<p>名畫家胡亞光君、對於新派國畫、不論花鳥魚蟲山水人物走獸、均所擅長、近招收基本學員十名、兼授漫畫·油畫·水彩畫等、索章處海防路四〇三街十一號二樓、</p>
+<p>昨日本報發報時間六點</p>
+<p>體育新聞</p>
+<h3>合羣募款足球第二幕　金獅合羣均奏凱旋　徐匯震旦先後遭敗績</h3>
+<p>合羣募款足球第二幕、昨日下午二時一刻、在震旦球塲舉行、觀衆達三千人、首塲金獅對徐匯、裁判韓吟生、徐匯昨演出較前軟弱、金獅則似生龍活虎、自韓龍海罰十二碼球開紀錄、徐匯反攻無效、金獅韓龍海於二十碼處、又破敵網、上半時金獅以二對〇前領、休息後、仍為金獅天下、老韓勇冠三軍、三陷敵門、最後伏迺堂單槍匹馬、又直搗黃龍、總結金獅以四對〇爭勝徐匯、次塲合羣抗震旦、裁判魏仕耕、震旦陳大業先開紀錄、遂以一對〇佔先於上半時、休息後、合羣蕭子文連破二關、最後震旦王鍚勝在禁區內犯規、由阿戴操刀、又吿中的、未幾時間屆到、合羣以三對一反敗爲勝、昨日二隊陣容如下、</p>
+<p>金獅</p>
+<p>周自嗚</p>
+<p>陳効平</p>
+<p>胡漢文</p>
+<p>陶廷富</p>
+<p>林典華</p>
+<p>葉新福</p>
+<p>李垚</p>
+<p>廖世明</p>
+<p>韓龍海</p>
+<p>賈幼良</p>
+<p>襲汝克</p>
+<p>伏迺堂</p>
+<p>合羣</p>
+<p>陳志鵑</p>
+<p>唐佐文</p>
+<p>蕭子文</p>
+<p>朱錫祥</p>
+<p>姚崇</p>
+<p>潘鴻海</p>
+<p>戴麟經</p>
+<p>曾挺凡</p>
+<p>王定球</p>
+<p>許克宏</p>
+<p>張挺</p>
+<h3>梅生盃小球昨揭慕　瑞龍大破藍白</h3>
+<p>首屆梅生盃小小足球聯賽、參加者共二十一路雄獅、分「梅」「生」「盃」三組角逐、於昨日下午二時在光夏中學揭開序幕、由工部局副總董袁履登氏親蒞行開球禮、首塲表演文靜以五對一大敗影星、次幕盃賽瑞龍對藍白、前者實力强勁、賽成一面倒、結果瑞龍以六對一輕取藍白、壓軸表演三星　國華、三星素有小球界鐵軍之稱、國華乃新興組織、陣容亦異常整齊、開賽後、國華攻勢甚盛、葉貽挺連中二元、以二對〇佔優於上半時、休息後、三星由吳紹泰罰中一球、迨終塲笛聲長鳴、國華以二對一力取三星、昨賽結果如下、</p>
+<p>文靜勝影星（表演）五－一</p>
+<p>瑞龍勝藍白（梅組）六－一</p>
+<p>國華勝三星（表演）二－一</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>不祥的黑貓之類</h3>
+<p>— 之滄</p>
+<p>據倫敦「標準晚報」載：「有名奧斯伽之黑貓一隻，初飼養德俾士麥號戰艦上，該艦沈沒，移養於英哥薩克號戰艦　，不久該艦亦被擊沈，該貓再度獲救，改畜於皇家阿克號戰艦上，不意該艦又告沈失，該貓乃寄養於一海員家中云。」這隻黑貓眞有些怪得很，其加以「不祥之貓」的雅銜，誰曰不宜？昔拿破崙叱咤風雲，煊赫一時，然而軍書旁午，運籌帷幄之時，據說別的一些亦不怕，祇怕黑貓而已。黑貓似非冰天雪地，堅壁淸野可比，爲何如此之可懼？難道烏糟毛茸鬼鬼祟祟，這一種作風有點不大方嗎？還是憑空「妙乎」一聲，有點像摩登女郎「絞死貓兒」的聲音似的，不免毛髮聳然，使數十萬男兒，一齊解甲？這眞無由推測，但拿破崙怕黑貓，從此成爲歷史上的美談，倒也詩意得很。這回居然有隻奧斯伽黑貓，在雙方的戰艦上都漫游了一遍，因此雙方的戰艦竟都沈沒，這隻貓簡直有點太神奇了。但貓祇是貓而已，似乎未曾三頭六臂全副武裝，也不致像古時「海倫」小姐一般，作爲爭奪戰的對象。好在適逢其會，終於實乃黑貓之「不祥」，並非人謀之不　，如此而已。這貓不僅成全了性命，而且有些「一將功成萬骨枯之感，不叫阿貓阿狗，而日奧斯伽，竟與十九世紀詩人王爾德同名，可見不是凡品。人類的功績畢竟不可泯沒，文明國家戰時掘起防空壕來也須預備幾個貓狗防空壕，有此閒情可見不是敷衍了事，使我輩大有「寗爲亂離貓，弗作太平人」之慨。此時此地，成爲「仙品」的黑貓或白貓黑狗和白狗往往而有所不同者，似未曾錫以「不祥」的嘉名，A字牛奶雖然祇是病人的特權，然而貓狗躺在主人的懷中，皮毛依然光澤得和女主人手指甲一樣；苦是苦了一般凡貓凡狗，老鼠日日在遣散回鄉之中，杜米已在六百左右，牠們祇好成爲死貓死狗而已。然而要念我主耶穌嗎？大可不必，祇要看看久服辟穀丸而學仙不成之街頭人屍就可以靜默三分鐘了。</p>
+<p>世間不祥之物似非奧斯伽可以「專利」，要化干戈爲玉帛，不祥爲大吉，不妨「命令」黑貓往北極海南極洲或額非爾士峯上去休養一時。然而我倒要仿照一句前人古詩：「……（上句已忘，待考。）妾在深宮那得知」，而吟曰：「……貓在懷中那得知！……」</p>
+<h3>影城花絮</h3>
+<p>— 心鵑</p>
+<p>華納除現有「唔女郎」安秀麗丹外，最近又發現一位新的「唔女郎」名喬治亞卡洛兒。其「唔」的作風，足與派拉蒙之薇蘿妮珈藍克相頡頏。　「斷腸曲」主角卡萊葛倫，爲好萊塢未婚男子，近與白蓓蘭許頓戀愛，惟彼等之「羅曼史」，則秘不宣佈。蘇珊娜馥絲德自以「一代樂聖」　登銀幕後，祗演過「　鳳初嗚，」最近與賈克古柏合演：Glamour　Boy”。</p>
+<p>瑪琳奧哈蘭之離婚案尙未判決，已接到百餘個求婚者的來信。瑪琳與導演惠爾柏電斯過從甚密，大有結　可能</p>
+<p>克拉克博得十年前的肖照，和現在的馮保羅相似，信不信由你</p>
+<p>游藝雜談</p>
+<h3>牌子曲</h3>
+<p>— 澤夫</p>
+<p>牌子曲一名雜牌子，爲北方雜曲之一，因其由各種雜牌小曲集合而成，故名。此種牌子（即曲調），約有六十餘種，或源於舊曲，如「羅江怨」，一耍孩兒」等源於南曲，「寄牛草」，「哭皇天」等源於北曲，其餘則爲淸人所製之新曲，或雜以大鼓，快書，子弟書，皮黃，梆子諸調，故體例殊見龐雜。每一套牌子曲，其集合諸種牌子，並無定式，全由唱者隨　綴成，適於情景而已。通常短則五六牌，十多則二三十牌。每套開端例有「數唱」，即用說白口氣，急唸有韻詞句：，末端例有「曲尾」，與古曲中之尾聲相同。所唱多爲戀愛或社會瑣事，如「杜十娘」「金山寺」「婆媳頂嘴」之類。間有說白，如「高老莊」。唱時所用樂器，除三絃外，唱者多手搖八角鼓，故大鼓書塲中所謂八角鼓者，大部分即唱此種牌子曲。又因此種牌子甚多，時常交換，歌唱較他種雜曲爲難，故女子不甚學習云。</p>
+<h3>三種人</h3>
+<p>— 秦仁</p>
+<p>據說現在的上海人可以分做上中下三種：</p>
+<p>投機　湧的時候撈過一筆橫財，或者現在還繼續在投機，而米煤油三項又家藏甚富，不必一日「三軋」，是爲上等人等。</p>
+<p>中等人是小康之家，或是殷實的寓公，凡百用途，以「緊縮」爲原則，譬如飯後的美旗蜜橘果已取消，但三葷一素一湯的菜餚還是維持原狀。</p>
+<p>末一等，也是現在最稱多的一種。上海已經沒有職業，鄉下也沒有田產，所謂「留旣不能，去也無從」的就是。</p>
+<p>天廚食譜　（九二）</p>
+<h3>（一六三）甜苞飯（飯）</h3>
+<p>— 柳賢擬稿</p>
+<p>預備：苞米　糯米　味精　白糖</p>
+<p>製法：將量之糯米隔夜用冷水浸之，翌晨將苞米燜爛，再加水使滾，卽將糯米傾人同煮，並和以適量之糖及味精，待米熟透，卽可盛食，味甚鮮美。　（按如多加糯米片刻，使成粥，加糖及味精，卽成苞米精粥矣。</p>
+<h3>（一六四）苞米炒醬（菜）</h3>
+<p>— 柳賢擬稿</p>
+<p>預備：苞米　鮮肉　豆腐亁　甜醬　　　油　天廚醬油精液　酒</p>
+<p>製法：將苞米放入鍋中乾炒，另將鮮肉，豆腐乾切成小釘塊，加入油中炒之，一面放鹽，醬油精液，酒等調和，加稍多之水煮片刻，再放進苞米，又和入甜醬炒之，使亁即成，此時之苞米旣　，味亦甚美。</p>
+<p>啓事（一）　本食譜按期披　以來，以於各個家庭，略有貢獻，頗承贖者稱許，茲因木報家庭一　，業已停刋，故本食譜亦於本月底，暫吿結束，至於歷期刊之稿，再將輯印成册，以便各界　閱，尙希原諒是幸。</p>
+<p>啓事（二）　天廚味精廠出品之「味精」，「味宗」，「天廚醬油精液」，「天廚家用菱粉」等，本市各大公司，各南貨食品店，均有出售。</p>
+<h3>時代見聞</h3>
+<p>— 亞丁</p>
+<p>卓別林在「摩登時代」片中，狀機械化吃飯的苦惱情形，叫人看了哭笑不得。最近杜米榮登六百五高峰，市上零星動態，或可一記：</p>
+<p>友人吿余，法租界一家單開間小米店，星期六一天中，售出靑黃赤白黑各種荳類價値五千餘元，終日門庭若市，夜裏結賬，盈利至少有三部足頁的「毛詩」。</p>
+<p>軋煤球的苦楚比軋米還苦，一個是軟性的，大家手裏提了布袋，前軋後擠，無論怎樣「出力」，還不致有「硬傷」之苦。惟有煤球裝「箱」，非篾竹飯籮，即洋鐵糞箕，一不留心，皮破血流。前天路過某處，看見一個十三四歲的孩子，被旁人手中的竹籮劃破頭面。肌膚的痛苦，叫人多麼難受。</p>
+<p>親戚某，一九二七年時加入一家儲蓄組織，每月存洋三元，總額五百元。隔了一百八十個月，今年到期還本，五百元數目不差，可是用途大難，購米不到一石。若說笑話，那末平均每年儲蓄三十六元，要經過十五年的長時期，　能買到八斗之糧哩！</p>
+<p>滬上租屋之難，如登靑天，大家打着一多二無，免開尊口——即人多無眷無保——的口號，凡要搬塲，先自檢點。最近見報紙上召租廣吿，有以「米區」兩字爲號召者：意思房屋正坐落在產米的區域中，可保沒有絕糧之虞。思想新穎，非常可喜。尤其爲人口衆多的家庭，確可多一保陣。</p>
+<p>經售麵包的店舖早已加入了「軋」字大同行，上午八九時間，舖子外的人頭，比了櫉窗裏一稞棵圓形的家庭麵包，總要多上三四倍。捷足光得者，一路摸了具有飽滿豐腴的「勝利品」凱旋還家。後至者只好挨着餓肚子，抓着疲削多骨的腦袋兒，另想別法。</p>
+<p>聖人說食色性也，人生大欲存焉，目下最大生活問題即爲如何解決肚子。將來如果能在「節育環」之外，有人發明一種「療饑針」，亦必受人歡迎，而且不限性別，效用尤廣。</p>
+<p>南京路某大公司綢緞部，零料　上有一丈四尺的舶來毛織品男袍料一件，標價爲六六〇元。如果裁成了袍子，計算起來兩隻袖子所費就要一百元以上。古人說兩袖淸風，這話在今日似乎有考量的必要了。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（二）　悲與喜</p>
+<p>厲又榭是在北鄉開碾米廠的，說要照顧廠裏的事，去一去再來。大姑奶奶，家裏有孩子，不放心，得回家去看看。葉二太太吿訢維城，舅舅，大姑媽，二姑媽，都整整的一晚沒睡覺；同時勸二姑奶奶去休息。葉二太太監視着何媽，把良心堂撮來的藥，急就章似的煎熬起來。葉大太太房裏，就　翠珍和維城。維城睜大了眼，對他母親望着。翠珍對於葉大太太，是表伯母，她不停的在喂葉大太太西洋參湯，又給維城把大衣掛起來。又喚喜鵲進房陪維城，她到維城寢室裏，找一雙絨鞋，請維城把滿是泥汚的皮鞋換下來。</p>
+<p>維城見翠珍裏了一件藍布罩杉，罩衫是不怎樣整潔，她那一雙大眼睛，蓬鬆和枯黃的頭髮，是她的特徵。她的一舉一動，始終像是葉家的人，忘了自己姓卞。維城道：「翠珍姊，你一晚上沒睡，你也歇歇。」翠珍搖搖頭道：「我沒有。我是天亮來的。城弟，你別着急。」說到尾聲，帶了些微嗚咽的成分，說不下去了。這是天大的喜事，葉大太太忽然地喚了一聲「維城」，維城忙應道：「媽，兒子回來了。」煎藥的何媽，在數錢的葉二太太，都奔了進來，連假寐在隔房裏的二姑奶奶，都聽到葉大太太淸淸楚楚的喚。大家說：「好了好了，黃瘋子的藥沒吃，只聞着藥味，病已然有了轉機。」翠珍她會想到前藥的何媽奔了進來，沒人照管那藥罐，她偷偷的去替代了何媽。（二四）</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.16</h1>
+<h3>Washington to Hold Conference to Discuss New Far East Strategy; Allied Nations to Send Representatives to Bolster Defense of India and Australia</h3>
+<p>London, 15th (Reuters) - The diplomatic correspondent of The Times reports that the governments of China, India, the United States, New Zealand, and Australia are considering a new strategy for Allied joint operations in the Pacific. A conference will be held in the near future to discuss adjustments to the Pacific war effort's organizational structure, as well as changes in staff, due to the shifting war situation. The conference will likely be held in Washington. Australia and India are to be rapidly developed as strong Allied counter-offensive bases. The Australian government has dispatched Foreign Minister Dr. Evatt to Washington. Before Dr. Evatt arrives, no final decisions will be made regarding the new organization and strategy of the Pacific war effort. He may then proceed to London to represent Australia in the British Imperial War Cabinet, succeeding Sir Page.</p>
+<p>London, 15th (Reuters) - Australian High Commissioner to the UK, Mr. Page, declared last night that both Australia and India urgently need reinforcements, requiring more warships, transport ships, food, and munitions, more fighter planes, bombers, transport planes, and training aircraft, various types of artillery, and light and heavy tanks, and especially the guidance of capable and decisive military commanders, saying, "We will fight to the death and never give up an inch of land."</p>
+<p>Germany to Advance Eastward in Support of Japan</p>
+<p>Bern, Switzerland, 14th (Havas) - The Basler Nachrichten recently published a dispatch from its London correspondent, stating that, according to British military and political figures, Germany will send a large number of troops to the Middle East to control the oil regions of Iraq and Iran, with the ultimate goal of directly attacking India to link up with Japanese forces.</p>
+<p>Australian Prime Minister Curtin Broadcasts to the US</p>
+<p>Washington, 14th (Special Dispatch) - Last night, a broadcast was received here from Canberra, in which Australian Prime Minister Curtin detailed Australia's various preparations for the war against Japan and reaffirmed the determination to maintain Australia as an Allied counter-offensive base. Curtin then announced that Australian Foreign Minister Evatt would soon travel to the United States to discuss the Pacific war situation.</p>
+<h3>Joint Anglo-American Announcement: Details of the Battle of the Java Sea; Twelve Allied Ships Lost, Admiral Doorman Presumed Dead</h3>
+<p>Lisbon, 15th (Haitong News Agency) - According to news from Washington, the naval departments of the United Kingdom and the United States issued a joint communiqué yesterday, stating that the Allied navy lost twelve cruisers and destroyers in the naval battle near Surabaya on February 27.</p>
+<p>London, 15th (Reuters) - It is reported that Allied fleet commander Rear Admiral Doorman is feared to have died in the Battle of the Java Sea. The admiral was 53 years old and originally served as the commander of the Netherlands East Indies Naval Aviation Force before being transferred to command the fleet.</p>
+<p>London, 15th (Reuters) - The Admiralty announced last night the details of the Battle of the Java Sea, stating that while a complete report on the events surrounding the battle of February 27th has not yet been compiled, it can be said that on that afternoon, the Allied force, consisting of the Australian cruiser HMAS Perth, the British cruiser HMS Exeter, the American cruiser USS Houston, and the Dutch cruisers HNLMS De Ruyter and HNLMS Java, was stationed north of Surabaya. This cruiser force was protected by British destroyers HMS Electra, HMS Jupiter, HMS Encounter, and the Dutch cruiser HNLMS Kortenaer. The fleet was commanded by Rear Admiral Doorman. At 4:14 PM, this fleet made contact with the Japanese fleet, which immediately attacked with its destroyer force. The Allied cruiser force also opened fire in response. Shortly thereafter, another Japanese destroyer force launched torpedoes. Although the Allied ships attempted to evade them, the British cruiser HMS Exeter was hit by an 8-inch torpedo and withdrew from the battle line. Subsequently, the Dutch cruiser HNLMS Kortenaer was sunk. At this point, the three British destroyers were ordered to counter-attack, but the results are unknown. However, HMS Electra disappeared into the smoke screen and is believed to have been lost. Admiral Doorman, aboard his flagship HNLMS De Ruyter, led his force to the northeast but failed to make contact with the Japanese fleet. In the evening, the Allied cruiser force sighted several Japanese ships and engaged them, but the results are also unknown. Admiral Doorman then planned to lead his force to the rear of the Japanese fleet in the hope of attacking the Japanese transport ships, but was unsuccessful because the Japanese ships were moving very quickly. He then led his force south, closer to the Java coast, and then southwest along the coast in the hope of intercepting the Japanese transport ships. Half an hour later, HMS Jupiter was severely damaged by a torpedo and sank after four hours. At 11:30 PM, the Allied cruisers sighted the Japanese cruiser force about 12 miles north of Rembang, already between the Allied fleet and the Java coast. Both sides immediately engaged in battle. HNLMS De Ruyter was hit by a torpedo and, in order to avoid further torpedoes, made a large turn. As the Allied ships re-formed their line, HNLMS De Ruyter and HNLMS Java were simultaneously hit by torpedoes and exploded, sinking. The extent of Japanese losses cannot be confirmed. The Australian cruiser HMAS Perth sustained considerable damage and returned to port at 7:00 AM on the 28th. By this point, the Japanese had achieved absolute air and sea superiority north of Java. That night, HMAS Perth attempted to pass through the Sunda Strait under cover of darkness, but it is reported that it encountered several Japanese ships around 11:30 PM. Contact with this ship and the American ship USS Houston has since been lost. Meanwhile, HMS Exeter, escorted by the destroyer HMS Encounter and the American destroyer USS Pope, sailed out of Surabaya. On the morning of March 1st, HMS Exeter reported sighting several Japanese cruisers approaching to attack. There have been no reports since then. The extent of Japanese losses is also unknown.</p>
+<p>Naval Balance of Power Severely Affected</p>
+<p>Washington, 15th (Reuters) - The heavy losses suffered by the Allied fleet in the Battle of the Java Sea have made a deep impression here. The naval balance of power in the Pacific has been severely affected. The earlier belief that the Japanese air force was useless has already been disproven, and the subsequent belief that the Japanese navy was incompetent has now also proven to be the opposite of the truth. One Must Know How to Choose Between Butter and Cannons</p>
+<p>London, 15th (Reuters) - General James, Commander of the Portsmouth Fortress, declared yesterday that the Battle of the Java Sea two weeks ago was the fiercest and bloodiest battle in history. The Dutch, British, and American sailors fought to the last bullet against overwhelming odds. In the past, we chose butter over cannons, while the Axis powers chose cannons. Today, we must know how to choose between building ships quickly and losing everything we love.</p>
+<h3>Stanley Receives Instructions from Roosevelt Before Departing for the Soviet Union; British Ambassador Kerr Arrives in Kuibyshev</h3>
+<p>Lisbon, 15th (Haitong News Agency) - A dispatch from Washington reports that President Roosevelt summoned Rear Admiral Stanley, the newly appointed ambassador to the Soviet Union, to the White House yesterday to give him instructions. The content of the meeting was not announced. It is noted that Stanley bid farewell to the President two days ago, making yesterday's meeting particularly noteworthy.</p>
+<p>Ankara, 15th (Haitong News Agency) - According to news received here, Sir Kerr, the newly appointed British Ambassador to the Soviet Union, arrived in Kuibyshev yesterday. Kerr was previously the Ambassador to China.</p>
+<h3>Cripps Departs for India</h3>
+<p>London, 15th (Havas) - Sir Stafford Cripps, the Lord Privy Seal, departed for India today.</p>
+<p>New York, 14th (Reuters) - American novelist Pearl S. Buck told a Reuters reporter today that the best hope for the world today lies in Sir Stafford Cripps' upcoming flight to India. Ms. Buck, who has lived in China for many years, said, regarding "China and India," that Chiang Kai-shek's recent trip to India foreshadows what new form democracy will take in this darkest era of history.</p>
+<h3>Representatives from Indian Provinces to Meet Regularly to Discuss Food Issues</h3>
+<p>New Delhi, 14th (Havas) - The Indian government has scheduled a meeting for April 6th to bring together representatives from various provinces and states to discuss how to increase the production of food and feed. According to Reuters, since the fall of southern Burma, it has been difficult to transport food from distant provinces, making increased production necessary.</p>
+<h3>Japanese Planes Bomb Thursday Island</h3>
+<p>Melbourne, 15th (Havas) - Officials have announced that a group of Japanese bombers bombed Thursday Island today. The island is located approximately 25 miles from mainland Australia.</p>
+<h3>Germany Amasses Large Forces on the Eastern Front, Preparing to Launch Offensive; Five Soviet Divisions Counter-Attack German Positions, Intensifying Fighting on the Southern Front</h3>
+<p>Stockholm, Sweden, 14th (Havas) - The Dagens Nyheter recently published a dispatch from its London correspondent, stating that, according to British military sources, the German forces amassed on the Soviet front for their spring offensive will number no fewer than 280 divisions. It is questionable whether the Soviet Red Army will launch an early counter-offensive to disrupt the German preparations currently underway.</p>
+<p>Istanbul, Turkey, 15th (Reuters) - According to visitors from Turkey yesterday, two German divisions have recently passed through Romania on their way to the Soviet front. The majority of these troops have been redeployed from Greece.</p>
+<p>Berlin, 15th (Haitong News Agency) - It was announced here last night that large Soviet forces attacked the front lines of the Kerch Peninsula the day before, but were repelled by our forces. The attacking Soviet force consisted of approximately five divisions and 80 tanks. Soviet artillery provided strong support, firing at least 20,000 rounds. German forces resisted and engaged in hand-to-hand combat, resulting in the destruction of 46 enemy tanks and heavy casualties among Soviet soldiers.</p>
+<p>Berlin, 15th (Haitong News Agency) - A German official yesterday released the following supplementary war report to a Haitong News Agency reporter: Fighting on the Crimean front in the East has intensified again. Although the Soviet forces launched fierce attacks, they were repeatedly repulsed with heavy losses by our forces. Romanian troops fought alongside German troops and were very successful in defensive battles. The weather in the central sector of the Eastern Front remains cold, which has a significant impact. However, the German Air Force remains very active.</p>
+<p>Stockholm, Sweden, 14th (Havas) - Soviet forces on the northern sector of the Eastern Front attacked Chudovo on the 9th of this month. German forces launched a counter-offensive north of Gruzino, inflicting heavy losses on the Soviet forces. The front line has now been restored to the Volkhov River line. The Soviet forces are currently attempting to maintain several bridgeheads on the west bank of the river.</p>
+<h3>Speer Given Full Authority to Handle German Armaments Production Increase</h3>
+<p>Berlin, 14th (Havas) - General Göring, dictator of the German Four-Year Economic Plan, has authorized Armaments Minister Speer with full authority to handle all issues arising from the increase in armaments production.</p>
+<h3>Germany and Italy Sign Economic Agreement to Increase Raw Material Trade Volume and Promote Military Production in Both Countries</h3>
+<p>Rome, 14th (Havas) - Germany and Italy signed an economic agreement today to increase the volume of raw material trade between the two countries in 1942, thereby promoting armaments production. Specifically, Germany will increase its exports of coal and steel to Italy, and there will be no restrictions on exports of military necessities due to payment issues. In addition, Germany and Italy, when discussing the shipment of supplies to Greece, decided to make every effort to reduce the country's financial burden.</p>
+<p>Berlin, 14th (Havas) - Economic figures here took the opportunity of the signing of the new German-Italian economic agreement to review the commercial achievements of both sides, stating that the total trade volume between the two countries in 1941 exceeded 10 billion marks. Italy's exports mainly consisted of fruits, vegetables, flax, raw silk, rayon, lead, mercury, and food, while Germany exported coal, iron, machinery, military supplies, chemicals, and medicines to Italy. The amount of coal alone reached more than one million tons per month, setting a new record for railway transportation. It is expected that this year will see further increases. In addition, there are currently 200,000 Italian workers serving in Germany, remitting approximately one million marks per day to their families back home. In short, Germany has made efforts to increase Italy's exports to Germany. Now, Germany can not only obtain large quantities of food from Italy but also important military raw materials.</p>
+<h3>Germany Commemorates Fallen Soldiers; Hitler Delivers Speech</h3>
+<p>Berlin, 15th (Haitong News Agency) - Today is Germany's Memorial Day for Fallen Soldiers. Führer Hitler delivered a speech this afternoon, solemnly vowing that Germany and its allies would continue to fight until the enemy forces were annihilated. He predicted that the Soviet forces would be defeated, and perhaps even annihilated, this summer. He also stated that the German and allied forces, after a severe winter of ice and snow, continue their efforts, demonstrating their unwavering strength. In the future, communism will not be allowed to gain a foothold in Europe. In 1918, British, French, and American politicians, driven by madness, insisted that Germany should not be allowed to restore its economic prosperity or enjoy equal rights in economic life under any circumstances. Based on this misunderstanding, various unjust measures were taken. The German people, who had already lost confidence, could not change their misfortune. It must be understood that passively accepting fate will never lead to escaping misfortune. Only through unity and persistent struggle can it be destroyed. The German people are the most hardworking and capable people. The decline of the German economy is not beneficial to the enemy. After Germany becomes impoverished, other countries will not immediately become prosperous. Therefore, the capitalist countries controlled by the Jews also suffer from unemployment, and even the number of unemployed people is greater than in Germany. However, since the people of those countries are blinded by suspicion and only follow the lead of the Jews, it is appropriate that they remain misguided. After the National Socialists came to power, they still did not know to emulate Germany's measures in the economic and social spheres, but only harped on old grievances, making various propaganda and inciting the people to prepare for another war. And now, we all know that in 1935 and 1936, powerful Jews and political leaders in Britain, France, and the United States had already decided to fight again. But this should be blamed on the people of those countries for not resisting this mad attempt and for condemning the lack of military preparations. After all proposals by Germany regarding disarmament and the abolition of armaments were rejected, it had no choice but to engage in military preparations in order to cope with a second war so as not to repeat the mistakes of the 1914 World War. Therefore, when we commemorated the fallen soldiers in 1940, we had already won the initial victory in the war and had the greatest confidence in maintaining victory in the second stage of the war. In fact, the war in the year up to March 1941 created an unparalleled feat in history. In the wars in Northern and Western Europe, Europe had defeated the enemy forces on the continent, and Italy had joined our side as our loyal comrade to fight this war of survival. Today, the Jews who control politics in the world have united, linking democracy with Bolshevism, attempting a collective attack, thinking that all of Europe can be destroyed by them. Fortunately, heaven has blessed us, allowing us to win victories on all battlefields against Jewish Marxism and capitalism. We must be grateful to God, for if not for God's blessing on our people, our diligence and courage would have been in vain. The past year has not only witnessed the largest battle in world history but has also given us the most difficult training. This training is not only on the front lines but also in our own country. Based on German history, it proves that the German people are not afraid of the threats of others. In this war, the German people must not only contend with the enemy's weapons and the enemy's inexhaustible forces, but also fight against cruel nature. The severe cold of last winter was unprecedented in Central and Eastern Europe for 140 years. The Allied forces of the Axis powers have shown their resilience in the past four months despite all the hardships. After gaining victory in the Balkans in 1941, the German forces entered the Soviet Union, repeatedly winning battles and establishing meritorious services. The retreating enemy was repeatedly defeated, and many were annihilated. The depth of the German and allied forces' entry into the enemy's territory and the breadth of the territory occupied are unprecedented. The great achievements are enough to be remembered for thousands of years. Now that the severe winter has passed, we are even more confident in defeating the enemy. If the Soviet forces could not defeat the Allied forces last winter, it is difficult to guarantee that they will not be annihilated by the Allied forces this summer. We will expel the Soviet Union far away, so that it cannot border us in Europe. We feel the greatness of the era we live in. The world is being rebuilt. In East Asia, the Japanese people have been bullied and their economy has been suppressed, and now they are launching attacks by sea, land, and air, destroying the walls of democracy and capitalism. In short, hundreds of millions of hardworking, resilient, and highly cultured people can hardly bear to live under the control of a few Jews and capitalists and tolerate it for a long time. Therefore, the only solution is to fight until lasting peace is guaranteed. In other words, it must wait until the enemies of peace are all annihilated before a satisfactory conclusion can be reached. Countries outside Europe continue to have attempts to interfere in European affairs, especially to meddle in our affairs. Now their attempts have been prevented by us once and for all.</p>
+<h3>Mao Zedong Survives Assassination Attempt</h3>
+<p>Macau, 15th (Haitong News Agency) - According to a certain newspaper in Chongqing, General Mao Zedong, the supreme leader of the Chinese Communist Party, was nearly assassinated by a young worker three weeks ago in front of the New Life Restaurant in Yan'an when he and his wife, Lan Ping, a former movie star, alighted from a car. The reason for the assassination is unknown.</p>
+<h3>Fighting Occurs in Suixi</h3>
+<p>Chongqing, 15th (Telegram) - Military news: Fierce fighting is taking place in the area of Erdaopan, west of Wang Aizhao (north of Xinminbao), in Suixi.</p>
+<h3>Chongqing Branch of the Chinese Humanities Society Established</h3>
+<p>Chongqing, 15th (Telegram) - The Chongqing branch of the Chinese Humanities Society was officially established at Central University in Shaping at 10:00 AM on the 15th. Wu Ke, Li Taihua, Huang Zhengming, and four others were elected as directors. The headquarters of the society is located in Kunming and was founded by professors from Wuhan University, Central University, and the Southwest Associated University. It publishes Contemporary Commentary, Humanities and Books, and series of publications.</p>
+<h3>Liu Wentao Arrives in Taihe</h3>
+<p>Taihe, 15th (Comfort Telegram) - Liu Wentao, head of the Third Comfort Team, arrived in Taihe from Ganxian on the 15th. He is making haste to attend Chairman Cao Haosen's inauguration ceremony on the 16th and represent the Central Government in administering the oath.</p>
+<h3>Jiangxi Province Stabilizes Prices</h3>
+<p>Ji'an, 14th (Telegram) - The Jiangxi Provincial Government, recognizing that rising prices have had a significant impact on people's livelihoods, has decided to establish a price adjustment mechanism to effectively stabilize prices and has ordered all counties to implement public grain sales to achieve tangible results.</p>
+<h3>Frequent Diplomatic Activity in Ankara; Turkey's Position on the Political Development of Southeastern Europe to Be Decided</h3>
+<p>Sofia, Bulgaria, 14th (Havas) - Political observers here believe that Turkey's position on the political development of Southeastern Europe is about to be determined, possibly at a meeting of foreign envoys next week. Ankara has recently been the site of frequent diplomatic activity. The country's envoys to Iran, Spain, and Romania have already returned home, and several other foreign representatives will be returning to report to the government.</p>
+<h3>Heavy Losses for American Merchant Ships</h3>
+<p>Berlin, 15th (Haitong News Agency) - The German High Command announced last night that since the United States entered the war, more than one million tons of ships have been sunk in the Atlantic, including 151 merchant ships totaling 1,029,000 tons, of which 58 were oil tankers totaling 442,000 tons. Twelve of these merchant ships were sunk by German submarines in recent days.</p>
+<h3>Chairman Wu Daquan Departs to Inspect Various Counties in Eastern Guizhou</h3>
+<p>Guiyang, 15th (Telegram) - Chairman Wu Daquan, in order to supervise the key policies of baojia, national education, road construction, and afforestation in various counties, is scheduled to depart on the 16th to inspect various counties in eastern Guizhou.</p>
+<h3>The Old Capital of Burma</h3>
+<p>The old capital of Burma is Mandalay, which is full of Buddhist sentiment. "Mandalay" is a Burmese name, meaning "Light of Treasures." British writer Rudyard Kipling said, "Mandalay is the elephant and peacock, gold, and vermilion city of Burma," a surrounding environment with bright and pleasant colors and picturesque poetic feelings. The Mandalay Palace still stands majestically today. The city walls are about thirty feet high, with a perimeter of about one and a quarter miles. The moat is about ten feet wide and sixty feet deep. This picture is the tomb of Queen Supayalat, built in 1880, entirely made of Malacca wood, and very solemn and magnificent from a distance.</p>
+<h2>Page 3</h2>
+<h3>Twelve Warehouses to Release Rice Today for Retail Sale by Rice Shops; French Concession Also Announces Ban on Domestic Rice Imports</h3>
+<p>Following the Shanghai Municipal Council's announcement that it would ban the import of domestic rice into the concessions starting on the 14th, the French authorities announced yesterday that they would take a consistent step with the Shanghai Municipal Council. The price of domestic rice has returned to normal in recent days. The Shanghai Municipal Council's Rice and Grain Office issued transport permits the day before, designating 12 warehouses, including Dinghe, Jin Yuan Second Warehouse, Zhejiang Industrial, Zhejiang Xingye, Gongji, Heji, Huasheng (wharf), Xiangsheng (automobile), Dadong (tobacco), Dongfang, and Ruifeng, to release the imported rice. In addition to some of the rice being released by the rice shops on the same day, most of it is expected to be released today for retail sale.</p>
+<h3>Various Pawnshops in Shanghai Increase Interest Rates</h3>
+<p>From 2.5 Fen to 3 Fen. Pawnshops in Shanghai are divided into pawnshops and pledge shops, similar to the distinction between remittance houses and currency exchange shops in the money industry. Pawnshops charge interest monthly, with a term of 12 months. Pledge shops, on the other hand, mostly charge interest every 10 days, with terms ranging from several months to 12 months. According to a reporter from Datong News Agency who inquired with the Pawnshop Association yesterday, the industry has increased its monthly interest rate from 2.5 fen to 3 fen per yuan starting this year. Due to the continuous increase in prices in recent years, the value of goods at maturity often exceeds the loan principal by several times, so the business situation has improved. In particular, pledge shops are more profitable.</p>
+<h3>Roosevelt Wharf Warehouse Urges Cargo Owners to Register</h3>
+<p>The Roosevelt Wharf, located at 44 the Bund outside the French Concession, is notifying cargo owners or consignees with warehouse receipts to quickly go to the wharf office to register. Cargo owners or consignees who have bills of lading, delivery orders, sub-orders, or lading accounts for goods stored in the warehouses of this wharf outside the French Concession are requested to bring these documents to the wharf office on the Bund outside the French Concession to register.</p>
+<h3>Discovered a Gang of Robbers; Various Prison Sentences</h3>
+<p>The notorious robbers, Qi Jiafa, Xu Ronggui, Zhang Jinsheng, Zhang Shou, etc., all from Jiangbei, colluded as a gang and used weapons to rob Zhang Gao's family at No. 16 Gordon Road, and passersby on Xiaoshadu Road, Macau Road, Robison Road, Caoxiebang and other places, stealing belongings and stripping off overcoats and cotton robes worth over two thousand yuan in national currency from November of last year to February of this year. After the case was exposed, they were arrested by the Chinese detective Shang Wu and detective Li Wenzhao of the Putuo Road Police Station one after another. They recovered an overcoat (lined with Yuan satin) and a camel wool cotton robe, worth over five hundred yuan, and brought them to the police station. They were prosecuted for the crime of armed robbery in collusion according to criminal law. The case was judged yesterday, with Qi Jiafa, Xu Ronggui, and Zhang Jinsheng each sentenced to five years in prison, Zhang Shou to four years, and the suspect Wei Qishi acquitted. The overcoat and cotton robe are temporarily stored in the police station pending identification by the owners, as no one has claimed them.</p>
+<p>Li Chaojiang from Ningbo, dressed in a Western-style suit, specialized in robbing pedestrians in the Hongbei area. From the 13th of last month to the 6th of this month, he colluded with his friend Zhang Abao, who is still at large, to rob Zheng Zhicai, also from Ningbo, and two other unknown robbery cases on North Sichuan Road, North Suzhou Road, and North Henan Road, totaling over four hundred yuan in legal tender. After the case was exposed, he was arrested by the Hongkou Police Station and prosecuted according to law. Yesterday, Li Chaojiang was sentenced to two years in prison as a warning.</p>
+<h3>Abandoned Infant Found in the Lane of the Bili Bridge Road, French Concession; Nose and Lower Parts Cut Off</h3>
+<p>Yesterday morning around 7 a.m., a package that had been abandoned was discovered at the back door of No. 2 Meicheng Lane, Bili Bridge Road, French Concession. Upon inspection by the patrolling police, it was found to contain a male infant, approximately two or three months old. He was still breathing, but his lower parts and nose appeared to have been cut off with a knife, and there was also a knife wound on the back of his head. He was immediately sent to Guangci Hospital for treatment by police vehicle. As for whether the child was a victim of harm or abandoned by parents unable to raise him, the French police are currently investigating the origin.</p>
+<h3>Coal Briquette Merchants Have a Solution: Increase Distribution Quantity; Shutdown of Seven Coal Briquette Factories Affects Supply</h3>
+<p>In light of the fact that coal briquettes are an indispensable fuel for both rich and poor residents on a daily basis, and that a shortage or cessation of sales would not only affect residents' cooking but also cause public unrest, major coal companies in the city have been actively discussing solutions to restore the normal distribution of coal briquettes. According to inquiries with the coal industry yesterday, each coal company has a solution for coal briquette suppliers. Starting yesterday, coal briquette factories such as Yitaixing, Guohua, and Nanyang increased the distribution quantity to each retail store, approximately doubling the quantity compared to the past few days, and further increases are expected.</p>
+<p>Factories That Have Stopped Production Have Not Yet Resumed</p>
+<p>Due to insufficient coal dust reserves, various coal briquette factories have successively reduced production. The Guanghua and China factories were forced to cease production of coal briquettes. It is understood that the Nanyang (Binlang Road), Beiyang, Yuanhua, Dongfang, Yuedong, and Nanyang branch (Tokyo Road) factories have also successively stopped making briquettes due to various reasons. The cessation of production by these factories has had a significant impact on the supply of coal briquettes.</p>
+<p>Forced to Close Due to Lack of Goods for Sale</p>
+<p>Since the mechanized coal briquette factories successively reduced production, a serious panic has arisen in the city's fuel supply. Thousands of retail stores have been unable to obtain large quantities of coal briquettes for sale at their stores, leading to a situation where they have reached their limits. However, in order to ensure the future of fuel supply and facilitate residents' purchases, each business is reluctantly maintaining the status quo, restricting sales to the amount of coal briquettes they are able to obtain each day. According to news from the coal industry yesterday, it is becoming increasingly difficult for coal, firewood, and charcoal stores to maintain their operations. Those with smaller capital have already been forced to close. Only if the factories can provide a large supply can sales be restored.</p>
+<h3>Census of the Chinese Area Completed</h3>
+<p>Total of 1.58 Million People</p>
+<p>The total population in January was 1,581,571, which is only slightly less than the recently published total population of the Public Concession by just over 4,000 people. In addition, the French Concession has a population of over 800,000, and the Huxi area is estimated to have a population of over 200,000. Combined, the total population of Shanghai is still over 4 million. Before the Pacific War, the total population of Shanghai was generally estimated to be over 5 million. According to these figures, over the past three months, more than 500,000 people have voluntarily or been scattered and left Shanghai. This evacuation movement has continued in the past few days, and with the soaring prices and cost of living, the number of evacuees has increased. Every morning, the wharves along the Bund are crowded with residents returning to their hometowns.</p>
+<h3>Shanghai Catholic Diocese Celebrates 100th Anniversary; Launches a Movement to Renew the Lives of Catholics from March 5th to April 5th</h3>
+<p>A significant record in the history of Catholicism in China during the mid-19th century is the second arrival of Jesuit missionaries in Jiangnan, occurring in the 22nd year of the Daoguang Emperor, on the eve of the establishment of the Treaty of Nanjing between China and Britain, exactly one hundred years ago. St. Ignatius Cathedral in Xujiahui, Shanghai, will be holding celebrations this month to commemorate the "100th Anniversary of the Shanghai Diocese," promoting a "Movement to Renew the Lives of Catholics."</p>
+<p>Catholicism was first introduced into China in the late 13th century, with a difficult and arduous journey lasting three centuries. It was not until the late 16th century, with the arrival of Matteo Ricci in China, that the Jesuits established a foundation for their missionary work in the Jiangnan region in modern times.</p>
+<p>Many missionary societies within Catholicism are groups of various religious orders, all belonging to the one universal Catholic Church, unlike the Anglican Church and Presbyterian Church in the Lutheran Protestant tradition, each with its own distinct identity. There are currently dozens of Catholic missionary societies working in China, among which the Dominican Order, the Paris Foreign Missions Society, the Franciscan Order, the Vincentian Order, and the Jesuit Order have a long history and outstanding achievements. The Jesuit Order was disbanded in Europe in the mid-18th century, and its missionary work in China also ceased until the order was restored in 1814. On July 11, 1842, the Jesuit Order returned to China, establishing the headquarters for the revival of the Shanghai Diocese in Xujiahui, Shanghai.</p>
+<p>Bishop Gislain of the Shanghai Diocese has been preparing since the year before last to celebrate the 100th anniversary of the Jesuits' second arrival in China. Originally, he intended to hold a grand celebration, but due to the impact of the war, he decided to forgo external activities and focus on spiritual commemoration. From March 5th to April 5th, Easter, a month-long movement to renew the lives of Catholics is being promoted within the Xujiahui Cathedral. The schedule is as follows:</p>
+<p>(March 5th to 8th) Children's Retreat; (8th) Opening of the Renewal Movement; (8th to 14th) Renewal Week for Female Catholics; (15th) Renewal Vigor Day; (15th to 21st) Renewal Week for Male Catholics; (22nd) Renewal Prayer Association Day; (22nd to 24th) Retreat for Members of the Holy Mother Association; (23rd) Diocesan Commemoration Day for the Deceased; (23rd to 28th) Staff Training; (24th) Holy Mother Association Members Day; (29th) Public Society Members Day; (April 1st) Holy Eucharist Army Day; (5th) Closing of the Renewal Movement</p>
+<p>The Renewal Week for Female Catholics has already been held. From March 15th to 21st, it is the week for male Catholics. Preaching takes place in Ignatius Cathedral at 7:45 a.m., 1:15 p.m., and 7:50 p.m. daily. The topics are: "The Meaning of the Renewal Week," "Life Dissection," "A Glimpse of Eternity," "Death Management," "Review of Life," "Adjustment of Life," "Renewal of Life," "The Essence of the Three Theological Virtues," "Service and Duty Spirit," "Preaching and Saving People Spirit," and so on.</p>
+<p>Statistics for the Shanghai Catholic Diocese show that there are currently 140,000 male and female believers. The church has commendable achievements in social services such as education, charity, science, and publishing. Compared to a hundred years ago, there have been very remarkable contributions and achievements.</p>
+<p>The Shanghai Catholic Diocese has experienced many obstacles and hardships in the past hundred years, but thanks to the hard work of the missionaries and the concerted efforts of the believers, it still has a thriving spirit. Bishop Yu, the leader of the Shanghai Diocese, earnestly explained to the tens of thousands of Catholics in Shanghai in the public letter "Renewing Life": "When suffering from the severe oppression of war, we must firmly believe that our souls are immortal. No matter what suffering or happiness we experience in this world, it will soon pass. Only the eternal bliss of heaven or the eternal suffering of hell after death is permanent. True justice is usually not found in this world, but only before the judgment seat of the all-just God, where the reward and punishment for good and evil are perfectly clear." "The miraculous governance of God's wisdom always uses the disasters and hardships of the physical body to refine us. The war has affected our diocese, and not only does this bishop lament the significant losses and difficulties, but also cares about the various sufferings of your families and individuals. But you must not be discouraged. On the contrary, this bishop exhorts you to cheer up and renew your Catholic lives!" (Guest Contributor)</p>
+<h2>Page 4</h2>
+<h3>Portuguese Community Establishes Central Association; Plans Far-Reaching Projects to Assist Portuguese Nationals Facing Hardship</h3>
+<p>According to the English-language "China Times", this newspaper's reporters have learned that the Portuguese community in this city has established a "Central Association of Portuguese Nationals" to assist Portuguese citizens whose living conditions have become difficult. The Association has drafted far-reaching plans, and the Concession authorities have pledged to cooperate with it. The Association is chaired by the Portuguese Minister to China, Mr. Lema, who formulated concrete plans to establish the Association at his residence on January 7th, thus formally setting up the relief organization.</p>
+<p>The Association Is Intended to Be Permanent</p>
+<p>At the time, the Minister stated that the association he was preparing was not only a charitable organization or an emergency relief agency to deal with temporary crises. The formation of this association is intended to be permanent and valuable in the coming months, and will continue to exist after the situation stabilizes to address the needs of the Portuguese community. While all efforts should be made to address the current difficulties at the outset, the future is even more important and should not be neglected.</p>
+<p>The Goal Is to Seek the Welfare of the Portuguese Community</p>
+<p>The purpose of the Association is to study and implement various measures beneficial to the entire Portuguese community. The Association is determined to focus all its activities to achieve maximum results with minimum effort. The permanent nature of the Association necessitates that it study issues related to improving the community's knowledge and cultural level. The Association hopes to provide the Portuguese community in this city with a stronger defense, enabling it to cope with any new situations that may arise.</p>
+<p>Closely Studying Living Problems</p>
+<p>Among the issues the Association is currently studying closely are employment, education, food, clothing, and shelter. The Association is attempting to obtain large quantities of staple foods so that the Portuguese community can enjoy the benefits of bulk purchases. The establishment of public kitchens is also under careful consideration. If successful, this could help Portuguese households solve the problems of cook wages, fuel costs, and waste. However, the establishment of public kitchens depends entirely on adequate support and will be decided after the statistical tables have been compiled.</p>
+<p>All Portuguese Adults Are Welcome to Join</p>
+<p>The Association is completely open to all Portuguese nationals in Shanghai. All Portuguese adults can apply for membership by filling out the blank forms sent to them. The Association also earnestly requests the community's cooperation in providing all the information requested. The Association is very willing to explain and clarify matters related to its work, and has therefore established an information department that will communicate the Association's activities to all members. Mr. Gratus has been selected as the chairman of the Association, with Mr. Su Shi serving as the secretary-general.</p>
+<h3>Hometown Association Commemorates Han Zishi; Ceremony Scheduled for the 26th of This Month</h3>
+<p>Mr. Han Zishi of Hai'an was revered in his time for his morality and writing. In recent years, his work in water management and disaster relief, as well as his promotion of industrial enterprises, have been widely recognized. He passed away last winter. Elderly members of his hometown association here, considering his contributions to his homeland, intend to posthumously confer a private title on him to express their respect and appreciation for his merit. The public memorial service is scheduled for the 26th of this month at Jing'an Temple. Friends of Mr. Han who wish to attend may proceed directly to the temple at 2:00 p.m. that afternoon to participate in the preliminary ceremony.</p>
+<h3>Increased Mortality Rate; Promotion of Cleanliness; Strict Implementation of Rat Control Measures</h3>
+<p>The Health Department of the French Municipal Council announced that the number of deaths in the French Concession in February increased slightly compared to January, by approximately 22 percent. This is entirely due to the increase in the number of deaths among drug addicts. The number of corpses collected by the Tongren Fuyuan Hall in February increased by 9 percent. There was also a significant increase in infectious diseases last month. This is due to diseases transmitted by lice. Relapsing fever has been found among both foreigners and Chinese, with one-third of Chinese patients dying. Typhoid fever has also occurred. Both colds and meningitis are also noteworthy. The incidence of typhoid fever appears to be increasing, so preventive measures must be taken in advance, especially during April and May. The authorities are now promoting personal hygiene and plan to take strict measures to eliminate rats, such as tightly closing garbage can lids, installing rat-proofing equipment in houses, blocking wall holes and crevices, using rat traps and rat poison, and encouraging the keeping of cats and dogs that catch rats. As for the vaccination campaign, it is continuing smoothly, and 49,383 people have already been vaccinated. The Health Department is also taking advantage of the opportunity of Chinese people lining up to buy rice to administer vaccinations.</p>
+<h3>Reward Offered to Find Missing Girl; Scoundrel Lies to Obtain Money</h3>
+<p>Li Wang, a woman from Ningbo residing at No. 9, Lane 306, North Henan Road, reported that her six-year-old daughter, Jinlan, disappeared suddenly while playing in front of her house at 11:30 a.m. the day before yesterday. She searched everywhere without success. Distressed, she posted notices on various roads, offering a reward of 100 yuan to anyone who returned her daughter. At 2:00 p.m. that afternoon, Zhu Fenlan, a 19-year-old youth from Gaoyou, went to her house and falsely claimed that he knew Li's daughter, Jinlan, was at Wang Anzi's house at No. 6 Ouyang Road in Zhabei, intending to fraudulently obtain the reward of 100 yuan. Li reported this to Chinese Constable No. 1333 of the Huisi Police Station, who arrested him and investigated the address at No. 6 Ouyang Road, but found no such person as Wang Anzi. Zhu then claimed that Li's daughter might be hiding somewhere on Xinza Road, but a search there also revealed no trace of Li's daughter. He was taken to the police station and prosecuted for the crimes of kidnapping a young girl and fraudulent acquisition of property, and detained pending investigation.</p>
+<h3>"Optimism" Issue No. 11 Published</h3>
+<p>The March issue of "Optimism" is published at the time when plum blossoms are in full bloom. Therefore, the "Happy Leisurely Small Newspaper" has a special Plum Blossom Festival issue, with plum blossom paintings and drawings that are antique and charming. A special collection of essays and photographs on the "Fragrant Snow Sea" adds even more interest. The cover features a beautifully printed three-color halftone portrait of the actress Zhou Manhua. The "Shanghai Special" and "Wandering in the Arts" columns have many excellent works. Three full-length novels have entered their most exciting stages. The issue is temporarily priced at 1.20 yuan. Subscribers can contact the society at No. 250 Baker Road, telephone 92042.</p>
+<h3>Social Services</h3>
+<p>Donation to Xin Puyu Hall Transferred: Letter from an unnamed gentleman at No. 51 Pope Lane, Luban Road, enclosed with 5 yuan in legal tender, requesting donation to Xin Puyu Hall. It has been transferred and a receipt obtained and delivered. Service Column. 15th.</p>
+<p>Treating Childhood Pneumonia: Children are most susceptible to pneumonia. Western medicine often uses Anfook Ointment to treat it. Although it is effective in most cases, the medicine is extremely expensive. Years ago, one of my children suffered from pneumonia and was treated by Western medicine, applying ointment and injections, but to no avail and the child eventually died. A friend, Mr. Yao, also had a two-year-old daughter suffering from pneumonia. Initially, he sought treatment from a Western doctor, but the condition worsened. He switched to a Chinese doctor, but both said there was no hope. An old woman orally imparted a secret remedy: Use a live clam, drill a small hole in it, stir it with a silver needle, drip the clam juice into a porcelain cup, steam it over water, and feed the lukewarm clam juice to the child. The illness will be cured. I wish to borrow a corner of your newspaper to make this public to the world, a blessing for children. Respectfully, Huang Yabo. 13th. (Service Column Note: Childhood pneumonia must be treated with reliable scientific medicine. If treatment is ineffective, it can only be attributed to science not yet being fully developed. As for secret remedies, we still hope that their effectiveness can be scientifically proven. We hope that physicians will study why the above treatment is effective.)</p>
+<p>In recent days, we have received letters signed "Shanghai East Refugees," "A Group in Need of Assistance," "Resident of a Certain Place," etc. Regardless of whether the content is related to public welfare, because there are no addresses or real names, according to the submission guidelines of this column, we regret that we cannot publish them. Service Column.</p>
+<h3>Hu Yaguang's Art Teaching Announcement</h3>
+<p>The famous painter Mr. Hu Yaguang specializes in the new style of Chinese painting, including flowers, birds, fish, insects, landscapes, figures, and animals. He is currently recruiting ten basic students, and also teaches manga, oil painting, and watercolor painting. Inquiries: 11, 2nd Floor, Lane 403, Haifang Road.</p>
+<p>Yesterday, the newspaper was released at 6 o'clock.</p>
+<p>Sports News</p>
+<h3>Hequn Fundraising Football, Act II: Golden Lion and Hequn Both Triumph; Xuhui and Zhendan Suffer Defeats</h3>
+<p>The second act of the Hequn fundraising football match was held at the Zhendan Stadium at 2:15 p.m. yesterday, with 3,000 spectators. In the first match, Golden Lion played against Xuhui, with Han Yin Sheng as the referee. Xuhui performed weaker than before, while Golden Lion seemed full of energy. Since Han Longhai scored a penalty kick to open the scoring, Xuhui's counterattack was ineffective. Han Longhai of Golden Lion then broke through the enemy's net again from 20 yards out. In the first half, Golden Lion led 2-0. After the break, it was still Golden Lion's game. Old Han was the bravest of the three armies, scoring three more goals. Finally, Fu Naitang went on a solo run and attacked the enemy's base again. In conclusion, Golden Lion defeated Xuhui 4-0. In the second match, Hequn played against Zhendan, with Wei Shigeng as the referee. Chen Daye of Zhendan scored first, giving Zhendan a 1-0 lead in the first half. After the break, Xiao Ziwen of Hequn scored two consecutive goals. Finally, Wang Xisheng of Zhendan committed a foul in the penalty area, and A Dai took the penalty kick and scored again. Before long, time ran out, and Hequn reversed the defeat by winning 3-1. The lineups of the two teams yesterday were as follows:</p>
+<p>Golden Lion</p>
+<p>Zhou Ziwu</p>
+<p>Chen Xiaoping</p>
+<p>Hu Hanwen</p>
+<p>Tao Tingfu</p>
+<p>Lin Dianhua</p>
+<p>Ye Xinfu</p>
+<p>Li Yao</p>
+<p>Liao Shiming</p>
+<p>Han Longhai</p>
+<p>Jia Youliang</p>
+<p>Xi Ruke</p>
+<p>Fu Naitang</p>
+<p>Hequn</p>
+<p>Chen Zhijuan</p>
+<p>Tang Zuowen</p>
+<p>Xiao Ziwen</p>
+<p>Zhu Xixiang</p>
+<p>Yao Chong</p>
+<p>Pan Honghai</p>
+<p>Dai Linjing</p>
+<p>Zeng Tingfan</p>
+<p>Wang Dingqiu</p>
+<p>Xu Kehong</p>
+<p>Zhang Ting</p>
+<h3>Meisheng Cup Small Football Tournament Kicks Off Yesterday; Ruilong Crushes Lanbai</h3>
+<p>The inaugural Meisheng Cup Little Football League, with a total of twenty-one participating teams divided into the "Mei," "Sheng," and "Bei" groups, kicked off at Guangxia Middle School at 2:00 p.m. yesterday. Deputy Director-General Yuan Lvdeng of the Municipal Council personally attended and performed the opening kick-off ceremony. In the first exhibition match, Wenjing defeated Yingxing 5-1. In the second match of the Cup, Ruilong played against Lanbai. The former was strong and the game was one-sided. As a result, Ruilong easily defeated Lanbai 6-1. In the final exhibition match, Sanxing played against Guohua. Sanxing is known as the iron army of the small football world, while Guohua is a newly emerging organization with a very well-organized lineup. After the start of the match, Guohua's offensive was very strong, and Ye Yiting scored two consecutive goals, giving Guohua a 2-0 lead in the first half. After the break, Wu Shaotai of Sanxing scored a penalty kick. When the final whistle blew, Guohua narrowly defeated Sanxing 2-1. The results of yesterday's matches are as follows:</p>
+<p>Wenjing vs. Yingxing (Exhibition) 5-1</p>
+<p>Ruilong vs. Lanbai (Mei Group) 6-1</p>
+<p>Guohua vs. Sanxing (Exhibition) 2-1</p>
+<h2>Page 5</h2>
+<p>Spring and Autumn</p>
+<h3>An Unlucky Black Cat and Similar Things</h3>
+<p>— Zizang</p>
+<p>According to the London "Evening Standard": "A black cat named Oscar was first kept on the warship Bismarck, which sank. It was then transferred to the British warship Cossack, which was also sunk not long after. The cat was rescued again and kept on the Royal Ark warship, but unexpectedly that warship also sank. The cat is now being kept in a sailor's home." This black cat is indeed very strange. Who would disagree with giving it the elegant title of "Unlucky Cat"? In the past, Napoleon dominated the world, a glorious figure. However, amidst military dispatches and strategic planning, it is said that he feared nothing but black cats. Black cats seem incomparable to icy landscapes and scorched-earth tactics. Why was he so afraid? Is it because their murky fur and sneaky demeanor are somewhat ungenerous? Or is it the "meow" sound, a bit like the "strangling cats" sound of modern women, that inevitably makes one's hair stand on end, causing hundreds of thousands of men to lay down their arms? This is truly impossible to guess, but Napoleon's fear of black cats has since become a beautiful tale in history, quite poetic. This time, there was actually an Oscar the black cat wandering on both sides' warships, resulting in the sinking of both warships. This cat is simply too miraculous. But a cat is just a cat. It doesn't seem to have three heads, six arms, or full armor. Nor is it like the "Helen" of ancient times, a target of contention. Fortunately, it happened to be there, ultimately proving the black cat's "misfortune," not due to human failure. That's all. This cat not only saved its life but also has the feeling of "one general succeeding while ten thousand bones wither." It's not called any old cat or dog, but Oscar, the same name as the 19th-century poet Oscar Wilde, showing that it is no ordinary thing. Human achievements cannot be erased after all. Civilized countries dig air-raid shelters during wartime and must also prepare a few cat and dog air-raid shelters. This leisureliness shows that it is not just going through the motions, giving us the feeling of "better to be a cat in troubled times than a person in peaceful times." In this time and place, black or white cats and black and white dogs, becoming "immortal products," are often different. They don't seem to have been given the honorable title of "unlucky." Although A-grade milk is only a privilege for patients, cats and dogs lying in their owners' arms still have fur as shiny as their mistresses' fingernails. What's difficult are ordinary cats and dogs. Rats are being sent back to their hometowns every day, and rice has reached around 600. They can only become dead cats and dogs. However, do you want to pray to our Lord Jesus? Not necessary. Just look at the corpses on the street of people who have taken grains for a long time without becoming immortals, and you can remain silent for three minutes.</p>
+<p>Unlucky things in the world do not seem to be the "patent" of Oscar. To turn weapons into silk and misfortune into great fortune, you might as well "order" the black cat to go to the North Pole, the South Pole, or Mount Everest for a period of rest. However, I want to imitate a line from an ancient poem: "... (the first line is forgotten, to be investigated.) How can a concubine in the deep palace know?" and chant: "... How can the cat in my arms know!"</p>
+<h3>Anecdotes from Film City</h3>
+<p>— Xinjuan</p>
+<p>In addition to the existing "Oomph Girl" Ann Sheridan, Warner Bros. has recently discovered a new "Oomph Girl" named Georgia Carroll. Her "oomph" style is comparable to Paramount's Veronica Lake. Cary Grant, the star of "Suspicion," is a Hollywood bachelor who is currently in love with Betsy Drake. However, their "romance" is kept secret. Susan Hayward has only starred in "Among the Living" after appearing on the screen as "One Generation Music Saint." She recently starred in "Glamour Boy" with Jackie Cooper.</p>
+<p>Maureen O'Hara's divorce case has not yet been decided, and she has already received over a hundred proposals. Maureen has been on intimate terms with director Will Price, and marriage is possible.</p>
+<p>A photo of Clark Gable ten years ago looks similar to Fernandel today. Believe it or not.</p>
+<p>Random Talk About the Arts</p>
+<h3>Brand Tune</h3>
+<p>— Ze Fu</p>
+<p>Brand Tune, also known as Zapai Tune, is one of the miscellaneous northern tunes. It is named so because it is composed of various miscellaneous small tunes. There are about sixty types of these brands (i.e., melodies), some originating from old tunes, such as "Luo Jiang Yuan" and "Yi Shua Hai'er" from Southern tunes, "Ji Niu Cao" and "Ku Huang Tian" from Northern tunes. The rest are new tunes created by the Qing people, or mixed with tunes from Dagushu, Kuaishu, Zidishu, Peking Opera, and Bangzi Opera, resulting in a particularly complex style. Each set of brand tunes has no fixed pattern for combining the various brands. It is entirely up to the singer to string them together as appropriate for the situation. Typically, it consists of five or six brands for short sets, and twenty or thirty for longer ones. Each set begins with "Shu Chang," which uses a spoken tone to rapidly recite rhymed phrases, and ends with "Qu Wei," which is similar to the epilogue in ancient tunes. The songs mostly depict love or social trivialities, such as "Du Shiniang," "Jinshan Temple," and "Mother-in-law and Daughter-in-law Arguing." Some include spoken parts, such as "Gao Lao Zhuang." The instruments used during singing, besides the Sanxian, often include the singer shaking an octagonal drum. Therefore, the so-called octagonal drum in the Dagushu performance is mostly used to sing this type of brand tune. Moreover, because there are so many of these brands, which are frequently exchanged, singing is more difficult than other miscellaneous tunes, so women do not learn them very much.</p>
+<h3>Three Types of People</h3>
+<p>— Qin Ren</p>
+<p>It is said that the people of Shanghai today can be divided into three types: upper, middle, and lower:</p>
+<p>The upper class is composed of those who made a fortune during speculative surges, or are still continuing to speculate, and have abundant reserves of rice, coal, and oil, so they don't have to worry about "three squeezes" a day.</p>
+<p>The middle class is composed of small well-to-do families or wealthy absentee landlords, who adhere to the principle of "tightening belts" in all expenses. For example, the after-dinner Mei Qi mandarin oranges have been canceled, but the three meat dishes, one vegetable dish, and one soup are still maintained as before.</p>
+<p>The last class is also the most numerous kind now. They have no jobs in Shanghai and no land in the countryside, so they are in a situation of "unable to stay and unable to leave."</p>
+<p>Heavenly Chef's Cookbook (92)</p>
+<h3>(163) Sweet Corn Rice (Fan)</h3>
+<p>— Draft by Liu Xian</p>
+<p>Ingredients: Corn, glutinous rice, MSG, white sugar</p>
+<p>Preparation: Soak the measured glutinous rice in cold water overnight. The next morning, simmer the corn until tender, then add water to bring it to a boil. Immediately pour in the glutinous rice and cook together, adding an appropriate amount of sugar and MSG. Once the rice is cooked thoroughly, it can be served and eaten. The taste is very fresh and delicious. (Note: If you add more glutinous rice and cook for a while to make porridge, then add sugar and MSG, it becomes sweet corn rice porridge.)</p>
+<h3>(164) Stir-fried Corn with Sauce (Cai)</h3>
+<p>— Draft by Liu Xian</p>
+<p>Ingredients: Corn, fresh meat, dried tofu, sweet sauce, oil, Tianchu Soy Sauce Essence, wine</p>
+<p>Preparation: Put the corn in a pot and dry-fry. Separately, cut the fresh meat and dried tofu into small cubes, add them to the oil and stir-fry. At the same time, add salt, soy sauce essence, wine, and other seasonings to blend. Add a little more water and simmer for a while, then add the corn and stir-fry with sweet sauce. When it is dry, it is ready. At this point, the corn is both fragrant and delicious.</p>
+<p>Announcement (1): Since this cookbook has been published periodically, it has made some contributions to various families and has been praised by readers. Now that the newspaper's family supplement has been discontinued, this cookbook will also temporarily end at the end of this month. As for the previous issues, they will be compiled and printed into a book for readers to browse. We hope for your understanding.</p>
+<p>Announcement (2): "MSG," "Wei Zong," "Tianchu Soy Sauce Essence," and "Tianchu Household Arrowroot Flour" produced by Tianchu MSG Factory are available for sale in major companies and Southern goods food stores in this city.</p>
+<h3>Contemporary Observations</h3>
+<p>— Ya Ding</p>
+<p>In Charlie Chaplin's "Modern Times," the distressing situation of mechanized eating makes people laugh and cry. Recently, the price of rice has climbed to a peak of 650, and some sporadic movements in the market can be recorded:</p>
+<p>A friend told me that a small single-room rice shop in the French Concession sold more than 5,000 yuan worth of various types of beans, including green, yellow, red, white, and black, in one day on Saturday. The store was crowded all day long, and at the end of the night, the profit was at least equal to three complete pages of the "Book of Poetry."</p>
+<p>The suffering of pressing coal briquettes is even worse than pressing rice. One is a soft material. Everyone carries cloth bags in their hands, pushing and squeezing each other. No matter how much "effort" is put in, there is no risk of "hard injuries." Only the coal briquettes are loaded into "boxes," either bamboo rice baskets or tinplate dung buckets. If one is not careful, the skin breaks and bleeds. The day before yesterday, I passed by a place and saw a thirteen or fourteen-year-old child whose head and face were cut by a bamboo basket in someone else's hand. The pain of the skin is so unbearable.</p>
+<p>A certain relative joined a savings organization in 1927, saving three yuan a month, with a total of 500 yuan. After 180 months, this year the principal is returned upon maturity. The amount of 500 yuan is correct, but its use is very difficult, as it cannot buy even one shi of rice. If it is a joke, then on average, saving 36 yuan a year, it takes a long period of 15 years to be able to buy eight dou of grain!</p>
+<p>The difficulty of renting a house in Shanghai is like ascending to the sky. Everyone is putting up a front of "one more, two none, don't even ask" – meaning many people, no family, no guarantor – so they check themselves before moving. Recently, I saw rental advertisements in the newspaper using the words "rice area" as a selling point, meaning that the house is located in a rice-producing area, ensuring that there is no risk of running out of food. The idea is novel and very gratifying. Especially for families with large populations, it can indeed provide extra security.</p>
+<p>Shops selling bread have long joined the ranks of the "squeeze." Between eight and nine in the morning, the number of people outside the shop is three or four times greater than the number of round family loaves of bread in the display window. Those who are quick-footed and lucky triumphantly return home with a "victory product" full of satisfaction. Those who arrive later have to endure hunger and clutch their tired and bony heads, thinking of other ways.</p>
+<p>The sage said that food and sex are human nature, and the greatest desires of life lie in them. The biggest problem in life right now is how to solve the problem of hunger. If someone could invent a "hunger-relieving injection" in addition to the "birth control ring," it would definitely be welcomed, and it would not be limited by gender and would be even more effective.</p>
+<p>In the silk and satin department of a large company on Nanjing Road, there was a piece of imported woolen men's robe material measuring one zhang and four chi, priced at 660 yuan. If it were made into a robe, the cost of the two sleeves alone would be more than 100 yuan. The ancients said "clean sleeves," but this saying seems to need to be reconsidered today.</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(2) Sadness and Joy</p>
+<p>Li Youxie ran a rice mill in the northern countryside. He said he needed to take care of things at the mill and would come back after a while. The eldest aunt said that she had children at home and was worried, so she had to go home to check on them. Mrs. Ye Er told Wei Cheng that his maternal uncle, eldest aunt, and second aunt had not slept all night. At the same time, she persuaded the second aunt to rest. Mrs. Ye Da was in the room with Cui Zhen and Wei Cheng. Wei Cheng stared at his mother with wide eyes. Cui Zhen was Mrs. Ye Da’s cousin, and she kept feeding Mrs. Ye Da with American ginseng soup, and also hung up Wei Cheng’s coat. She then called for Magpie to come into the room to accompany Wei Cheng. She went to Wei Cheng’s bedroom to find a pair of velvet shoes, asking Wei Cheng to change out of his mud-stained leather shoes.</p>
+<p>Wei Cheng saw Cui Zhen wearing a blue cloth smock. The smock was not very clean, but her big eyes and fluffy, yellowish hair were her characteristics. Her every move was always like a member of the Ye family, forgetting her surname was Bian. Wei Cheng said, "Sister Cui Zhen, you haven't slept all night, you should rest too." Cui Zhen shook her head and said, "I didn't. I came at dawn. Brother Cheng, don't worry." When she reached the end, she had a slight sob in her voice and couldn't continue speaking. This was great news. Mrs. Ye Da suddenly called out "Wei Cheng." Wei Cheng hurriedly responded, "Mom, your son is back." He Ma, who was decocting medicine, and Mrs. Ye Er, who was counting money, all rushed in. Even the second aunt, who was dozing in the next room, heard Mrs. Ye Da call out clearly. Everyone said, "It's good, it's good. The medicine for the madman hasn't been taken, but just smelling the medicine, the illness has already taken a turn for the better." Cui Zhen thought that He Ma, who had been taking the medicine, had rushed in, and no one was taking care of the pot, so she secretly went to replace He Ma. (24)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.03.15.html", "next": "1942.03.17.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

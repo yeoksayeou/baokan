@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.08.15 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 433 - 4924572</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日大本營公布　所羅門戰役詳情　日空軍建勇猛戰績協約國船艦蒙重創</h3>
+<p>東京十四日同盟社電日本帝國大本營今日午後三時三十分宣布、關於所羅門羣島海戰、截至本月十四日爲止、已得戰果如下、　軍艦被敵沉者、計有美國維契泰型甲級巡洋艦（旗艦）一艘、美國阿斯托里亞型甲級巡洋艦五艘、（其中一艘亦係旗艦）英國澳洲型甲級巡洋艦二艘、阿基里斯型乙級巡洋艦一艘、美國沃瑪哈型乙級巡洋艦一艘、其他型乙級巡洋艦三艘、驅逐艦力艘、潛水艇三艘、及運輸船十艘、　軍艦受軍創者、計有甲級巡洋艦一艘、驅逐艦三艘、及運輸船一艘、飛機被擊落者計有戰鬥機四十力架、及戰鬥昨機九架、至於日本方面損失、計有飛幾二十一架、系故意開足馬達衝入目的物（即所謂肉彈）、此外並有巡洋艦二艘受有輕創、仍可作戰、附註、上次公報所載之戰鬥艦、應更正為阿基斯型巡洋艦、</p>
+<p>東京十四日同盟社電海軍報道部某員頃向同盟社記者叙述所羅鬥羣島外大海戰經過、據稱此役結果、已將澳洲之英美艦隊殲滅、戰事係八月七日開始、時英美聯合艦隊偕同運輸船多艘、出現於所羅門羣島外、乘濃霧迫近該羣島、並在一島上開始登陸、日方偵察機發現此事、立即報告根據地、當有日方戰鬥機隊飛到、與敵機發生激烈之大空戰、射落敵方戰鬥機四十丸架及轟炸戰鬥機九架、同時日機炸沉並重創敵方驅逐艦各一艘、敵方自始即陷於混亂狀態、翌晨、日方魚雷飛機飛近敵艦隊、猛施攻擊結果、擊沉該艦隊之旗艦美國維契泰型甲級巡洋艦及英國其式甲級巡洋艦各一艘、同時另一艘甲級巡洋艦受重創、另有乙級巡洋艦與驅逐艦　兩艘沉沒、又有一批日方魚雷飛機同時襲擊敵方運輸船、擊沉其十艘、入夜、日軍艦與飛機潛艇密切合作、向受重創之敵艦隊展開勇敢之夜襲、當有敵方第二艘旗艦美國阿斯托里亞式甲級巡洋艦一艘及其他甲級巡洋艦六艘被擊沉、再美國沃瑪哈式乙級巡洋艦一艘及驅逐艦六艘亦迺擊沉、另有驅逐艦兩艘受重創、作戰之第三日、日方魚雷飛機追擊敵艦隊之殘餘艦隻、又擊沉向雪梨疾駛之阿基里斯式乙級巡洋艦一艘、敵艦隊既遭殲滅、僅剩小隊敵方陸地軍尚留於所羅門羣島中之一島上、其聯絡完全被截斷、且無運輸船與軍艦協助云、</p>
+<p>海戰仍進行中</p>
+<p>葡京十四日海通社電據華盛頓消息、美國海軍部發表公報略稱、所羅門羣島之海戰、尚在進行中、詳悄尚難宣布、其他戰區並無重要發展、</p>
+<p>菲島日軍　最高指揮更迭</p>
+<p>東京十四日同盟社電　日陸軍省本日發表、菲島方面最高指探官本間雅晴中將、轉任某要職、遺缺由田中靜壹中將繼任、按本問中將曾指揮部下攻陷菲島首都馬尼刺、擊潰憑据巴打半島頑抗之美軍、並一舉佔領柯辣基沱島等要地、乃覆滅美國侵略東亞基本据點菲列濱羣島而著有　赫武勳之量高指輝官、新任之田中中將歷任憲兵司令官、東部軍司令官等要職、並會任某戰地部隊長、宜昌一役厥功至偉、日皇倍加濕獎可謂爲極盡光榮之勇將、</p>
+<h3>南大西洋　德剽襲艦活動　美海軍正進行搜索</h3>
+<p>華盛頓十三日哈瓦斯社實外傳德國軍艦在南大西洋實行剽襲工作、美國已派遣軍艦前往搜索、本日海軍　發言人對於此說拒絕批評關於美國海軍之行踪、亦不欲有所宣佈、另據巴西京城來電稱、英美海軍聞已偵悉德國軍艦之踪跡、雖不能完全證實、但預料南大西洋不久將有海戰、緣目前會有不明國籍之商船一艘、發出呼救信號、顯係被德艦襲　、於是當局乃官佈南大西洋若干海面爲危險區、同時　艦跟踪追剽云、</p>
+<p>柏林十四日海通社電德軍界人士宣稱、南美北部海面又有美國商船三艘、被德潛艇擊沉、內中兩艘會　砲還擊、但未幾即起火沉沒、船員數人得　更生。</p>
+<h3>日內閣發言人稱　不能聽任英軍駐印　傳太平洋軍委會討論印度問題英決以嚴厲手段對付獨立運動</h3>
+<p>東京十四日同盟社電內閣情報局代理發言人堀氏今日向報界宣稱、一東賺首相、曾謂日本不能聽仟英軍或協約國軍隊今日印度情形觀之、印度正被作爲協約國方面作戰之用、日本斷難容忍此種狀態繼續下去</p>
+<p>瑞典京城十四日海通社電此間新總彙日報倫敦通訊員報告稱、華盛頓之太平洋軍　會議昨開會、由羅斯福總統主席、討論印度事件及美國干涉之問題、即由美國保障戰後印度獨立、該會是否有何決定、則不得而知、據倫敦之其他方面消息、英國政府不願協約國干涉印度事件、並決心以恐怖行爲以壓迫印度、昨倫敦所接關於印度局勢之消息甚少、有者僅爲英官方所報告之樂觀報告耳，英工黨現對政府所採之印度政策已趨同化、但該黨喉舌每日先驅報對此決定、頗覺煩悶、該報發表工黨要人抗議、鞭擊印度示威者之信函多件、其中有反一請、英工黨對於英罷工工人被鞭擊能否容忍、</p>
+<p>全印各地反英情況</p>
+<p>里斯本十三日同盟社電據孟買來電、以孟買及浦那爲中心之印度反英鬥爭、在過去二十四小時內、巳更趨激烈、茲誌其情况如次、</p>
+<p>孟買</p>
+<p>孟買之反英鬥爭、日趨擴大、孟買州長於十三日且發出強彈硬壓之命令、決以近代武器鎭壓印人之反英行動、市內各街道到處有印人羣衆與英軍發生混亂之衝突、各商店均全部閉門、情况異常淒慘、死傷人數、近兩日來更形增加、迄十二日止、孟買州上死者五百、傷者達三千以上、</p>
+<p>浦那</p>
+<p>此間情况每晨比較平靜，但一至下午、即激烈展開、激昂之印人羣衆、時時襲擊駐於各大街之英警、並切斷綫、拔倒　桿、英軍出而鎭壓、兩者在市街中、成對峙之勢、死傷甚衆、</p>
+<p>加爾各答</p>
+<p>此間自示威遊行之小學生與英警發生衝突後、印人之反英鬥爭、更突趨激烈、大衆印人焚燒警察所、並以石塊投擊公共汽車、以致市上情况頗爲混亂、警察隊並使用催淚瓦斯、驅　羣衆、該市北部即人羣衆更襲擊通行之公共汽車及電車、並將乘客拖出、高架電軍之電綫亦有數處被切斷、致市內交通陷於停頓、</p>
+<p>那格浦爾</p>
+<p>該市之反英鬥爭、初有被壓服之勢、但至十三日又突趨惡化、印人羣衆襲擊郊外之鐵道倉庫、將庫內米穀搬取一空、破壞鐵路及水道、市內各大銀行等重要建築物、亦悉遭焚燒英警隊正以武力彈壓中、</p>
+<p>西貢十四日海通社電據此間得最近息、印度之動亂仍未减輕、尤以麻打拉薩。加爾各答。及東海岸之其他小城爲甚、英方稱麻打拉薩之衝突事件已有减少、此當歸功於警察有效之舉措」、但警察有効之舉措中、已犧牲大批印人之生命、計有二十四人殞命、百餘人受傷、加爾各答工動亂較爲嚴重、星期四晨學生開始作示威運動、旋即驅散英人所有之電車及公共汽車公司所屬之車輛、沿途爲要生所阻、令乘客下車步行、此項示威運動展開於該城各部、故警察無法阻止、加爾各答業已全市罷市、鍊鐵及紡織工人罷工風潮日益擴張、孟買、浦那。及阿拉哈巴昨仍有紛擾、死塲及被捕者多人、孟買城區之動亂似　救平、但市區以外仍有激烈之示威行動、示威者阻斷街道、切斷　纜、因此孟買北郊咋晚斷電、浦那已有印人一百二十七名死於衝突、</p>
+<p>倫敦十三日哈瓦斯社電印度事務部頃宣布、最近四日來、孟買街頭發生種種事變結果、殞命者四十三人、受傷者三百三十人、</p>
+<p>大學學生聯合示威</p>
+<p>印度喀爾各答十三日哈瓦斯社電此間本日發生嚴　事故、各大學學生聯合示威、反對英國統治印度、醫學院學生率領羣衆、企圖縱火焚燒歌劇院、立向警察投擲石塊、公共汽車數輛着火延燒、警察曾開槍射擊、並用催淚瓦斯鎭壓羣衆、午後威　頓廣塲發生暴動、警察開槍驅散羣衆時、擊傷平民三人、本市北郊示威者割斷電綫、停止電車行駛、當局巳派遣專車一輛、自馬　拉斯載運警察前來此間增援、浦那城亦發生事變數起、警察局一所被縱火焚燒、電桿數支被毀、警察與示威者發生衝突、死傷數人、新德里城大半店舖均巳停閉、以致購買食物極爲困難、當局現正將必需之食物分發平民、宵禁辦法已決定延長二日、</p>
+<p>尼赫魯妹亦遭逮捕</p>
+<p>新德里十三日哈瓦斯社電英國當局本日下令、逮捕印度國民大會黨領袖尼赫魯之妹、按尼赫魯小姐、過去因參加印度革命運動、已迭遭逮捕、</p>
+<p>美國務院聲明立場</p>
+<p>華盛頓十六日哈瓦斯電頃據此間政論家談　，美國對於印度政局之擾攘不安及英國當局所採取之鎭厭措置、究竟採取何種立塲、業等國務院說明在案、此種立塲吾人必須員爲「中立、」又據半官芳面談稱、實際上在現行環境之下、美國唯有採取此種態度、惟吾人不能目此爲美國不同意英國所爲之謂、</p>
+<h3>墨爾缽　空襲警報</h3>
+<p>里斯本十三日同盟社電據澳洲廣播稱、墨爾鉢十二日夜突發出開戰以來首次空襲警報詳情尚未查明、</p>
+<h3>泰米運粵</h3>
+<p>廣州十三日同盟社電此間洋米進口商、前與泰國所訂購之大米若干萬包、首批二萬包、業已運抵此間、該米係供給粵省民食之用、運來之米最近即運往潮汕、其二批最近亦將運到、</p>
+<h3>前康乃爾大學校長　休曼逝世</h3>
+<p>里斯本十四日同盟社電據紐約訊美國前任駐華公使休曼博士臥病數月、已於星期三逝世、享年八十八歲、休曼博十曾在美英德法等國硏究哲學及法學、自一八九二年至一九二〇年會任康乃爾大學校長、</p>
+<h3>羅斯福咨文國會　調整美巴關係　放棄債權及不動產</h3>
+<p>華盛頓十三日哈瓦斯社電羅斯福總統本日以咨文一件、送達參衆兩院、內稱、「余相信吾人對於巴拿馬共和國有所讓步、以滿足其多年宿願、此其時矣、此種讓步、足以糾正若干妨害兩國恢復信心及友誼之因素、查該國前向我國借款二百五十萬美元、作爲開掘霍勒拉－－里奧－－哈泰公路之用、查此一公路、對於美洲防務、頗爲重要、故請參衆爾院應即通過議索、將此　權、一筆勾銷、並將在該國所有不動產、苟非爲保護巴拿馬運河所需者、一律宣佈放棄、此外、並請兩院議員注意巴拿馬國在現行危機之中、實與美國通力合作、至於兩國關係、則完全以承認雙方利益及各盡責任爲原則、</p>
+<h3>法西斯黨　清黨結果　六萬人開除黨籍</h3>
+<p>羅馬十四日海通社電法西斯黨執行委員會昨夜集會、墨索里尼自爲主席、黨秘書費杜索尼關於去年該黨之活動、有詳明之報告、據稱、本年內法西斯靑年團資助之靑年、較前一年多百分之廿五、法西斯黨秉政後之第十九年、資助之家庭共六千零卅六家、兒童七萬五千零九十六名、次年增至七千六百三十二家、兒童一百零一萬八千六百八十八名、本黨對前綫戰士之利益甚爲注意、某次火車運往蘇聯供給義大利遠征軍使用之醫藥品、其代價為一千五百萬里耳、費氏又稱、本黨因種種原因、有施行清黨之需要、黨員褫籍者已有六萬六千人云、</p>
+<h3>加航空部長　鮑華士抵倫敦</h3>
+<p>瑞典京城十四日海通社電加拿大航空部長鮑華士已於昨日行抵倫教、同行者有加空軍參謀總長、將晤何人求悉、</p>
+<h3>智利總統　將應邀訪美京</h3>
+<p>智利京城十四日哈瓦斯社電美國務院本日照會智利外交部、邀請　沃斯總統於短期內赴美國聘問、</p>
+<h2>Page 3</h2>
+<h3>伏爾加河頓河間　德蘇軍展開大戰　斯達林格勒防禦堅強伏朗尼慈蘇發動反攻</h3>
+<p>柏林十三日同盟社電據德軍司令部發表、德軍於馬尼詐運河北方猛攻、當將喀爾密克自治共和國首府埃利斯祖佔領、該城有人口約二十五萬人、坐落於馬尼許湖東端之東北約一百公里處、在羅斯托夫至阿士特拉干之直綫上、</p>
+<p>柏林十四日海通社電頃接前綫來報告稱、德軍昨日已深入北高加索山脈、德軍係沿梅谷浦都浦斯鐵路及巴庫羅斯托夫鐵路之奈維諾米斯克支綫而挺進、直抵庫彭河上遊之契馬拉、該處距馬尼許湖東岸六十公里、人跡稀少、斯達林格勒綫昨日戰訊較少、惟昨日德軍戰報中首次提及伏爾加河與頓河間之地區、可見戰事巳發展至該區矣蘇軍抵抗仍殊激烈、援軍亦源源抵達、並已築成堅強防綫以保衛斯達林格勒、但德羅軍昨日又有相當進展、頓河套德軍已可自由活動、斯達林戰役即可進入新階段、蘇軍在伏朗尼慈及雨齊夫之攻勢堪稱猛烈、柏林方面認此或即係代替西歐第二戰棧、由蘇聯自身所發動之軍事反攻行動云、</p>
+<p>柏林十四日海通社電德軍總司令部昨夜宣稱、蘇軍於八月十一日起、即開始進攻伏朗尼惠區德軍陣地、迄無進展、伏郎尼慈橋頭堡壘北部一區、蘇軍坦克車已被擊毀達一百十一輛之多、在某另一點、蘇軍以坦克車掩護步兵進攻、亦被擊毀七十七輛云、</p>
+<p>蘇聯邊境某地十三日哈瓦斯社電德軍現正　續向諾伏洛西斯克及格洛斯尼城推進、同時維馬尼亞軍則於肅淸庫彭河北面殘敵之後、續沿亞索夫海岸前進、茲將各區戰况分誌於次、　德軍佔領斯拉維安斯加亞城之後、續向西南推進、已與克拉斯諾達城西面之德軍取得聯絡、此在紅軍則在特洛亞特斯加亞－－亞奈巴－－諾伏洛西斯克三角地帶集中、　扼守泰曼半島中部之紅軍、業已奉命撒退、以保衞高加索却西部、北來之德軍巳抵庫彭河口、亞索夫海各港均被德軍佔領、亞許泰萊港亦包括在內、惟在某某數處尤其在葉斯克港附近、紅軍仍在抵抗中、梅谷浦城南面德軍昨日佔領安特魯枸斯加亞城、　格洛斯尼區昨今兩日均有激戰、紅軍雖堅決抵抗、但巳不能阻止德軍前進、德軍昨夜又佔領梅洛斯　城北面二十英里之加里諾夫斯加亞城、　奧特約尼基特茲城附近仍在激戰中、預料該區戰事結果、將解決高加索邦煤油區之運命、昨夜德軍叉佔領格洛斯尼城西五十五英里薩曼庫克城、該城亦爲高加索邦工業中心之一、　在蒂萊克斯與馬尼許二河間之戰事已至危急階段、喬治夫斯克城已被德軍佔領、此項消息業已證實、　在頓河與馬尼許河之間、觀於德軍之佔領加爾姆克自洽共和邦首府埃里斯泰城、可知該區戰事業巳北移、德軍進展神速、紅軍在加拉許區之抵抗業已崩潰、　伏朗尼　區本日仍在激戰中、主要戰塲係在頓河與伏朗尼慈河之間云、</p>
+<p>德軍採取鉗形攻勢續向北高加索推進</p>
+<p>烏克蘭邊境某地十三日哈瓦斯社電德軍繼續在高加索推進、　德軍先鋒隊現已抵諾伏洛西期克附近、並已迫近格洛斯尼要城、該城西北面二十五英里之基地已被佔領、　伏洛希洛夫斯克以東、德軍於渡越加勞斯河後、已於前夜佔領亞力山大洛夫斯庫埃、昨晨繼續推進現已深入敵境、蒂萊克斯河畔之莫斯柴克、亦已落於德軍之手、　克拉斯諾達區軸心軍摩托化部隊、於本月十日佔領特洛斯加亞後、即於十二日到達羅諾伏洛西斯克不達之克姆斯加亞、並已與蘇聯主要防線相接觸、就大體而論、紅軍士氣已見頹唐、抵抗力亦不若以前之強勁、　畢亞蒂哥斯克區德軍繼績以全副速率推進、紅軍無意在有組織之陣地上抵抗、故德軍僅與小股紅軍流動部隊相値、此項部隊之主要任務、即在破壞油田設備、　斯達林格勒以南仍有大戰、戰綫自克萊明斯加亞至畢亞蒂明斯加亞、蜿蜒一萬英里之遙、紅軍抵抗雖力、德軍仍獲重大進展、德方空軍出動矗炸並掃射敵軍集中點及交通綫、予陸軍以重大助力、伏爾加河敵軍各運輸　亦被轟炸、又加拉許區紅軍殘部已告肅淸、德軍進攻斯達林格勒因而大感便利、斯城之戰現巳進入決定階段云、</p>
+<p>德軍藉駱駝隊運輸進窺裏海蘇聞要港</p>
+<p>瑞典京城十四日哈瓦斯社電東線每日綜合戰報、　伏爾加河口裏海附近之蘇聯要港亞斯特拉漢、陷落在即、德軍先鋒隊距該處僅一百六十英里、在此以前、德軍僅用駱駝隊及馬隊運輸、現則已至眞正亞洲地帶、坦克車及長蛇形之卡軍、儘可通行無阻、據德機偵察報告、埃利斯坦及亞斯特拉漢之間、因設防困難、並無紅軍集中、以前集中阿城之紅軍已有一部份北調增強斯達林格勒前綫、亞城若果陷落、斯城亦將不保、　斯達林格勒前綫、德軍自西北兩方進迫、該城岌岌可危、昨日柯特爾尼古夫－－斯達林格勒鐵路沿綫戰事劇烈、德軍調到坦克車隊及摩托化步兵增援、但紅軍抵抗力絕未稍弱、據蘇聯方面報告德軍在俯衝式飛機援助之下、企圖突破紅軍砲壘綫、卒歸無效、被擊退至原來陣地、紅東甚至反攻得手、鞏固若干陣地、　梅谷浦城方面、德方宜佈該城南面三十英里之主要油田尚未被佔、飛機偵察報告、油井區域烈燄騰天、難以迫近、德軍之遲遲未能加以佔領者、殆即以此、</p>
+<h3>地中海西部　發生海空大戰　軸心國聯合襲擊護航隊英美航空母艦兩艘受創</h3>
+<p>德元首行營十四日海通社電德軍總司令部昨夜發表特別公報如下、英方爲解救埃及之英軍起見、乃派出大護航隊一隊、擬駛往亞力山大港以資給濟、該隊由巨型曲船二十一艘組成、並由主力艦三艘、航空母艦四艘、及巡洋艦驅逐艦多艘担任保護、總計船艦有四十六艘之多、德義海空軍於八月十一起即開始向敵船連績進攻、除已有英航空母艦「膺號一艘、被德潛艇於十一日擊沉外、復有商船九艘共力萬噸沉沒、此外英航空母艦「怒火號巳負傷折回直布羅陀、美航空母艦黃蜂號中炸彈六枚、起火焚燒、方擬駛往馬爾太、其他負重傷者有巡洋艦三艘、商船六艘共五一另〇〇〇噸、今敵船已潰不成隊、敵艦大部份已折向西退、德義軍之攻擊尚在進行中、</p>
+<p>柏林十三日哈瓦斯社電　美國航空母艦黃蜂號、昨在地中海海戰中、被德國機　襲擊、中彈起火延燒、按　艦實爲美國海軍中最新式之母艦、係於一九三九年編入艦隊服務、排水量一萬四千七百噸、速度每小時三十海里、裝有四英寸口徑高射砲八門、其他各種小型砲十三鬥、全體水兵一千一百七十三人、建造經費共計二千零七十萬美元、可載飛機八十四架、爲全世界強大航空母艦之一、至於英國航空母艦怒火號亦受重創、其挑水量爲二萬二千四百五十噸、速度每小時三十一海里、裝有三英寸口徑高射砲十二鬥、高射機關槍二十四挺、全體官兵共計七百五十九員名、並有飛行員四百五十人、能容納飛機三十六架、惟此艦係由巡洋艦改造而成、而於一九三九年加以革新云、</p>
+<p>柏林十三日哈瓦斯社電　德意志通訊社頃發出馬德里消息稱軸心國與協約國雙方刻仍在地中海西部進行海空大戰、英國驅逐艦雷斯特勒號又告沉沒、</p>
+<p>里斯本十四日問盟社電據倫敦消息、英海軍部頃承認英巡洋艦孟却斯特號已在西地中海作戰沉沒、查該艦爲最新式巡艦之一、一九三七年下水、排水量九千三百噸、航率三十三海里、艦員七百名、</p>
+<p>葡京十四日海通社電　波蘭驅逐艦庫亞比斯克號、巳在地中海內沉沒、</p>
+<p>義方公布海戰經過</p>
+<p>羅馬十三日哈瓦斯社電　義軍統帥部　發表公報、叙述地中海海戰及擊沉英國航空母艦鷹號之經過、原文如下、本月十一日拂曉、我方潛艇在地中海西部瞥見敵方護航隊一大隊、計有商船二十餘艘之多、由戰艦三艘、航空母艦四艘、巡洋艦數艘、驅逐艦十艘及小型船隻數艘掩護、自直布羅陀港東駛、德義海空軍接獲報告後、即聯合閒始行動、敵軍護航隊實力雖極強勁、但我潛艇魚雷艇及急降轟炸機戰鬥機等、仍不斷向其進攻、結果計德義海軍擊沉巡洋艦一艘、商船三艘、空軍擊沉巡洋艦一艘、驅逐艦一艘、商船三艘德國海空軍並將英國航空母艦鷹」號及商船四艘擊沉、另有戰艦一艘、航空楫艦二艘被中數彈、內中數艘殆已無法修繕、此外、並在空戰中擊落英機三十二架、我方亦有十三架失踪、且有數架載來死亡駕駛員數名、敵軍大部商船、均被迫退回直布羅陀港、一部則在馬爾太島靠岸、均經我方空軍跟踪追擊云、</p>
+<p>羅馬十四日哈瓦斯電義大利總司令部頃宣布、軸心海空軍在地中海　擊敵方護航隊殘部、叉告得手、我方潛艇及小型驅逐艦隊擊沉敵方巡洋艦、艘驅逐艦二艘及商船三艘、我方轟炸機及魚雷飛機擊沉四船、並擊中駛往直布羅陀港之戰鬥檻一艘、德方海空軍獨力擊沉商船四艘、本月十一日被德國潛艇擊中受損、駛返直布　陀　之航空母艦、查明係憤怒號、其他擊沉各艦中、包括英國城市級新式巡洋艦孟即斯特號、被擊沉敵　大批水手、已被救起、現集中於軸心國各海軍根據地及各醫院、其他各水手、則在都尼西亞沿海登陸、德義　逐機又擊沉敵機十架、軸心軍方面共損失飛機十九架、中等二六艦兩艘受預、其一受創較重、</p>
+<p>鷹號沉失之日擊談</p>
+<p>倫敦十三日哈瓦斯社電　關於英航空母艦「應」號被擊沉事、頃由路透社隨艦記者述其目擊經過稱、午後一時甫過、余正與軍官三員、共坐一室、突聞兩聲巨響、將余等震倒在地、旋又有兩聲爆炸、震動全船、余聞蒸汽嗤嗤作響、繚繞艦際、艦身極度傾欹、艦上炸彈脫　開始沿甲板溜轉、旋風式飛機一架脫纜、向水兵一羣撞去、各該士兵無一慶生、記者偕其他水手多人、奮身躍入海中、其時海浪汹湧、但記者卒得攀登軟木綴成之浮標一座、其上已容納十二人、記者返身瞻視、「鷹」號在余身後二百碼處、全身傾倒水面、水手倉皇離艦、深水炸彈爆炸聲、隆降不絕、此乃我方驅逐艦隊所放、企圖擊毀行兇之軸心潛艇、旋聞一聲喧嘩、遙見「鷹」號停泊之處、祇剩一片浪花矣、</p>
+<p>直布羅陀英艦雲集</p>
+<p>西班牙阿港奇爾拉西十三日哈瓦斯社電英艦參加地中海西部海戰後、紛紛駛返根據地、本日有人目擊一光榮號航空母艦一艘、駛入直布羅陀港、繼之以另航空母艦「　古斯一號及驅逐艦四艘、據報、英國海空軍在直布羅陀港內、極爲活動云、</p>
+<p>里斯本十四日同盟社電關於德義海空軍在西地中海襲擊聯合國隊航　一事、英國官方力避說明一切、據路透社前　訪員報告稱、該海戰迄十三日尚在進行中、但對於英方戰果、則嚴守沉默、海軍部會稱、擬　可能從速公布戰鬥經過、</p>
+<p>法郵航機池魚之殃</p>
+<p>北非洲阿爾及耳港十三日哈瓦斯電英德兩國昨在地中海發生海空大戰、當時會有某國驅逐機四架、襲擊往來於馬賽與阿爾及耳港之法國郵航機、致乘客死二人、傷六人、查此一水上航郵機之飛行員係於昨日午後十二時三十分、在阿爾及里亞海岸附近、瞥見軍用機四架、似在該處上空巡邏、該機當即飛往他處、俾免飛近巡邏地帶、而被誤認爲交戰國飛機、詎知此項巡邏機、竟誤認該機爲企圖逃逸、立即飛往追擊、其中一架、首先向其開火、法機中彈不下一百枚、四引擎之二、均受擊傷、飛行員當即直降而下、幾乎觸及海浪、襲擊者以爲此機業已沉沒、始停止射擊、照常巡邏、此受創之法機、因得飛抵此間、乘客中死二人、其中一人爲靑年女郎、傷四人、飛行員中亦有二人受傷、查此項交戰國飛機、均係自下向上襲擊、故受傷者均傷在下體、現已在治療中矣、</p>
+<h3>蘇船四艘　駛抵土港</h3>
+<p>保京十四日哈瓦斯社電據土耳其傳來最後消息、蘇聯油船兩艘由裝有魚雷管之汽艇三艘相伴、已於昨晚駛抵土　里海　姆遜港、另有蘇聯巡還艇兩艘、到達土耳其特萊畢米港、依照國　公法、各該船隻均被解除武裝、各水手　　　禁、</p>
+<h3>梅尼孟卓格　任土外長</h3>
+<p>土京十四日海通社電此間官方昨日官稱、梅尼孟卓格魯現已被任爲土耳其外交部長、按梅氏原係外交部之秘實長、</p>
+<p>安加拉十四日海通社電土內閣昨議決撥款修理在叙利亞邊界之公路、</p>
+<h2>Page 4</h2>
+<h3>撤僑輪鎌倉丸　延期今日抵滬　協約國僑民共九〇七人撤退日期或將展緩一天</h3>
+<p>英文大美晚報云、日總領署通譯官眞崎、今（十四日）晨告記者稱、撒僑輪鎌倉丸載協約國僑民九〇七人駛離上海之日期、尚未確切決定、或爲前所擬定之星期日、或竟展至星期一或星期二起椗、亦未可知、該輪航期之可能更變、係負責遣送事宜之官員、經長時間會議後、於今午披露者、</p>
+<p>展期起椗</p>
+<p>而鎌倉丸亦未照預定時間於今晨抵滬、但可望於明晨抵埠、眞崎叉稱、鎌倉丸離滬之日、撒退官民將會集於新關碼頭、而撒退平民之會集時間爲午前六至六時半、至於輪船駛出之日期、未能斷言、大約移後一天、似或將於星期一起椗駛往洛侖柯馬基斯、</p>
+<p>派車載送</p>
+<p>負責方面將以公共汽車載送官民，對於平民、有車七輛從哥侖比亞鄉下總會駛出、四輛從福煦路一處駛出、一或二輛從華　公寓駛出、另有三或四輛從跑馬廳駛出、對於官員則有汽車五或六　候於華懋公寓、四或五輛候於福煦路同一地點、二或三　侯於跑馬廳與靜安寺、</p>
+<p>撤退人數</p>
+<p>撤退之九〇七人中、包括上海英官員三〇〇人、中國各地英官員七〇人、及協約國官員九〇人、暨旅華英僑平民三五〇人、其中上海一地佔一五〇人、另有來自中國各地之協約國平民九〇人、鎌倉丸並不載送日幃等地之撤退僑民、</p>
+<h3>藥水弄火災區　設施食處　由救世軍賑濟</h3>
+<p>上海泰晤士報云、上海區救世軍首腦華克少校、頃告記者稱、星期三小沙渡路藥水弄大火、燬草棚七百所、貧苦華人無家回歸者約五千人、救世軍當夜即在災區附近之澳門路設施食處、加以賑濟、昨日（十三日）以早晚餐發給棚戶約六百人、另有六百人亦將領得充分之食物、以一星期　度其餘之災餘棚戶、則已離該區、求助於親友、或另覓謀生辦法、至於尚留該區之災民。多數已臨時蓋棚、權供棲身、救世軍將對此一千二百名災民中之六百人、按口發給三十元、助其另覓生路云、又該區大火時受傷之消防員第五五五號其傷勢已迅速復原、而其他受傷之叫華人、亦已脫離險境、</p>
+<h3>換汽車許可證　應於廿三日以前謂求</h3>
+<p>工部局頃發布告第六〇四五號略稱、一切摩托車輛之行駛許可證、至遲於本月三十一日滿期、在是日以前、不再簽發許可證、凡請求　期者、應於本月廿三日以前、向福州路一八五號中央捕房車務處聲叙理、</p>
+<h3>工部局發布　七期口米數量</h3>
+<p>工部局頃發布告第六〇四三號略稱、　用以購米之購米證第六號聯票、僅准用至本月十五日爲止、過期作廢、自本月十七日起至廿二日止、各米店暨本局售米所、僅憑第七聯票發售局米及麵粉、屆時按每一聯票由果七莊明登記號碼之米店、發售白米乙升半、售價三元八角、同時持票人得隨意搭購　粉乙斤、售價二元三角、</p>
+<h3>出售手榴彈　查無政治關係　三犯各處徒刑三月</h3>
+<p>公共捕房特高偵緝隊華探長黃福森探目朱尚龢等、近偵悉有人私藏爆裂物手溜彈、意圖出售、爰飭員僞裝與此輩接洽、約定共有手溜彈三枚、每枚價爲三百元、月之八日、在愚園路百樂門舞廳鬥首交貨時、即經探等拘獲本地人金士明（又名阿弟）湯富根（又名阿高）。金發生（又名金文蓮）、連同手溜彈三枚、一併帶入捕房、鏗調查之下、得悉各犯此項溜彈、均係從鄉間拾得、並無任何政治性質、乃依公共危險罪起訴、業巳訊結、判決金等三犯各處徒刑三月、手溜彈三枚沒收、</p>
+<h3>司閽捕教唆　栽贓誣害</h3>
+<p>住環龍路銘德里五號二樓亭子間本地人林金儀、向在呂班路金城銀行分行任事、有同居灶披中之項有貴、在華降路環龍路口中華敎育社當司閽捕、與林因細故結下仇怨、項時存圖害報復之心、前日項與中華職業敎育社茶房倉順志（三十一歲江北人）商決、命倉將白郎林手槍一支、掩入林之房內、擬藏於門背後、斯時適爲林撞見、將倉扭獲鳴捕、連同手槍帶入捕房、訊之倉供、由項有貴囑我栽賺誣窖、但我與林向無嫌怨、捕頭據供、立派探前往拘捕項有貴、已經聞風棄職逃逸、捕頭命倉收押、聽候補緝項犯到案、再予偵究、</p>
+<h3>綁匪三名判罪</h3>
+<p>安樂棉織廠主鄧仲和、家住安和寺路六百五十號、其十四歲子志雄、向在附近某校讀書、前年十一月八號上午七時、鄧志雄赴校上學時、道經凱旋路、突遇綁匪數名上前、將鄧志維架去、致函勒贖、嗣由鄧之家屬以三萬五千元贖出、茲經新閘捕房探員宋紹美、在牯　路六十四號處、拘獲案犯薛寶珍。魏壽山。李鑑啟三人、業經訊明、於昨判決、薛實珍。魏壽山。共同勒贖而據人、各處有期徒刑七年、李鑑啟處徒刑四年、</p>
+<h3>外商銀行公會頒佈　票據交換辦法　旨在增進交換效率准八月十七日實行</h3>
+<p>外商銀行公會新經改選後、爲增進票據交換效率起見、特將交換規則加以修正、准八月十七日起實行、記者索得英文原規則、茲譯如下、</p>
+<p>原來「外商銀行上海貨幣蔡據交換辦法」之名稱、應改爲「外商銀行中儲券票據交換辦法」、</p>
+<p>「外商銀行中儲券票據交換辦法」第六第七第九各條、關於交換時間之規定改訂如下、甲。每年三月一日至十一月三十日、適用上述時間、每年十二月一日至二月二十八日（或二十九日）、照上述時間延進一小時、乙。如有充份理由拒付票據、得於次日上午十時前退還之、</p>
+<p>爲使票據交換時間得以準確起見訂定罰則如下、甲。各會員銀行所派之交換員、均須準時至交換所、如有遲延、每遲五分鐘罰中儲券五元、如遇依戒嚴法實施封鎖等意外情事、因而遲延時、本罰則不適用之、乙。票據交換結算表、應於票據交換開始後二十分鐘內提交、交換所職員每遲五分鐘、罰中儲券五元、丙。各銀行交換員在票據交換結算表內如有錯誤、經交換所職員通知後、不於十五分鐘內改正時、每遲五分鐘罰中儲券三元、如不能決定錯誤係由何人所爲時、交換所職員得爲必耍之調查、以決定錯誤之負責者、交換所職員所爲之決定、即爲最後之決定、丁。所有罰金均交由各銀行交換員所組織之委員會保管之、</p>
+<h3>時疫醫院診訊</h3>
+<p>據大通社記者向上海時疫醫院探悉、自七月一日至十三日止、該院投診病人共有卅一萬〇〇〇八人、從首次發現眞性霍亂後、經該院診察之霍亂病人、截至十三日止、有三百五十二名、不及救治而死亡者有五十八名、現患霍亂病人每日經證實者約有十人至二十人、該院每日注射霍亂預防針人數、有一千人左右、</p>
+<p>旅館業贈施診券</p>
+<p>請閱報諸君指點貧病、就近向下列各旅社賬房間叨取施診券、一切危念奇症、均可醫治、遠東·大中華·爵祿·大陸·新世界·一品香·中國·神洲·孟淵·花園·老東方·中央·中南·南京·惠中·淸和·鶴鳴·長春·迎賓·洪福·永安·梁溪·新蘇台·源源餘記·源源協記·源源洽記·中和·滬台·新民·名遠·招商·鹿鳴·臨安·五洲·新華·浦江·公安·雲昇·老大方·龍昇·松江·吉　·通利公·嘉禾·長華·吳錫·申江·衛生·中新·九華·江蘇·亞洲·金城·其昌·平江·上海新旅社等、</p>
+<h2>Page 5</h2>
+<h3>遣賑本市貧民　昨日開始申請　便利平民回籍酌給旅費</h3>
+<p>賑務委員會上海市分會商同工　局華人疏散委員會、積極辦理遣賑事宜、已誌本報、茲探得該遣賑辦法、詳誌如下、施賑標準凡由滬回籍之貧民、其全程舟車費十分之三數目不滿二十五元者、每人資助全程舟車費十分之三、其全程舟車費十分之三數目超過二十五元、每人資助二十五元、但因由滬赴一地點、各旅行社之車船票一價數目不同、爲求劃一及便於一計算計、特依照前項標準、按路程之遠近、旅費之多寡、擬定核發貧民回籍所赴地點資助旅費標準數目如下、　上海市所屬川沙·寶山·南滙·羅店·松江等區三元、　上海至崑山區四元、　上海至嘉興無錫五元、　上海至杭州·寗波·紹興·台州·鎮江·江陰十元、　上海至揚州江北區十三元、　上海至南京·浦口·蕪湖區十五元、　上海至蚌埠靑島二十元、　上海至徐州·漢口·厦門潮汕·北京·天津·香港·廣州二十五元、</p>
+<p>實施辦法</p>
+<p>由該分會印製遺賑申請書及賑票、送交華人疏散委員會備用、　由滬回籍之貧民需要資助者、應先向華人疏散委員會塡具申請書、覓具介紹人及保證人、經該會認爲合格者、於發給通告證明、臨時發給賑票一紙、並在賑票上加蓋該委員會會章、　由回籍者持通行證及賑票、往該分會呈騐、賑票上由該分會加蓋會章、暨回籍者蓋章、或右姆指印後、將賑票收回留存備查、然後依照賑票上所填給結資敎目、發結回籍者、同時發還通行證、背面加藍「已由賑務委員會上海市分會資助戳記一、　華人疏散委員會應將每日塡　賑票張數、及核准款數、按日開單、送交該分會備查、　該分會每日收回賑票張數、及巳發款數、應列具旬報表呈報賑務委員會備查、　根據收回賑票編造遺賑貧民淸冊、　此批遺賑限期一月至九月十四日截止、如有需要、再與社會各力另行籌畫、</p>
+<p>丁福保氏新著出版　分贈賀壽諸君</p>
+<p>丁福保先生新著「怎　創造我的健康生活」一賽、業已如　出版、昨日送望本館、自即日起至本月三十日止、奉贈致送丁先生壽儀諸君、以表謝忱、按此　爲了氏五十年著述生活之紀念作內容關於攝身養性及精神心理各方面之鍛鍊、面面俱到闡述　詳、盼致賀諸君、即日起來本館領書、惟須將當日謝帖帶來、對號領取、並須於半月內領訖、逾期不冉袖送、</p>
+<p>學校彙訊</p>
+<p>京光中學京光中學爲楊崇畢卞樹錕所創辦、校址設於外灘七號通商銀行四樓、分高初中、第二次招考、已定八月二十日、現商得鎮江旅滬同鄉會助學金委員中指定爲受助生肄業之學校外、並有該校半費生額高初中各三十名、同時復捐助申新二報免費學額各五名、</p>
+<p>上海女子中學新大沽路叫五一號上海女子中學、第二次招考期爲八月二十日、幷爲應多數舊生家長之請求、將高中學費减至與初中相等、且將繳納留額金日期、延至本月十五日爲止、</p>
+<p>明信會計學校河南路五三一弄一八號明信商業會計學校、設有中大學組各種簿記會計三十餘科、爲適應非常時期敎育起見、另設中大學組會計速成科、一年修畢、即可任工商界會計職務、另添開銀行會計保險會計保險會計訓練班、設有减費額百名及貸學金十名額、九月七日開課、</p>
+<h3>兩租界實施防疫注射　逾二百五十萬人　法租界添設注射隊染疫者千九百餘起</h3>
+<p>上海泰晤士報云、法租界衛生處昨日（十三日）加派人員、赴街頭爲居民注射防疫針、計從外灘至善鐘路爲止之馬路轉角上添設注射處七處、惟聞昨因八一三紀念、全市戒備之故、注射工作較弛、</p>
+<p>注射總數據官方消息、兩租界自三月份起、截至本星期三爲止之注射數共二·五五一·六五二人、內公共租界一·四二二·九三九人、法租界一·一二八·七一三人、星期三之注射數爲公共租界三四·一三三人、法租界三〇·四三五人、</p>
+<p>馬路注射法租界添派之注射隊、</p>
+<p>均設於人口稠密之區、如大世界遊藝場前勞神父路·霞飛救火會前·亞爾倍路霞飛路轉角。與亞爾倍路蒲石路轉角、餘者設於善鐘路與公館馬路區、</p>
+<p>檢查疫證據法衛生當局被露、衞生處已請法警務處乘滬戰紀念戒備之便、檢查出入法租界行人夕防疫證、此舉因許多馬路封鎖、僅留重要通衢開放、交通而較易辦理、</p>
+<p>虎疫死亡又從七月份起、本市衛生當局所接虎疫報告、總數已達一九五一起、其發生於華界者最多計一二四四起、死者二三一人、法租界三六八起、死者五三人、公共租界三四九起、死者六九人、</p>
+<h3>家庭防空消防要綱（二）</h3>
+<p>第三　家庭及家庭防空隊夕消防以其他防衞、</p>
+<p>平時準備、（甲）各戶應指定防空負責人、由負責人根據空襲時可以活動之人數（從事防空者）分配任務、（乙）防空負責人應督促從事防空者履行任務、迅速從事防火、且選定可以躱澼爆彈碎片等之安全避難塲所、（丙）家庭防空隊應在境內適當地點設立空襲時防護監視所、但視情形如何、數隊得合設一處、（Ｔ）第二章之防火用設備及器具、應平素預早準備（戊）家庭防空隊長應調整境內防次準備、</p>
+<p>發令實施防空時之處置、（甲）各戶防空負責人應查點防火準備倘有不足、應立即補足之、（乙）揮發油·酒精·及其他易於引火危險物品、應預先準備端正、到必要時藏人土中或其他安全塲所、（丙）家庭防空隊長應具體規定從事防護監視者才順位、接替服務方法等事項、（丁）家庭防空隊長對於空襲　報發出後之老幼病人之處置、空屋之警戒等、應與境內各戶之防空負責人預有接洽、</p>
+<p>警戒警報發出時之處置、（甲）將易於引火物品藏入規定塲桶、浴桶及其他多數大型貯水器內、防火用器具應配置於規定塲所、（丙）整頓屋內尤注意於壁櫥及藏物櫃、務使屋頂下床底、勿置有易燃物質、（丁）家庭防空隊長應查點境內各戶之防火準備、倘發覺器具配備及其他事項有不合格時、應促令該戶注意、</p>
+<p>空襲警報發出時之處置、（甲）從事防空者應各履行以前所配定之任務、從速進行下列事項、一、炭火煤油電爐及其他才火應全部熄減、關閉煤氣主耍栓、二、一切之貯水器均注水使滿、配置於規定塲所、自來水龍頭勿任其放水不關、接近鄰家之玻窗閘板應全部關閉、然不必下鎖或下鍵、（乙）從事防空者完成前項處置後、應即換着防護用服裝、然後再至屋內及其他塲所來往巡視、（丙）家庭防空隊長應赴境內巡視各戶狀　、（　）防護監視人應在防護監視所內從事監視、（戊）從事防空者當接到防護監視人報告發見敵機或聞見森炸音後、或從事防空者自己發見或聞見時、應即躲避至規定塲所、（待續</p>
+<h3>中小學獲助諸生　注意領款日期　小學十七日中學廿一日起</h3>
+<p>申報讀者助學金、大學組及免費額各校即日起繼續辦理申請登記、至二十日截止、群悄已誌昨日本報、小學組核准名單、巳於十一、十二、十三日三天刋畢、並自十七日起開始付款、中學組名單亦於昨　起公布、但中學組領款日期、須自木月二十一日起、希獲助諸生注意、又昨承知行夜校（福煦路重慶路束首正行女中內）捐設免費額十名該校管敎嚴格、課程內容充實、且適合社會實際需要、每晚六時至九時上課、班級自初小至初中、凡淸寒失學子弟及工商界從業員均可向本館按照手續申請、經審查合格、當即介紹免費入學、</p>
+<p>昨日捐款</p>
+<p>本報讀者助學金昨承各界諸君、慨助基金、至深銘感、茲錄台銜如下、鎭和興同人五百元、汪氏兄妹一百元、鈞君五十元、鮑多福三十元、鮑長壽三十元、范仁甫十元、徐君二元、以上共計中一儲券七百念二元前存十七萬七千二百二十三元八角二分、總計十七萬七千九百四十五元八角二分、</p>
+<p>商業新聞</p>
+<h3>散戶拉力雖不弱　公債終為實貨壓小</h3>
+<p>咋日統一公債市况、萎靡不振、續見軟化、藍以銀根緊縮、不免减退多方潛力、人心由此恍惚、浮多似屬不穩、加以實貨流出乃爲阻撓買戶興趣之最大主因、故當晨間開出、丙種雖巳見疲、但一度經散戶之拉提、遂見過九元六角高價、後以大戶出籠、浮多推波晚手、一時賣氣旺盛、市氣支撑乏力、終爲壓小、觀其趨勢、乃大戶之傾塞、其中不無因素、而買方之拉力似亦不弱、故若實貨流出、稍能减退、市氣未見十分下傾、否則倘冉加拋售、則尚有績小可能、全市買賣、先爲同順聯益同裕鑫豐同利鴻大等一度拉抬、丙種遂見九元六角高價，入後以大中大批出籠、目隨之聯和元和裕新同和等之晚手、市態無力抬頭、終被迫小、結果一致軋跌二角至八角不等、成交約二百五十萬元左右、茲列表於後、</p>
+<h3>華股跌多漲少　交易尚覺暢旺</h3>
+<p>昨日華商股票市况、升降不一、因閘北水電在賣勢壓力下跌勢甚銳、會起二元跌風、由三十五元遜爲三十三元、終比前日軋小一元半、菲商　氣隨降半元、百貨業永安與新新削低二元半、內衣因假前下降過巨、有力者吸收、反軋升二角半、文化股中華書局少買戶、竟步降至一百八十元內、小七元半、世界小五元、商務獨得買戶齊睞、反升二元半、新藥業僅中法又小一元半、餘均轉堅挺、新亞升二角半、民誼漲二元五角、寗紹輪船在利買消息中、最高達七十八元、有買戶活動、照各方人心恍惚、交易不稀、茲再錄股價於後、</p>
+<p>華股事業蓬勃聲中、本市金融及實業兩界人士李祖薰朱海初等近亦發起大公股票公司之祖織、地址爲四川路東亞大樓一九〇號、即將開慕云、</p>
+<h3>烟糖結款甚繁　軍票續昂</h3>
+<p>昨外幣市以、日軍票仍不脫昂勢、乃同業近來所存有限、香烟結款未淸、糖商叉來扒結、且向銀行結運佣亦須五元五角八分光景、故已做升至五元五角五分六七釐、致銀號與小錢荘門市售出在五元五角六分半左右、但收進仍五元五角四分半、亦有五分者云、</p>
+<h3>飾金仍懸原價　同業互做價復堅</h3>
+<p>昨本市銀樓業大新同行首飾金、門市每兩兌出價、仍掛二千二百元（收進減三百五十元）、現金號門市售價亦懸二千二百元、收進掛二千元、實際須減三百元、同業互做價復　堅、晨每兩做高十元、爲一千九百四十元、瞬在買勢中升二十元、爲千九百六十元、但不久即見回下、做小至一千九百四十元、正午一千九百四十五元、比上日軋升十五元、有二十元高低、成交復稀、至首飾紋銀每兩仍掛十六元、同行對做價爲十一元二三角、</p>
+<h3>疋頭仍有搜羅</h3>
+<p>東疋昨日布市、雖漲面多盤旋、某幫即仍加意搜羅、十二磅龍頭細布新單巳達一八三元五角、又銀行單一五九元五角、彩球細布一六六元、陽鶴一六三元、四君子嗶嘰紅單七元二角開盤、高見七元四角三分、收盤七元四角、、又銀行單六元五角二分、</p>
+<p>廠布繼續俏利、但實銷寥落、十六磅址球粗布一六八元、飛鴻一六五元、九磅新字一〇八元、八磅振中一〇五元、長壽府綢五兀九角、信孚雖雞士林做開二五三元、又安安藍布一八〇元、桃花女士林新單二四九元開盤、最後做開二六一元、</p>
+<h3>麩皮存薄價高</h3>
+<p>山芋乾貨主扳俏</p>
+<p>豆類供求仍平、市勢續鮮變化、昨開天津　豆五十包、價爲二百三十元、又赤豆二十包、價一百六十七元、</p>
+<p>山芋乾近因產地貨稀、執存者皆圖扳高、市　帶挺、昨開山東山芋乾單綫袋裝二十餘包、價爲一百〇八元、靑島山芋乾四十包價一百二十元〇五角、連麻袋</p>
+<p>豆餅內銷依然動而不暢、市呈平穩、計開姓記豆餅四月份萬谷棧單二百片、價六十二元、又五月份五百片、價六十二元二角半、</p>
+<p>麩皮市存日减、人心頗俏、　由鄉莊幫辦去三鑫小包麩皮　月份棧單四百包，價爲一百〇二元、比前又升二元　、</p>
+<h3>江北新小麥</h3>
+<p>拋貨已有二萬　包成交</p>
+<p>價一四三元至四一元半</p>
+<p>本市小麥來源、近日尚無顯着開展、惟拋貨則類有做開、聞江北小麥會有二萬餘包成交、價爲一百四十三元至一百四十一元半、</p>
+<h3>食糖價格見挫</h3>
+<p>昨日糖商合作營業處糖股劃盤、粗砂股開二百九十八元五角、比週三小去五角、赤砂股爲二百八十七元、比小一元、惟（八·一三）爲滬戰五週年、公會停市、而行家需要較殷、適逢價低購進、共成交一千包其勢平穩、</p>
+<h3>囤吸活躍　香烟漲風復起</h3>
+<p>香烟在囤戶胃暢及投機商拉提之下、市價頓趨緊俏、買者欲揀新貨、舊貨尚少問津、日烟因貨稀、市面跟踪上漲、計大英牌　八千五白元、老刀牌五千六百五十元、品海牌五千元、五華牌三千七百元、仙女牌四千一百元、比前漲起百餘元、上述爲新貨價、日烟金槍牌一千七百元。金大樓牌一千一百元、紅玫魂脾二千六百元、全祿牌一千九白元、二十枝全祿牌一千九百二十元、指南脾一千五百元、國烟金鼠牌一千八百元、美麗牌三千一百元、金字塔牌三千一百元、均趨俏俐之象、</p>
+<h3>體育新聞　維他富杯排球義賽　今晚在中青揭幕　興仁聯隊參加表演女子維他富對藍星</h3>
+<p>維他富化學公司舉辦維他富盃排球義賽、定今晚七時半起、在八仙僑靑年會健身房揭幕、屆時請聞蘭亭氏主持行揭幕禮及該公司董事長蔣國芳當眾拍賣賽球、凡收入一切款項掃數捐助平民醫院及濟民醫院經費門票分五元（榮譽）二元（普通）二種、序幕三塲表演、首由女子登塲、維他富對抗藍星、前者猛將如雲、實力可屬不凡、除原班首流人選外、復獲得愛國臺柱王維珍汪印蘭二員虎將助陣、藍星亦新與勁旅、戰鬥力堅強、名將如孫惠珍吳厂祝輩、二路娘子軍初度會帥、將有精彩鏡頭、次慕爲白隊戰維他富、前者素負盛名、在西靑排球聯賽中、戰績煊赫、維隊爲滬上諸精華球隊聯合而成、軸戲爲興仁與聯隊表演、與仁係滬星之化名、聯隊乃英華之化身、陣綫均雄視全滬、今日秩序如下、維他富－－藍星（女表、七時半維他富－－白隊（男表）八時半興仁－－聯隊（男表）九時半</p>
+<p>各界雜訊</p>
+<p>爵綠歌塲茶室小吃虞洽卿路二四二號爵綠歌塲、自月初開幕以來、因陣容堅強，設備華麗。遊客趨之若騖、天天客滿、聞該塲為迎合各界需要起見、爰自即日起、開始茶室小吃、茶室自上午七時至二時止、小吃全日營業、龍井香茗、每壺只售六角、並備有犧牲菜、優待各界嘗試、</p>
+<p>華　保險公司開幕茲有商界巨子曹藺馨·徐鉅亭·康斯馨·蔡恩卿·曹可山·汪宗光　、發起組織「華一保險公司於泰晤士報大樓五樓、茲聞籌備將竣、擇吉開幕、董事長為曹蘭馨、董事康斯馨·蔡恩卿·曹楚寶·徐鉅亨陳霧麓、監察劉世盛·曹赤虹·總經理曹楚寶、經理汪宗光、協理曹　甫·曹赤明、襄理陳謀　·楊玉山、營業主任薛長慶、專營水火等一切援失保險業務、</p>
+<p>招尋老婦陳沈氏</p>
+<p>陳沈氏、年八十一歲、崇明口音、住海寗路四六七號、本月八日上午八時許、以購物出外、距竟一去不歸、該婦縱然年高、健步母殊壯年、絕鮮龍鍾之態、當不致或遭意外、距今六七日、舉家惶惶。其時身穿舊香雲紗衫黑褲、藍布襪套、足登尖頭黑鞋、茍因迷途、已荷慈仁君子留養在府、敬請伴送軍慶路二二六號、　話三六五七五、俾骨肉　　團聚、銘感無已、</p>
+<p>招領禮券茲有南市錢重言君、行經福建路口、拾得禮券一紙、當交本保第十一　四四號自警團員保存、遺失者請說明發行禮券字號及數目號碼、於三日內、至吳宮旅舍七樓本保自警團部領取、逾期充作小學貸金特告、老閘區第四聯保第三保自警團啟、八月十四日、</p>
+<h3>航業杯小球閉幕　生利得總錦標</h3>
+<p>航空杯小球聯賽、昨日上午在光夏舉行總決賽、首塲季軍決正興塲對鐵騎、　鬥結果、正興塲以一對　力克鐵騎、位列第三次塲表演、老爺以二對（）敗影星、最後總決賽、生利對ｗ隊、後者實力稍挫、生利暢所欲爲、結果五對一、生利壓倒ｗ隊、榮膺總冠軍、ｗ隊屈居亞軍、賽畢由徐貴生反公子給獎、父資球拍賣、亦有徐氏長公子、以千元購之款充夏光中學獎學金、該賽至此宣告　德　　、</p>
+<h3>運動簡訊</h3>
+<p>實業杯藍球聯賽今日秩序、電聯對維他富（　）下午四時、雷隊對南華（業）四時三刻、新業對緋社、（業）五時廿分、友聯對中聯、（寶）下午六時、</p>
+<p>本市外灘允號、聯華保險公司同人組織之聯華乒乓隊、由梁錦堂指導、今向各界挑戰、　　昨日本報發報時間六點卅五分</p>
+<h2>Page 6</h2>
+<p>游藝界</p>
+<p>訪舞台藝人</p>
+<h3>丈夫氣概的張蓓</h3>
+<p>— 未人</p>
+<p>張蓓，這一位來自北方的姑娘，是一九四二年上海舞台上的新人。她今年二十二歲，西安人，父親巳故世，家裏只有一個母親和一個哥哥。八歲的時候，她就到南京去讀書。在求學時代，對國文一課，最感興趣，因此她現在寫來的文字，也是很流利暢達的。十八歲那年，她在南京滙文女子中學，巳讀到高中二年級，因爲戰事爆發，就忍痛地離開了她十年相處的地方，回到老家西安去。</p>
+<p>這時候，剛巧中國戲劇學會的負責者戴涯，也在西安易俗社劇院表演話劇，她只是覺得對於「戲劇」的一種愛好，便參加該院演出，第一戲　「夜光杯」，飾女主角麗麗，演來非常成功，當地的與論界一致推薦，該院演出，是義務捐款性質，最高票價賣至六十元，「夜光杯」演半個月，賣座成績，始終在八九成左右。</p>
+<p>後來她又演獨慕劇「軍號」。在「軍號」中她和白雲一起演戲，這也可說是白雲第一次走上舞台的處女作。接着她叉跟着丁伶主持的旅行劇團，到西安鄉下去演戲，演出的戲有「突擊」，「放下你的鞭子」，「盲啞恨」，「黑地獄」等，那時梅熹的太太默陽紅櫻，也和她厮混在一起。</p>
+<p>離開西安，由昆明，漢口，廣州，香港一帶轉道而上海。她到上海來，倒不是爲了演戲，然而太平洋戰事發動以後，她和她的哥哥分了手，一個人就留在上海。</p>
+<p>紅寶成立，梅熹就邀她演戲，於是她在上海的舞台上漏臉了。－－「返魂香」中的狄四娘，「茶花女」中的瑪麗，「日出」中的陳白露，「三笑」中的二娘娘，四個月來，以各種身份，各種個性，表演了各種不同的人物。</p>
+<p>現在她已被綠費所網羅，第一個戲在「春天裏」中演姚大姐，又是另一類潑辣的作風。</p>
+<p>這位來自北方的姑娘，具有丈夫氣概，說一是一，話二是二，絕對不拖泥帶水，因此她在待人接物，處世藝術方面，就缺了鍛鍊與修養。</p>
+<h3>清歌消夏記（三）</h3>
+<p>— 蘇少卿</p>
+<p>宋德珠德珠及其同學多人，受更新舞臺聘，抵滬之後，上海戲劇　　陸許陳黃諸君，先後備酒筵爲之滌塵，吾皆陪坐，德珠面目韶秀，身材窈窕，不似演武戲動刀馬者，及見其飲酒甚豪，連盡數大杯無醉意，吾年來胸中積有塊壘，酒腸頗寬，每遇良朋，向不辭醉，是日德珠屢舉杯　客，客皆披靡，吾亦退避三舍。據云，今有胃腸病，不敢多飲昔無此息時，可盡紹酒十觔，由此觀之，知彼外貌溫柔，而內含豪氣，宜其結束登塲，矯捷英發，有　擊風掃之勢也。吾問，十年前，吾遊北平，參觀戲劇學校後院南房內正練武戲，院落中設一桌一櫈，老伶工余玉琴正在說戲，桌旁立一二垂髫童子聽講，誰耶，德珠云：「彼時童子，即我是也。」關德啟云：「練武戲者，即我等是。」祇隔十載，會之垂髫者巳一一成名，光陰眞快得似弩箭離弦也。</p>
+<p>曹憲麟李慧芳等當筵淸唱日前禮社票房　長吳國璋君及梅花館主有帖相邀，吾到最遲，見多年不晤之老友咸在座，梅花館主介紹二女子，一曹慧麟，工演靑衣，一李慧芳擅譚派老生，皆大舞臺角色也。宋德珠李和會亦在客位，歡飲中間，有人提議在座者每人須唱一段，不唱者罰酒三大杯，宋李二人乃忽忽辭去，梨園中人有一風氣，不喜什酒樓飯館中清唱、又更新是日適什宋字等第一日登臺露戲，宜保留嗓子，故逃席而去，應加以原諒。於是李慧芳先唱，唱洪羊洞二簧原板「爲國家」四句，嗓子甚好，吾醉眼膝朧中，見伊身軀頗長大，有健康之美，坤角老生中，難得此等人材，但吾聽其嗓音，覺得她不甚宜於譚調耳。吾聽袁履登先生唱，先生絕不推辭，唱「張公道三十五六子有靠」一段，態度和祥江左人瑞也。次其公子森齋唱連環套四句，次衆寶凡善唱者皆唱，次顧子言君唱紅凈「擋曹」一段，次曹慧麟女士唱汾河灣「兒的夫」四句，腔學程派，極有風味，態度亦美觀，此姝五官淸秀，　　尤美，聰明有過人者，將來不難飛騰。人緣甚好，捧之者大有人在也。次徐小麟君唱「聽他言」一段，吾十年前與之共同研究者，尚具典型。復次，諸友囑卑人接唱宿店之一輪明月」，辭不獲巳，勉強應命，定軟工調琴弦，尚可應付，唱畢，衆友不令停止，又命唱「聽瞧樓」，又命唱「看　賊」唱畢，汗如雨下，諸友大樂，且面譽之，吾酒後嗓音不濟，倍覺愧恧矣。（完），劉斌崑，芙蓉草，兪振飛，諸名伶，及翁偶虹，孫蘭亭，汪共俊，金次泉，何海生等，濟濟蹌蹌，薈萃一堂，極盡杯酒之歡。即席招待參觀全體學生排練大鐵籠山，並請翁偶虹君演說，至日落西山，始盡歡而散。聞該校擬聘請各名伶爲觀問，每週授課一兩次，李君並擬日內北上，考察舊劇發祥地的科班組織，以爲該校改進之張本。</p>
+<h3>簡訊</h3>
+<p>— 錦</p>
+<p>張雲山書家，擅寫各種字體，各大箋扇莊，均可約期取件。</p>
+<h3>梁山伯與祝英台</h3>
+<p>— 嵐影</p>
+<p>「梁山伯與祝英台」是一個婦孺皆知的民問故事，在一般人的意識中，也許將以爲上演這類的戲於舞台劇上是不合宜的，其實，如果要提倡通俗戲劇，「梁山伯與祝英台」倒眞是好材料，祗要處理得好，很可以輔助半民敎育。這次方君逸繼「四姊妹」寫「梁山伯與祝英台，是實踐話劇通俗化和大衆化的嘗試，此劇共五慕九景，劇中人祝英台，並不如「家」中的覺慧和淑英等有脫離家庭創造自由新生的思想，她的出外，祇是憑着自己的情感，想透一口新鮮的空氣而已。在「梁山伯與祝英台」中，指出了男女間求智本能的平等，和當時戀愛的不自由，編劇者以淸麗的一首熱情詩，用抒情的手法來介紹這個民問故事，把共中不合理的神話部分，像魂化蝴蝶等盡行刪去，到梁死便結束，是一個十足的悲劇。</p>
+<h3>李松齡將北上考察</h3>
+<p>— 滿子</p>
+<p>中華國劇學校董事長李松齡前日（十三號）在福履理路茂齡別墅寓邸歡宴趙如泉，林樹森，儲金鵬，劉文魁，韓金奎「薔薇處處開」襲秋霞與顧也科之表情　　業餘木偶劇社　演「原始人」</p>
+<p>本埠敎育界人七鑒於木偶話劇，影響兒童敎育，至深目鉅，爰發，組織上海業餘木偶劇社，業已成立，編排　原始人劇本，不日即將公演，山藝術家虞哲光擔作導演，該劇曾隨中學兒童敎育社在小滬兩地表演，頗得好評，此次史精益求精，舉凡道具配音燈光，無不盡善盡美，當爲學術界放一異彩云。</p>
+<h3>與黃宗英閒談　涉及「鴛鴦劍」的內容</h3>
+<p>— 一靑</p>
+<p>大家懷疑黃宗英在「人間世」的說明書中列入演員表，爲什麽始終不出塲。其實，黃宗英是出塲的，當沙莉拉開窗簾，黃宗江與許多女工在爭吵時，其中一個就是，那是因爲華藝的劇目中，不論重要與否，基本演員都要參加演出，譬如人間世中的主角之一流金，在「鴛鴦劍中，就要以宮女姿態演出了。</p>
+<p>偶　的機會，與黃宗英在華藝排練室中談話二十多分鐘，她正冒着汗，披上古裝，在練習鴛鴦劍劇中人的身段，所以彼此問的問答都是簡短的：</p>
+<p>「除王寶欽」中的代戰「香妃」中的香妃，這次是第三次演古裝戲了，熱天演古裝戲眞是……</p>
+<p>「不過這樣天熱，排戲，演劇，倒還並不感到怎樣可怕，所怕者，演出的成續會使冒暑而來觀劇的觀衆不十分滿意</p>
+<p>「我讀過「鑄情」，我也觀過「鑄情」，都會激動得淚下，這次排練中的「鴛鴦劍」，據姚克先生說，那彷彿是一部古中國的鑄情」，我眞擔心自己能不能演得好！</p>
+<p>「鴛鴦劍是怎樣的一個故事」？我問：</p>
+<p>那甚講述明代墮民的悲劇，墮民被傳統的種族觀念壓迫，不許讀書，不許改行，不評與非墮民者結婚，有一個墮民之中的富家子，頂姓冒名，努力讀書，預備替墮民爭氣，並與一位姑娘私下以鴛鴦劍訂婚，不料給人發現秘密，這少年就以雄劍自殺，那姑娘也以雌劍刺腹殉情了。」</p>
+<p>這倒實在是一部古中國的鑄情呢！</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（八）奈若何</p>
+<p>何子興雖說沒有能把維城主僕接回來，然而經過何子興去探問之後，却知道他們是趕往上海去的，這就不無微勞足錄，葉二太太少不得要安慰他幾句，叫他去廚下洗脚吃晚飯，回頭對翠珍說道：「維城找不到他們兄妹，回來就是了，爲什麼要跑到上海去呢？」這偭道理，翠珍也猜測不出來，她只想出了一個主意：他們到上海去，回來的時候，必定坐紅旗張的船回來；應該讓何子興徐金爾兩個長工，每天上花港去探聽紅旗張什麼時候回花港。葉二太太認爲這主意是對的，立刻喚喜鵲傳語何子興徐金福，要他們每天上花港去。徐金福認爲阿與是隨着少爺出去，何子興是也曾往雙橋去跑一回，只有自己一些沒功勞，未免相形見絀。他就速夜往花港鎭去了一次，可是還只徒勞往返，他沒見到張樹榮，也沒見到張樹榮的船。</p>
+<p>直到何子興去雙樹的後兩天晚上，維城和阿興，坐了張橋榮的船回來。葉二太太眞是歡天喜地，看維城簡直看成被匪徒綁票綁了去，現在無條件地被釋放回來。維城一邊進晚膳，一邊告訴葉二太太，到雙橋去訪問陳老太太的經過，葉二太太道：「何子興巳經到雙橋去過了，雙橋那邊的事情，我們有一些知道。陳家兄妹都沒在家，你爲什麼又從雙橋直接到了上海去呢？維城道：「我目的是找國器國芳去的他們既然不在雙橋，我就非到上海去不可了。我對他們祖老太太，也曾問過一句話。」葉二太太看維城說到這裏，回頭對屋子裏看了一遍，就笑道：「都是一家人，沒有旁人在這裏。維城一碗飯吃完了，說道：一我需要休息，等會再說吧。」（一五五）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.08.15</h1>
+<h3>Imperial Japanese Headquarters Announces: Details of the Solomon Islands Battle: Japanese Air Force Achieves Valiant Feats, Allied Ships Suffer Heavy Damage</h3>
+<p>Tokyo, 14th (Domei News Agency) – The Japanese Imperial Headquarters announced at 3:30 PM today regarding the naval battle in the Solomon Islands. As of the 14th of this month, the obtained results are as follows: Warships sunk from the enemy side include one U.S. *Wichita*-class heavy cruiser (flagship), five U.S. *Astoria*-class heavy cruisers (one of which was also a flagship), two British *Australia*-class heavy cruisers, one *Achilles*-class light cruiser, one U.S. *Omaha*-class light cruiser, three other types of light cruisers, several destroyers, three submarines, and ten transport ships. Warships damaged include one heavy cruiser, three destroyers, and one transport ship. Aircraft shot down include forty-odd fighters and nine fighter-bombers. As for Japanese losses, twenty-one aircraft were lost, intentionally opening up the throttle and crashing into the target (the so-called "human torpedo"). In addition, two cruisers suffered minor damage but remain operational. Note: The battleship mentioned in the previous communiqué should be corrected to an *Achilles*-class cruiser.</p>
+<p>Tokyo, 14th (Domei News Agency) – An officer from the Naval Press Department recently described to Domei News Agency reporters the course of the great naval battle off the Solomon Islands. According to reports, the results of this battle have annihilated the British and American fleets off Australia. The battle began on August 7th, when a joint British and American fleet, along with several transport ships, appeared off the Solomon Islands. Taking advantage of dense fog, they approached the islands and began landing on one island. Japanese reconnaissance planes discovered this and immediately reported it to the base. A Japanese fighter squadron was dispatched and engaged in a fierce aerial battle with enemy aircraft, shooting down forty-odd enemy fighters and nine bomber-fighters. At the same time, Japanese aircraft bombed and heavily damaged one enemy destroyer each. The enemy was in a state of chaos from the beginning. The next morning, Japanese torpedo planes approached the enemy fleet and launched a fierce attack, resulting in the sinking of the fleet flagship, the U.S. *Wichita*-class heavy cruiser, and a British-style heavy cruiser. At the same time, another heavy cruiser was severely damaged, and two light cruisers and destroyers were sunk. Another batch of Japanese torpedo planes simultaneously attacked enemy transport ships, sinking ten of them. At night, Japanese warships, planes, and submarines cooperated closely to launch a brave night attack on the heavily damaged enemy fleet, sinking the enemy's second flagship, the U.S. *Astoria*-class heavy cruiser, and six other heavy cruisers. In addition, one U.S. *Omaha*-class light cruiser and six destroyers were sunk, and two other destroyers were heavily damaged. On the third day of the battle, Japanese torpedo planes pursued the remnants of the enemy fleet and sank one *Achilles*-class light cruiser speeding towards Sydney. With the enemy fleet annihilated, only a small group of enemy land forces remained on one island in the Solomon Islands, their communications completely cut off, and without the assistance of transport ships or warships.</p>
+<p>Naval Battles Still Ongoing</p>
+<p>Lisbon, 14th (Haitong News Agency) – According to a Washington dispatch, the U.S. Navy Department issued a communiqué stating briefly that the naval battles in the Solomon Islands are still ongoing, and detailed reports are difficult to announce. There are no significant developments in other war zones.</p>
+<p>Change of Supreme Commander of Japanese Forces in the Philippines</p>
+<p>Tokyo, 14th (Domei News Agency) – The Japanese Army Ministry announced today that Lieutenant General Homma Masaharu, the supreme commander in the Philippines, has been transferred to an important position. His vacancy will be filled by Lieutenant General Tanaka Shizuichi. According to reports, Lieutenant General Homma commanded his troops to capture Manila, the capital of the Philippines, defeat the U.S. forces stubbornly resisting on the Bataan Peninsula, and seize key locations such as Corregidor Island in one fell swoop. He is a high-ranking commander credited with destroying the United States' basic base for invading East Asia, the Philippine Islands. The newly appointed Lieutenant General Tanaka has held important positions such as commander of the military police and commander of the Eastern Army. He also served as the commander of a certain battlefield unit, and his contribution in the Battle of Yichang was significant. The Emperor has highly commended him and can be described as an extremely glorious brave general.</p>
+<h3>German Raider Activity in the South Atlantic; U.S. Navy Conducting Search</h3>
+<p>Washington, 13th (Havas News Agency) – It is rumored that German warships are carrying out raiding operations in the South Atlantic. The United States has dispatched warships to search. Today, a Navy spokesperson declined to comment on this rumor and did not wish to make any announcements regarding the movements of the U.S. Navy. According to a cable from the Brazilian capital, British and American navies are said to have detected the traces of German warships. Although it cannot be fully confirmed, it is expected that there will soon be a naval battle in the South Atlantic. Currently, a merchant ship of unknown nationality sent out a distress signal, apparently attacked by a German warship. As a result, the authorities officially announced that certain sea areas in the South Atlantic are dangerous zones. At the same time, warships are tracking and pursuing the raider.</p>
+<p>Berlin, 14th (Haitong News Agency) – German military sources declared that three more American merchant ships in the northern South American seas were sunk by German submarines. Two of them returned fire with cannons, but they soon caught fire and sank. Several crew members were rescued.</p>
+<h3>Japanese Cabinet Spokesman Says: Cannot Allow British Troops to Reside in India; Rumor of Pacific Military Committee Discussion on the India Problem; Britain Decides to Use Harsh Measures to Deal with Independence Movement</h3>
+<p>Tokyo, 14th (Domei News Agency) – Mr. Hori, acting spokesman for the Cabinet Information Bureau, declared to the press today that Prime Minister Tojo has stated that Japan cannot allow British troops or Allied forces to reside in India. Judging from the current situation in India, it is being used for Allied operations. Japan will not tolerate this situation continuing.</p>
+<p>Stockholm, Sweden, 14th (Haitong News Agency) – The *Nya Dagligt Allehanda*'s London correspondent reports that the Pacific Military Conference in Washington convened yesterday, chaired by President Roosevelt, to discuss the India issue and U.S. intervention, namely, U.S. guarantees for Indian independence after the war. It is unknown whether the conference has reached any decisions. According to other sources in London, the British government does not want Allied intervention in India and is determined to suppress India with acts of terror. The news received in London yesterday regarding the situation in India was scarce, with only the optimistic reports issued by British officials. The British Labour Party has now aligned with the government's Indian policy, but the party's mouthpiece, the *Daily Herald*, is quite distressed by this decision. The newspaper published multiple letters from leading Labour figures protesting the flogging of Indian demonstrators, with one asking whether the British Labour Party could tolerate the flogging of striking British workers.</p>
+<p>Anti-British Situation Throughout India</p>
+<p>Lisbon, 13th (Domei News Agency) – According to a dispatch from Bombay, the anti-British struggle in India, centered around Bombay and Pune, has intensified in the past twenty-four hours. The situation is described as follows:</p>
+<p>Bombay</p>
+<p>The anti-British struggle in Bombay is expanding daily. The Governor of Bombay issued an order on the 13th to suppress it with force, deciding to use modern weapons to suppress the anti-British actions of the Indians. In various streets in the city, there are chaotic clashes between Indian crowds and British troops. All shops are closed, and the situation is extremely tragic. The number of dead and wounded has increased in the past two days. As of the 12th, the number of deaths in Bombay State has reached 500, and the number of injured has reached over 3,000.</p>
+<p>Pune</p>
+<p>The situation here is relatively calm every morning, but it intensifies in the afternoon. Agitated Indian crowds attack British police stationed on the main streets, cut wires, and knock down telephone poles. British troops are dispatched to suppress them, and the two sides are in a standoff in the city streets, resulting in many deaths and injuries.</p>
+<p>Calcutta</p>
+<p>Since the clashes between demonstrating students and British police here, the anti-British struggle of the Indians has suddenly become more intense. Indian masses are burning police stations and throwing stones at buses, causing considerable chaos in the city. The police are using tear gas to disperse the crowds. In the northern part of the city, crowds are attacking passing buses and trams, dragging passengers out. The wires of the elevated tramway have also been cut in several places, causing traffic in the city to come to a standstill.</p>
+<p>Nagpur</p>
+<p>The anti-British struggle in the city initially showed signs of being suppressed, but it suddenly deteriorated again on the 13th. Indian crowds attacked railway warehouses in the suburbs, emptying the warehouses of rice, destroying railways and waterways. Major buildings in the city, such as large banks, have also been burned. British police are suppressing the situation with force.</p>
+<p>Saigon, 14th (Haitong News Agency) – According to recent news from here, the unrest in India has not diminished, especially in Madras, Calcutta, and other small cities on the east coast. The British side claims that the conflict incidents in Madras have decreased, which "should be attributed to the effective measures of the police." However, "effective measures of the police" have sacrificed the lives of a large number of Indians, with 24 deaths and over a hundred injuries. The disturbances in Calcutta are more serious. On Thursday morning, students began demonstrating and were dispersed by the police from all trams and vehicles belonging to British-owned bus companies. Passengers were forced to disembark and walk. This demonstration spread to all parts of the city, so the police could not stop it. Calcutta has been completely shut down, and the strikes by ironworkers and textile workers are expanding daily. Bombay, Pune, and Allahabad still experienced disturbances yesterday, with many deaths and arrests. The unrest in the city of Bombay seems to be calming down, but there are still fierce demonstrations outside the city, with demonstrators blocking streets and cutting cables. As a result, Bombay's northern suburbs experienced a power outage last night. In Pune, 127 Indians have died in the conflict.</p>
+<p>London, 13th (Havas News Agency) – The India Office announced that in the recent events in the streets of Bombay over the past four days, 43 people have died, and 330 have been injured.</p>
+<p>University Students Jointly Demonstrate</p>
+<p>Calcutta, India, 13th (Havas News Agency) – A serious incident occurred here today. University students jointly demonstrated against British rule in India. Medical students led the crowds, attempting to set fire to the opera house and throwing stones at the police. Several buses caught fire and burned. The police opened fire and used tear gas to suppress the crowds. In the afternoon, riots broke out in Wellington Square. When the police opened fire to disperse the crowds, they wounded three civilians. In the northern suburbs of the city, demonstrators cut electric wires, stopping tram service. The authorities have dispatched a special train from Madras carrying police reinforcements to this area. Several incidents also occurred in the city of Pune. A police station was set on fire and burned, and several telephone poles were destroyed. There were clashes between police and demonstrators, resulting in several deaths and injuries. Most of the shops in New Delhi have closed, making it extremely difficult to buy food. The authorities are currently distributing essential food items to civilians. The curfew has been extended for two days.</p>
+<p>Nehru's Sister Also Arrested</p>
+<p>New Delhi, 13th (Havas News Agency) – The British authorities today ordered the arrest of Nehru's sister, a leader of the Indian National Congress Party. Miss Nehru has been arrested repeatedly in the past for participating in the Indian revolutionary movement.</p>
+<p>U.S. State Department Issues Statement</p>
+<p>Washington, 16th (Havas News Agency) – According to political commentators here, the U.S. State Department has issued a statement regarding the U.S.'s stance on the unrest in India and the suppressive measures taken by the British authorities. This stance must be considered "neutral." According to semi-official sources, the U.S. can only adopt this attitude under the current circumstances. However, this should not be seen as the U.S. disagreeing with what Britain is doing.</p>
+<h3>Air Raid Alert in Melbourne</h3>
+<p>Lisbon, 13th (Domei News Agency) – According to Australian Broadcasting, an air raid alert was issued in Melbourne on the night of the 12th, the first such alert since the start of the war. Details have not yet been ascertained.</p>
+<h3>Thai Rice Arrives in Canton</h3>
+<p>Guangzhou, 13th (Domei News Agency) – Several tens of thousands of bags of rice ordered from Thailand by rice importers here have arrived in this area in the first shipment of 20,000 bags. The rice is for the consumption of the people of Guangdong Province. The arrived rice will be transported to Chaozhou and Shantou soon. The second shipment will also arrive soon.</p>
+<h3>Former Cornell University President Schurman Dies</h3>
+<p>Lisbon, 14th (Domei News Agency) – According to a New York dispatch, Dr. Schurman, former U.S. Minister to China, passed away on Wednesday after being ill for several months, at the age of eighty-eight. Dr. Schurman studied philosophy and law in the United States, Britain, Germany, and France. He served as President of Cornell University from 1892 to 1920.</p>
+<h3>Roosevelt's Message to Congress: Adjusting U.S.-Panama Relations: Abandoning Debt Claims and Real Estate</h3>
+<p>Washington, 13th (Havas News Agency) – President Roosevelt sent a message to both houses of Congress today stating, "I believe the time has come for us to make some concessions to the Republic of Panama to satisfy their long-standing wishes. Such concessions are sufficient to correct certain factors that hinder the restoration of confidence and friendship between the two countries. This country previously borrowed 2.5 million U.S. dollars from my country to construct the Chorera-Rio-Hatai Highway. This highway is quite important for the defense of the Americas, so I request that both houses of Congress pass a resolution to write off this debt in one stroke and to declare the abandonment of all real estate in that country that is not needed to protect the Panama Canal. In addition, I ask members of both houses to note that Panama is fully cooperating with the United States in the current crisis. The relationship between the two countries is based entirely on acknowledging mutual benefits and fulfilling respective responsibilities.</p>
+<h3>Fascist Party Purge Results: 60,000 People Expelled from the Party</h3>
+<p>Rome, 14th (Haitong News Agency) – The Fascist Party Executive Committee met last night, chaired by Mussolini himself. Party Secretary Federzoni gave a detailed report on the party's activities last year. According to reports, the number of young people subsidized by the Fascist Youth Corps this year is 25% higher than the previous year. In the 19th year of the Fascist Party's rule, it subsidized a total of 6,036 families with 75,096 children. The following year, it increased to 7,632 families with 1,018,688 children. The party pays great attention to the interests of soldiers on the front lines. A certain train carrying medicine to the Soviet Union for the use of the Italian Expeditionary Force cost 15 million lire. Federzoni also stated that the party needs to carry out a purge for various reasons, and 66,000 party members have already been stripped of their membership.</p>
+<h3>Canadian Minister of Aviation Power Arrives in London</h3>
+<p>Stockholm, Sweden, 14th (Haitong News Agency) – Canadian Minister of Aviation Power arrived in London yesterday. He was accompanied by the Chief of Staff of the Canadian Air Force. Who he will meet is still unknown.</p>
+<h3>Chilean President to Visit Washington D.C. Upon Invitation</h3>
+<p>Santiago, Chile, 14th (Havas News Agency) – The U.S. State Department notified the Chilean Ministry of Foreign Affairs today, inviting President Rios to visit the United States in the near future.</p>
+<h2>Page 3</h2>
+<h3>Large-Scale Battle Between German and Soviet Forces Between the Volga and Don Rivers; Stalingrad's Defenses are Strong; Voronezh Soviet Forces Launch Counteroffensive</h3>
+<p>Berlin, 13th (Domei News Agency) – According to an announcement from the German High Command, German forces attacking fiercely north of the Manych Canal have occupied Elista, the capital of the Kalmyk Autonomous Republic. The city has a population of approximately 250,000 and is located approximately 100 kilometers northeast of the eastern end of Lake Manych, on the straight line from Rostov to Astrakhan.</p>
+<p>Berlin, 14th (Haitong News Agency) – Reports just received from the front lines state that German forces have penetrated deep into the North Caucasus Mountains yesterday. German forces advanced along the Meykoup-Doubovsky railway and the Nevinomyssk branch line of the Baku-Rostov railway, reaching Chemarala in the upper reaches of the Kouban River. The place is sparsely populated, 60 kilometers from the east shore of Lake Manych. There was less war news on the Stalingrad line yesterday. However, the German war report yesterday mentioned the area between the Volga and Don rivers for the first time, indicating that the war has spread to that area. Soviet resistance remains extremely fierce, and reinforcements are arriving continuously, having built strong defenses to protect Stalingrad. However, German troops still made considerable progress yesterday. German forces in the Don River Bend can now move freely, and the Battle of Stalingrad is about to enter a new phase. The Soviet offensive in Voronezh and Yuqif can be described as fierce. Berlin believes that this may be a military counter-offensive launched by the Soviet Union itself to replace the Second Front in Western Europe.</p>
+<p>Berlin, 14th (Haitong News Agency) – The German High Command announced last night that the Soviet army started attacking the German position in the Voronezh area from August 11, but has made no progress. In an area north of the Voronezh bridgehead, as many as 111 Soviet tanks have been destroyed. At another point, the Soviet army advanced under cover of tanks, but 77 tanks were also destroyed.</p>
+<p>Somewhere on the Soviet border, 13th (Havas News Agency) – German forces are currently continuing to advance towards Novorossiysk and Grozny. Meanwhile, Romanian forces are continuing to advance along the Sea of Azov coast after clearing the remaining enemy north of the Kouban River. The war situation in each area is described as follows: After German forces occupied Slavyansk, they continued to advance southwest, having made contact with German forces west of Krasnodar. The Red Army is concentrating in the Troitskaya-Anapa-Novorossiysk triangle area. The Red Army, which holds the center of the Taman Peninsula, has been ordered to withdraw in order to defend western Caucasus. German forces coming from the north have reached the mouth of the Kouban River. All ports on the Sea of Azov have been occupied by German forces, including Port Achuev. However, the Red Army is still resisting in certain places, especially near the port of Yeysk. South of the city of Meykoup, German forces occupied the city of Antrougouskaya yesterday. There has been fierce fighting in the Grozny area in the past two days. Although the Red Army is resisting resolutely, it has been unable to stop the German advance. German forces occupied Garinovskaya, 20 miles north of Melros City, last night. Fierce fighting continues near the city of Ordzhonikidze. It is expected that the result of the war in that area will determine the fate of the Caucasus oil region. Last night, German forces also occupied Samankuk, 55 miles west of the city of Grozny, also one of the industrial centers of the Caucasus region. The battle between the Terek and Manych rivers has reached a critical stage. It has been confirmed that the city of Georgievsk has been occupied by German forces. Regarding the German occupation of Elista, the capital of the Kalmuk Autonomous Republic, between the Don and Manych rivers, it can be seen that the war in the area has shifted north. The German advance is rapid, and the Red Army's resistance in the Kalach area has collapsed. Fierce fighting continued in the Voronezh area today. The main battlefield is between the Don River and the Voronezh River.</p>
+<p>German Forces Adopt Pincer Offensive, Continuing Advance into North Caucasus</p>
+<p>Somewhere on the Ukrainian border, 13th (Havas News Agency) – German forces continue to advance in the Caucasus. German vanguard troops have now reached the vicinity of Novorossiysk and have approached the key city of Grozny. The base 25 miles northwest of the city has been occupied. East of Voloshilovgrad, after German forces crossed the Kalaus River, they occupied Alexandrovskaya the night before and continued to advance yesterday morning. They have now penetrated deep into enemy territory. Moschayaik on the banks of the Terek River has also fallen into the hands of the German forces. After occupying Troskaya on the 10th of this month, the mechanized units of the Axis forces in the Krasnodar region reached Kmyskaya, which is not connected to Novorossiysk, on the 12th and have come into contact with the main Soviet defense line. In general, the morale of the Red Army has declined, and its resistance is not as strong as before. German forces only encounter small mobile units of the Red Army. The main task of these units is to destroy oil field equipment. There is still a major battle south of Stalingrad. The front line stretches 10,000 miles from Kleiminskaya to Pyatiminiskaya. Although the Red Army resisted vigorously, German forces still made significant progress. German air forces launched strikes to bomb and strafe enemy concentration points and transportation lines, providing major assistance to the land army. The transport lines of enemy forces in the Volga River were also bombed. The remnants of the Red Army in the Kalach area have been wiped out, making it easier for German forces to attack Stalingrad. The battle for the city has now entered a decisive phase.</p>
+<p>German Forces Use Camel Teams to Transport and Advance Towards the Key Soviet Port on the Caspian Sea</p>
+<p>Stockholm, Sweden, 14th (Havas News Agency) – Daily summary war report from the Eastern Front: Astrakhan, the key Soviet port near the mouth of the Volga River on the Caspian Sea, is about to fall. The vanguard of German forces is only 160 miles from the port. Previously, German forces transported supplies only by camel and horse teams, but now they have reached truly Asian territory. Tanks and snake-shaped army vehicles can pass without hindrance. According to German reconnaissance reports, there are no Red Army concentrations between Elista and Astrakhan due to the difficulty of defense. Part of the Red Army previously concentrated in Astrakhan has been transferred north to reinforce the Stalingrad front. If Astrakhan falls, Stalingrad will also be lost. On the Stalingrad front, German forces are advancing from the northwest, and the city is in imminent danger. Yesterday, fighting was fierce along the Kotelnikovo-Stalingrad railway. German forces transferred tank units and motorized infantry reinforcements, but the Red Army's resistance has not weakened at all. According to reports from the Soviet side, German forces attempted to break through the Red Army's artillery line with the aid of dive bombers but were unsuccessful. They were repulsed to their original positions. The Red Army even counter-attacked successfully and consolidated several positions. In the Meykoup area, German sources claim that the main oil fields 30 miles south of the city have not yet been occupied. Reconnaissance reports indicate that the oil well area is engulfed in flames and difficult to approach. This is probably why German forces have been unable to occupy it for so long.</p>
+<h3>Western Mediterranean Sea: Major Air and Sea Battle - Axis Powers Jointly Attack Convoy, Two British and American Aircraft Carriers Damaged</h3>
+<p>Haitong News Agency, Berlin, 14th: The German High Command issued a special communiqué last night as follows: "In order to relieve the British forces in Egypt, the British dispatched a large convoy to Alexandria for supplies. The convoy consisted of twenty-one large merchant ships, escorted by three battleships, four aircraft carriers, and numerous cruisers and destroyers, totaling forty-six vessels. German and Italian air and naval forces began continuous attacks on the enemy ships on August 11. In addition to the British aircraft carrier "Eagle" being sunk by a German submarine on the 11th, nine merchant ships totaling 60,000 tons were also sunk. Furthermore, the British aircraft carrier "Furious" has been damaged and returned to Gibraltar. The American aircraft carrier "Wasp" was hit by six bombs and caught fire. It was planning to sail to Malta. Other heavily damaged ships include three cruisers and six merchant ships totaling 510,000 tons. The enemy ships are now in disarray, with most of the enemy ships retreating westward. The German and Italian forces are continuing their attacks."</p>
+<p>Havas News Agency, Berlin, 13th: The American aircraft carrier "Wasp" was attacked by German aircraft in the Mediterranean Sea battle yesterday, catching fire after being hit. It is reported that the ship is the newest type of aircraft carrier in the American navy, having entered service in 1939. It has a displacement of 14,700 tons, a speed of 30 knots per hour, and is equipped with eight 4-inch anti-aircraft guns and thirteen other types of small cannons. The total crew is 1,173 sailors, and the construction cost was $20.7 million. It can carry 84 aircraft and is one of the most powerful aircraft carriers in the world. As for the British aircraft carrier "Furious," it was also heavily damaged. It has a displacement of 22,450 tons, a speed of 31 knots per hour, and is equipped with twelve 3-inch anti-aircraft guns and twenty-four anti-aircraft machine guns. The total crew is 759 officers and men, with 450 pilots. It can accommodate 36 aircraft. However, this ship was converted from a cruiser and renovated in 1939.</p>
+<p>Havas News Agency, Berlin, 13th: The German News Agency recently issued a dispatch from Madrid stating that the Axis and Allied forces are still engaged in a major air and sea battle in the western Mediterranean. The British destroyer "Forester" has also been sunk.</p>
+<p>Agence Mondiale News Agency, Lisbon, 14th: According to news from London, the British Admiralty has admitted that the British cruiser "Manchester" has been sunk in the western Mediterranean operations. It is reported that this ship is one of the newest cruisers, launched in 1937, with a displacement of 9,300 tons, a speed of 33 knots, and a crew of 700.</p>
+<p>Haitong News Agency, Lisbon, 14th: The Polish destroyer "Kujawiak" has sunk in the Mediterranean.</p>
+<p>Italian Side Announces Details of the Naval Battle</p>
+<p>Havas News Agency, Rome, 13th: The Italian High Command issued a communiqué describing the Mediterranean Sea battle and the sinking of the British aircraft carrier "Eagle." The original text is as follows: "At dawn on the 11th of this month, our submarines spotted a large enemy convoy in the western Mediterranean, consisting of more than twenty merchant ships, escorted by three battleships, four aircraft carriers, several cruisers, ten destroyers, and several small vessels. It was sailing east from the Port of Gibraltar. Upon receiving the report, the German and Italian air and naval forces jointly commenced operations. Although the enemy convoy was extremely powerful, our submarines, torpedo boats, and dive bombers and fighters continued to attack it. As a result, the German and Italian navies sank one cruiser and three merchant ships, and the air force sank one cruiser, one destroyer, and three merchant ships. The German air and naval forces also sank the British aircraft carrier 'Eagle' and four merchant ships. One battleship and two aircraft carriers were hit multiple times, and several of them are likely beyond repair. In addition, thirty-two British aircraft were shot down in aerial combat. We also had thirteen aircraft missing and several carrying dead pilots. Most of the enemy merchant ships were forced to retreat to the Port of Gibraltar, and some docked at the Island of Malta, all of which were tracked and pursued by our air force."</p>
+<p>Havas News Agency, Rome, 14th: The Italian High Command recently announced that the Axis air and naval forces have achieved further success in attacking the remnants of the enemy convoy in the Mediterranean. Our submarines and small destroyer squadrons sank an enemy cruiser, two destroyers, and three merchant ships. Our bombers and torpedo planes sank four ships and hit a battleship heading for the Port of Gibraltar. The German air and naval forces independently sank four merchant ships. It has been confirmed that the aircraft carrier damaged by a German submarine on the 11th and returning to Gibraltar is the "Furious." Other ships sunk include the British City-class new cruiser "Manchester." A large number of enemy sailors who were sunk have been rescued and are now concentrated in Axis naval bases and hospitals. Other sailors have landed on the coast of Tunisia. German and Italian pursuit aircraft also shot down ten enemy aircraft. The Axis forces lost a total of nineteen aircraft, and two medium-sized submarines were damaged, one more severely.</p>
+<p>Eyewitness Account of the Sinking of the "Eagle"</p>
+<p>Havas News Agency, London, 13th: Regarding the sinking of the British aircraft carrier "Eagle," a Reuters correspondent who was on board recounted his eyewitness account, stating that shortly after 1:00 PM, he was sitting in a room with three officers when suddenly two loud explosions knocked them to the ground. Then there were two more explosions, shaking the entire ship. He heard the hissing of steam, swirling around the ship, and the hull tilted sharply. Bombs on the ship came loose and began to slide along the deck. A Hurricane fighter plane broke its moorings and crashed into a group of sailors, none of whom survived. The correspondent, along with many other sailors, jumped into the sea. The waves were rough, but the correspondent managed to climb onto a cork-made buoy, which already held twelve people. Turning around, the correspondent saw the "Eagle" two hundred yards behind him, completely capsized. Sailors were frantically leaving the ship, and the sound of depth charge explosions was incessant. These were launched by our destroyer squadron in an attempt to destroy the Axis submarine responsible. Then there was a commotion, and he saw that where the "Eagle" had been, there was only a splash of water.</p>
+<p>British Ships Gather in Gibraltar</p>
+<p>Havas News Agency, Algeciras, Spain, 13th: After participating in the naval battle in the western Mediterranean, British ships have returned to their base. Today, someone witnessed the aircraft carrier "Glorious" entering the Port of Gibraltar, followed by another aircraft carrier "Argus" and four destroyers. It is reported that British air and naval forces are extremely active in the Port of Gibraltar.</p>
+<p>Agence Mondiale News Agency, Lisbon, 14th: Regarding the attack on the Allied convoy by German and Italian air and naval forces in the western Mediterranean, British officials are avoiding explaining anything. According to a former Reuters correspondent, the naval battle was still ongoing as of the 13th, but there is strict silence regarding the British war results. The Admiralty said that it plans to publish the details of the battle as soon as possible.</p>
+<p>French Postal Aircraft Caught in the Crossfire</p>
+<p>Havas News Agency, Algiers, North Africa, 13th: During the major air and sea battle between Britain and Germany in the Mediterranean yesterday, four destroyer aircraft from an unknown country attacked a French postal aircraft traveling between Marseille and Algiers, resulting in the deaths of two passengers and injuries to six. It is reported that the pilot of this seaplane saw four military aircraft near the coast of Algeria at 12:30 PM yesterday, seemingly patrolling the area. The plane immediately flew elsewhere to avoid flying near the patrol zone and being mistaken for an aircraft of a belligerent country. Unexpectedly, these patrol aircraft mistook the plane for attempting to escape and immediately flew to pursue it. One of them opened fire first, hitting the French aircraft with no less than one hundred bullets. Two of the four engines were damaged. The pilot immediately made a direct landing, almost touching the waves. The attackers, believing that the plane had already sunk, stopped firing and resumed patrolling as usual. This damaged French aircraft was able to reach here. Two of the passengers died, one of whom was a young woman, and four were injured. Two of the pilots were also injured. It is reported that these aircraft of the belligerent country were attacking from below, so the injured were all wounded in the lower body. They are now receiving treatment.</p>
+<h3>Four Soviet Ships Arrive at Turkish Port</h3>
+<p>Havas News Agency, Pera, 14th: According to the latest news from Turkey, two Soviet oil tankers, accompanied by three torpedo-equipped speedboats, arrived at the Turkish port of Erdemli last night. In addition, two Soviet patrol boats arrived at the Turkish port of Trabzon. In accordance with international law, all of these ships have been disarmed and all sailors detained.</p>
+<h3>Menemençioğlu Appointed Turkish Foreign Minister</h3>
+<p>Haitong News Agency, Ankara, 14th: Local officials officially announced yesterday that Menemençioğlu has been appointed as the Turkish Foreign Minister. It is reported that Menemençioğlu was originally the Secretary-General of the Ministry of Foreign Affairs.</p>
+<p>Haitong News Agency, Ankara, 14th: The Turkish cabinet yesterday decided to allocate funds to repair the highway on the Syrian border.</p>
+<h2>Page 4</h2>
+<h3>Repatriation Ship "Kamakura Maru" Postponed, Arriving in Shanghai Today - Allied Nationals Totaling 907, Repatriation Date May Be Postponed by One Day</h3>
+<p>The English-language "China Press" stated that Mr. Masaki, an interpreter at the Japanese Consulate General, told reporters this morning (the 14th) that the date for the repatriation ship "Kamakura Maru" to depart from Shanghai with 907 Allied nationals has not been definitively decided. It may be Sunday as previously planned, or it may even be postponed to Monday or Tuesday. This possible change in the ship's schedule was disclosed by officials responsible for the repatriation matters this afternoon after a lengthy meeting.</p>
+<p>Postponed Departure</p>
+<p>The "Kamakura Maru" also did not arrive in Shanghai this morning as scheduled, but it is expected to arrive tomorrow morning. Mr. Masaki also stated that on the day the "Kamakura Maru" departs from Shanghai, the repatriating officials and civilians will gather at the New Customs Wharf. The gathering time for repatriating civilians is from 6:00 to 6:30 AM. As for the date of the ship's departure, it cannot be definitively stated, but it seems to be postponed by about one day, possibly departing on Monday and sailing to Lorient Cormaghis.</p>
+<p>Dispatching Vehicles for Transportation</p>
+<p>The responsible parties will use buses to transport officials and civilians. For civilians, seven vehicles will depart from the Columbia Country Club, four from a location on Rue du Maréchal Foch, one or two from the Huafu Apartments, and another three or four from the Racecourse. For officials, five or six cars will wait at the Cathay Hotel, four or five at the same location on Rue du Maréchal Foch, and two or three waiting at the Racecourse and Jing'an Temple.</p>
+<p>Number of Evacuees</p>
+<p>The 907 evacuees include 300 British officials in Shanghai, 70 British officials from various parts of China, 90 Allied officials, and 350 British civilians in China, of whom 150 are from Shanghai. There are also 90 Allied civilians from various parts of China. The "Kamakura Maru" does not carry evacuees from Japanese-occupied areas.</p>
+<h3>Fire-Affected Area in Yaoshui Lane: Food Distribution Established, Relief Provided by the Salvation Army</h3>
+<p>The Shanghai "Times" reported that Major Walker, the head of the Salvation Army in the Shanghai area, told reporters that the major fire in Yaoshui Lane, Xiaoshadu Road, on Wednesday destroyed 700 straw huts, leaving approximately 5,000 poor Chinese homeless. The Salvation Army immediately established a food distribution center near the disaster area on Macau Road to provide relief. Yesterday (the 13th), approximately 600 people in the shantytowns were given breakfast and dinner. Another 600 people will also receive sufficient food for one week. The remaining residents of the shantytowns who were affected by the disaster have left the area to seek help from relatives and friends or find other means of livelihood. As for the disaster victims who remain in the area, most have temporarily built shelters for temporary housing. The Salvation Army will distribute 30 yuan per person to 600 of these 1,200 disaster victims to help them find alternative livelihoods. In addition, Firefighter No. 555, who was injured during the fire in the area, has recovered rapidly, and other injured Chinese have also been released from danger.</p>
+<h3>Applications for Motor Vehicle Permits Should Be Submitted Before the 23rd</h3>
+<p>The Shanghai Municipal Council recently issued Proclamation No. 6045, stating that all motor vehicle permits will expire on August 31st at the latest. Permits will no longer be issued before this date. Those requesting renewals should apply to the Vehicle Office of the Central Police Station at 185 Fuzhou Road before the 23rd of this month.</p>
+<h3>Shanghai Municipal Council Announces the Seventh Installment of Rice Allotment</h3>
+<p>The Shanghai Municipal Council recently issued Proclamation No. 6043, stating that the No. 6 coupons for purchasing rice, which are used to purchase rice, are only valid until the 15th of this month and will be invalid after the expiration date. From the 17th to the 22nd of this month, rice shops and the Council's rice sales outlets will only sell Council rice and flour based on the No. 7 coupon. At that time, each coupon will be used by the rice shops with clearly registered numbers from each of the seven rice guilds to sell half a liter of white rice, priced at three yuan and eight jiao. At the same time, the coupon holder can freely purchase one catty of flour, priced at two yuan and three jiao.</p>
+<h3>Sale of Hand Grenades: No Political Connection Found, Three Convicts Sentenced to Three Months Imprisonment Each</h3>
+<p>Huang Fusen, a Chinese detective, and Zhu Shanghe, an investigator of the Special Higher Detective Team of the Public Security Bureau, recently discovered that someone was privately hoarding explosive hand grenades with the intention of selling them. They instructed officers to pretend to contact these individuals and agreed that there were a total of three hand grenades, each priced at 300 yuan. On the 8th of the month, when they were handing over the goods at the entrance of the Paramount Ballroom on Yuyuan Road, they were apprehended by the detectives. The locals Jin Shiming (also known as A'di), Tang Fugeng (also known as A'gao), and Jin Fasheng (also known as Jin Wenlian) were taken to the police station along with the three hand grenades. Upon investigation, it was learned that the convicts had all found these hand grenades in the countryside and had no political motives. They were prosecuted for endangering public safety and have been tried. The three convicts, Jin and others, were each sentenced to three months imprisonment, and the three hand grenades were confiscated.</p>
+<h3>Gatekeeper Instigates False Accusation</h3>
+<p>Lin Jinyi, a local resident living in the pavilion room on the second floor of No. 5 Mingde Lane, Huanlong Road, works at the Jin Cheng Bank branch on Rue Luber. Xiang Yougui, who shares a stove with him, works as a gatekeeper at the Zhonghua Vocational Education Society at the intersection of Huanlong Road and Huaihai Road. Xiang and Lin have a feud due to trivial matters. Xiang harbored a desire for revenge. The other day, Xiang conspired with Cang Shunzhi (31 years old, from Jiangbei), a tea room attendant at the Zhonghua Vocational Education Society, to order Cang to hide a white-clad Lang brand pistol in Lin's room, intending to hide it behind the door. At that time, Lin happened to see it and caught Cang, who was brought to the police station along with the pistol. Cang confessed that Xiang Yougui had instructed him to plant the pistol and falsely accuse Lin, but he had no prior grudges with Lin. According to the confession, the police chief immediately sent detectives to arrest Xiang Yougui, but he had already deserted his post and fled. The police chief ordered Cang to be detained, awaiting the arrest of Xiang, before further investigation.</p>
+<h3>Three Kidnappers Convicted</h3>
+<p>Deng Zhonghe, the owner of Anle Cotton Weaving Factory, lives at No. 650 Anhe Temple Road. His 14-year-old son, Zhixiong, attends a school nearby. On the morning of November 8th of the previous year, at 7:00 AM, when Deng Zhixiong was on his way to school, he was suddenly accosted by several kidnappers on Route des Chasseurs who abducted Deng Zhixiong and sent a letter demanding a ransom. Later, Deng's family paid a ransom of 35,000 yuan to release him. Song Shaomei, a detective from the Xinzha Police Station, arrested the perpetrators Xue Baozhen, Wei Shoushan, and Li Jianqi at No. 64 Kuling Road. They have been tried and were sentenced yesterday. Xue Baozhen and Wei Shoushan were jointly sentenced to seven years of imprisonment for extortion and illegal detention. Li Jianqi was sentenced to four years of imprisonment.</p>
+<h3>Foreign Bankers' Association Announces Check Clearing Procedures, Aiming to Increase Clearing Efficiency, Effective August 17th</h3>
+<p>The Foreign Bankers' Association, recently re-elected, has revised its clearing rules in order to improve the efficiency of check clearing, effective August 17th. The reporter obtained the original English rules, which are translated as follows:</p>
+<p>The original name "Foreign Bankers' Association Shanghai Currency Check Clearing Procedures" shall be changed to "Foreign Bankers' Association Central Reserve Bank Note Check Clearing Procedures."</p>
+<p>Articles 6, 7, and 9 of the "Foreign Bankers' Association Central Reserve Bank Note Check Clearing Procedures" regarding the time of clearing are revised as follows: A. The above-mentioned time shall apply from March 1st to November 30th of each year. From December 1st to February 28th (or 29th) of each year, advance the above-mentioned time by one hour. B. If there is sufficient reason to refuse payment of a check, it may be returned before 10:00 AM the next morning.</p>
+<p>In order to ensure the accuracy of the check clearing time, the following penalties are established: A. The clearing agents dispatched by each member bank must arrive at the clearing house on time. If there is a delay, a fine of 5 yuan in Central Reserve Bank Notes will be imposed for every five minutes of delay. This penalty shall not apply in the event of a delay due to unforeseen circumstances such as the implementation of a lockdown under martial law. B. The check clearing statement must be submitted within 20 minutes after the start of check clearing. The clearing house staff will be fined 5 yuan in Central Reserve Bank Notes for every five minutes of delay. C. If there is an error in the check clearing statement submitted by the clearing agent of each bank, and the clearing house staff notifies the agent, but the agent fails to correct the error within 15 minutes, a fine of 3 yuan in Central Reserve Bank Notes will be imposed for every five minutes of delay. If it cannot be determined who is responsible for the error, the clearing house staff may conduct the necessary investigation to determine the responsible party. The decision made by the clearing house staff shall be final. D. All fines shall be kept by the committee organized by the clearing agents of each bank.</p>
+<h3>Consultations at the Plague Hospital</h3>
+<p>According to a reporter from the Datong News Agency who inquired at the Shanghai Plague Hospital, from July 1st to the 13th, the hospital received a total of 310,008 patients. Since the first discovery of genuine cholera, the hospital has examined 352 cholera patients as of the 13th, of whom 58 have died without treatment. Approximately 10 to 20 new cases of cholera are confirmed daily. The hospital administers cholera vaccinations to approximately 1,000 people per day.</p>
+<p>Hotel Industry Donates Clinic Vouchers</p>
+<p>Readers of the newspaper are requested to direct poor and sick people to obtain clinic vouchers from the front desks of the following hotels. All critical and rare diseases can be treated. Far East, Great China, Chiao Lok, Continental, New World, First Fragrance, China, Shenzhou, Mengyuan, Garden, Old Orient, Central, Central South, Nanjing, Huizhong, Qinghe, Heming, Changchun, Guest House, Hongfu, Wing On, Liangxi, New Su Tai, Yuanyuan Yuji, Yuanyuan Xieji, Yuanyuan Qiaji, Zhonghe, Hu Tai, Xinmin, Mingyuan, Merchants, Luming, Lin'an, Five Continents, Xinhua, Pujiang, Public Security, Yunsheng, Lao Dafang, Longsheng, Songjiang, Ji, Tongligong, Jiahe, Changhua, Wuxi, Shenjiang, Hygiene, Zhongxin, Jiuhua, Jiangsu, Asia, Jincheng, Qichang, Pingjiang, Shanghai New Hotel, etc.</p>
+<h2>Page 5</h2>
+<h3>Sending Relief to the Poor in This City: Applications Started Yesterday, Providing Travel Expenses to Facilitate the Return of Civilians to Their Hometowns</h3>
+<p>The Shanghai Branch of the Relief Committee, in consultation with the Shanghai Municipal Council's Chinese Evacuation Committee, is actively handling repatriation and relief matters, as reported in this newspaper. Here are the details of the relief measures: The relief standard is that for poor people returning to their hometowns from Shanghai, if the amount of 30% of the total travel expenses is less than 25 yuan, each person will be subsidized 30% of the total travel expenses. If the amount of 30% of the total travel expenses exceeds 25 yuan, each person will be subsidized 25 yuan. However, because the prices of train and boat tickets from Shanghai to one destination vary among travel agencies, in order to unify and facilitate calculations, a standard amount of subsidy for travel expenses to the destinations of poor people returning to their hometowns has been formulated in accordance with the aforementioned standards, based on the distance of the journey and the amount of travel expenses, as follows: 3 yuan for Chuansha, Baoshan, Nanhui, Luodian, Songjiang and other districts under the jurisdiction of Shanghai City; 4 yuan for the Kunshan area from Shanghai; 5 yuan for Jiaxing and Wuxi from Shanghai; 10 yuan for Hangzhou, Ningbo, Shaoxing, Taizhou, Zhenjiang, and Jiangyin from Shanghai; 13 yuan for the Jiangbei area of Yangzhou from Shanghai; 15 yuan for Nanjing, Pukou, and Wuhu from Shanghai; 20 yuan for Bengbu and Qingdao from Shanghai; 25 yuan for Xuzhou, Hankou, Xiamen-Chaozhou, Beijing, Tianjin, Hong Kong, and Guangzhou from Shanghai.</p>
+<p>Implementation Measures</p>
+<p>The branch committee will print repatriation application forms and relief tickets and send them to the Chinese Evacuation Committee for use. Poor people returning to their hometowns from Shanghai who need assistance should first fill out an application form at the Chinese Evacuation Committee, find an introducer and a guarantor, and after being deemed qualified by the committee, a notice of approval will be issued and a relief ticket will be issued temporarily. The committee's seal will be affixed to the relief ticket. The returning person will present the pass and relief ticket to the branch committee for verification. The branch committee will affix its seal to the relief ticket, and the returning person will affix their seal or right thumbprint. The relief ticket will then be collected and kept for future reference. Then, in accordance with the amount filled in on the relief ticket, the subsidy will be issued to the returning person. At the same time, the pass will be returned, with a blue stamp "Subsidized by the Shanghai Branch of the Relief Committee" affixed to the back. The Chinese Evacuation Committee shall send a list of the number of relief tickets filled out and the amount approved each day to the branch committee for future reference. The branch committee shall compile a semi-monthly report listing the number of relief tickets collected and the amount disbursed each day and submit it to the Relief Committee for future reference. A list of poor people repatriated with relief shall be compiled based on the relief tickets collected. This batch of relief for repatriation is limited to the period from August to September 14. If necessary, social forces will be engaged to raise funds separately.</p>
+<p>Mr. Ding Fubao's New Book Published, Distributed to Those Offering Birthday Greetings</p>
+<p>Mr. Ding Fubao's new book, "How to Create My Healthy Life," has been published as scheduled. It was delivered to our library yesterday. From today until the 30th of this month, it will be presented to those who sent birthday gifts to Mr. Ding to express our gratitude. It is reported that this book is a commemorative work for Mr. Ding's fifty years of writing, with content covering all aspects of self-cultivation, health maintenance, and mental and psychological training. We hope that those who sent congratulations will come to our library to pick up the book as soon as possible. However, you must bring your thank-you note from that day to claim the book. All books must be claimed within half a month, and no books will be sent after the deadline.</p>
+<p>School News</p>
+<p>Jingguang Middle School: Jingguang Middle School was founded by Yang Chongbi and Bian Shukun. The school is located on the fourth floor of the Bank of Communications at No. 7 The Bund. It is divided into senior and junior high schools. The second admission examination is scheduled for August 20. In addition to being designated as a school for assisted students by the Scholarship Committee of the Zhenjiang Shanghai Fellow Association, the school also has 30 half-fee student places each for senior and junior high schools. At the same time, it has donated five free places each for the Xin Shen Er Bao newspapers.</p>
+<p>Shanghai Women's Middle School: Shanghai Women's Middle School at No. 51 Xin Dagu Road has scheduled the second admission examination for August 20. In response to the requests of most of the old students' parents, the tuition fee for senior high school has been reduced to be equal to that of junior high school, and the deadline for paying the reservation fee has been extended to the 15th of this month.</p>
+<p>Mingxin Accounting School: Mingxin Commercial Accounting School at No. 18, Lane 531, Henan Road, offers more than 30 courses in various bookkeeping and accounting for both junior and senior college groups. In order to adapt to education in this extraordinary period, a crash course in accounting for junior and senior college groups has been established, which can be completed in one year, allowing graduates to work as accountants in the industrial and commercial sectors. Additional training classes in banking accounting and insurance accounting have been opened, with 100 fee reduction places and 10 scholarship places. Classes begin on September 7.</p>
+<h3>Implementation of Epidemic Prevention Injections in the Two Concessions: Over 2.5 Million People; French Concession Adds Injection Teams, with Over 1,900 Cases of Infection</h3>
+<p>The Shanghai Times reports that the French Concession Health Department yesterday (the 13th) added personnel to administer epidemic prevention injections to residents on the streets. Seven injection sites were added at street corners from the Bund to Avenue Haig. However, it was reported that due to the commemoration of August 13th and the city's state of alert, the injection work was somewhat relaxed.</p>
+<p>Official sources reported that the total number of injections in the two concessions from March to Wednesday of this week was 2,551,652. Of these, 1,422,939 were in the International Settlement, and 1,128,713 were in the French Concession. The number of injections on Wednesday was 34,133 in the International Settlement and 30,435 in the French Concession.</p>
+<p>The injection teams added by the French Concession for street injections were all located in densely populated areas, such as in front of the Great World amusement park on Rue du Père Robert, in front of the Avenue Joffre fire station, at the corner of Avenue Albert and Avenue Joffre, and at the corner of Avenue Albert and Route Paul Henry. The remaining sites were located in the area of Avenue Haig and Rue de la Caserne.</p>
+<p>The French Concession health authorities revealed that the Health Department has requested the French police to take advantage of the commemorative security measures for the Shanghai War to inspect the epidemic prevention certificates of pedestrians entering and leaving the French Concession. This measure is easier to implement because many roads are closed, leaving only important thoroughfares open for traffic.</p>
+<p>Since July, the total number of tiger epidemic reports received by the municipal health authorities has reached 1,951. The highest number of cases occurred in the Chinese areas, totaling 1,244, with 231 deaths; 368 cases in the French Concession, with 53 deaths; and 349 cases in the International Settlement, with 69 deaths.</p>
+<h3>Essential Guidelines for Family Air Defense and Firefighting (2)</h3>
+<p>Third: Family and family air defense team's firefighting and other defenses.</p>
+<p>Peacetime Preparations: (A) Each household should designate an air defense负责人 (fùzé rén, person in charge), who will allocate tasks based on the number of people who can be active during an air raid (those engaged in air defense). (B) The air defense负责人 should supervise those engaged in air defense to fulfill their tasks, promptly engage in fire prevention, and select safe shelter locations to avoid bomb fragments, etc. (C) The family air defense team should establish protective monitoring posts in appropriate locations within the area during air raids, but depending on the circumstances, several teams may combine to set up one post. (D) Fire prevention equipment and tools from Chapter 2 should be prepared in advance. (E) The family air defense team leader should coordinate the area's防次 (fáng cì, defense sequence) preparations.</p>
+<p>Actions to be Taken When the Air Defense Order is Issued: (A) The air defense负责人 of each household should check the fire prevention preparations and immediately replenish any deficiencies. (B) Volatile oils, alcohol, and other flammable and dangerous items should be properly prepared in advance and, when necessary, buried in the soil or placed in other safe locations. (C) The family air defense team leader should specifically stipulate the order of persons engaged in protective monitoring, methods of service, and other matters. (D) The family air defense team leader should have prior contact with the air defense负责人 of each household in the area regarding the handling of the elderly, young, and sick after an air raid report is issued, as well as the guarding of empty houses.</p>
+<p>Actions to be Taken When a Precautionary Alert is Issued: (A) Store flammable items in designated containers, bathtubs, and other large water storage containers. Fire prevention equipment should be placed in designated locations. (C) Tidy up the interior of the house, paying particular attention to closets and storage cabinets, ensuring that flammable materials are not placed under the roof or under the bed. (D) The family air defense team leader should check the fire prevention preparations of each household in the area and, if they find that the equipment is not properly equipped or other matters are unsatisfactory, they should urge the household to pay attention.</p>
+<p>Actions to be Taken When an Air Raid Alert is Issued: (A) Those engaged in air defense should each fulfill the tasks previously assigned to them and promptly carry out the following: 1. All charcoal fires, kerosene stoves, electric stoves, and other fires should be completely extinguished, and the main gas valve should be closed. 2. All water storage containers should be filled with water and placed in designated locations. Do not let the tap run without being turned off. All glass window shutters near neighboring houses should be closed, but there is no need to lock or bolt them. (B) After completing the above-mentioned measures, those engaged in air defense should immediately change into protective clothing and then patrol back and forth inside the house and other locations. (C) The family air defense team leader should go to the area to inspect the status of each household. ( ) Protective monitors should engage in monitoring at the protective monitoring post. (E) Upon receiving a report from a protective monitor of the discovery of an enemy aircraft or hearing the sound of bombing, or upon discovering or hearing it themselves, those engaged in air defense should immediately take shelter in the designated location. (To be continued)</p>
+<h3>Needy Students Receiving Aid in Primary and Secondary Schools: Pay Attention to the Date of Receiving Funds; Primary Schools from the 17th, Secondary Schools from the 21st</h3>
+<p>The Shen Bao Readers' Scholarship Fund for university students and free quota places for various schools will continue to process applications and registrations from today until the 20th. As mentioned in yesterday's newspaper, the approved list for the primary school group has been published in the past three days on the 11th, 12th, and 13th, and payments will begin on the 17th. The list for the secondary school group was also announced starting yesterday, but the payment date for the secondary school group will be from the 21st of this month. It is hoped that needy students will pay attention. In addition, it was learned yesterday that the Zhixing Night School (inside the Zhengxing Girls' School at the eastern end of Foch Road and Chongqing Road) has donated ten free quota places. The school's management is strict, the curriculum is substantial, and it is suitable for the actual needs of society. Classes are held every night from 6 pm to 9 pm, from primary school to junior high school. All impoverished out-of-school children and industrial and commercial employees can apply to this newspaper according to the procedures. If they pass the review, they will be immediately introduced for free admission.</p>
+<p>Yesterday's Donations</p>
+<p>The Shen Bao Readers' Scholarship Fund received generous donations from various sectors yesterday, for which we are deeply grateful. The list of titles is recorded as follows: Zhenhe Xing and associates 500 yuan, Wang siblings 100 yuan, Mr. Jun 50 yuan, Bao Duofu 30 yuan, Bao Changshou 30 yuan, Fan Renfu 10 yuan, Mr. Xu 2 yuan. The above totals 722 yuan in Central Reserve Bank notes. Previous balance: 177,223.82 yuan. Total: 177,945.82 yuan.</p>
+<p>Commercial News</p>
+<h3>Although the Pull of Retail Investors Is Not Weak, Public Bonds Are Ultimately Subdued by Physical Goods</h3>
+<p>Yesterday, the market conditions for unified public bonds were sluggish and continued to soften. Due to the tightening of credit, the potential of the bulls inevitably declined. People's minds were thus unsettled, and the floating longs seemed unstable. In addition, the outflow of physical goods was the biggest reason for hindering the interest of buyers. Therefore, when the market opened in the morning, although Category C was already showing signs of fatigue, it once saw a high price of over 9.60 yuan due to the pulling of retail investors. Later, as large investors emerged and floating longs pushed the market down, the selling pressure was strong for a time, and the market lacked support and was ultimately subdued. Judging from the trend, it was the dumping by large investors, which was not without its factors, and the pulling power of buyers seemed not weak. Therefore, if the outflow of physical goods can be slightly reduced, the market will not be seen to decline sharply. Otherwise, if sales continue to increase, there is still the possibility of a slight decline. The overall market buying and selling was once lifted by Tongsheng, Lianyi, Tongyu, Xinfeng, Tongli, Hongda, etc., and Category C saw a high price of 9.60 yuan. Afterward, as large and medium-sized lots emerged, along with the late selling by Lianhe, Yuanhe, Yuxin, Tonghe, etc., the market state was unable to rise, and was ultimately forced down. As a result, the prices uniformly fell by 2 to 8 jiao. The transaction volume was about 2.5 million yuan. The details are listed below.</p>
+<h3>Most Chinese Stocks Fell, Few Rose; Trading Still Feels Brisk</h3>
+<p>Yesterday, the market conditions for Chinese stocks were mixed. Because Zhabei Water and Electricity was under selling pressure, the decline was very sharp, with a 2 yuan decline, falling from 35 yuan to 33 yuan, ultimately falling 1.5 yuan compared to the previous day. The Philippines Business atmosphere followed the decline by half a yuan. Department stores Wing On and Sincere reduced by 2.5 yuan. Due to the excessive decline before the holiday, underwear was absorbed by strong players, and rose by 2.5 jiao. Culture stock China Bookstore had few buyers, and unexpectedly fell to within 180 yuan, down 7.5 yuan. World fell 5 yuan. Commercial Press uniquely received the favor of buyers, and rose by 2.5 yuan. New pharmaceuticals only Sino-French fell another 1.5 yuan, and the rest turned firm. New Asia rose 2.5 jiao, Minyi rose 2.5 yuan, and Ning Shao Shipping reached a maximum of 78 yuan on the news of favorable buying, with buyers active. Despite the confused state of mind of all parties, transactions were not scarce. The stock prices are recorded below.</p>
+<p>In the midst of the thriving Chinese stock business, financial and industrial figures in this city, such as Li Zuxun and Zhu Haichu, have recently initiated the organization of the Dagong Stock Company, located at No. 190, Dongya Building, Sichuan Road, which is about to open.</p>
+<h3>Settlement of Tobacco and Sugar Is Very Cumbersome, Military Tickets Continue to Rise</h3>
+<p>Yesterday's foreign exchange market saw Japanese military tickets continue to rise, as the inventory of the same industry has been limited recently. The settlement of cigarettes has not been cleared, and sugar merchants have come to settle. Moreover, the commission for settlement and transportation to banks also requires about 5.58 yuan, so it has risen to 5.5567 yuan, causing banks and small money shops to sell at 5.565 yuan in the market, but the purchase is still 5.545 yuan, and some say 5.55 yuan.</p>
+<h3>Ornament Gold Still Suspends at the Original Price; Prices of the Same Industry Doing Business with Each Other Recover Firmly</h3>
+<p>Yesterday, the market price of jewelry gold at Dashin and other jewelry shops in this city was still 2,200 yuan per tael (350 yuan less for purchase). The market selling price of cash shops was also suspended at 2,200 yuan, and the purchase price was suspended at 2,000 yuan, but in fact it had to be reduced by 300 yuan. The prices of the same industry doing business with each other recovered firmly. In the morning, the price was as high as 10 yuan per tael, at 1,940 yuan. In an instant, it rose 20 yuan in buying, to 1,960 yuan, but soon saw a pullback, falling to 1,940 yuan. At noon, it was 1,945 yuan, up 15 yuan compared to the previous day, with a high and low of 20 yuan. Transaction volume recovered rarely. The price of patterned silver for jewelry was still suspended at 16 yuan per tael, and the price for the same industry to do business with each other was 11.23 yuan.</p>
+<h3>There Is Still Searching and Gathering for Piece Goods</h3>
+<p>Yesterday's cloth market in Dongpi, although the rise was mostly hovering, a certain gang still took extra care to search and gather. The new price of 12-pound Longtou fine cloth has reached 183.5 yuan, and the bank price is 159.5 yuan. Caiqiu fine cloth is 166 yuan, Yanghe is 163 yuan, and Sijunzi serge opened at 7.2 yuan on the red order, reaching a high of 7.43 yuan, and closing at 7.4 yuan. The bank price is 6.52 yuan.</p>
+<p>Factory cloth continues to be popular and profitable, but actual sales are few. 16-pound Zhi Qiu coarse cloth is 168 yuan, Feihong is 165 yuan, 9-pound Xinzi is 108 yuan, 8-pound Zhenzhong is 105 yuan, Changshou Fuchou is 5.9 yuan, and although Xinfu cheeseline opened at 253 yuan, and An'an blue cloth is 180 yuan, Peach Lady Lin opened at 249 yuan on the new order, and finally opened at 261 yuan.</p>
+<h3>Wheat Bran Inventory Is Low, Prices Are High</h3>
+<p>Yam and Dried Goods Are Mainly Rising</p>
+<p>The supply and demand of beans is still balanced, and the market continues to show little change. Yesterday, 50 bags of Tianjin green soybeans opened at a price of 230 yuan, and 20 bags of red beans opened at a price of 167 yuan.</p>
+<p>Recently, due to the scarcity of goods in the production area, those who hold yam and dried goods are all trying to push prices up, and the market is rising. Yesterday, more than 20 bags of Shandong yam and dried goods in single-line bags opened at a price of 108 yuan, and 40 bags of Qingdao yam and dried goods opened at a price of 120.05 yuan, including burlap bags.</p>
+<p>The domestic sales of bean cakes are still sluggish, and the market is stable. It is estimated that 200 pieces of Xingji bean cakes for April from Wangu stack opened at a price of 62 yuan, and 500 pieces for May opened at a price of 62.25 yuan.</p>
+<p>The market inventory of wheat bran is decreasing day by day, and people's minds are quite cheerful. Sanyin small bags of wheat bran from the countryside opened at a price of 102 yuan for the month of April from a certain village assistance agency, up another 2 yuan compared to before.</p>
+<h3>Jiangbei New Wheat</h3>
+<p>20,000 Bags of Dumping</p>
+<p>Already Traded</p>
+<p>Price 143 Yuan to</p>
+<p>141.5 Yuan</p>
+<p>The source of wheat in this city has not shown significant expansion recently, but dumping has opened. It is heard that more than 20,000 bags of Jiangbei wheat have been traded, with prices ranging from 143 yuan to 141.5 yuan.</p>
+<h3>Sugar Prices See Decline</h3>
+<p>Yesterday, the sugar stock division of the Sugar Merchants' Cooperative Business Office opened at 298.5 yuan for coarse sugar, down 0.5 yuan from Wednesday, and 287 yuan for red sugar, down 1 yuan. However, (August 13th) is the 5th anniversary of the Shanghai War, and the association is closed, while the demand from industry insiders is more urgent, so they bought at low prices, and a total of 1,000 bags were traded, and the trend was stable.</p>
+<h3>Hoarding and Absorption Are Active, and the Rise in Cigarette Prices Resumes</h3>
+<p>Under the hoarding of cigarettes by hoarders and the pulling by speculators, market prices have suddenly become tight, and buyers want to choose new goods, and few ask about old goods. Due to the scarcity of Japanese cigarettes, the market is following the rise, with Daying brand cigarettes at 8,500 yuan, Old Sword brand at 5,650 yuan, Pinhai brand at 5,000 yuan, Wuhua brand at 3,700 yuan, and Fairy brand at 4,100 yuan, up more than 100 yuan compared to before. The above are the prices of new goods. Japanese cigarettes Golden Gun brand is 1,700 yuan, Golden Building brand is 1,100 yuan, Red Rose Soul brand is 2,600 yuan, Quanlu brand is 1,900 yuan, 20-branch Quanlu brand is 1,920 yuan, Zhinan brand is 1,500 yuan, national cigarette Golden Mouse brand is 1,800 yuan, Meili brand is 3,100 yuan, and Pyramid brand is 3,100 yuan, all tending towards briskness.</p>
+<h3>Sports News: Vita-Rich Cup Volleyball Charity Tournament to Open at the China Youth Tonight; Xingren United Team to Participate in Performance; Women's Vita-Rich vs. Blue Star</h3>
+<p>The Vita-Rich Chemical Company is holding the Vita-Rich Cup Volleyball Charity Tournament, scheduled to open tonight at 7:30 pm in the gymnasium of the Eight Immortals Overseas Chinese Youth Association. Mr. Wen Lanting will be invited to preside over the opening ceremony, and Mr. Jiang Guofang, chairman of the company, will auction off the competition ball in public. All proceeds will be donated to the Civilian Hospital and Jimin Hospital for expenses. Tickets are divided into two types: 5 yuan (honorary) and 2 yuan (ordinary). There are three preliminary performance matches. First, women will take the stage, with Vita-Rich vs. Blue Star. The former has many fierce generals and its strength can be described as extraordinary. In addition to the original lineup of first-class players, it has also obtained the assistance of two tiger generals from the Patriotic Stage, Wang Weizhen and Wang Yinlan. Blue Star is also a new and powerful team with strong combat effectiveness, with famous generals such as Sun Huizhen and Wu Changzhu. The first time these two women's armies meet, there will be wonderful moments. The second match will be the White Team vs. Vita-Rich. The former has a long-standing reputation, and its record in the West China Volleyball League is remarkable. The Vita Team is a combination of the elite volleyball teams in Shanghai. The main attraction will be the performance of Xingren vs. the United Team. Xingren is a pseudonym for Shanghai Star, and the United Team is an incarnation of Yinghua. Both lineups are dominant in Shanghai. Today's schedule is as follows: Vita-Rich -- Blue Star (women's performance, 7:30 pm), Vita-Rich -- White Team (men's performance) 8:30 pm, Xingren -- United Team (men's performance) 9:30 pm.</p>
+<p>Various News from All Walks of Life</p>
+<p>The Jue Lü Gechang Tea Room and Snack Shop, No. 242 Yuchiang Road, has been attracting tourists and filling up every day since its opening at the beginning of the month due to its strong lineup and luxurious equipment. It is heard that in order to meet the needs of all walks of life, the place will start offering tea room snacks from today. The tea room will be open from 7:00 am to 2:00 pm, and the snack shop will be open all day. Longjing fragrant tea is sold for only 6 jiao per pot, and there are also sacrificial dishes available for all walks of life to try.</p>
+<p>The Huayi Insurance Company Opens: Business tycoons Cao Lanxin, Xu Jutao, Kang Sixin, Cai Enqing, Cao Keshan, and Wang Zongguang have initiated the organization of the "Huayi Insurance Company" on the fifth floor of the Thames News Building. It is heard that preparations are about to be completed, and a lucky day will be chosen for the opening. The chairman of the board is Cao Lanxin, the directors are Kang Sixin, Cai Enqing, Cao Chubao, Xu Juting, and Chen Wulu, the supervisors are Liu Shisheng and Cao Chihong, the general manager is Cao Chubao, the manager is Wang Zongguang, the assistant managers are Cao Zifu and Cao Chihming, and the business director is Xue Changqing, specializing in all kinds of loss insurance businesses such as water and fire.</p>
+<p>Looking for Old Woman Chen Shen</p>
+<p>Chen Shen, 81 years old, with a Chongming accent, lives at No. 467 Haining Road. At about 8:00 am on the 8th of this month, she went out to shop, but has not returned since. Although the woman is old, she walks as strongly as a middle-aged person, and is absolutely not dragon-bellied, so she should not have suffered an accident. Six or seven days have passed, and the family is in a state of anxiety. At that time, she was wearing an old Xiangyun gauze shirt, black pants, blue cloth socks, and pointed black shoes. If she is lost, we hope that a kind gentleman has taken her in at his residence. Please accompany her to No. 226 Junqing Road, telephone 36575, so that family members can reunite. We will be infinitely grateful.</p>
+<p>Lost and Found Gift Certificate: Mr. Qian Chongyan from the South City was walking through the intersection of Fujian Road and found a gift certificate, which was handed over to the 44th member of the 11th Self-Defense Regiment of this newspaper for safekeeping. If you have lost it, please explain the serial number and number of the gift certificate and collect it within three days from the Self-Defense Regiment Headquarters on the seventh floor of the Wu Gong Hostel. Overdue, it will be used as a loan for primary schools. This is specially announced by the Third Self-Defense Regiment of the Fourth Joint Defense of the Lao Zha District, August 14.</p>
+<h3>The Navigation Cup Small Ball Tournament Closes; Shengli Wins the Overall Championship</h3>
+<p>The Aviation Cup Small Ball League held its final at Guangxia yesterday morning. In the first match, the third-place match was between Zhengxingchang and Tieqi. As a result of the battle, Zhengxingchang defeated Tieqi with a score of 1-0, ranking third. The second match was a performance match, with Laoye losing to Yingxing with a score of 2-0. In the final, Shengli faced the W Team. The latter's strength was slightly diminished, and Shengli did whatever it wanted. As a result, Shengli overwhelmed the W Team with a score of 5-1, and won the overall championship. The W Team finished second. After the game, the awards were given by Xu Guisheng and his son, and there was also a bat auction, with Xu's eldest son purchasing it for 1,000 yuan to fund the Xia Guang Middle School Scholarship. The competition was thus declared successful.</p>
+<h3>Sports Briefs</h3>
+<p>Today's schedule for the Industrial Cup Basketball League: Dianlian vs. Vita-Rich ( ) at 4:00 pm, Lei Team vs. Nanhua (Industry) at 4:30 pm, Xinyi vs. Feishe (Industry) at 5:20 pm, Youlian vs. Zhonglian (Bao) at 6:00 pm.</p>
+<p>The Lianhua Table Tennis Team, organized by colleagues of the Lianhua Insurance Company on the Bund in this city, and guided by Liang Jintang, is now challenging all walks of life. Yesterday's newspaper was published at 6:35 pm.</p>
+<h2>Page 6</h2>
+<p>Entertainment Industry</p>
+<p>Visiting Stage Performers</p>
+<h3>Zhang Bei, a Woman with a Husband's Demeanor</h3>
+<p>— Weiren</p>
+<p>Zhang Bei, this girl from the north, is a new face on the Shanghai stage in 1942. She is twenty-two years old this year, from Xi'an. Her father has passed away, and she only has a mother and an elder brother at home. When she was eight years old, she went to Nanjing to study. During her student days, she was most interested in the Chinese language course, so her writing now is also very fluent and expressive. At the age of eighteen, she was in the second year of high school at Nanjing Huiwen Girls' High School, but because of the outbreak of war, she painfully left the place where she had lived for ten years and returned to her hometown of Xi'an.</p>
+<p>At this time, Dai Ya, the person in charge of the China Drama Society, was also performing dramas at the Yisushe Theater in Xi'an. She simply felt a love for "drama" and joined the theater's performance. Her first play was "Yeguang Cup," in which she played the heroine Lili. Her performance was very successful, and the local media unanimously recommended it. The theater's performances were for voluntary donations, and the highest ticket price was sold for 60 yuan. "Yeguang Cup" was performed for half a month, and the box office results were always around 80% to 90%.</p>
+<p>Later, she also performed the solo drama "Military Horn." In "Military Horn," she acted with Bai Yun, which can also be said to be Bai Yun's debut on stage. Then, she followed the traveling theater troupe led by Ding Ling to perform in the countryside of Xi'an. The plays performed included "Attack," "Put Down Your Whip," "Blind Mute Hatred," and "Black Hell." At that time, Mei Xi's wife, Mo Yang Hongying, was also hanging out with her.</p>
+<p>She left Xi'an and traveled through Kunming, Hankou, Guangzhou, and Hong Kong to Shanghai. She didn't come to Shanghai to act, but after the outbreak of the Pacific War, she separated from her brother and stayed in Shanghai alone.</p>
+<p>When Hongbao was established, Mei Xi invited her to act, so she showed her face on the stage in Shanghai. -- Di Siniang in "Returning Soul Incense," Marie in "Camellia Girl," Chen Bailu in "Sunrise," and the Second Madam in "Three Smiles." In four months, she has performed various different characters with various identities and personalities.</p>
+<p>Now she has been recruited by Lüyi, and her first play is playing Yao Dajie in "In Spring," which is another kind of bold and straightforward style.</p>
+<p>This girl from the north has a husband's demeanor. She means what she says and doesn't beat around the bush, so she lacks training and cultivation in dealing with people and the art of living.</p>
+<h3>A Record of Cool Summer Singing (3)</h3>
+<p>— Su Shaoqing</p>
+<p>After Song Dezhu and her classmates arrived in Shanghai after being hired by the New Stage, Mr. Lu Xu Chen Huang and others from the Shanghai drama circle prepared wine feasts one after another to wash away the dust for them. I sat in on all of them. Dezhu's face is beautiful and her figure is slender. She doesn't look like someone who performs martial arts with swords and horses. When I saw her drinking very boldly, drinking several large glasses in a row without getting drunk, I realized that I have been accumulating grievances in my heart for years, and my stomach for alcohol is quite wide. Whenever I meet good friends, I never refuse to get drunk. That day, Dezhu repeatedly raised her glass to toast the guests, and the guests were all defeated. I also retreated three houses. It is said that I have stomach and intestinal problems now, and I don't dare to drink too much. In the past, there was no such news. I could drink ten catties of Shaoxing wine. From this point of view, I know that she has a gentle appearance but contains boldness inside. It is appropriate for her to end up on stage, agile and heroic, with the momentum of attacking the wind and sweeping. I asked, "Ten years ago, when I traveled to Beiping, I visited the drama school. In the south room of the backyard, I was practicing martial arts. A table and a stool were set up in the courtyard, and the old actor Yu Yuqin was telling the play. Standing next to the table were two or three children listening. Who was that?" Dezhu said, "At that time, that child was me." Guan Deqi said, "Those who practiced martial arts were us." Only ten years have passed, and those who were children at the time have all become famous. Time really flies like an arrow leaving the string.</p>
+<p>Cao Xianlin, Li Huifang, etc. sang Qing at the banquet. Mr. Wu Guozhang, head of the Rishe box office, and the owner of Meihua Pavilion sent invitations. I arrived the latest and saw old friends I hadn't seen for many years were all in attendance. The owner of Meihua Pavilion introduced two women, one Cao Huilin, who specializes in Qingyi, and one Li Huifang, who specializes in Tan-style old men. They are both big stage roles. Song Dezhu and Li Hehui were also in the guest seats. In the middle of the happy drinking, someone proposed that everyone present must sing a passage. Those who do not sing will be fined three large cups of wine. Song and Li suddenly left. People in the pear orchard have a custom of not liking to sing Qing in restaurants and restaurants. Also, Renewal happened to be the first day that Song Zi et al. performed on stage, so it is appropriate to reserve their voices, so they escaped the feast and should be forgiven. So Li Huifang sang first, singing four lines of the Erhuang Yuanban "For the Country" from Hongyang Cave. Her voice was very good. In my drunken eyes, I saw that her body was quite tall and had a healthy beauty. Among the Kun-style old men, it is rare to find such a talent, but I think her voice is not very suitable for Tan tunes. I listened to Mr. Yuan Ludeng sing. Mr. Yuan Ludeng sang, and the teacher never refused to sing a passage of "Zhang Gongdao is Thirty-Five or Six Sons Have a Backing." He had a peaceful attitude and was a Jiangzuo Ruitian. Next, his son Senzhai sang four lines of the Lianhuan Tao, and then all the friends who sang well sang. Next, Mr. Gu Ziyan sang a passage of the Red Net "Dang Cao." Next, Ms. Cao Huilin sang four lines of "Er De Fu" from Fenhe Bay. The tune was studied in the Cheng style, and it had a great flavor. Her attitude was also beautiful. This beautiful woman has clear facial features, especially beautiful eyebrows, and has extraordinary intelligence. It will not be difficult to soar in the future. She has very good relationships, and there are many people who support her. Next, Mr. Xu Xiaolin sang a passage of "Listen to His Words." I studied with him ten years ago, and he still has a typical style. After that, the friends urged me to sing "One Round of Bright Moon" from the inn. I couldn't refuse, so I reluctantly accepted the order. I had to set the soft work to tune the strings, and I could still handle it. After singing, the friends didn't let me stop, and ordered me to sing "Listen to Qiao Lou," and ordered me to sing "Watch the Thief." After singing, I was sweating like rain, and the friends were very happy and praised me. My voice was not good after drinking, and I felt even more ashamed. (End). Liu Binkun, Furongcao, Yu Zhenfei, and other famous actors, as well as Weng Ouhong, Sun Lanting, Wang Gongjun, Jin Ciquan, He Haisheng, etc., were all assembled together, to the extreme of the joys of cup wine. They immediately invited all the students to visit the rehearsal of Da Tie Long Shan, and invited Mr. Weng Ouhong to give a speech. It was not until the sun set in the west that they dispersed happily. It is heard that the school plans to hire each of the famous actors as a counselor, to teach one or two classes per week. Mr. Li also plans to go north to inspect the organization of the classes in the birthplace of old plays, in order to improve the school.</p>
+<h3>Brief News</h3>
+<p>— Jin</p>
+<p>Zhang Yunshan, a calligrapher, excels in writing various styles of calligraphy. Major stationery and fan shops can schedule appointments to obtain his works.</p>
+<h3>Liang Shanbo and Zhu Yingtai</h3>
+<p>— Lan Ying</p>
+<p>"Liang Shanbo and Zhu Yingtai" is a folk tale known to all, young and old. In the minds of most people, it may be considered inappropriate to stage such a play. However, if we want to promote popular drama, "Liang Shanbo and Zhu Yingtai" is indeed good material. If handled well, it can assist in semi-popular education. This time, Mr. Fang Yi has followed up "Four Sisters" by writing "Liang Shanbo and Zhu Yingtai" as an attempt to practice popularizing and making drama accessible. The play has five acts and nine scenes. Zhu Yingtai in the play does not have the idea of ​​breaking away from the family to create a free new life, like Juehui and Shuying in "Home". Her going out is only based on her own emotions and wanting to breathe in some fresh air. "Liang Shanbo and Zhu Yingtai" points out the equality of the instinct for seeking knowledge between men and women, and the lack of freedom in love at that time. The playwright uses a beautiful and passionate poem, using lyrical techniques to introduce this folk tale, removing all the unreasonable mythological parts, such as the souls transforming into butterflies, and ending it with Liang's death. It is a complete tragedy.</p>
+<h3>Li Songling to Go North for Investigation</h3>
+<p>— Man Zi</p>
+<p>Li Songling, Chairman of the China National Opera School, hosted a banquet at his residence, the Maoling Villa of Fuli Lizhi, the day before yesterday (the 13th) to entertain Zhao Ruquan, Lin Shusen, Chu Jinping, Liu Wenkui, and Han Jinkui. "Roses Bloom Everywhere" imitates the expressions of Qiu Xia and Gu Yeke. Amateur Puppet Troupe performs "Primitive Man".</p>
+<p>Local educators, deeply aware of the profound impact of puppet drama on children's education, have initiated and organized the Shanghai Amateur Puppet Troupe, which has been established. The script for "Primitive Man" has been arranged and will be publicly performed soon. The artist Yu Zheguang will serve as the director. The play has been performed by the Middle School Children's Education Society in Shanghai and other places, and has been well-received. This time, in pursuit of excellence, everything from props, dubbing, to lighting will be perfect, and it will be a unique sight for the academic community.</p>
+<h3>Chatting with Huang Zongying: Discussing the Content of "Mandarin Duck Sword"</h3>
+<p>— Yi Qing</p>
+<p>Everyone is wondering why Huang Zongying is listed in the cast in the "Human World" program, but never appears on stage. In fact, Huang Zongying does appear. When Shali opens the curtains and Huang Zongjiang is arguing with many female workers, she is one of them. This is because in the Hua Yi's repertoire, regardless of importance, basic actors must participate in the performances. For example, Liu Jin, one of the main characters in "Human World," will perform as a palace maid in "Mandarin Duck Sword."</p>
+<p>By chance, I had a conversation with Huang Zongying for more than 20 minutes in Hua Yi's rehearsal room. She was sweating and wearing ancient costumes, practicing the movements of a character in the "Mandarin Duck Sword" play, so the questions and answers were brief:</p>
+<p>"After "Dai Zhan" in "Except for Wang Baochuan" and "Xiang Fei" in "Consort Xiang," this is the third time I've acted in a historical drama. It's really hard to act in historical dramas in hot weather..."</p>
+<p>"However, in this hot weather, rehearsing and performing don't feel that terrible. What I'm afraid of is that the results of the performance will not satisfy the audience who come to see the play in the heat."</p>
+<p>"I've read "Casting Love," and I've also watched "Casting Love." Both times, I was so moved that I shed tears. This time, the "Mandarin Duck Sword" being rehearsed, according to Mr. Yao Ke, is like an ancient Chinese "Casting Love." I'm really worried about whether I can play it well!"</p>
+<p>"What kind of story is 'Mandarin Duck Sword'?" I asked:</p>
+<p>"It tells the tragedy of the Degraded People in the Ming Dynasty. The Degraded People were oppressed by traditional racial concepts, not allowed to study, not allowed to change careers, and not allowed to marry non-Degraded People. There was a rich son among the Degraded People who used a false surname and diligently studied, preparing to stand up for the Degraded People. He privately got engaged to a girl with a pair of Mandarin Duck Swords. Unexpectedly, their secret was discovered. The young man committed suicide with the male sword, and the girl also stabbed herself in the abdomen with the female sword."</p>
+<p>This is indeed an ancient Chinese "Casting Love"!</p>
+<h3>Sharing the Same Boat Through Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(8) What Can Be Done?</p>
+<p>Although He Zixing was unable to bring back the master and servant of Wei Cheng, after He Zixing's inquiry, he learned that they had gone to Shanghai. This was no small contribution, and the Second Madam Ye could not help but comfort him and tell him to go to the kitchen to wash his feet and have dinner. Then she said to Cuizhen, "If Wei Cheng couldn't find his siblings, he should have come back. Why did they have to go to Shanghai?" Cuizhen couldn't guess the reason. She only came up with one idea: when they return from Shanghai, they will definitely return on Hong Qizhang's boat. He Zixing and Xu Jin'er, two farmhands, should go to Huagang every day to inquire when Hong Qizhang will return to Huagang. The Second Madam Ye thought this was a good idea and immediately summoned Magpie to tell He Zixing and Xu Jinfu to go to Huagang every day. Xu Jinfu felt that Ah Yu had gone out with the young master, and He Zixing had also been to Shuangqiao once, but he had not contributed anything, which made him feel inferior. So he went to Huagang Town once overnight, but it was still in vain. He didn't see Zhang Shurong, nor did he see Zhang Shurong's boat.</p>
+<p>It wasn't until the evening two days after He Zixing went to Shuangqiao that Wei Cheng and Ah Xing returned on Zhang Qiaorong's boat. The Second Madam Ye was overjoyed, looking at Wei Cheng as if he had been kidnapped by bandits and now released unconditionally. While Wei Cheng was having dinner, he told the Second Madam Ye about his visit to Old Madam Chen in Shuangqiao. The Second Madam Ye said, "He Zixing has already been to Shuangqiao. We know some things about Shuangqiao. The Chen siblings were not at home. Why did you go directly to Shanghai from Shuangqiao?" Wei Cheng said, "My purpose was to find Guoqi and Guofang. Since they weren't in Shuangqiao, I had to go to Shanghai. I also asked their old grandmother a question." The Second Madam Ye looked around the room and smiled, "We're all family, there's no one else here." Wei Cheng finished a bowl of rice and said, "I need to rest. I'll talk later." (155)</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.08.14.html", "next": "1942.08.16.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

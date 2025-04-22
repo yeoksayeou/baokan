@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.08.26 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 444 - 4924583</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>斯達林格勒戰役　已入決定性階段　德軍分兩鉗直撲該城　另一路向黑海岸推進</h3>
+<p>柏林二十五日同盟社電　布克上將所部機械化軍、在斯達林格勒西北衝過頓河後、已擊退蘇軍之猛烈抗拒、在頓河東岸向伏爾加河畔製造坦克車之要城斯達林格勒挺進、此間官方之宣布、對戰事詳情尚守缄默、惟表示激戰正在頓河與伏爾加河間之狹長地帶進行、斯達林格勒戰役、巳入決定性之階段矣、德軍係分兩路進撲該城、其南路在科台爾尼柯伏、並無新消息傳來、僅聞德軍已楔形深入蘇軍陣地、而激戰正在該區進行、至於德軍進攻蘇軍黑海陣地之戰况、德軍司令部未有詳報、僅知德軍係向海岸迅速推進、使蘇聯黑海艦隊根據地諾伏洛西　克之情勢更形危急、</p>
+<p>德元首行營二十五日海通社電　今午德軍戰報稱、羅軍佔領庫彭河口之泰姆利烏克港·庫彭河下游迤南、敵軍數度反攻、悉被擊退、敵被迫深入山地、德攀山軍佔領西高加索山之要隘數處、本月二十一日上午十一時、攀山軍一隊攀登高加索之最高峯（埃爾白魯芝峯拔出海面五六六·一公尺）、懸掛德旗、斯達林格勒之西北及南部、蘇軍雖奮勇抗戰、德軍父獲進展、蘇軍坦克車被擊毀五十二輛、頓河方面義軍與進犯之敵肉搏多次、終將敵軍擊退、德機畫夜猛炸斯達林格勒、兵工廠及他種軍事設施多處起火、運船兩艘在伏爾加河被擊沉、卡魯加之西南及梅棣恩之西北、敵機進攻未逞、爾齊夫德軍與敵步兵及坦克車隊激戰、蘇坦克車被擊毀六十三輛、伊爾門湖之柬南及列寗格勒、祇有局部之戰事、德機昨襲擊蘇聯之白海要港、即阿克安傑爾港、數處大火、</p>
+<p>瑞典京城二十五日哈瓦斯社電　一九四二年八月二十四日、將爲世界史上重要之一日、是日也、德軍開始總攻斯達林城外圍防綫中央要害、二十四小時以來、德方輕戰車野戰砲及步兵隊、源源不絕、開過頓河浮橋或由駁船遝輸、重要渡口有二、一在斯達林城西北三十七英里之凡爾契斯克、在前一處渡河之德軍部隊、想已截斷斯達林城通往莫斯科之鐵路、蓋此一鐵路在數段與頓河並行也、德軍此次對斯達林城之玫勢、仍取慣用之鉗形、一鉗即在北面之加且林期加耶、另一鉗則在西面之阿勃根納洛伏、兩處與斯達林城係同樣距離、總軍在兵力及戰車方面均佔優勢、空軍亦甚兇猛、斯達林城周圍堡壘、正被猛烈轟炸中、自頓河至伏爾加河沿途堡壘重重、惟兩河之間相距不遠、約爲三十英里至三十八英里、據德軍當局預測、斯達林城命運在本星期內當可決定、又據德報紀載、德軍攻到伏爾加河口之後、即爲第一次開到、「歐亞兩洲天然界綫、」暫時似可不再前進矣</p>
+<p>瑞典京城二十五日海通社電　英國廣播公司評論家賀爾今日稱、「若吾人目前尚不知高加索之蘇軍已處困境、並拒絕承認德軍向高　索之進展可與法國及烏克蘭最惡劣之時期相比、則吾人不管爲一盲人矣、共產黨某中央委員曾在無綫電中警告蘇聯人民稱、若德軍征服高加索後、對於蘇聯之影響甚重、當第一次世界大戰時、全歐洲反對德國、但今日德國可將其全力發揮於東錢之戰事、更擁有全歐經濟力及勞工之潛在力、現德軍距斯達林格勒僅四十至五十英哩、余信蘇聯之戰事已有新轉變、每况愈下之轉變、此新轉變足以增重戰事之困難、余信袋後之鍛鍊時期業已抵達矣」、</p>
+<h3>德英飛機　互施空襲</h3>
+<p>柏林二十五日海通社電　海通社得權威方面息、德國空軍昨晚大規模空襲英國、英國南部、東南海岸及密特蘭之軍事目標及重要設備皆爲德國高度炸彈彈及燃燒彈之目標物、造成相當之損害、並引起大火多處、</p>
+<p>柏林二十五日海通社電　德國官方今晨稱、英國飛機於昨晚在萊茵河區域各處投擲炸彈及燃燒彈、德機及高射炮隊共擊落英機十五架、</p>
+<p>倫敦二十五日哈瓦斯社電航空部今晨宣佈、昨夜英國上空並無敵機活動、但有敵機一架、在英格蘭南部沿海被擊落、</p>
+<p>倫敦二十四日哈瓦斯社電英德雙方長射程大砲、今日淸晨在大霧迷漫中、隔杜佛海峽互相轟擊、</p>
+<h3>西班牙一少女　酣睡四晝夜</h3>
+<p>西班牙安德傑二十五日海通社電　此間有年華雙十之少女、酣睡四畫夜、醒後亦不知渠已作長時間之睡眠、渠絕無病狀、西班牙醫師對於此項酣睡不勝驚異、</p>
+<h3>南美洲各國　對巴西表同情　阿根廷烏拉圭秘魯決定　以非交戰國權利予巴西</h3>
+<p>阿根廷京城二十四日哈瓦斯社電　巴西向軸心國宣戰之後、頃悉阿根廷政府已決定步烏拉圭後塵、以非交戰國權利、給予巴西、同時秘魯政府、亦已採取同樣決定、普拉多總統聞將建議召開南美洲各國聯席會議、俾對於拉丁美洲之防務、有所調整、此外、叉據巴西京城消息、伐爾伽斯總統、業巳簽署命令二道、將德國銀行、法義銀行、暨德國大西洋銀行、置於政府控制之下、並將甫自軸心國購得之輪般、編人巴西商船隊、另據官方發表公報稱、巴西輪船五艘、先後由軸心國潛水艇所擊沉、船昌殞命者、共計五百九十丸名、</p>
+<p>阿根廷京城二十五日海通社電　阿根廷外長桂那楚、答復巴西外長阿朗哈之照會、聲明阿根廷決計賦予巴西以特殊之待遇、仍以非交戰國視之、因兩國爲兄弟之邦、彼此利害共之、巳有悠久之歷史、</p>
+<p>阿根廷京城二十五日海通社電　昨日午後阿根廷內閣果會、集會之前、阿根廷總統曾與外長及其他閣員數人、作長時間之會談、後與巴西駐阿根廷大使一叙、此間政府人士推測、閣議對於下列四事須決定辦法、　阿根廷政府對巴西向德義宣戰後之局勢、應發表聲明書表示態度、　答復巴西通知宣戰之照會、　阿根廷總統卡斯蒂羅致電巴西總統伐爾伽斯博士、　阿根廷外長桂那楚致電巴西外長阿朗哈、</p>
+<p>里斯本二十五日海通社電華盛頓電訊、美國政府人士宣稱、美國即將正式邀請巴西加入協約國陣營、</p>
+<p>智利考慮探取立場</p>
+<p>智利京城二十四日哈瓦斯社電　巴西駐智利大使本日將該國向德義宣戰一事、正式通知智利政府後、內閣總理刻正考慮本國對於此事所當採取之立塲、預料本日將發表演說、闡明立塲、某報加以評論云、「巴西所受侵略行爲、實已間接損害吾人、截至目下爲止、我國對於現行戰爭擴大至西半球一層、而抱嚴峻態度、並具有聯帶一致之精神、按之過去、我國素與其姊妹國、保持聯帶關係、並曾與巴西患難相共、此點當爲巴西所洞悉」云、</p>
+<p>烏拉圭轟炸機出動</p>
+<p>烏拉圭京城二十四日哈瓦斯社電　外傳烏拉圭轟炸機三隊、在巴西邊境附近海岸作偵察飛行時、發現德國潛水艇三艘、曾將其擊沉一說、頃由此間官方予以否認、並謂該機羣於傍晚飛回時、並未報告仟何特別消息、</p>
+<p>阿根廷京城二十五日海通社電　據昨日烏拉圭京城蒙特維多消息稱、烏拉圭已加緊沿岸防務、當局巳增派船隻及飛機以保護沿岸、「培山都」號「尼格羅」號及「薩爾多號已奉命在大西洋沿岸按時巡邏、並由飛機協助云、</p>
+<p>阿根廷京城二十五日海通社電　烏拉圭京城電訊、烏拉圭外長奎尼徇智利政府之邀、將於九月十日前往智利訪問、預擬作四日之勾留、</p>
+<p>秘魯認為休戚相關</p>
+<p>阿根廷京城二十五日海通社電　據秘魯政府昨日頒佈之法令、官佈秘魯政府與巴西之休戚關係、並承認其爲非交戰國、建議美洲各國召開會議、討論有關美洲之防務問題、</p>
+<p>阿根廷京城廿五日海通社電據拉巴資消息、玻利維亞參議院、於昨日通過決議案、表示與巴西政府、採取一致態度、</p>
+<p>赤道國京城廿五日哈瓦斯社電　赤道國政府今日宣布、決以非交戰國權利給予巴西、</p>
+<p>玻里維亞京城廿五日哈瓦斯社電　政府頃定承認巴西爲非交戰國、</p>
+<p>葡萄牙降維持中立</p>
+<p>里斯本廿五海通社電海通社訪員自葡萄牙負責方面探悉、葡萄牙之中立　政策不受巴西參戰之影響、葡萄牙於巴西向德義宣戰後、所送往巴西之牒文、僅係申明二國之友好關係、葡萄牙對巴西所取之決議未置可否、</p>
+<h3>巴西清算　德義銀行　沒收德義船隻</h3>
+<p>里約熱內盧二十四日同盟社電　巴西對軸心國宣戰後、今日採取第一步行動、大索國內敵僑可疑份子、</p>
+<p>里斯本二十四日同盟社電據巴西京城消息、該國政府已令境內德商大西洋銀行、德商南美洲銀行、及南美洲德義銀行、停業淸理、其中股權屬於德義人民者、槪予以沒收、</p>
+<p>阿根廷京城二十五日海通社電　據里約熱內盧息、所有寄椗於巴西口岸之德義給隻、已被巴西政府沒收、同時巴西之監獄、業已騰出房屋以便容納政府逮捕之軸心國僑民、惟此項措施係屬暫時之辦法、將來軸心國僑民當送至圈禁營中、</p>
+<p>里斯本二十五日海通社電巴西京城昨夜第一次實施燈火管制、直至拂曉始解除、巴西　已設立志願軍募兵局、頓使該國人民有戰事迫近南美之感。</p>
+<p>德外部評巴西宣戰</p>
+<p>柏林二十四日哈瓦斯社電　關於巴西向德義兩國宣戰一事、頃由德國外交部加以評論云、巴西已成爲美國之奴隸、以軍事觀點而論、巴西參戰、並無　大關係、即目經濟的角度言之、該國資源早已悉數聽由美國使用、今後當然無甚增損、抑巴西作此決定、德國政府並不詫異、良以該國政府受敵方之煽動、固早已不斷採取違反中立之行動故也、巴西人民將來必有一日、要求將該國投入戰爭漩渦之人、說明理由、至巴西國當局所稱、該國輪船五艘、巳被軸心國僭水艇擊沉一層、初非事實、僅欲以此爲一種藉口而已云、</p>
+<h3>印督降召集　兩院會議</h3>
+<p>新德里二十四日哈瓦斯社電　印督定於九月十四日召集印度中央立法院上下兩院、舉行聯席會議、討論政局、</p>
+<p>孟買二十四日哈瓦斯社電此間本日又有示威者向法院襲擊、當警察開槍射擊時、傷學生三人、</p>
+<h3>英海軍部發表　軍艦損失數字　一二五艘六十三萬噸</h3>
+<p>倫敦二十四日哈瓦斯社電英國航空母艦「鷹」號、在地中海被擊沉後、海軍部徇各界之要求、首次發表英美所喪失之船隻數目、總計軍艦一百五十二艘、總噸位六十三萬一千四百噸、其中戰鬥艦五艘、航空母艦五艘、巡洋艦二十一艘、驅逐艦九十三艘、但德國軍事方面認爲英美所喪失之船隻、實不下三百餘艘、故預料日內英國或將發表第二次報告、</p>
+<h3>美機三架失事</h3>
+<p>里斯本二十五日海通社電此間獲悉、美國前日有飛機三架失事、致有二十四人殞命、三人受重傷、失事地點在路易斯安那州之巴頓羅格、弗琴尼亞之達爾格倫、泰克薩斯之巴索三處地方、詳情不明、</p>
+<h3>保國地震</h3>
+<p>保京二十五日海通社電　此間於前日午後五時四十二分發生輕微地震、地震中心距此間約二百八十公里、保國東北部之拉斯迦德鎭、地震最劇烈、倒坍房屋甚多、</p>
+<h3>希特勒任命席拉克　繼任德司法部長　賦予特權確立國社黨法律</h3>
+<p>柏林二十五日海通社電　據官方宣稱、德元首希特勒鑒於戰時司法之重要、巳任命席拉克博士爲司法部長、氏於國社一黨秉政後曾任薩松邦司法部長、至德國司法部集中司法權時始去職、司法部秘書長許萊傑爾勃格博士、於前任司法部長古爾納博士逝世後、代理部務、現呈請辭職巳獲照准、羅森勃格博士已任司法部次長、國社　司法部已解散、部長兼律師公會主席及德國法律學院院長弗朗克博士、呈請辭職亦已照准、司法部長席拉克已兼任律師、公會主席及德國法律學院院長、</p>
+<p>柏林二十五日海通社電　希一特勒元首頒布法令、新任司法部長席拉克博士、可以遝用特殊權力、確立國社主義之法律、渠可依據元首之訓令、與總理公署秘書長及國社黨秘書長商定後、採取各項必要之措置、無須遵守現行法律、</p>
+<h3>席拉克博士略歷</h3>
+<p>柏林二十五日海通社電　德國新司法部長席拉克博士、於一八八九年四月十九日生於薩松邦之伍爾生城、在萊此錫及瑪堡二大學專玫法律、後入薩松邦政府服務、一九一四年大戰發生後、氏自動從戎、於一九一七年擢升中尉、一九三三年三月十一日代理薩松邦司法部長職、同年五月六日、正式內閣成立、即任司法部長、一九三三年十一月氏被邀德國司法學會、次年政府下命全國司法歸　意志政府主持後、氏被當時之司法部長古爾納博士仟爲駐薩松邦代表、一九三五年四月被任爲德國最高法院副院長、五月被任爲人民法庭庭長以至今日、</p>
+<h3>美機襲盧昂　法提抗議　美機又飛里昂</h3>
+<p>維希二十五日同盟社電　今日得悉、維希政府昨向美國提出强力抗議、反對美機近向法淪陷區之盧昂轟炸、致法　財產受重大損害事、聞法方提出交涉所據之理由爲　盧昂之各種施設、並非軍事性而在維希政府保護之下、　美國旣未與法國斷絕外交關係、故維希堅持美國無權攻擊維希保護下之區域、而小論該區是否被德方佔領、</p>
+<p>里期本二十五日同盟社電據倫敦訊、維希無綫電臺今日淸晨廣播稱、美國陸軍轟炸機於上週由英戰鬥機衛護、襲擊法境盧昂、平民死六十人、重傷百餘人·士兵有十五名喪生、但軍事目標並未中彈、</p>
+<p>維希二十五日同盟社電　據此問消息、今日午前十一時許、里昂有轟炸機飛到、諒係美幽飛行堡壘機、高射砲隊當即開砲轟擊、</p>
+<h3>挪威海面　敷設水雷　防外國軍隊登陸</h3>
+<p>瑞典京城二十四日哈瓦期社電　頃據挪威京城消息、該國海防司令部已在　遭外國軍隊登陸之工　中心附近海面、敷設水雷、並通告人民、切勿行近船坞及港口、</p>
+<h3>泰國議會　年底改選</h3>
+<p>盤谷二十五日海通社電　據報界得消息靈通方面息、泰國政府決定於年底舉行議會新選舉、內政部已要求撥款八萬泰幣、以為選舉之費用、</p>
+<h3>日駐西大使　須磨赴葡</h3>
+<p>馬德里二十五日海通社電日本駐西班牙大使須磨、昨日由此乘飛機赴里斯本、關於須磨此行之目的、官方雖無表示、衆信須磨將與駐葡之日本外交官、討論要務、</p>
+<h3>男女影星抵英　慰勞美軍　泰隆鮑華入伍</h3>
+<p>里斯本二十五日同盟社電據倫敦消息英國影星曼爾奧白朗（製片家亞力山大柯達爵士之妻）、頃已從好萊塢行抵倫敦、慰勞美軍、同行之明星有阿爾喬生·弗蘭克麥許亞侖琴根及巴德麗茜摩莉蓀四人、</p>
+<p>里斯本二十五日同盟社電據華盛頓訊、美國電影界紅小生泰隆鮑華、昨日宣誓入伍、在美海軍陸戰隊充當士兵</p>
+<h3>德機飛越水島</h3>
+<p>瑞典京城二十五日同盟社電據倫敦消息、氷島美陸軍當局宣布、德幾頃向駛往水島之漁般一艘轟炸掃射、該船僅受微傷、船員一人喪生、叉星期日晨與昨日、氷島東南部與東北部曾有德機各一架飛過、</p>
+<h3>美國共和黨選出　紐約州長候選人</h3>
+<p>紐約二十五日哈瓦期社電紐約州共和黨、本日在薩拉托加城舉行大會、推選紐約州長候選人、結果湯姆斯杜威當選</p>
+<h2>Page 3</h2>
+<h3>邱吉爾乘飛機返英　羅斯福代表哈里曼輿之偕行　哈里法克斯晤赫爾討論戰局</h3>
+<p>里斯本二十五日同盟社電據倫　訊、英首相邱吉爾已於昨夜七時四十分乘飛機返國、與之偕行者有美總統羅斯福代表哈里曼、英國陸軍參謀長勃洛克將軍、外務次官賈德幹及威爾遜爵士、邱吉爾下機時、衣空軍軍官制服、手持行杖、口仍吸雪茄、其夫人公子及政府大員均在機塲迎迓、旋乘專車遄返倫敦、邱吉爾莫斯科之行原守秘密、至本月十七日始正式公布、曾與斯達林會議四日、旋赴埃及前錢視察、並以戰時假名「蒲爾芬區」訪伊朗京城、</p>
+<p>里斯本二十五日同盟社電英國駐美天使哈　法克斯適自倫敦返任、昨與國務卿赫爾唔談一小時餘、討論中東戰局、印度問題、太平洋戰局及邱吉爾首相莫斯科之行、</p>
+<p>華盛頓二十四日哈瓦斯社電國務卿赫爾與英駐美大使哈里法克斯勛爵、本日晤談甚久、討論英、美間重要問題及英大使返國期內所積壓之案件、赫爾對會議詳情拒絕宣布、旋有記者以芬蘭外交部長譚諾表示不欲與蘇聯單獨議和一事爲問、據答稱、美政府對此、並禾接獲報告、故不願加以批評、</p>
+<p>英國下屆國會　不擬提前召開</p>
+<p>倫敦二十五日哈瓦期社電邱吉爾首相最近前往莫斯科聘問時、曾在開羅小駐、頃悉首相自蘇聯歸國送中、復在開羅逗留若干時、首相返國前、並曾赴伊朗及伊拉克一行、同時據此間宣布。英政府不擬提前召開下屆國會、</p>
+<p>瑞典京城二十五日海通社常據瑞典報紙得倫敦息、國會開會聽取邱吉爾關於莫斯科會議之報告之日期尚未決定、目前並無立即召集會議之現象、邱吉爾飛離莫斯科後及抵達倫敦之前、會在開羅作一週之勾留、邱吉爾來回莫斯科一次、計程一萬五千英哩、</p>
+<p>瑞典京城二十五日海通社電據每日新聞報」倫敦通訊息、倫敦方面關於英軍在伊朗及伊拉克成立新防禦區及威爾遜將軍被任爲該區總司令之消稱甚爲稀少、此事之發展恐決定於莫斯科會議、而此為英蘇在高加索之聯合戰略之一部、並傳前埃及戰綫總司令歐慶萊將在該防禦區中担任要職、英軍派赴高加索作戰空難成為事實、蓋蘇聯方面需要者為戰具、並非兵士、故英方作此建議者被蘇聯之拒絕、英國申隊負實高加索蘇軍之接濟似屬可能、因此英·蘇兩軍之分界綫、將自德黑蘭之南移向北部、倫敦方面對英軍是否能實施其應負之工作不無疑義、倫敦方面又謠傳美軍在波斯　口岸登陸、</p>
+<h3>土總統視察　海岸區域　土閣將局部改組</h3>
+<p>土京二十五日同盟社電　土耳其總統伊諾紐、巡行中安那托里亞視察、頃已行抵黑海海，岸區域</p>
+<p>斯丹埠二十五日海通社電此間昨夜獲悉、土耳其內閣，將改組、海關與專賣品部長卡拉頓資將提出辭呈、遺缺將由現任經濟部長台氏繼任、經濟部長遺則將由蘇默銀行前任總經理艾聖繼任、</p>
+<h3>葡殖民部長　馬沙杜赴南非</h3>
+<p>羅倫索馬貴　二十四日哈瓦斯電　葡萄牙殖民部長馬沙杜、應南非聯邦政府邀請、於本日啟程前往普勒多里亞城一行、</p>
+<h3>瑞士差官遇刦</h3>
+<p>倫敦二十五日哈瓦期社電頃　瑞士政府差官一名、携帶信件前往土耳其斯丹埠、車至保加利亞京城時、突有暴徒四人向其襲擊、並將其公文皮包及包裏三件强行刧去、</p>
+<h3>從講學到入獄　（七）</h3>
+<p>— 鐵明</p>
+<p>第二天，天還未大亮，我們叉上道了。我還是不肯坐在前面，但後面佈置得好多了，所以震動得幷不十分厲害。過了寶立尼（ｏｌｉｇｎｙ）約五十公里，在一個很荒凉的地方，我下車了。仍舊編着故事，說我打算步行，經聖喬治山峽，（Ｃｏｌ　ｄｅ　Ｓｔ　Ｇｅｏｒｇｅｓ）進瑞士去，差不多一天的路程。我們於是說着再會，祝着順利而分手了。但是我實在的行程剛巧和我所說的相反，繞着小路往法國中部走去。</p>
+<p>一面走一面考應這個局面。維護會一定以爲馬丁已把海水鍊金的全部秘密連製造金媒的方法統統告訴了我。至少我對於這件事已知梗概，有被殺滅口的資格了。倘使維延德門的炸彈冉遲到五分鐘，也許我就可以明瞭他們到底還是要大量裝造黃金呢，還是祗要防止別人用這個方法來和他鬥金鑛爭利。我想起來第二說似乎蚊爲近情，因爲即使他們要大量製金，其結果終必和李感們一樣，決難長期保守秘密的；他們大概只想把我謀殺了之後就希望再也沒有別人知道有海水鍊金的方法。根據這個理想，我決計把這次經過全部公開發表，讓他們知道我幷未完全明白這個方法，所以也就沒有費手脚謀害我的必要。而爲避免嫌疑起見，我以後決不在近海的地方買地產，也不再到海邊去避暑。</p>
+<p>我現在把這次經過的詳情在中國和英國的普通刊物上發表。在英國發表，可以讓維護會的耳目早早見到；在中國發表，可以使我的家族親友們知道我的處境，趕緊使駐外大使館注意，和給我必要的營救。一大半的讀者當然把我的記載看做一篇小說，但是倘使我在歐洲被殺了或者同葛樂華一樣地被誣害了，那麽世界人士—尤其是學術界的人士—都會明白我所叙述的一切全是事實，而知道我是一個爲科學而犧牲者。</p>
+<p>維護會和法國警察大概都追踪著我。法國邊境和英法交通綫一定被嚴密注意着，牛津大學大概更不免。但他們再聰明也決想不到我會把二十世紀最重要的科學發明去登載在普通刊物上的。我這篇實錄是在　文省（Ａｎｖｅｒｇｎｅ）一個古老小鎭中寫成的，同時我儘量改變我的形跡，護照已寄給章先生請他代爲保存，叉在路上把小提包向人交換了一個旅行帆布背包；幾天來，我的鬍于巳長得很長，非但使人家不易認識我，而且我的剃刀也賣了十五法郎</p>
+<p>身邊的錢一天天少下去，可是不能叫英國方面或章先生匯錢給我，因爲領款時必需證明我的姓甚名誰，而這是目前最危臉不過的。現在我非儘量節省不可，而且還是設法找些進款。有一天一輛汽車在公路上「拋錨」了，我幫那旅客提一個小箱子到近邊一個小村裏，賺了五法郎。沒有錢，在法國是無法生活的，非想辦法不可！</p>
+<p>這篇記載未發表之前，隨時可以發生性命之憂。前天我還看見一個人跟隨着我，我拚命跑過一個小山頭纔走脫了。我不信維護會能有這許多爪牙，而那人對我瞪眼也許因爲我容貌古怪服裝不整潔而覺得詫異而巳。可是我寗可草木皆兵，實在不敢放心托大。</p>
+<p>我的計劃是把這篇文字寄出之後到盎貝爾去用我最後三十法郎喝一個爛醉如泥，當地警察一定把我請進地方監獄。這種辦法深合我意，因爲監獄是在法國不必費錢而能生活的惟一地方，而且還可以得到充分的安全，不必再憂慮維護會的陰謀。我並不一定喜歡法國的監獄生活，拘役尤爲難堪，但總比踏上馬　的覆轍好得多了。我打算供稱荷蘭籍，叫做康寗（Ｋｏｎｉｎｇ）；身邊旣無荷蘭護照，叉是不名一文，荷蘭文只會幾句，我想附近的荷蘭領事決不肯收　我的。於是我就可以在無人注意的盎貝爾地方監獄裏從從容容地坐等這篇文字的發表和大使館或章先生拿着我的護照和錢來救我出獄。我希望印刷所不要怕排外國字的麻煩，這裏所註的洋文人名地名都是將來營救我的時候極有用處的，性命攸關，千萬不可刪去或排錯！倘使到那時盎貝爾地方監獄裏竟尋不出一個自稱康寗而留有長　子的犯人，那麽大　我竟來不及實行我的計劃　在得到監獄的保護之前，已先得到了和馬丁李感葛樂華同一的命運</p>
+<p>這篇記載發表之後；結果如何呢？我猜想維護會一定明白如果我會製造金媒，我決不肯把這秘密這樣和盤托出的。他們如果把我殺害了，那就等於不打自招，坐實了他們謀害馬丁李感葛樂華的罪狀。我想他們決不致如此憑蠢！他們一定只希望讀者不相信我的記載，在不認識我的人只當一篇小說看；而在認識我的人呢，也許以爲是一個敎授在法　酗酒入獄後自己解嘲的把戲吧！可是天下之大，一定有幾個有見識的人知道我這篇報告在科學上的價値。不多幾年一定會有人在什麼地方應用　樂華的方法製造黃金，而謀害我們的那夥壞傢伙，也可以以覺悟阻止科學的前進是一種徒勞無功的反動行爲。五六個有相當浩詣的數理學家合作起來不難在四五年內把製造金媒所必需解答的方程式全都計算出來，所以在六七年之後我要勸告有資產的親友們，把所有公債和金鑛股票趕快賣出，改買別種企業的股票。但是蘇聯有不少很好的數理家，如果他們着手硏究這個方法，每年將不　有五十萬萬羅布以上的金子做世界革命的經費。果眞如此，無論買什麼股票也許都沒有什麽用處了。（全篇完）</p>
+<h2>Page 4</h2>
+<h3>負責方面全部出動巡邏　昨夜燈火管制演習　飛機俯瞰偵視迴環數匝　九時前後路燈一律熄滅</h3>
+<p>昨晚舉行之首次燈火警戒管制演習、自七時三十分起至十一時三十分止、歷計四小時、事前兩租界保甲當局復臨時張貼佈告、囑市民在演習期內、將戶內燈光全部遮掩、俾使戶外不能看見、因此各負責方面一俟演習開始、即沿街巡查、情形極緊張、街上車輛、均將燈光滅暗、或局部用黑布遮掩、商店等非提早打烊、即將廣告燈光全部熄滅、電車用百葉窗遮蔽、於進廠一次即全部熄燈、因此街上呈現半黑暗狀態、九時後飛機軋軋、距離較高、人多舉頭觀望、此外兩租界警務處高級職員、救火會人員、暨衛生工務兩處幹部、均先後出動查勘、或作救火救人之演習、同時保甲委員會新設立之衛生委員會人員、亦出發擔任救護工作、昨日演習程序、最初一小時因天色未暗、無有明顯之跡象、八九時後、滿市似陷人防空之嚴重空氣中、九點半左右、馬路街燈全部熄滅、萬家燈火、遂被統制、十一時牛、大東廣播軍台報告演習完了、本市第一次之燈火管制、遂告結束、</p>
+<p>飛機擲　警告信號</p>
+<p>又訊、昨夜燈火管制演習時、飛機臨空俯視、對於未遵照遮蔽燈光之處、擲下信號、如虹口滬西等處、均遭警告、至演習結果成續如何、須待公佈、</p>
+<p>演習中　發生火警</p>
+<p>昨晚八時二十六分、本市演習燈火管制時間、虹口武昌路三一八弄內樓房突然起火、頓時濃烟四佈、火光燭天、經救火會驅車到塲施救、約一小時半、火始熄滅、結果焚燬一二一·一二三·一二五·一二七·號樓房叫幢、</p>
+<h3>寧波同鄉會　嚴格辦理遣送</h3>
+<p>寗波旅　同鄉會以請求遣送者日益增多、特議決　格辦理　以示限制、除填寫申請書外、應由會員介紹、並負責保　、並擬續募經費十萬元、限期二個月、先由到會委員簽認</p>
+<h3>工部局麵粉辦事處　冊一日休假一天</h3>
+<p>工部局頃發布告第六〇五六號略稱、本局麵粉辦事處、定於本月三十一日停止辦公一天、</p>
+<h3>美洲僑民撤退事　業已磋商就緒　日期大致在下月上旬　非有重病者概須撤退</h3>
+<p>日本及美洲國家問繼續交換撤倫、事已磋商就緒、日郵船淺間丸、及義輪康脫凡第號、可望於下月二日自橫濱駛抵上海、繫泊數日、大致於六日或七日先後開行赴菲洲馬格斯、該兩輪共可載撤僑一千五百人、其中大部份全係普通僑民、因外交領事官員、上次幾已撤　、撤退人員、亦不僅限上海一隅、即留日美人亦當　括在內、就原則言、下次自滬撤退之美僑、勢較自日本撤退者爲多、除主要爲美國人民外、叉將遍及坎拿大南美中美各國人士、</p>
+<p>非有重病　概須撤退</p>
+<p>本埠美僑協會昨　續辦理僑民登記、定期於月一底截止、昨復通告全滬美籍人民、告以可能於下月初撤退之事、但囑其勿於全局未澈底澄淸之前不斷向該協會或瑞總領署探聽音息、該通告聲稱、凡美國僑民准得撤退權利而身體康健足耐長途跋涉者、望其離滬、如有重大病症確不能成行者、須得瑞士領署之准　、</p>
+<p>坎拿大人　趕辦登記</p>
+<p>依照關係政府間談判所定、此次坎拿大人在撤退之列、因此瑞士駐滬領署昨日登報公告、規定凡坎拿大僑民、或自認爲有坎僑公民資格者、須於本星期六前、親赴法外灘九號法郵大厦七十四室該領署登記、並須隨帶護照呈騐、又此等人士不生於本國者、不論其有無坎國護照、須呈騐所有之證明文件、承認共有正式坎拿大公民梗、</p>
+<p>由菲返美　旅費自支</p>
+<p>美僑協會昨又　表美撤僑抵馬格斯後搭輪返國之旅費、此費須由撤僑自行負擔、計成人每名美金五百二十五元、四歲以下兒童每名一百三十一元二角五分、五歲至九歲孩童每名二百六十二元五角、所有撇退人員、須以在美之僱主、親友之姓名通知瑞領署　由該署電達美國政府、以便美政府先向其親友等頂收旅費、以資調用、　美僑人士、非經獲得官方通知、不必急於將以上各點通知瑞領署、</p>
+<h3>皮鞋店對限價　要求修正　日內將有所決定</h3>
+<p>本市皮鞋店及作塲不下五百七十餘家、由該業侯春波·陳金祥。張富泉·沈　卿·蔡鑑淸·宋琴洲等組織同業公會、近以當局統制物品限價以來、對於該業依照上行進貨成本、如底面子皮襯皮及包括鞋料五金等、殊有難以維持營業之感、該業公會爲防止冋業擅自抬價致干處罰、除通告勸令切實遵守當局六月十五日佈告規定辦法、特組設評價委員會、係專門硏討門市售價及作塲批價、其委員人選山北京等皮鞋公司所担任、業已具函有關當局、申述種種苦衷、要求修正限價辦法、以維營業　聞當局曾召集該業代表侯春波·吳佩卿等談話、並聞日內將有所決定、</p>
+<h3>中交辦事處及支行　同時復業　非敵性存款無限提取</h3>
+<p>中央社滬訊中國交通兩行復業問題、經處理中交兩行中日聯合委員會　定復業具體方針後、現各項準備手續、大致辦理就緒、中交兩行復業條例、業已修正、靜待正式公布、業務方面、除取消經營國家銀行特許權之業務外、辦理存成款押匯匯兌、保管信託、儲蓄、保險、及委託代理等十四種商業銀　一切業務、自九月一日起、漢口路五十號中國銀行總行、及同孚路辦事處、八仙橋辦事處、霞飛路辦事處、靜安寺路九九九號交通銀行總行、南京路支行、霞飛路支行、民國路支行、同時宣告復業、內部各董事監事及經理等高級人員、業已內定、日內即將公布、聞復業後對於非敵性之商人存款、一律無限制提付、</p>
+<h3>俄籍男孩　傳染虎疫</h3>
+<p>英文泰晤士報云、據昨日探悉、本年度法租界第一起外僑患染霍亂案、業經發現、此案染疫者係一俄籍九歲男孩名皮洛夫、於上星期已被抬人馮璃隔離警院求治、但此男孩並非爲法相界居民、彼在未病之前、原照輿其父母居於滬西區、</p>
+<h3>銀行界宿　楊介眉昨大殮</h3>
+<p>上海銀行董事長兼總經理楊介眉氏、於廿三日病逝、昨日（廿五日）假台　斯脫路上海殯儀館大殮、楊氏爲銀行界　宿、生平律已謹嚴、遇人寬厚、各方友好聞耗、無不痛悼、昨日往　者、有瀕惠慶·周　民·徐寄廎·唐壽民·沈叔玉·林康侯等千餘人、素車白馬、備極哀榮、</p>
+<h3>國內郵資再加價　尙在接洽中</h3>
+<p>茲聞　加國內郵資、是否於本年九月一日起實行、迄未　令、或總局方面猶在繼續接洽、</p>
+<h2>Page 5</h2>
+<h3>兩學生夥竊高價自行車　設肆出售被捕破獲　滬光腳踏車店內查獲十九輛　贓物尚未吊薺兩生均已供認</h3>
+<p>中法學校畢業生靑年潘仁昌（十二歲）、於新傑（二十歲）、兩人、最近在法租界愛多亞路六一三號開設滬光脚踏車店、一面由潘於二人向各大學校內先後竊得高價之脚踏車達數十輛之多、以供店內營業或變價　用、現為法捕房督察隋文洽、探目成玉銘、探員吳啟甄文翰等偵知、將潘於兩人拘獲、吊出原賊十九　、帶入捕房、供認串竊不諱、其餘已變賣化用、捕頭飭令收押、候吊齊贓物、再行核辦、</p>
+<h3>不潔淨冷飲品　禁止叫賣</h3>
+<p>工部局頃發布告第六〇五七號略稱、爲公共衛生起見下列任何食品、嚴禁在公共租界內沿途叫賣、本局業已授權衛生警務兩處、遇有遠禁出賣情事、即將所賣一切食品及其容器沒收、計開（甲）危險及有碍衛生之食品　冰凍飲料、（除非領照製造廠出品、並用機器冰冰凍、而以機械裝入瓶內者）、　天然冰、（乙）易有傳染危險之食品、　冰淇淋、　切開之水菓、包括去皮之蘆粟·地栗及藕、　凉粉、</p>
+<h3>出讓生財　索價過高</h3>
+<p>兩被告被罰有張汀者一名、曾於七月廿二日刋載廣告一則、代表松潘路一二〇弄十五號竟成小學校長、出讓校基、運同校內傢具裝修、索價二萬元、但擬出讓之設備、經正式估價員估計僅値二·九四八元、因此所索之價高於正常之市値、核與地產章程附則第五十五款暨工部局布告第五七五五號之規定不符、經工部局控請特一法院、於本月廿四日判處拘留刑十五天、又龍江路一七五號虞慶福一名、擬將其店基出讓、索價一萬元、但店內生財裝修、經估計僅値、一·一六三元、亦屬違反上述附則及布告之規定、經該局控請特一法院、於間日判處拘留刑七天、以示懲儆、</p>
+<h3>各界簡訊</h3>
+<p>大公保險公司　大公銀行與華北商界聞人合資創設、業經呈准頒發執照、准許營業、昨日正式開幕、投保戶極爲踴躍、賀客到者有聞蘭亭等一千餘人、該公司董事長爲金宗城、常董注克栽、總經理李楠公、協理楊金門、總稽核兪壽松、經理胡樹白、副經理蘇師三郭犖民徐才淸、襄理孫新吾吳子良、皆保險界商界傑出人才前途發展、可爲預卜、</p>
+<p>景咸椿善治驚風　餘姚周巷世醫兒科專家景咸椿、懸壺於牯嶺路多年、洽小兒疾病、頗具心得、如急慢驚風等症、尤有特效、初生嬰兒患此、他藥不能投治、景醫生一丸便可化險症登荏蓆、</p>
+<h3>學校消息</h3>
+<p>第二職袖　第二職補校校址在北京路三三〇號、已定九月四日開學、十一日上課、有志人學者從速</p>
+<p>工人技專　工部局工業社會處主辦之工人技術專修夜校、已於本月二十一日舉行入學考試　錄取之新生、定於本月底揭曉、該校定於丸月七日開學、自本學期起、增開六班、並將加授日語工程名詞、</p>
+<p>國華中學　國華中學遷入白克路北河路口現址上課、特將學費儘量减低、初中部每學期僅收學什費一百元、此外並無其他費用、九月六日招考新生、十二日開學、</p>
+<p>日語學院　上海日語學院、借白克路上公中學校舍上課、已得允許增闢敎室、特於九月五日開設新班、現已開始報名、</p>
+<h3>王錦秀血案　金富根判死刑　學徒王瑞根處徒刑三年</h3>
+<p>霞飛路五二一號王錦秀齋首飾店於本年六月二十六日夜間發生血案、歇夥湯文祥及毘隣五一一一號長興花店小主金富根與學徒王瑞根均被捕、店主王維元、於隔日因事離滬、得免於難、王之寄女瞿惠德擊傷、並砍死王之五歲養子王勉、並刦現鈔三百元而逃、此案業經審訊終結、於昨日午前；提被告等到案宣告判決、金富根共同强盜殺人處死刑、併褫奪公權終身、王瑞根强盜處徒刑三年、湯文祥已病死押所不受理、判畢、被告等仍帶下、還押候核、</p>
+<h3>姚大夫遺命助學　各界致送奠儀報告　本報昨日共收五千零廿五元</h3>
+<p>姚伯華·仲拔·永勵·永政·永勣　昆仲之令堂趙太夫人故世後、遺命救濟失學、將奠儀移捐助學基金、本報昨日共收各界致送姚母之奠儀計五千餘金、謹代謝謝、台銜詳列於后、</p>
+<p>奠儀台銜</p>
+<p>久安公司同人二千六百三十五元（計林漢甫·仟筱珊·周仲衡·沈章甫•陳亮束•郭學羣•卞冀周·崔中·以上八份各二百元、周寅恭一百元·周育莪·李伯權•金玉堂·沈憶村•言念慈·陳鎭東·仲翔甫·以上七份各五十元、王如灝四十元、李逢唐四十元、張德成•黃培風·金敏·林鐵仁·黃曼夷•汪葆良·梁森•楊其年•張逸民·李昌年·郭耀亭·邵菊生·薛際雲·以上十三份各二十元、韓忠良·馮念墀·李樹滋·陳載厚·周志禮·徐叔僉·陳錫蓀·卜禮讓·厲鼎傑·舒寶善·黃昌麟•劉鼎臣·周志新·余興銓·周劍剛·潘育良·時禮純·林臨霄·岳昌烈·劉允臧·王靖武·劉銘勳·王世愷·柳葆年·以上二十四份各十元、王建中五元·）</p>
+<p>王孟鐘五百元、信孚印染廠二百元、丁雪農一百元、張文煥一百元、范季美葉起鳳合一百元、梅廬胡一百元、楊思誠：劉鳴卿·傳敬之·陳次冶·王子崧·四明銀行胡錫安·吳曦春·舒昭賢·舒昭聖·和成銀行上海分行·王啟宇·王統元·李浩生·董大酉·寶豐保險公司以上十五份各五十元、劉聰强·朱如堂•馬嗚鋆合五十元、王伯衡四十元、莊俊四十元、姚潤華四十元、羅奉章三十元、華　公司鄭玉書三十元、李鑑年·胡鴻獻·蔡松甫·呂彝伯•潘志吾·葛慎修•周薪傳·胡家鼎·程逸民·何瑞棠•王仰先·李文杰·徐永祚以上十三份各二十元、王效文·沈祖綿•崔明如·吳士恒·袁學文以上五份各十元、</p>
+<p>共計儲券五千另二十五元、（按、姚母奠儀第一日五百八十元、第二日七百五十元、第三日三千一百三十五元、昨第四日五千〇二十五尤、合共九千四百九十元）</p>
+<p>更正　逕啟者、昨日送致姚母助學金一百元、承掣第一六三五號收據、今閱貴報誤將鄙人亦龍刊爲「六」字、煩請更正爲荷、此致申報館助學余編輯部、李亦龍謹啟、八月二十五日</p>
+<p>助學捐款</p>
+<p>昨有梁惠川氏將新厦落成諸親友公份賀儀、移捐本報助學金、梁氏熱心敎靑、嘉惠淸寒、至爲感謝、又中華國劇學校成立、僅八閱月、此次假黃金大戲院舉行慈善彩排三天、特將券資之一部份捐作本報助學金、此種精神、至深敬佩、叉承李松齡等慨助巨款、一併謝謝、計昨日收到之助學金、梁意川（大厦落成諸友公份賀儀）一千一百元、中華國劇學校（假座黃金慈善彩排券資）八百元、李松齡五百元、無名氏（收據號碼一七二三）二百元、百新書店同人經募求益書社二百元、金石聲五十元、共計儲券二千八百五十元、以上兩共計儲券七千八百七十五元、昨存十八萬九千九百二十五元七角二分、總結共存十九萬七千八百元零七角二分、</p>
+<h3>申報讀者助學金　核准名單</h3>
+<p>申報讀者助學金中小學及補習各組核准助金、將次第發竣、今日繼續發表保送免費生名額、大學組約談事宜、今日可告一段落、近日繼續接得　戈登路一九四弄一〇八至一一〇號三一小學、　愛文義路卡德路口滬光中學、　愛文義路九—〇號無錫國學專校附中（二年級）、來函慨捐半費或免費額、敬致謝意、查本報助學工作、即將告一段落、不及照辦、至深歉仄、尚　諒鑒、又下列諸生務希注意、　補二十八號楊熙培、二十四日來信未收到、請求改校、務將詳情通告、當可照辦、　中六〇三號孫美林、仍改入大成中學、　中一八八號黃羽鐘、助金自願取消、　中七〇七號薛秀珍准改人中國商業英文學校中學部、</p>
+<p>免費生</p>
+<p>上諸生望即日來館領取介紹信、又其中成溪南小姐原申請治中女中、但該校初中三並無免費額、故代介紹越且中學、以其住址相近故也、</p>
+<h3>贈送飯票時疫藥水</h3>
+<p>昨承浦緝庭君送來普德會飯票一百五十張、急救時疫藥水八十瓶、酌贈淸寒同胞、各界如需要者請向本館庶務處接洽、</p>
+<h3>來函</h3>
+<p>護啟者、閱八月二十五日貴報本埠新開、載有「卸職銀行主任困於生活失業墮落家破人亡」一則、內有程伯年竟向河甫路靑雲閣印刷所僞造田單一紙云云、查　所以印刷爲業務、對於門市承接印件、自不能一一明其性質輿內容如何、所稱僞造云云、全係傳聞失實、恐外界不明、混淆聽聞、有妨敵所信譽、爲特函請即賜更正、至深感荷、此致申報編輯部、靑雲閣輿記謹啟、中華民國三十一年八月二十五日、昨日本報發報時間六點鐘</p>
+<h3>徐匯慈善小型球賽　改星期五舉行</h3>
+<p>徐　　學發起之徐　慈善小型球賽、本定昨日在該校球場舉行、現決延　本週五下午四時起、仍在原處舉行、除聯保徐匯對　外、另有　堂對匯　、合　藍對小威、以助雅　、門票收入撥充申　助學金秩序如下、合藍—小威四時、周堂—匯中五時、聯保—徐滙八時</p>
+<p>商業新聞</p>
+<h3>人心忐忑浮多脫手　公債市氣乃受挫折　幸有見低吸進腳地尚穩</h3>
+<p>昨日統一公債市况、以人心忐忑、走勢微呈軟化、此因浮多未定、頗有脫手、致市氣無力回頭、但空方雖有售意、第在大戶之逢低吸收下、不無顧忌而躊躇、是以檯面轉淸、乃起伏僅亦半元左右、當晨初開盤、先以散戶力拉丙種至九元二角做開、然因浮多傾塞、即爲壓小、入後以多方見低收購、及散空之扒補、乃又回硬、觀其走勢、完全因人心之不定所阻、惟視大戶之需求、其脚地上似以買方較優耳、全市成父約一百二三十萬元、茲列簡明表於左、</p>
+<h3>價格過低引起　華股投資興趣　反動回漲有續展可能</h3>
+<p>昨華商股票、先仍帶疲、於近午突起反動回漲、實因月餘來下跌巳巨、業巳引起投資者興趣、賣方之趁機揑持、在中國內衣與新亞藥廠領導下、各股價多反跌爲漲、照各方虛疲之人一心轉挺、前途續有進展可能、中一國內衣初會步降至三十一元二角半、俄竟步回上、做高至三十二元半、反軋升二角半、永安又見八十九元低價、後亦回出九十元關外、升起一元半、新新由疲槫定、中國國貨堅站、百元關口、新樂業新亞四十元零五角爲最低、成交價、買風突起、飛匕二元、達四十二元半、與中法均軋升一元牛、民誼成父淸稀、父低二元、至六十元關口、連降五日、小二十元之巨、大中華火柴由一百七十一元、哄升爲一百七十七元半、終回升六元、南洋烟公司見六十四元、亦升元半、公甩業闡北水電降見二十六元半低價、較之最高峰跌百分之五十弱、後雖回升、尚軋小五角、華商電氣交稀價穩、文化業中華見一百五十七元半低價、後回升至一百六十元、與世界各小五元、商務獨平、供求皆稀、半日成交頗巨、今分記股市表於後、</p>
+<h3>連跌多日之　棉布反動回升</h3>
+<p>廠布　昨日市盤、以連挫多日、反動回升、兼因本街回業進胃不弱漸呈穩象、各布俱漲、十六磅地球粗布一七八元、飛鴻一七六元、九磅新字一〇九元、八磅振中一〇七元、十二磅地球細布一六〇元　犬鵬廠單一五〇元、富貴細斜一二八元、木蘭漂布一六一元、秦良玉漂布一五一元、琴美人元布一三三元半、美人魚元斜一三七元、三羊嗶嘰新單六元、現貨五元八角半、　鷄士林二四八元、安安藍一八九元、桃花女士林晨盤最小價做二五四元二角半、嗣亦冉冉上騰、午收爲二五八元、下午收盤二五八元二角半、每疋計漲三尤、</p>
+<p>東布　先跌後漲、蓋晨開時趨勢甚疲、散戶續放、十二磅龍頭細布新單自一七三元、降至一七二元左右、但後以同業吸收、回升至一七四元五角、銀行單一五六元半、彩球一六二元、飛魚一五九元、陽鶴一五七元半喇叭、一五六元、每疋均各漲一元、藍雙魚細斜一四七元、。寶貝細斜一四五元、俱極見缺、四君子嗶嘰紅單開盤最低盤做七元一角六分、買戶紛起、即升至七元二角、廻旋甚久、終因收貨者踴躍、至收盤根子益緊、抬升至七元二角九分、較升九分、</p>
+<h3>銀樓鈰金　同業做價微疲</h3>
+<p>昨銀樓業首飾金、大新同行門市每兩兌出價、均仍掛二千一百五十元、（收進减三百元左右）、現余號門市售出二千一百元、收進一千九百尤或一千八百五十尤、同業互做價稍帶疲平、乃無投機者操縱共間、難有變卦、晨初低一百元、計一千八百九十兀、俄稍升爲一千八百九十五元、不久步做低爲一千八百八十五元、比上日小十五元、有十元差度、成交淸稀、</p>
+<p>至首飾紋銀、每兩仍掛十六元、同業互做價十元零八力角</p>
+<h3>軍票拆息　價俱平穩</h3>
+<p>昨外幣市况、頗見穩定，同業互做價爲五元五角五分三五厘、銀號與小錢莊門市售出五元五角六分、收進四分分牛、均與上日價同云、</p>
+<p>昨錢業公會拆息、一角二分未更、新劃頭與現鈔平掉云、</p>
+<p>港足球健將十七人</p>
+<p>李天生等月底來滬</p>
+<p>李惠堂已離港不能來滬</p>
+<p>據可靠方面消息稱、球王李惠堂、早遠走內地、赴澳遠征之說、亦非事實、盛傳來滬已成泡影、港將雖泰半他去、惟留港者頗不乏人、現除李外、如李天生·李義臣·馮景祥等十七人、決來滬、本月底可抵此、</p>
+<p>慈善排球賽女子組</p>
+<p>維他富克藍星</p>
+<p>維他富盃慈善排球賽、　晚六時起、續有四塲角逐、下午六時起、仍在八仙橋靑年會健身舉行、門票二元、昨戰本有光明對內河Ｂ、光明因事不克出塲、此幕未能成賽、改期舉行、今晚乙組三塲、女子一塲、壓軸戲爲友星對ＧＭ、友星執全滬女排牛耳多年、名將如黃杏芬·祝十芳，黃明媛·鄺少桃·史瑞娟等、ＧＭ有陳榴珍·陳揭書等、實力不相伯仲精彩必多、昨賽戰果如下、</p>
+<p>華嚴勝聯保（乙）廿二—十三、九—廿一、廿一—十二、</p>
+<p>虹隊勝海星（乙）廿一—十、廿一—七、</p>
+<p>維他富勝藍星（女）廿二—廿、廿一—十七、</p>
+<h3>七月份　票據交換統計</h3>
+<p>茲根據本市銀　業聯合準備委員會票據交換所七月份月報、摘錄票據統計於後、　交換票據金額　數、本月共計數七〇九、力六八、四六七元九五、其「最高數」四四、五一三、三七九元二四、「最低數」、二、六五三、六六七元二〇、「每日平均數」二八、三九八、七三八元七二　代牧票據金額總數、本月共計數一、一六一、九八五、〇九七元五三、「最高數」五七、七四三、〇八三四二八、「最低數」三二、〇六一、一〇一元〇一、「每日平均數」四六、四七九、四〇三元九〇、　往來銀仃逐日轉賬總數二、六九七、三六九、八六八元九三、　　業存款、每日平均金額五七七、六三四、七四〇元〇四、</p>
+<p>「附註」七月份交換票據張數共計爲九一、七〇四張、代收票　張數共計爲一一三、九二六張、</p>
+<h3>孔子誕辰休假</h3>
+<p>銀錢業改爲九月廿八日</p>
+<p>本市銀行業同業公會、昨日通函各會員銀行略云、查本會本年銀行休假表規定八用廿七日（星期四）孔子誕辰紀念休假、茲改於本年九月二十八日（星期一）爲孔誕紀念日、自應遵辦、原定八月廿七日休假一節、應予取銷、改於九月二十八日休假一天、屆期不再另行通知云、</p>
+<h3>豆餅本銷轉懈　豆餅祗點綴交易</h3>
+<p>豆類市况、昨因本街納胃轉懈、兼以謠傳聲中、人心皆懷觀望、故交易甚稀、統市僅做開崇明沙赤二十包、價爲一百六十二元、市呈滯色、</p>
+<p>豆餅略有點綴交易、形勢帶疲、計開甡記豆餅四月份吉田棧單七百片、價爲五十九元半至五十八元牛、</p>
+<p>麩皮昨因貨主扳高、買戶則圖抑低、致乏正式成交、</p>
+<h3>橘餅騐關後　不日即將開盤</h3>
+<p>橘餅　値當銷之時、查蘆山丸輪所裝來之數十件、因檢疫問題、延擱多日、茲巳入口上棧、今日可以騐關、大約極遲後日當可開盤、聞此次貨品極爲軟糯、氣味佳、足稱上莊云、</p>
+<h3>化桂圓　正在採運應銷</h3>
+<p>化桂圓、開盤回升後、市存仍缺、茲聞某方尚有存積、　申可望獲利、故行方現有數家已赴外埠採辦、以應申市需要云、</p>
+<h3>橘皮成本高昂</h3>
+<p>橘皮前貨早已開通、市存告乏多時、茲悉潮幫號家近有運到十數簍、身份色澤尚佳、昨已轉棧、但以成本非輕、叫盤比前爲高、尚未成交云、</p>
+<h2>Page 6</h2>
+<p>游藝界</p>
+<h3>我怎樣編導「若蘭怨」</h3>
+<p>— 林諷葊</p>
+<p>若蘭怨的故事，完全取材於蘇蕙迥文錦詩。四年前，我在雷台播音講過，同時曾經把　文詩編成一本夫婦入生哲學。這也許廣東同鄉們不至於淡忘罷。</p>
+<p>我寫本劇的動機，因爲蘇蕙的人格學問，的確使人太感動了。所謂「臨　端幹。術霜振葉」。缺乏了這種人格思想的人，在社會上，沒有不失敗的。在若蘭怨一劇本中，第一幕暴露了蘇蕙的短處；一言以蔽之，就是性急而傷妬」。本來這種毛病，是古今中外女子的通病，根本就不單是蘇蕙一個人。尤其是在封建時代的中國，簡直是司空見慣。不過蘇蕙却不幸代表了一般婦女的典型而已！因此在第一幕發覺竇滔金屋藏嬌的所在時，就强調了道一個氣氛。</p>
+<p>至於趙陽臺身份的介紹，也在第一慕詩情畫意中，造成一個浮雕的印象，一方面反映出蘇若闌的人格與地位。</p>
+<p>竇滔固然是一個風流才子，他的　蹟雖然不及孫克咸的轟烈，但祇要看武則天的蘇蕙傳中，「風神秀偉，該通經史尤文允武，　論尚之」四句，便知道究竟是個甚麼人物了，以如此出色當行的人物自然够得上名士風流的資格，所以我在第一幕中，也略略把上文四句的倫廓，給他描摹出來了。不過貪圖富貴，急功好利，這也是他的一生短處，一裏陽，安南將軍」，接旨後的一笑，却把竇滔的心事，曲曲傳出。</p>
+<p>故事展開以後，自然最大的高潮，就是主題素材的「　文錦詩」，但是該詩原文，深奧玄妙，而目句法字義，參差錯落，是純文藝的作品，要把它成爲通俗化，且不失題材眞義。第三幕夢景的處理和璇璣圖的介紹，就是根據上述方法寫成的第二幕的高潮有了，第四幕更難下筆，因爲故事上悲劇的氣氛，在第四幕的歷史題村，幾乎找不出一點來。</p>
+<p>至於導演方面，也發生過不少困難，幸而結果終於克服了。因爲我這回是希望實現我十餘年「改良粵劇和方言話劇一的理想，所以這回冶歌舞話劇粵劇青華於一爐，的確是一種一大胆的嘗試。</p>
+<p>末了。得向諸君說明的，本劇的主旨，是指導夫婦人生的大道，希望收獲「樂而不淫，哀而不傷」的效果的。至於成功與否，這裹不敢自詡，誠懇地請大家予以批評指敎，不勝厚幸。</p>
+<h3>小鳳·仲馬　改期成婚</h3>
+<p>— 影</p>
+<p>舞臺藝人小鳳與仲馬，訂婚已有多時，前者是光華大學英文系高材生；後者是東吳法學士，對於戲劇藝術，都很熱心，兩個人志同道合，郎才女貌，眞是天生佳耦，原定本中雙十節舉行結婚典禮，　是因爲那天國際金門兩大禮堂均巳爲捷足者先登，不得　寗願改選黃道吉日，但仍當借座該處成婚云。</p>
+<h3>中華國劇學校　慈善彩排記</h3>
+<p>— 星岩</p>
+<p>中華劇校成立僅八閱月，日前余往黃金覜其第一日彩排戲碼共有大賜福，草橋關，吊龜，昭關，搖錢樹（即張四姐下凡）四郎探母六齣，是夕天氣炎熱，而上座竟十二成，樓上下凳子均加滿，盛况可謂空前矣。兒童演戲與大班逈乎不同。蓋大班只着重每一劇中之主角。而小科班則人人皆有精彩，甚至一龍套一物形（即飾猪羊等者）均精神抖擻，無敢稍懈，只整齊莊嚴四字即能使·觀衆滿意，而小兒之活潑天眞與塲面之偉大齊一，尤足使人精神煥發。即如大賜福一劇，若大班演之，則無甚意味，今中華劇校增加雲童二十餘人帶跑雲及汗子奪魁諸塲即鬧忙多多。草橋關之大面，吊龜之老旦，昭關之老生，天賦皆極佳，吃調均在正宮以上，嗓音寬亮，尤屬難得，將來甚有希望。搖錢樹之武旦，刀花熟極，扮相亦美，打出手時雖有一；處失手，惟均在不重要處，而丟　鞭換雙槍及反脚踢花槍等極險極難之出手，反穩當之極，觀衆彩聲雷動，以十三四歲之女生而有如此工夫，洵足使人驚服也。大軸探母，配搭勻整，行頭嶄然一新，甚爲壯覜。該校於公演之前，先能以慈善爲懷，以如此炎夏，任此義舉，足證該校師生之熱心社會事業矣。</p>
+<p>（編者按）中華國劇學校慈善彩排之第三晚，余應友人之邀，會往參觀，至則目蓮救母，捉放曹，巳演畢，接演樊江關，二進宮，及楊排風三劇，塲面壯麗，聲容並茂，諸生正在童年，長者十三四，幼者八九歲，而演來一絲不苟，頭頭是道，無論唱做說百，俱相當嫻熟，觀者稱善，彩聲小絕。以八個月之訓練，居然獲此成績，足見敎學努力，洵難能可貴者矣。</p>
+<h3>告擬搬演「秋海棠」者</h3>
+<p>— 施明揚</p>
+<p>「秋海棠」在本報連續登載的時候，我已看過一遍，單行本出版後，我又細細謂了兩遍；就小說論小說，的確是近年來很難得的一部創作。故中中間雖然同樣有軍閥，有戲子，有姨太太，可是結構非常特別，意識和技巧，也比一般以同、樣題材寫成的小說好得多，尤其是改寫以後的那個結束，更有回味不盡的妙處。</p>
+<p>現在聽說中聯製片公司巳決定把它搬上銀幕，由馬徐維邦自編自導，同時排演話劇的消息，也鬧得很響。據說某導演確然也是有意一試的，僅僅因爲書中的兩個男主角——秋海棠與趙玉崑——不容易我到適當的演員，唯恐失敗，所以到現在還沒有決定。</p>
+<p>這倒眞是搬演　秋海棠一書的最大困難，在銀幕上，也許還可以想出一種取巧的方法來解決，但在舞台上却就大成問題了。因爲秋海棠是全書的主角，演得好，全劇才有生氣，演得不好，就可以因爲個人的失敗而使全劇失敗。現在上海的話劇界裏，優秀的男演員比女演員少得多，尤其像秋海棠這種個性（堅忍沉毅）更不容易做得好，譬如像石揮和黃宗江兩位，演技都非常洗鍊，讓他們飾演秋海棠，在毀容以後是一定可以成功的，但爲了耍增加悲劇的氛圍起見，未毀容　的秋海棠，必須以美少年，和名旦的態度出現，這和黃石兩位就不大相官了。並且趙玉崑那樣有血性，有義氣，而行動又十分滑稽活潑的角色，也不容易找到適當的人。</p>
+<p>至於劇本的改編，委實也不是一件容易的事，像這種偏重於心理描寫的長篇巨著是極容易使編劇人失敗的，囂俄的名著、孤星淚」在銀慕上所演出的遠不如原書精采，便是一個實例。所以編劇人在著手改編以前，至少得鄭車攷　，並多多徵求讀者意見，才不致白費一番心血。</p>
+<p>我是很願意看到這部戲的人，而且十分肯定地相信，假使劇本編得好，演員支配得適當，這部戲是必然可以成功的</p>
+<h3>雪又琴之出路　重作馮婦歟，　失志柏舟歟？</h3>
+<p>— 歇浦客</p>
+<p>記得雪又琴獻藝大蟾時，筆者曾數數往觀她演長板坡中的糜夫人，及覇王別姬中的虞姬，並廉錦楓等，雪孃演來，絲絲小苟，唱做細膩，頗博得顧曲周郎之讚美自去秋嬪高蘭生後，即輟演紅氍毺，隨夫賃金屋於貝禘鏖路貝禘坊，唱隨之樂，有甚於畫眉者。按雪孃爲高君之第三小星，極得高之寵愛，乃花不常好，月圓易缺高忽患濕溫傷寒症，於上月八日臥病蒲石路中西療養院，綿延兼旬，雖經中西名醫會診力治，依然沉疴莫挽，終於溘然長逝，以君平時之豪俠慷慨，撫孤恤貧，故門生故舊，皆一片哭聲，當先生易簣時，共大夫人固不勝哀働，雪孃更嗚咽不已，泣不成聲，淚痕瑩然，猶如　雨梨花，從此離鸞別鵠，無限傷心！高先生故世後，究不知她以後出路如何？是否矢志柏舟，抑重作馮婦，此爲願曲周郎所急欲知者。依筆者從事實上推測，認雪孃在居喪期間，決不會重彈舊調也</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（八）　奈若何</p>
+<p>爲了翠珍失踪，又爲了强盜上鬥目的並不在乎財物，維城就想着了費長河。他站在天井一　把雙手反剪着，向前走了兩步，就往後退却一步，忽的把手掌拍在大腿上道：「一定是他，一定是他！」喜鵲少見多怪，忙報告葉二太太說；「少爺一個人在說話。葉二太太走到天井裏，見維城巳經走出大門，就喚道：「維城，你往那裹去？」維城站定了，附在葉二太太耳畔，嘁嘁喳喳說了幾句。葉二太太道：「算來是不會的吧，費長河，我們沒待錯他，他不會這樣做，翠珍也沒待錯他，他也不會對翠珍這樣做。」維城道·「我想冷不防往費長河家裹去看一看，如果是他把翠珍姊搶了去的，我不問靑紅皂白，一把胸脯抓住了他，近，鄉裏，遠，城裏，隨便到那裏去都可以。」葉二太太連忙把維城一攔，又遠遠的喚阿興關了籬門，然後對維城道：「我的膽子，幾次給你嚇得小之又小了。費長河家裏是一個是非門，他這種人，又生成的是一個惡棍，一個賭徒，你怎麽到他家裏去？現在，凡是你想去的地方，可以讓阿興去，何子興去。就是你不要去。一</p>
+<p>維城給葉二太太攔回屋子裏，顛來倒去說維城萬不可往外亂跑。維城道：「我現在越想越是了，除了費長河，不會有第二個，他見了我，還喚一聲葉少爺，說起來是世德堂葉府上，只有做出事來，是這樣惡毒，這樣無賴。」維城說着，把手摸着桌子，揑了拳頭，一上一下往桌面上鑿。葉二太太道：「你不要這樣氣憤憤地，我來派阿興往外邊去一下，阿興往西，何子興往柬，倘然眞是費長河做的，費長河臉上看不出來，費長河的老婆女兒臉上，總也看得出來。這是盜案。不是兒戲的事。「維城昂起了臉道·「嬸娘，那麼就讓他們去吧，我要他們在一小時內便來回報。」（一六四）</p>
+<h3>藝人們在上健　韓非大操鐵啞鈴</h3>
+<p>— 石人</p>
+<p>好像命運註定了姓韓的該都是瘦的，韓非的瘦幾乎跟韓蘭根沒有兩樣，在卡爾登看過他演「荒島英雄」的觀衆，誰也沒忘他那副赤脚裸體瘦骨支　的滑稽狀態吧？他所以能使人對他記得分外地深刻，固然有賴於他那佾皮而自然的作風，特別他的瘦削也給予了我們極深的印象。</p>
+<p>照理「瘦」對於韓非是有利而無弊的了，可是他本人却認爲不然，前天早晨我去上海健身學院，無意中遇見他也在健身房裏大操鐵啞鈴，渾身肌肉起着極度緊張，這便是他小甘心久做瘦子的明證。我父看見大導演佐臨名劇人胡馨菴，還有石揮，英子，沈敏，莫愁等</p>
+<p>十餘人也都在那兒，能在健身房中遇到他們真是快事，我跟他們作了　些簡短的談話，從石揮的口中，我得知了他們　　　　埋頭苦幹的工作是：鍜鍊體魄，動習舞蹈，潛心文學，致力藝術。</p>
+<p>當他們完畢早操後，便假該院排演新戲「大羅　網」，預備在秋季演出，可是目下尚無地盤，那當然不會成為問題，我們且拭目以待吧。再次在舞臺上和我們見面時不祇別人，就是瘦先生韓非恐將也變成了位大力　型的人物了，因爲在經騐學識　皆豐　的該院院長趙竹光指導之下，對於他們的體格的改造，確是　有旡限的希望和把握的。</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.08.26</h1>
+<h3>The Battle of Stalingrad Enters a Decisive Phase: German Forces Advance on the City in Two Pincers, Another Route Pushes Towards the Black Sea Coast</h3>
+<p>Berlin, 25th (Allied News Agency) - General Bock's mechanized forces, after crossing the Don River northwest of Stalingrad, have overcome fierce Soviet resistance and are advancing on Stalingrad, a major city on the Volga River producing tanks. Official announcements here remain tight-lipped about the specifics of the battle, but indicate that fierce fighting is taking place in the narrow strip of land between the Don and Volga rivers. The Battle of Stalingrad has entered a decisive phase. German forces are attacking the city in two directions. No new information has been received from the southern route in Kotelnikovo, only that German forces have driven a wedge deep into Soviet positions, and fierce fighting is taking place in that area. As for the German offensive against Soviet Black Sea positions, the German command has not provided detailed reports, only that German forces are rapidly advancing towards the coast, making the situation of Novorossiysk, the base of the Soviet Black Sea Fleet, even more critical.</p>
+<p>Hitler's Headquarters, 25th (Haitong News Agency) - Today's German war report stated that Romanian forces have occupied Temryuk, a port at the mouth of the Kuban River. South of the lower reaches of the Kuban River, enemy forces launched several counter-attacks, all of which were repulsed, and the enemy was forced to retreat deep into the mountains. German mountain troops have occupied several key passes in the western Caucasus Mountains. At 11:00 AM on the 21st of this month, a team of mountain troops climbed the highest peak of the Caucasus (Mount Elbrus, 5,661 meters above sea level) and hoisted the German flag. Northwest and south of Stalingrad, despite the Soviets' valiant resistance, German forces continue to advance. 52 Soviet tanks were destroyed. On the Don front, Italian forces engaged in several hand-to-hand combat with the invading enemy, eventually repelling them. German planes bombed Stalingrad day and night, causing fires at several factories and other military facilities. Two transport ships were sunk in the Volga River. Southwest of Kaluga and northwest of Medyn, enemy aircraft attacks failed. In Rzhev, German forces engaged in fierce fighting with enemy infantry and tank formations, destroying 63 Soviet tanks. Southeast of Lake Ilmen and near Leningrad, only localized fighting occurred. Yesterday, German planes attacked the Soviet White Sea port of Arkhangelsk, causing several major fires.</p>
+<p>Stockholm, 25th (Havas News Agency) - August 24, 1942, will be one of the most important days in world history. On this day, German forces began a general offensive against the central and vital points of the outer defenses of Stalingrad. For the past 24 hours, German light tanks, field artillery, and infantry units have been continuously crossing the Don River on pontoon bridges or being transported by barges. There are two important crossing points: one at Verkhny Chir, 37 miles northwest of Stalingrad. It is thought that the German forces crossing at the former location have already cut off the railway line connecting Stalingrad to Moscow, as this railway runs parallel to the Don River in several sections. The German offensive against Stalingrad this time still takes the form of a familiar pincer movement. One pincer is at Kachalinskaya in the north, and the other is at Abganerovo in the west. Both locations are the same distance from Stalingrad. The German army has an advantage in both manpower and tanks, and its air force is also very fierce. Fortifications around Stalingrad are being heavily bombed. Fortifications are heavily concentrated along the route from the Don to the Volga River, but the distance between the two rivers is not far, approximately 30 to 38 miles. According to German authorities, the fate of Stalingrad should be decided within this week. German newspapers also record that after the German forces reach the mouth of the Volga River, they will have reached "the natural boundary between Europe and Asia," and it seems that they will not advance any further for the time being.</p>
+<p>Stockholm, 25th (Haitong News Agency) - BBC commentator Hale said today, "If we are still unaware of the plight of Soviet forces in the Caucasus and refuse to acknowledge that the German advance towards the Caucasus can be compared to the worst periods in France and Ukraine, then we are all blind. A certain member of the Communist Party's Central Committee warned the Soviet people on the radio that if the Germans conquer the Caucasus, the impact on the Soviet Union will be very significant. During the First World War, all of Europe opposed Germany, but today Germany can exert its full power in the eastern war and possesses the potential of the entire European economy and labor force. Now that German forces are only 40 to 50 miles from Stalingrad, I believe there has been a new, and increasingly worse, change in the Soviet war effort. This new change is enough to increase the difficulties of the war, and I believe the most difficult training period has arrived."</p>
+<h3>German and British Aircraft Launch Air Raids Against Each Other</h3>
+<p>Berlin, 25th (Haitong News Agency) - Haitong News Agency has obtained authoritative information that the German Air Force launched a large-scale air raid on Britain last night. Military targets and important facilities on the southern and southeastern coasts of Britain and in the Midlands were targeted by German high-explosive bombs and incendiary bombs, causing considerable damage and numerous fires.</p>
+<p>Berlin, 25th (Haitong News Agency) - German officials stated this morning that British aircraft dropped bombs and incendiary bombs in various areas of the Rhine region last night. German aircraft and anti-aircraft guns shot down a total of fifteen British aircraft.</p>
+<p>London, 25th (Havas News Agency) - The Air Ministry announced this morning that no enemy aircraft were active over Britain last night, but one enemy aircraft was shot down off the southern coast of England.</p>
+<p>London, 24th (Havas News Agency) - British and German long-range guns exchanged fire across the English Channel in heavy fog this morning.</p>
+<h3>Spanish Girl Sleeps Soundly for Four Days and Nights</h3>
+<p>Andújar, Spain, 25th (Haitong News Agency) - A young woman here, in her early twenties, has slept soundly for four days and nights. Upon waking, she was unaware that she had been asleep for such a long time. She has no symptoms of illness. Spanish doctors are astonished by this prolonged sleep.</p>
+<h3>South American Countries Express Sympathy to Brazil: Argentina, Uruguay, and Peru Decide to Grant Brazil Non-Belligerent Rights</h3>
+<p>Buenos Aires, 24th (Havas News Agency) - Following Brazil's declaration of war against the Axis powers, it has been learned that the Argentine government has decided to follow Uruguay's lead and grant Brazil non-belligerent rights. At the same time, the Peruvian government has also taken the same decision. President Prado is reportedly planning to propose a joint meeting of South American countries to adjust Latin American defenses. In addition, according to news from the Brazilian capital, President Vargas has signed two decrees placing the German Bank, the French-Italian Bank, and the German Atlantic Bank under government control, and incorporating ships recently purchased from the Axis powers into the Brazilian merchant fleet. An official communique also stated that five Brazilian ships have been sunk by Axis submarines, resulting in the deaths of 595 crew members.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - Argentine Foreign Minister Guinaçu replied to Brazilian Foreign Minister Aranha's note, stating that Argentina is determined to grant Brazil special treatment and continue to regard it as a non-belligerent country, as the two countries are fraternal states with a long history of shared interests.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - Yesterday afternoon, the Argentine cabinet held a meeting. Prior to the meeting, the Argentine president held a lengthy discussion with the foreign minister and several other cabinet members, followed by a meeting with the Brazilian ambassador to Argentina. Government officials here speculate that the cabinet discussed and made decisions on the following four matters: The Argentine government should issue a statement expressing its attitude towards the situation after Brazil's declaration of war against Germany and Italy; Reply to Brazil's note informing them of the declaration of war; Argentine President Castillo should send a telegram to Brazilian President Vargas; Argentine Foreign Minister Guinaçu should send a telegram to Brazilian Foreign Minister Aranha.</p>
+<p>Lisbon, 25th (Haitong News Agency) - Washington reports that U.S. government officials have stated that the United States will formally invite Brazil to join the Allied camp.</p>
+<p>Chile Considers Taking a Position</p>
+<p>Santiago, 24th (Havas News Agency) - The Brazilian ambassador to Chile formally notified the Chilean government today of his country's declaration of war against Germany and Italy. The Prime Minister is currently considering the position that his country should take on this matter and is expected to deliver a speech today clarifying the position. One newspaper commented, "The acts of aggression against Brazil have indirectly harmed us. To date, our country has taken a serious attitude towards the expansion of the current war to the Western Hemisphere and has a spirit of solidarity and unity. In the past, our country has maintained solidarity with its sister countries and has shared hardships with Brazil. This point should be understood by Brazil."</p>
+<p>Uruguayan Bombers Dispatched</p>
+<p>Montevideo, 24th (Havas News Agency) - Reports that three squadrons of Uruguayan bombers discovered and sank three German submarines while conducting reconnaissance flights off the Brazilian border have been officially denied here. It is said that the aircraft returned in the evening without reporting any special news.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - According to news from Montevideo, Uruguay, yesterday, Uruguay has stepped up coastal defenses. The authorities have dispatched additional ships and aircraft to protect the coast. The "Paysandú", "Negro" and "Salto" have been ordered to patrol regularly along the Atlantic coast, assisted by aircraft.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - Montevideo reports that Uruguayan Foreign Minister Guani, at the invitation of the Chilean government, will visit Chile on September 10 and plans to stay for four days.</p>
+<p>Peru Considers Itself Inextricably Linked</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - According to a decree issued by the Peruvian government yesterday, the Peruvian government officially announced its inextricable link with Brazil, recognized it as a non-belligerent country, and suggested that American countries convene a meeting to discuss issues related to the defense of the Americas.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - According to news from La Paz, the Bolivian Senate passed a resolution yesterday expressing its unified stance with the Brazilian government.</p>
+<p>Quito, 25th (Havas News Agency) - The government of Ecuador announced today that it would grant Brazil non-belligerent rights.</p>
+<p>La Paz, 25th (Havas News Agency) - The government has just decided to recognize Brazil as a non-belligerent country.</p>
+<p>Portugal Continues to Maintain Neutrality</p>
+<p>Lisbon, 25th (Haitong News Agency) - A Haitong News Agency reporter learned from responsible Portuguese sources that Portugal's neutral policy is not affected by Brazil's participation in the war. The note that Portugal sent to Brazil after Brazil's declaration of war against Germany and Italy only stated the friendly relations between the two countries. Portugal did not express an opinion on Brazil's decision.</p>
+<h3>Brazil Liquidates German and Italian Banks, Confiscates German and Italian Ships</h3>
+<p>Rio de Janeiro, 24th (Allied News Agency) - After Brazil declared war on the Axis powers, it took its first step today, conducting a large-scale search for suspicious elements among enemy aliens in the country.</p>
+<p>Lisbon, 24th (Allied News Agency) - According to news from the Brazilian capital, the Brazilian government has ordered the German Atlantic Bank, the German South American Bank, and the German-Italian South American Bank to suspend operations and liquidate. The shares belonging to German and Italian people will be confiscated.</p>
+<p>Buenos Aires, 25th (Haitong News Agency) - According to news from Rio de Janeiro, all German and Italian ships anchored in Brazilian ports have been confiscated by the Brazilian government. At the same time, Brazilian prisons have been emptied to accommodate Axis nationals arrested by the government. However, this measure is temporary. In the future, Axis nationals will be sent to internment camps.</p>
+<p>Lisbon, 25th (Haitong News Agency) - Brazil implemented a blackout for the first time last night, which was not lifted until dawn. Brazil has established a volunteer recruitment bureau, giving the people of the country a sense that the war is approaching South America.</p>
+<p>German Foreign Ministry Comments on Brazil's Declaration of War</p>
+<p>Berlin, 24th (Havas News Agency) - Regarding Brazil's declaration of war against Germany and Italy, the German Foreign Ministry commented that Brazil has become a slave to the United States. From a military point of view, Brazil's participation in the war is not of great significance. From an economic point of view, the country's resources have long been at the disposal of the United States, so there will be no significant increase or decrease in the future. The German government is not surprised by Brazil's decision, because the country's government has been constantly taking actions that violate neutrality under the instigation of the enemy. The people of Brazil will one day demand that those who plunged the country into the vortex of war explain their reasons. As for the Brazilian authorities' claim that five of its ships have been sunk by Axis submarines, it is not true and is merely an excuse.</p>
+<h3>Indian Viceroy Summons Meetings of Both Houses of Parliament</h3>
+<p>New Delhi, 24th (Havas News Agency) - The Viceroy of India has scheduled a joint meeting of the upper and lower houses of the Indian Central Legislative Assembly on September 14 to discuss the political situation.</p>
+<p>Bombay, 24th (Havas News Agency) - Demonstrators here today again attacked the court. When police opened fire, three students were injured.</p>
+<h3>British Admiralty Releases Figures on Warship Losses: 152 Ships, 630,000 Tons</h3>
+<p>London, 24th (Havas News Agency) - Following the sinking of the British aircraft carrier "Eagle" in the Mediterranean, the Admiralty, at the request of various sectors, released for the first time the number of ships lost by Britain and the United States, totaling 152 warships with a total tonnage of 631,400 tons, including 5 battleships, 5 aircraft carriers, 21 cruisers, and 93 destroyers. However, German military sources believe that the number of ships lost by Britain and the United States is no less than 300, so it is expected that Britain will release a second report within days.</p>
+<h3>Three US Aircraft Crash</h3>
+<p>Lisbon, 25th (Haitong News Agency) - It has been learned here that three U.S. aircraft crashed the day before yesterday, resulting in 24 deaths and 3 serious injuries. The crash sites were in Baton Rouge, Louisiana, Dahlgren, Virginia, and El Paso, Texas. Details are unknown.</p>
+<h3>Earthquake in Bulgaria</h3>
+<p>Sofia, 25th (Haitong News Agency) - A slight earthquake occurred here at 5:42 PM the day before yesterday. The epicenter was approximately 280 kilometers from here, in the town of Razgrad in northeastern Bulgaria. The earthquake was most severe there, with many houses collapsing.</p>
+<h3>Hitler Appoints Schirach to Succeed as German Minister of Justice, Grants Him Special Privileges to Establish Nazi Law</h3>
+<p>Berlin, 25th (Haitong News Agency) - According to official announcements, German leader Hitler, in view of the importance of wartime justice, has appointed Dr. Schirach as Minister of Justice. After the Nazi Party came to power, he served as Minister of Justice of Saxony. He left office only when the German Ministry of Justice centralized judicial power. Dr. Schlegelberger, Secretary-General of the Ministry of Justice, who had been acting as head of the ministry after the death of the previous Minister of Justice, Dr. Gürtner, has submitted his resignation and it has been approved. Dr. Rosenberg has been appointed Deputy Minister of Justice. The Nazi Legal Department has been dissolved. Dr. Frank, the head of the department and chairman of the Bar Association and President of the German Law Academy, has also submitted his resignation and it has been approved. Minister of Justice Schirach has also been appointed chairman of the Bar Association and President of the German Law Academy.</p>
+<p>Berlin, 25th (Haitong News Agency) - German leader Hitler issued a decree that the new Minister of Justice, Dr. Schirach, can use special powers to establish Nazi law. He can take all necessary measures, without having to comply with current laws, after consulting with the Secretary-General of the Prime Minister's Office and the Secretary-General of the Nazi Party, in accordance with the leader's instructions.</p>
+<h3>Brief Biography of Dr. Schirach</h3>
+<p>Berlin, 25th (Haitong News Agency) - Dr. Schirach, the new German Minister of Justice, was born in Würzen, Saxony, on April 19, 1889. He studied law at the Universities of Leipzig and Marburg and later joined the Saxon government. After the outbreak of the First World War in 1914, he volunteered for military service and was promoted to lieutenant in 1917. On March 11, 1933, he served as acting Minister of Justice of Saxony. On May 6 of the same year, when the official cabinet was formed, he was appointed Minister of Justice. In November 1933, he was invited to the German Legal Society. The following year, after the government ordered that national justice be under the control of the German government, he was appointed by the then Minister of Justice, Dr. Gürtner, as the representative in Saxony. In April 1935, he was appointed Deputy President of the German Supreme Court. In May, he was appointed President of the People's Court until today.</p>
+<h3>US Aircraft Attack Rouen, France Protests, US Aircraft Fly Over Lyon</h3>
+<p>Vichy, 25th (Allied News Agency) - It has been learned today that the Vichy government lodged a strong protest with the United States yesterday against the recent bombing of Rouen in occupied France by US aircraft, which caused significant damage to French property. It is reported that the reasons cited by the French side for the protest are: The various facilities in Rouen are not military in nature and are under the protection of the Vichy government; The United States has not severed diplomatic relations with France, so Vichy insists that the United States has no right to attack areas under Vichy protection, regardless of whether the area is occupied by the Germans.</p>
+<p>Lisbon, 25th (Allied News Agency) - London reports that Vichy Radio broadcast this morning that US Army bombers, escorted by British fighters, attacked Rouen, France, last week, killing 60 civilians, seriously injuring over 100, and killing 15 soldiers, but no military targets were hit.</p>
+<p>Vichy, 25th (Allied News Agency) - According to news from here, shortly after 11:00 AM today, bombers flew over Lyon, presumably American Flying Fortress aircraft. Anti-aircraft guns immediately opened fire.</p>
+<h3>Mines Laid in Norwegian Waters to Prevent Foreign Troops from Landing</h3>
+<p>Stockholm, 24th (Havas News Agency) - According to news from the Norwegian capital, the country's naval defense headquarters has laid mines in the waters near the construction center where foreign troops are expected to land, and has notified the public not to approach docks and ports.</p>
+<h3>Thai Parliament to be Re-elected at the End of the Year</h3>
+<p>Bangkok, 25th (Haitong News Agency) - According to well-informed sources in the press, the Thai government has decided to hold new parliamentary elections at the end of the year. The Ministry of Interior has requested an appropriation of 80,000 Thai baht for the expenses of the election.</p>
+<h3>Japanese Ambassador to Spain, Suma, Goes to Portugal</h3>
+<p>Madrid, 25th (Haitong News Agency) - The Japanese ambassador to Spain, Suma, flew to Lisbon from here yesterday. Although officials have not commented on the purpose of Suma's trip, it is widely believed that Suma will discuss important matters with Japanese diplomats stationed in Portugal.</p>
+<h3>Male and Female Movie Stars Arrive in Britain to Comfort US Troops, Tyrone Power Enlists</h3>
+<p>Lisbon, 25th (Allied News Agency) - According to news from London, British actress Merle Oberon (wife of producer Sir Alexander Korda) has arrived in London from Hollywood to comfort US troops. The stars traveling with her include Al Jolson, Frank McHugh, Arlene Francis, and Patricia Morrison.</p>
+<p>Lisbon, 25th (Allied News Agency) - Washington reports that American film heartthrob Tyrone Power enlisted yesterday and is serving as a soldier in the US Marine Corps.</p>
+<h3>German Plane Flies Over Iceland</h3>
+<p>Stockholm, 25th (Allied News Agency) - According to news from London, US Army authorities in Iceland announced that German planes recently strafed and bombed a fishing vessel heading for Iceland. The ship sustained only minor damage and one crew member was killed. On Sunday morning and yesterday, one German plane each flew over southeastern and northeastern Iceland.</p>
+<h3>US Republican Party Elects New York Governor Candidate</h3>
+<p>New York, 25th (Havas News Agency) - The New York State Republican Party held a convention in Saratoga Springs today to elect a candidate for Governor of New York. Thomas Dewey was elected as a result.</p>
+<h2>Page 3</h2>
+<h3>Churchill Returns to Britain by Plane, Roosevelt's Representative Harriman Accompanies Him, Halifax Meets Hull to Discuss the War Situation</h3>
+<p>Lisbon, 25th (Allied News Agency) - According to news from London, British Prime Minister Churchill returned home by plane at 7:40 PM last night, accompanied by US President Roosevelt's representative Harriman, British Army Chief of Staff General Brooke, Under-Secretary of State for Foreign Affairs Cadogan, and Sir Wilson. When Churchill disembarked, he was wearing an Air Force officer's uniform, carrying a walking stick, and still smoking a cigar. His wife, son, and government officials were all at the airport to welcome him. He then returned to London by special train. Churchill's trip to Moscow was originally kept secret and was not officially announced until the 17th of this month. He met with Stalin for four days, then went to Egypt to inspect the front lines and visited the Iranian capital under the wartime pseudonym "Poolfin Ward".</p>
+<p>Lisbon, 25th (Allied News Agency) - British Ambassador to the United States Halifax, who had just returned from London, met with Secretary of State Hull yesterday for more than an hour to discuss the war situation in the Middle East, the Indian issue, the war situation in the Pacific, and Prime Minister Churchill's trip to Moscow.</p>
+<p>Washington, 24th (Havas News Agency) - Secretary of State Hull and British Ambassador to the United States Lord Halifax met for a long time today to discuss important issues between Britain and the United States and the backlog of cases during the British Ambassador's return to his country. Hull declined to announce details of the meeting. When reporters asked about Finnish Foreign Minister Tanner's statement that he did not want to negotiate a separate peace with the Soviet Union, he replied that the US government had not received any reports on this matter and therefore did not wish to criticize it.</p>
+<p>British General Election Not to be Held Early</p>
+<p>London, 25th (Havas News Agency) - It has been learned that Prime Minister Churchill recently made a short stay in Cairo during his trip to Moscow. It has also been announced here. The British government does not intend to hold the next general election early.</p>
+<p>Stockholm, 25th (Haitong News Agency) - According to London news from Swedish newspapers, the date for Parliament to convene to hear Churchill's report on the Moscow Conference has not yet been determined. There is currently no immediate sign of a meeting being called. Churchill made a week's stop in Cairo after flying from Moscow and before arriving in London. Churchill traveled 15,000 miles on his round trip to Moscow.</p>
+<p>Stockholm, 25th (Haitong News Agency) - According to a London dispatch from the "Daily News," there is very little news in London about the establishment of a new defense zone by British troops in Iran and Iraq, and the appointment of General Wilson as commander-in-chief of the zone. The development of this matter may be decided by the Moscow Conference, which is part of a joint British-Soviet strategy in the Caucasus. It is also rumored that former commander-in-chief of the Egyptian front, Auchinleck, will take an important position in the defense zone. It is almost certain that British troops will be sent to fight in the Caucasus, as the Soviets need war materials, not soldiers, so the Soviet Union has rejected the British suggestion. It seems possible that British forces will be responsible for supplying Soviet troops in the Caucasus. Therefore, the demarcation line between the British and Soviet armies will move north from south of Tehran. London has doubts about whether British troops will be able to carry out their responsibilities. London is also rumored to have landed US troops in Persian ports.</p>
+<h3>Turkish President Inspects Coastal Areas, Partial Cabinet Reshuffle in Turkey</h3>
+<p>Istanbul, 25th (Domei News Agency) - Turkish President İnönü, during his inspection tour of Central Anatolia, has now arrived in the Black Sea coastal region.</p>
+<p>Istanbul, 25th (Haitong News Agency) - It was learned here last night that the Turkish cabinet will be reshuffled. Customs and Monopoly Minister Karatonzi will submit his resignation. The vacancy will be filled by the current Economy Minister Tai. The vacancy for Economy Minister will be filled by Ai Sheng, the former General Manager of Sumer Bank.</p>
+<h3>Portuguese Colonial Minister Machado Goes to South Africa</h3>
+<p>Lourenço Marques, 24th (Havas) - Portuguese Colonial Minister Machado, at the invitation of the South African Federal Government, departed today for Pretoria.</p>
+<h3>Swiss Envoy Robbed</h3>
+<p>London, 25th (Havas) - A Swiss government envoy, carrying letters to Istanbul, Turkey, was attacked by four thugs while traveling through the capital of Bulgaria. His briefcase and three packages of documents were forcibly seized.</p>
+<h3>From Lecturing to Imprisonment (7)</h3>
+<p>— Tie Ming</p>
+<p>The next day, before dawn, we were on our way again. I still refused to sit in the front, but the back was much better arranged, so the jolting was not too severe. About fifty kilometers past Poligny, in a very desolate place, I got out of the car. I continued to make up a story, saying that I planned to walk through the Saint-Georges Gorge (Col de St. Georges) into Switzerland, which was about a day's journey. We then said goodbye, wished each other well, and parted ways. But my actual route was exactly the opposite of what I said, winding along small paths towards central France.</p>
+<p>As I walked, I pondered the situation. The Maintenance Society must have thought that Martin had told me all the secrets of seawater alchemy, including the method of making gold mediums. At least I knew the general outline of the matter and was qualified to be silenced. If the Viyende Men's bomb had arrived five minutes later, perhaps I would have understood whether they still wanted to manufacture gold in large quantities, or whether they only wanted to prevent others from using this method to compete with them in the gold mining industry. I thought the second explanation seemed more plausible, because even if they wanted to produce gold in large quantities, the result would inevitably be the same as with Lee Gam, and it would be difficult to keep the secret for long. They probably only wanted to murder me and then hope that no one else would know about the method of seawater alchemy. Based on this idea, I decided to publish the entire experience, letting them know that I did not fully understand the method, so there was no need to bother murdering me. And to avoid suspicion, I would never buy real estate near the sea in the future, nor would I go to the beach for summer vacation again.</p>
+<p>I am now publishing the details of this experience in common Chinese and English publications. Publishing it in England will allow the Maintenance Society's ears and eyes to see it early; publishing it in China will allow my family and friends to know my situation, quickly alerting the embassies abroad to pay attention and provide me with necessary rescue. Most readers will, of course, regard my account as a novel, but if I am killed in Europe or falsely accused like Ge Lehua, then the people of the world—especially those in academic circles—will understand that everything I have described is true, and that I am a victim who has sacrificed for science.</p>
+<p>The Maintenance Society and the French police are probably tracking me. The French border and the Anglo-French transportation lines must be under close surveillance, and Oxford University is probably no exception. But no matter how clever they are, they would never imagine that I would publish the most important scientific invention of the twentieth century in common publications. This true account was written in Anvergne, an ancient small town. At the same time, I tried my best to change my appearance. I had already sent my passport to Mr. Zhang to keep it for me. I also exchanged my small handbag for a travel canvas backpack on the road. For the past few days, my beard has grown very long, not only making it difficult for people to recognize me, but I also sold my razor for fifteen francs.</p>
+<p>The money on hand is decreasing day by day, but I can't ask the British side or Mr. Zhang to send me money, because it is necessary to prove my name when receiving the money, and this is the most dangerous thing at the moment. Now I must save as much as possible and still find ways to earn some money. One day, a car "broke down" on the highway. I helped the traveler carry a small box to a nearby village and earned five francs. Without money, it is impossible to live in France, so I must find a way!</p>
+<p>Before this account is published, there is always a risk to my life. The day before yesterday, I saw someone following me. I ran desperately over a small hill to escape. I don't believe the Maintenance Society could have so many henchmen, and that person's staring at me was perhaps because he was surprised by my strange appearance and untidy clothes. But I would rather be overly cautious and dare not take it lightly.</p>
+<p>My plan is to send out this text and then go to Ambert to spend my last thirty francs on getting completely drunk. The local police will definitely invite me into the local prison. This method is very agreeable to me, because prison is the only place in France where you can live without spending money, and you can also get complete safety, without having to worry about the Maintenance Society's conspiracy. I don't necessarily like French prison life, and detention is particularly difficult, but it is much better than following in Martin's footsteps. I plan to claim Dutch nationality and call myself Koning. Since I have no Dutch passport and am penniless, and only know a few sentences of Dutch, I don't think the nearby Dutch consul would be willing to take me in. Then I can wait calmly in the unnoticed Ambert local prison for the publication of this text and for the embassy or Mr. Zhang to come and rescue me from prison with my passport and money. I hope the printing house will not be afraid of the trouble of typesetting foreign words. The foreign names of people and places noted here are extremely useful for rescuing me in the future. Lives are at stake, so please do not delete or misspell them! If, by that time, no prisoner claiming to be Koning and with a long beard can be found in the Ambert local prison, then it would be that I did not even have time to implement my plan and had already met the same fate as Martin, Lee Gam, and Ge Lehua before obtaining the protection of the prison.</p>
+<p>What will be the result after this account is published? I guess the Maintenance Society will understand that if I could make gold mediums, I would never reveal the secret so completely. If they kill me, it would be tantamount to admitting their guilt in murdering Martin, Lee Gam, and Ge Lehua. I don't think they would be so foolish! They must only hope that readers do not believe my account, and that those who do not know me will regard it as a novel; and those who know me may think it is a professor's trick to excuse himself after getting drunk and imprisoned in France! But in this vast world, there must be some insightful people who know the scientific value of my report. In a few years, someone will definitely use Ge Lehua's method to make gold somewhere, and those bad guys who murdered us may also realize that it is futile and reactionary to prevent the progress of science. Five or six mathematicians and physicists with considerable attainments, working together, should not find it difficult to calculate all the equations necessary for making gold mediums within four or five years. Therefore, in six or seven years, I want to advise my wealthy relatives and friends to quickly sell all their government bonds and gold mining stocks and buy stocks in other enterprises instead. But the Soviet Union has many good mathematicians, and if they start to study this method, they will not have less than 500 million rubles a year to use for the expenses of the world revolution. If that is the case, buying any stock may not be of any use. (The end of the whole article)</p>
+<h2>Page 4</h2>
+<h3>Responsible Parties Fully Mobilized for Patrol, Blackout Drill Last Night, Aircraft Surveyed and Circled Several Times, Street Lights All Extinguished Around 9 PM</h3>
+<p>Last night's first blackout drill lasted for four hours, from 7:30 PM to 11:30 PM. Prior to the drill, the authorities of the two concessions temporarily posted notices, instructing citizens to completely cover indoor lights during the drill, so that they could not be seen from outside. Therefore, as soon as the drill began, the responsible parties patrolled the streets, and the situation was very tense. Vehicles on the street dimmed their lights or partially covered them with black cloth. Shops either closed early or turned off all advertising lights. Trams were covered with louvers, and all lights were turned off once they entered the depot. Therefore, the streets were half dark. After 9 PM, aircraft rumbled at a higher altitude, and many people looked up to watch. In addition, senior officials from the police departments of the two concessions, fire brigade personnel, and cadres from the health and public works departments all went out to inspect or conduct fire-fighting and rescue drills. At the same time, the newly established health committee of the Baojia Committee also set out to carry out rescue work. In yesterday's drill program, there were no obvious signs in the first hour because it was not dark. After 8 and 9 PM, the whole city seemed to be immersed in a serious atmosphere of air defense. Around 9:30, all the street lights were turned off, and the lights of thousands of homes were controlled. At 11 PM, the Greater East Asia Radio announced the end of the drill. The first blackout in this city ended.</p>
+<p>Aircraft Drop Warning Signals</p>
+<p>In addition, during the blackout drill last night, aircraft hovered and looked down, dropping signals on places that did not comply with the covering of lights. Areas such as Hongkou and West Shanghai were warned. As for the results of the drill, it remains to be announced.</p>
+<p>Fire Occurs During Drill</p>
+<p>At 8:26 last night, during the blackout drill in this city, a building in Lane 318, Wuchang Road, Hongkou, suddenly caught fire. Dense smoke spread immediately, and the fire blazed. The fire brigade drove to the scene to put out the fire. After about an hour and a half, the fire was extinguished. As a result, buildings at Nos. 121, 123, 125, and 127 were destroyed.</p>
+<h3>Ningbo Native Place Association Strictly Handles Repatriation</h3>
+<p>The Ningbo Native Place Association has decided to handle repatriation strictly to show restrictions, as the number of people requesting repatriation is increasing. In addition to filling out an application form, it should be introduced by a member and be responsible for guaranteeing it. It is also planned to continue raising funds of 100,000 yuan, with a deadline of two months, first signed by the committee members present.</p>
+<h3>Shanghai Municipal Council Flour Office Closed for One Day on the 31st</h3>
+<p>The Shanghai Municipal Council recently issued Announcement No. 6056, stating that the Council's Flour Office will be closed for one day on the 31st of this month.</p>
+<h3>Matters Concerning the Evacuation of Overseas Chinese in the Americas Have Been Negotiated, Date Roughly in Early Next Month, Those Without Serious Illnesses Must Be Evacuated</h3>
+<p>Continued exchange of evacuees between Japan and the American countries has been negotiated and settled. The Japanese mail ship Asama Maru and the Italian ship Conte Verde are expected to arrive in Shanghai from Yokohama on the 2nd of next month, berthing for several days. They will depart for Lourenço Marques in Africa around the 6th or 7th of the month. The two ships can carry a total of 1,500 evacuees, most of whom are ordinary overseas Chinese. Because diplomatic and consular officials have almost been evacuated in the past, the evacuees are not only limited to Shanghai. Japanese Americans should also be included. In principle, the next batch of American evacuees from Shanghai will be more than those evacuated from Japan. In addition to mainly American people, it will also extend to people from Canada, South America, and Central America.</p>
+<p>Those Without Serious Illnesses Must Be Evacuated</p>
+<p>The American Association of Shanghai continued to process the registration of overseas Chinese yesterday, with a deadline at the end of the month. Yesterday, it also notified all American people in Shanghai, informing them of the possibility of evacuation in early next month, but instructed them not to constantly inquire about information from the Association or the Swiss Consulate before the overall situation is completely clarified. The notice stated that all American overseas Chinese who have the right to evacuate and are healthy enough to withstand long journeys are expected to leave Shanghai. If there are serious illnesses that make it impossible to travel, the permission of the Swiss Consulate must be obtained.</p>
+<p>Canadians Hurry to Register</p>
+<p>According to the agreement reached between the governments concerned, Canadians are included in this evacuation. Therefore, the Swiss Consulate in Shanghai published a notice in the newspaper yesterday, stipulating that all Canadian overseas Chinese or those who consider themselves qualified as Canadian citizens must go to the consulate at Room 74, French Post Office Building, 9 Avenue Edward VII before this Saturday to register, and must bring their passports for verification. In addition, those who are not born in this country, regardless of whether they have a Canadian passport or not, must present all the documentary evidence acknowledging the qualifications of official Canadian citizens.</p>
+<p>Travel Expenses from the Philippines Back to the United States Are Self-Funded</p>
+<p>The American Association of Shanghai yesterday also announced the cost of travel from Lourenço Marques for American evacuees to return to the United States. This cost must be borne by the evacuees themselves, estimated at US$525 per adult, US$131.25 per child under four years of age, and US$262.50 per child between the ages of five and nine. All evacuees must notify the Swiss Consulate of the names of their employers and relatives in the United States, so that the Swiss Consulate can telegraph the US government, so that the US government can collect travel expenses from their relatives, etc., for allocation. American overseas Chinese do not need to rush to notify the Swiss Consulate of the above points unless they have received official notification.</p>
+<h3>Shoe Stores Request Revision of Price Limits, Decision to Be Made Within Days</h3>
+<p>There are no less than 570 shoe stores and workshops in this city. The industry association organized by Hou Chunbo, Chen Jinxiang, Zhang Fuquan, Shen Qing, Cai Jianqing, Song Qinzhou, etc. has recently stated that since the authorities have controlled the prices of goods, it is difficult for the industry to maintain its business based on the cost of raw materials such as soles, faces, linings, and hardware. In order to prevent colleagues from raising prices without authorization and being punished, the industry association, in addition to notifying and urging them to strictly abide by the regulations announced by the authorities on June 15, has specially set up an evaluation committee to specifically study the retail prices of stores and the wholesale prices of workshops. The committee members are from Beijing and other shoe companies. They have already sent letters to the relevant authorities, stating all kinds of difficulties and requesting revision of the price limit measures to maintain business. It is heard that the authorities have summoned industry representatives Hou Chunbo, Wu Peiqing, etc. for talks, and it is heard that a decision will be made within days.</p>
+<h3>China Communications Office and Branches Reopen Simultaneously, Unlimited Withdrawal of Non-Enemy Deposits</h3>
+<p>According to Shanghai Central News Agency, after the Joint Committee for Handling China Communications Bank between China and Japan determined the specific guidelines for the reopening of China Communications Bank, the various preparation procedures have now been largely completed. The regulations for the reopening of China Communications Bank have been revised and are awaiting formal announcement. In terms of business, in addition to canceling the business of operating the national bank franchise, it will handle 14 types of commercial banking businesses such as deposits, remittances, exchanges, custody, trusts, savings, insurance, and entrusted agency. From September 1, the China Bank Head Office at 50 Hankou Road, the Tongfu Road Office, the Baxianqiao Office, and the Xiafei Road Office, the China Communications Bank Head Office at 999 Jingansi Road, the Nanjing Road Branch, the Xiafei Road Branch, and the Minguo Road Branch, will be announced to reopen simultaneously. The senior personnel such as internal directors, supervisors, and managers have already been internally determined and will be announced within days. It is heard that after the reopening, there will be unlimited withdrawals for non-enemy merchant deposits.</p>
+<h3>Russian Boy Infected with Cholera</h3>
+<p>According to the English Times newspaper, it was learned yesterday that the first case of cholera infection among foreigners in the French Concession this year has been discovered. The infected person is a nine-year-old Russian boy named Pirov, who was taken to the Feng Li Isolation Police Hospital for treatment last week. However, this boy is not a resident of the French Concession. Before his illness, he originally lived with his parents in the West Shanghai district.</p>
+<h3>Veteran of the Banking Industry Yang J眉imei Laid to Rest Yesterday</h3>
+<p>Mr. Yang J眉imei, chairman and general manager of Shanghai Bank, passed away on the 23rd. Yesterday (the 25th), the encoffining ceremony was held at the Shanghai Funeral Home on Strettner Road. Mr. Yang was a veteran of the banking industry. He was strict with himself and generous to others throughout his life. All friends from all walks of life were saddened to hear the news. More than a thousand people who went to mourn yesterday included Bin Huijing, Zhou Min, Xu Jiyu, Tang Shoumin, Shen Shuyu, and Lin Kanghou. The plain cars and white horses were extremely mournful.</p>
+<h3>Domestic Postage to Be Increased Again, Still Under Negotiation</h3>
+<p>It is heard that whether the domestic postage will be increased will be implemented from September 1 of this year, the order has not yet been issued, or the General Post Office is still continuing to negotiate.</p>
+<h2>Page 5</h2>
+<h3>Two Students Steal Expensive Bicycles Together, Set Up Shops for Sale, Arrested and Cracked, Nineteen Vehicles Found in Huguang Bicycle Shop, Stolen Goods Not Yet Found, Both Students Have Confessed</h3>
+<p>Pan Renchang (12 years old) and Yu Xinjie (20 years old), graduates of the Chinese-French School, recently opened Huguang Bicycle Shop at 613 Avenue Edward VII in the French Concession. Pan and Yu successively stole dozens of expensive bicycles from various universities for business or sale. Now, Inspector Sui Wenqia of the French Concession Police, detectives Cheng Yuming, Wu Qizhen, and Wen Han have detected this, arrested Pan and Yu, tracked down nineteen thieves, brought them into the police station, and confessed to the conspiracy without denial. The rest have been sold and used. The police chief ordered them to be detained pending the completion of the stolen goods for further review.</p>
+<h3>Unclean Cold Drinks Prohibited from Hawking</h3>
+<p>The Shanghai Municipal Council recently issued Announcement No. 6057, stating that for the sake of public health, the following foods are strictly prohibited from being hawked along the streets in the Public Concession. The Council has authorized the Health and Police Departments to confiscate all the foods and containers sold if they encounter the forbidden sale. The items include: (A) Dangerous and unsanitary foods: frozen drinks (unless produced by a licensed manufacturer, frozen by machine, and mechanically bottled); natural ice; (B) Foods that are easily contagious: ice cream; cut fruits, including peeled sorghum, water chestnuts, and lotus root; jelly.</p>
+<h3>Transferring Property for Profit, Asking Too High a Price</h3>
+<p>One of the two defendants fined was Zhang Ting, who published an advertisement on July 22, representing the principal of Jingcheng Elementary School at No. 15, Lane 120, Songpan Road, to transfer the school site, along with the furniture and decoration in the school, asking for 20,000 yuan. However, the equipment to be transferred was estimated by a formal appraiser to be worth only 2,948 yuan. Therefore, the price asked was higher than the normal market value, which was inconsistent with the provisions of Clause 55 of the Real Estate Regulations and the Shanghai Municipal Council Announcement No. 5755. The Municipal Council sued the Special First Court, which sentenced him to 15 days of detention on the 24th of this month. In addition, Yu Qingfu, at No. 175, Longjiang Road, planned to transfer his store site, asking for 10,000 yuan. However, the store's property and decoration were estimated to be worth only 1,163 yuan, which was also in violation of the above-mentioned appendix and the announcement. The Council sued the Special First Court, which sentenced him to seven days of detention on the same day to serve as a warning.</p>
+<h3>News in Brief from All Walks of Life</h3>
+<p>Dagong Insurance Company: Dagong Bank was established by a joint venture between the bank and well-known businessmen in North China. It has been approved and issued a license to operate. It officially opened yesterday, and the number of policyholders was very enthusiastic. More than a thousand guests, including Wen Lanting, attended. The chairman of the company is Jin Zongcheng, the managing director is Zhu Kezai, the general manager is Li Nangong, the assistant manager is Yang Jinmen, the chief auditor is Yu Shousong, the manager is Hu Shubai, the deputy managers are Su Shisan, Guo Luomin, and Xu Caiqing, and the assistants are Sun Xinwu and Wu Ziliang. All are outstanding talents in the insurance and business sectors. The future development can be predicted.</p>
+<p>Jing Xianchun Treats Infantile Convulsions Well: Jing Xianchun, a world-renowned pediatrician and expert in children's diseases from Zhouxiang, Yuyao, has been practicing medicine on Guling Road for many years and has gained a lot of experience in treating children's diseases. He has special effects on acute and chronic infantile convulsions. Newborn infants suffering from this, other drugs cannot be treated. Dr. Jing's pill can turn a dangerous illness into a safe one.</p>
+<h3>School News</h3>
+<p>Second Vocational Supplementary School: The Second Vocational Supplementary School is located at No. 330 Beijing Road and is scheduled to start on September 4 and start classes on September 11. Those who are interested in learning should do so as soon as possible.</p>
+<p>Workers' Technical College: The Workers' Technical College, sponsored by the Industrial and Social Affairs Department of the Shanghai Municipal Council, held the entrance examination on the 21st of this month. The admitted freshmen are scheduled to be announced at the end of this month. The school is scheduled to start on July 7. From this semester, six classes will be added, and Japanese engineering terms will be taught.</p>
+<p>Guohua Middle School: Guohua Middle School has moved to its current location at the intersection of Beike Road and Beihe Road. The tuition fees have been reduced as much as possible. The junior high school department only charges 100 yuan for miscellaneous fees per semester, and there are no other fees. Freshmen will be recruited on September 6, and school will start on September 12.</p>
+<p>Japanese Language College: The Shanghai Japanese Language College, which borrows the school building of the Public Middle School on Beike Road for classes, has been allowed to expand classrooms. A new class will be opened on September 5. Registration has now begun.</p>
+<h3>Wang Jinxiu Blood Case, Jin Fugen Sentenced to Death, Apprentice Wang Ruigen Sentenced to Three Years</h3>
+<p>The Wang Jinxiu Zhai Jewelry Store at No. 521 Xiafei Road had a blood case on the night of June 26 this year. Tang Wenxiang, a partner, and Jin Fugen, the owner of Changxing Flower Shop at No. 511, and apprentice Wang Ruigen were arrested. Wang Weiyuan, the owner of the store, left Shanghai the next day and was spared. Wang's foster daughter, Qu Huide, was injured, and Wang's five-year-old adopted son, Wang Mian, was killed. 300 yuan in cash was stolen and fled. This case has been tried and concluded. Yesterday morning, the defendants were brought to court to announce the verdict. Jin Fugen was sentenced to death for joint robbery and murder, and his political rights were deprived for life. Wang Ruigen was sentenced to three years in prison for robbery. Tang Wenxiang died of illness in the detention center and was not dealt with. After the verdict, the defendants were still taken down and returned to the detention center pending review.</p>
+<h3>Mr. Yao's Last Wish is to Help Education - Report on Condolences from All Sectors - This Newspaper Received a Total of $5,025 Yesterday</h3>
+<p>After the passing of Madam Zhao, the mother of Yao Bohua, Zhongba, Yongli, Yongzheng, and Yongji brothers, her last wish was to aid those who have dropped out of school. The monetary gifts of condolence were to be donated to an educational fund. Yesterday, this newspaper received over five thousand gold dollars in condolences for Mr. Yao's mother from all sectors. We express our sincere gratitude on their behalf. The list of titles is detailed below:</p>
+<p>Titles of Condolence Gifts</p>
+<p>$2,635 from the colleagues of Jiu An Company (including $200 each from Lin Hanfu, Qian Xiaoshan, Zhou Zhongheng, Shen Zhangfu, Chen Liangshu, Guo Xuequn, Bian Jizhou, and Cui Zhong; $100 from Zhou Yingong; $50 each from Zhou Yu'e, Li Boquan, Jin Yutang, Shen Yicun, Yan Nianci, Chen Zhendong, and Zhong Xiangfu; $40 from Wang Ruhui; $20 each from Zhang Decheng, Huang Peifeng, Jin Min, Lin Tieren, Huang Manyi, Wang Baoliang, Liang Sen, Yang Qinian, Zhang Yimin, Li Changnian, Guo Yaoting, Shao Jusheng, and Xue Jiyun; $10 each from Han Zhongliang, Feng Nianchi, Li Shuzi, Chen Zaihou, Zhou Zhili, Xu Shujian, Chen Xisun, Bu Lirang, Li Dingjie, Shu Baoshan, Huang Changlin, Liu Dingchen, Zhou Zhixin, Yu Xingquan, Zhou Jiangang, Pan Yuliang, Shi Lichun, Lin Linxiao, Yue Changlie, Liu Yunzang, Wang Jingwu, Liu Mingxun, and Wang Shikai, Liu Baonian; $5 from Wang Jianzhong)</p>
+<p>$500 from Wang Mengzhong, $200 from Xinfu Printing and Dyeing Factory, $100 from Ding Xuong, $100 from Zhang Wenhuan, $100 combined from Fan Jimei and Ye Qifeng, $100 from Mei Lu Hu, $50 each from Yang Sicheng, Liu Mingqing, Chuan Jingzhi, Chen Cizhi, Wang Zisong, Hu Xiqian of Siming Bank, Wu Xichun, Shu Zhaoxian, Shu Zhaosheng, Shanghai Branch of Hecheng Bank, Wang Qiyu, Wang Tongyuan, Li Haosheng, Dong Dayou, and Baofeng Insurance Company; $50 combined from Liu Congqiang, Zhu Rutang, and Ma Wuyun; $40 from Wang Boheng, $40 from Zhuang Jun, $40 from Yao Runhua, $30 from Luo Fengzhang, $30 from Zheng Yushu of Hua Company, $20 each from Li Jiannian, Hu Hongxian, Cai Songfu, Lü Yibo, Pan Zhiwu, Ge Shenxiu, Zhou Xinchuan, Hu Jiading, Cheng Yimin, He Ruitang, Wang Yangxian, Li Wenjie, and Xu Yongzuo; $10 each from Wang Xiaowen, Shen Zumian, Cui Mingru, Wu Shiheng, and Yuan Xuewen</p>
+<p>A total of $5,025 in savings certificates (Note: The condolences for Mr. Yao's mother were $580 on the first day, $750 on the second day, $3,135 on the third day, and $5,025 yesterday on the fourth day, totaling $9,490)</p>
+<p>Correction: To the Editor, Yesterday, I sent a donation of $100 for the Yao mother's educational fund and received receipt number 1635. Upon reading your newspaper, I noticed that my name, Li Yilong, was mistakenly printed as "Li Liu." Please correct this. Sincerely, Li Yilong, August 25th, to the Shen Bao Editorial Department for Educational Aid.</p>
+<p>Donations for Educational Aid</p>
+<p>Yesterday, Mr. Liang Huichuan donated the congratulatory gifts from relatives and friends for the completion of his new building to this newspaper's educational fund. Mr. Liang's enthusiasm for education and benefiting the poor is greatly appreciated. Furthermore, the China National Opera School, which was established just eight months ago, held a charity rehearsal at the Golden Grand Theatre for three days. A portion of the proceeds from the ticket sales was donated to this newspaper's educational fund. This spirit is deeply admired. We also thank Li Songling and others for their generous donations. The following educational aid funds were received yesterday: Liang Yichuan (congratulatory gifts from friends for the completion of the building) $1,100, China National Opera School (proceeds from charity rehearsal ticket sales at the Golden Theatre) $800, Li Songling $500, anonymous (receipt number 1723) $200, colleagues of Baixin Bookstore through the Qiuyi Bookstore $200, Jin Shisheng $50, totaling $2,850 in savings certificates. The total of the two is $7,875 in savings certificates. Yesterday's balance was $189,925.72. The grand total is $197,800.72.</p>
+<h3>Approved List of Shen Bao Readers' Educational Aid</h3>
+<p>The approved grants for primary and secondary schools and supplementary classes under the Shen Bao Readers' Educational Aid program will be issued in order. Today, we continue to publish the list of recommended students for free enrollment. The interviews for the university group are nearing completion and should be finalized today. Recently, we received letters from the following schools, generously offering half-price or free tuition: No. 108-110, Lane 194, Gordon Road, San Yi Elementary School; Shanghai Guang Middle School at the intersection of Avenue Road and Carter Road; and the affiliated middle school (2nd grade) of the Wuxi National Studies College at No. 9-0 Avenue Road. We express our sincere gratitude. As this newspaper's educational aid work is nearing completion, we regret that we cannot accommodate these offers. We hope for your understanding. Furthermore, the following students should take note: Yang Xipei, Supplementary No. 28, your letter requesting a change of school was not received on the 24th. Please provide detailed information, and we will try to accommodate your request. Sun Meilin, Middle School No. 603, remains admitted to Dacheng Middle School. Huang Yuzhong, Middle School No. 188, voluntarily cancels the aid. Xue Xiuzhen, Middle School No. 707, is approved to transfer to the middle school department of the Chinese Commercial English School.</p>
+<p>Free Enrollment Students</p>
+<p>The above students are requested to come to the office immediately to collect their referral letters. In addition, Miss Cheng Xinan originally applied to Zhizhong Girls' High School, but the junior high school does not have any free enrollment slots. Therefore, we have instead introduced her to Yue Qie Middle School, as it is close to her residence.</p>
+<h3>Donation of Meal Tickets and Epidemic Prevention Medicine</h3>
+<p>Yesterday, Mr. Pu Qiting donated 150 meal tickets from Pude Association and 80 bottles of emergency epidemic prevention medicine to be distributed to needy compatriots. Those who are in need are requested to contact the general affairs department of this newspaper.</p>
+<h3>Letter Received</h3>
+<p>Dear Editor, Regarding the article "Retired Bank Director Plagued by Poverty and Unemployment, Family Ruined" published in your newspaper on August 25th, which mentions that Cheng Bonian forged a Tian Dan bill at Qingyun Pavilion Printing House on He Fu Road, please note that our printing house provides printing services. We cannot ascertain the nature and content of every order we receive. The claim of forgery is based on hearsay and is untrue. We are concerned that the misunderstanding will damage our reputation. We hereby request that you correct this. Sincerely, Qingyun Pavilion and Ji, August 25th, 1942. Yesterday, this newspaper was published at 6 o'clock.</p>
+<h3>Xu Hui Charity Mini Soccer Match Rescheduled to Friday</h3>
+<p>The Xu Hui Charity Mini Soccer Match, initiated by Xu Hui School, originally scheduled to be held at the school's field yesterday, has now been postponed to this Friday afternoon at 4:00 PM. It will still be held at the original location. In addition to the Lian Bao vs. Xu Hui match, there will also be a Zhou Tang vs. Hui Zhong match and a He Lan vs. Xiao Wei match. The proceeds from ticket sales will be donated to the Shen Bao Educational Fund. The schedule is as follows: He Lan - Xiao Wei at 4:00 PM, Zhou Tang - Hui Zhong at 5:00 PM, Lian Bao - Xu Hui at 8:00 PM.</p>
+<p>Commercial News</p>
+<h3>Public Anxiety Leads to Increased Selling - Government Bond Market Under Pressure - Fortunately, Buying on Dips Provides Some Stability</h3>
+<p>Yesterday, the unified government bond market experienced a slight softening due to public anxiety and uncertainty. Increased selling pressure prevented the market from rebounding. However, despite the selling intentions of the bears, the large players' buying on dips created some hesitation. As a result, the market was relatively quiet, with fluctuations of only about half a yuan. The morning opened with retail investors pushing up Type C bonds to 9.20 yuan, but as selling pressure increased, prices were pushed down. Later, buying on dips by long players and short covering by retail investors led to a rebound. The market's movements were primarily driven by public uncertainty. However, based on the demand from large players, the buying side appeared to have a slight advantage. The total trading volume for the entire market was approximately 1.2 to 1.3 million yuan. A summary table is provided below:</p>
+<h3>Low Prices Spark - Interest in Chinese Stocks - Potential for Continued Rebound</h3>
+<p>Yesterday, Chinese stocks initially remained weak, but suddenly rebounded near noon. This was due to the significant decline in prices over the past month, which sparked interest from investors. Short covering led by China Underwear and New Asia Pharmaceutical resulted in many stocks reversing their losses and rising. Given the exhausted sentiment and shift towards bullishness, there is potential for continued gains. China Underwear initially fell to 31.25 yuan, but rebounded to a high of 32.50 yuan, a gain of 0.25 yuan. Wing On also saw a low of 89 yuan, but later recovered to above 90 yuan, a gain of 1.50 yuan. Sincere remained stable after an initial decline. China National Goods remained firmly above 100 yuan. New Amusement New Asia saw a low trading price of 40.05 yuan, but a sudden surge in buying lifted the price by 2 yuan to 42.50 yuan. China France also rose by 1 yuan. Civil Friendship saw light trading and fell by 2 yuan to 60 yuan, a significant drop of 20 yuan over five days. Great China Match surged from 171 yuan to 177.50 yuan, a gain of 6 yuan. Nanyang Brothers Tobacco saw 64 yuan and rose 1.50 yuan. Public utility Shanghai Northern Water and Electricity fell to a low of 26.50 yuan, a drop of nearly 50% from its peak. While it later rebounded, it was still down 0.50 yuan. Shanghai Chinese Electric saw light trading and stable prices. Cultural industries China saw a low of 157.50 yuan, later rebounding to 160 yuan, 5 yuan lower than World. Commercial Press was flat, with limited supply and demand. Trading volume was quite significant in the first half of the day. A detailed stock market table is provided below:</p>
+<h3>Cotton Cloth After Many Days of Decline - Rebound Rally</h3>
+<p>Factory cloth market yesterday, after many days of decline, rebounded. Because there is a local return to business, the momentum is not weak, so it gradually showed stability. All cloths rose. 16-pound Earth brand coarse cloth 178 yuan, Flying Swan 176 yuan, 9-pound New brand 109 yuan, 8-pound Zhenzhong 107 yuan, 12-pound Earth brand fine cloth 160 yuan, Dog Peng Factory single 150 yuan, Fugui fine twill 128 yuan, Magnolia bleached cloth 161 yuan, Qin Liangyu bleached cloth 151 yuan, Qin Meiren grey cloth 133.50 yuan, Mermaid grey twill 137 yuan, Three Sheep Serge new single 6 yuan, spot 5.85 yuan, Cheese Lam 248 yuan, An An blue 189 yuan, Peach Lady Lam morning market lowest price 254.25 yuan, then gradually rose, noon close 258 yuan, afternoon close 258.25 yuan, each piece rose 3 yuan.</p>
+<p>Eastern Cloth first fell and then rose. The morning opening trend was very weak. Retail investors continued to release. 12-pound Dragon Head fine cloth new single from 173 yuan, fell to about 172 yuan, but later with the industry absorbed, rose to 174.50 yuan, Bank single 156.50 yuan, Color Ball 162 yuan, Flying Fish 159 yuan, Yang He 157.50 yuan horn, 156 yuan, each piece rose 1 yuan, Blue Double Fish fine twill 147 yuan. Baby fine twill 145 yuan, are very scarce, Four Gentlemen Serge red single opening the lowest market 7.16 yuan, buyers rose, that is, rose to 7.20 yuan, swivel for a long time, finally, because the consignees are enthusiastic, to close the root is more tight, raised to 7.29 yuan, compared to the rise of 9 points.</p>
+<h3>Jewelry Shop Gold - Industry Quotes Slightly Weak</h3>
+<p>Yesterday, the retail price of jewelry gold in the jewelry industry was still 2,150 yuan per tael at the Da Xin stores (buying back less about 300 yuan), while the retail price at the Xian Yu store was 2,100 yuan, and the buying price was 1,900 yuan or 1,850 yuan. The inter-industry trading price was slightly weak and flat, and there were no speculators manipulating the market, so it was difficult to change. The morning opened 100 yuan lower, at 1,890 yuan, and then slightly rose to 1,895 yuan, and soon fell to 1,885 yuan, 15 yuan lower than the previous day, with a difference of 10 yuan. The transaction was sluggish.</p>
+<p>As for jewelry silver, the price remained at 16 yuan per tael, and the inter-industry trading price was 10.08 yuan.</p>
+<h3>Military Ticket Discount - Prices Are Stable</h3>
+<p>Yesterday's foreign exchange market was quite stable, with an inter-industry trading price of 5.5535 yuan. The retail price at banks and small money changers was 5.56 yuan, and the buying price was 5.54 yuan, the same as the previous day.</p>
+<p>Yesterday's Money Industry Association discount rate remained unchanged at 0.12 yuan, and the new head and cash were flat.</p>
+<p>Seventeen Hong Kong Soccer Stars</p>
+<p>Li Tiansheng and Others to Arrive in Shanghai at the End of the Month</p>
+<p>Li Huitang Has Left Hong Kong and Cannot Come to Shanghai</p>
+<p>According to reliable sources, soccer king Li Huitang has long since gone to the mainland. The rumor of him going on an expedition to Australia is also untrue. The widely circulated news of him coming to Shanghai has become a pipe dream. Although most of the Hong Kong players have left, quite a few remain in Hong Kong. Currently, apart from Li, 17 players including Li Tiansheng, Li Yichen, and Feng Jingxiang have decided to come to Shanghai and are expected to arrive here at the end of this month.</p>
+<p>Charity Volleyball Match Women's Group</p>
+<p>Vita Fooke Blue Star</p>
+<p>The Vita Fooke Cup Charity Volleyball Tournament continues with four matches from 6:00 PM tonight. It will still be held at the YMCA gymnasium in Baxianqiao. Tickets are 2 yuan. Yesterday's match between Guangming and Neihe B was canceled because Guangming was unable to attend. The match will be rescheduled. Tonight there are three matches in Group B and one women's match. The headline match is Youxing vs. GM. Youxing has dominated Shanghai women's volleyball for many years, with famous players such as Huang Xingfen, Zhu Shifang, Huang Mingyuan, Kuang Shaotao, and Shi Ruijuan. GM has Chen Liuzhen and Chen Jieshu, among others. The strength is comparable and the excitement is guaranteed. The results of yesterday's matches are as follows:</p>
+<p>Hua Yan defeated Lian Bao (B) 22-13, 9-21, 21-12.</p>
+<p>Hong Team defeated Hai Xing (B) 21-10, 21-7.</p>
+<p>Vita Fooke defeated Blue Star (Women) 22-20, 21-17.</p>
+<h3>July - Statistics of Checks Exchanged</h3>
+<p>The following is a summary of the check statistics from the monthly report of the Clearing House of the Shanghai Banking Association Reserve Committee for July: The total amount of checks exchanged this month was 709,668,467.95 yuan. The "highest amount" was 44,513,379.24 yuan, the "lowest amount" was 2,653,667.20 yuan, and the "daily average amount" was 28,398,738.72 yuan. The total amount of checks collected on behalf of the banks this month was 1,161,985,097.53 yuan. The "highest amount" was 57,743,083,428 yuan, the "lowest amount" was 32,061,101.01 yuan, and the "daily average amount" was 46,479,403.90 yuan. The total amount of daily transfers between banks was 2,697,369,868.93 yuan. The daily average amount of industry deposits was 577,634,740.04 yuan.</p>
+<p>"Note" The total number of checks exchanged in July was 91,704, and the total number of checks collected on behalf of banks was 113,926.</p>
+<h3>Kongzi Birthday Holiday</h3>
+<p>Banking Industry Changed to September 28th</p>
+<p>The Shanghai Banking Association yesterday issued a circular to all member banks stating that the holiday schedule for this year stipulated August 27th (Thursday) as the holiday for the commemoration of Kongzi's birthday. It has now been changed to September 28th (Monday) of this year as Kongzi's birthday commemoration day, which should be followed. The originally scheduled holiday on August 27th should be canceled and changed to a holiday on September 28th. No further notice will be given when the time comes.</p>
+<h3>Bean Cake Sales Weak, Trading Light</h3>
+<p>The bean market was sluggish yesterday due to weak local demand and rumors, causing people to take a wait-and-see attitude. Only 20 bags of Chongming Sand Red beans were traded for 162 yuan.</p>
+<p>Bean cake trading was light and the market was weak. 700 pieces of Shengji bean cake for April from the Yoshida pier were traded for 59.50 to 58.50 yuan.</p>
+<p>Bran trading was inactive yesterday due to sellers raising prices and buyers trying to lower them, resulting in no formal transactions.</p>
+<h3>Candied Tangerine After Customs - to Open Soon</h3>
+<p>Candied tangerine is during its peak selling season. The dozens of pieces brought by the Lushan Maru have been delayed for many days due to quarantine issues. They have now entered the pier and are expected to clear customs today. At the latest, they should be available for sale the day after tomorrow. It is said that the goods are very soft and glutinous, with a good aroma, and are considered to be of high quality.</p>
+<h3>Dried Longan - Being Harvested and Shipped for Sale</h3>
+<p>After the opening rebound, the market for dried longan remains short of supply. It is said that some parties still have stocks available, and profits are expected. Therefore, several firms are now going to other ports to purchase them to meet the needs of the Shanghai market.</p>
+<h3>Tangerine Peel is Expensive</h3>
+<p>The previous stock of tangerine peel has long been sold out, and the market has been short of supply for a long time. It is reported that several Chaozhou firms have recently shipped in a dozen baskets, which are of good quality and color and have now been transferred to the pier. However, due to the high cost, the asking price is higher than before, and no transactions have been made yet.</p>
+<h2>Page 6</h2>
+<p>Entertainment World</p>
+<h3>How I Directed "Ruo Lan's Complaint"</h3>
+<p>— Lin Feng An</p>
+<p>The story of Ruo Lan's Complaint is entirely based on Su Hui's palindromic brocade poem. Four years ago, I broadcasted it on the radio and also compiled the palindromic poem into a book on marital philosophy. Perhaps my fellow Cantonese compatriots have not forgotten it.</p>
+<p>My motivation for writing this play stems from Su Hui's character and learning, which are truly moving. The so-called "approaching the end with uprightness, even in the face of frost and trembling leaves," those who lack this kind of character and thought will inevitably fail in society. In the play Ruo Lan's Complaint, the first act exposes Su Hui's shortcomings: in a nutshell, "impatience and jealousy." Originally, this kind of flaw is a common ailment among women throughout history and across cultures, and it is not unique to Su Hui. Especially in feudal China, it was simply commonplace. However, Su Hui unfortunately represents the typical woman! Therefore, in the first act, when discovering the location where Dou Tao was hiding his mistress, the atmosphere was emphasized.</p>
+<p>As for the introduction of Zhao Yangtai's identity, it also creates a relief-like impression in the poetic and artistic atmosphere of the first act, reflecting Su Ruolan's character and status.</p>
+<p>Dou Tao was indeed a romantic scholar, although his achievements are not as grand as Sun Kejian's, but just looking at the four sentences in Wu Zetian's biography of Su Hui, "elegant in spirit, well-versed in the classics and history, especially skilled in literature and martial arts, highly regarded for his discussions," one can know what kind of person he was. With such an outstanding and capable figure, he naturally deserves the title of a romantic scholar. Therefore, in the first act, I also briefly sketched the outline of the above four sentences. However, greed for wealth and a desire for quick success were also his lifelong shortcomings. The smile after receiving the imperial decree of "the General of Pacifying the South," however, subtly conveys Dou Tao's thoughts.</p>
+<p>After the story unfolds, the greatest climax is naturally the "palindromic brocade poem," the thematic material. However, the original poem is profound and mysterious, and its syntax and meaning are scattered and misplaced. It is a purely literary work, and it must be popularized without losing the true meaning of the material. The handling of the dream scene in the third act and the introduction of the rotating sphere diagram are written according to the above method. With the climax of the second act, the fourth act is even more difficult to write, because the tragic atmosphere of the story in the historical theme material of the fourth act is almost impossible to find.</p>
+<p>As for the directing, there were also many difficulties, but fortunately the results were finally overcome. Because this time I hope to realize my ideal of "improving Cantonese opera and dialect drama" for more than ten years, this time the integration of song and dance drama, Cantonese opera, and Qinghua in one furnace is indeed a bold attempt.</p>
+<p>Finally, I must explain to everyone that the main purpose of this play is to guide the great way of marital life, hoping to achieve the effect of "joy without licentiousness, sorrow without injury." As for whether it is successful or not, I dare not boast here, and sincerely ask everyone for criticism and guidance, which would be greatly appreciated.</p>
+<h3>Xiao Feng and Zhong Ma - Wedding Rescheduled</h3>
+<p>— Shadow</p>
+<p>The engagement of stage artists Xiao Feng and Zhong Ma has been for a long time. The former is a high-achieving student in the English Department of Guanghua University; the latter is a Bachelor of Laws from Soochow University. Both are very enthusiastic about theatrical arts. The two have similar interests, and the groom and bride are both talented and beautiful. They are truly a match made in heaven. The wedding ceremony was originally scheduled to be held on the Double Tenth Festival in the middle of this month, but because both the International and Jinmen halls were already booked, they would rather choose an auspicious day, but will still borrow the site to get married.</p>
+<h3>A Record of the Charity Rehearsal of the China National Opera School</h3>
+<p>— Xing Yan</p>
+<p>The China Opera School has only been established for eight months. The other day I went to the Golden Theater to watch the first day of rehearsals. There were a total of six excerpts: Great Blessing, Caoqiao Pass, Hanging Turtle, Zhaoguan, Money Tree (i.e., Zhang Si Jie Descending to Earth), and Fourth Son Visiting His Mother. The weather was hot that evening, but the audience was twelve times full. The upstairs and downstairs benches were all full. The scene can be described as unprecedented. Children performing is very different from adults. Adults only focus on the protagonist in each play, while small opera troupes have wonderful performances by everyone. Even a supernumerary or an impersonator (i.e., those who play pigs, sheep, etc.) is spirited and dare not slack off. Just the four words "neat and solemn" are enough to satisfy the audience, and the children's liveliness and innocence and the greatness of the scene are unified, which is especially inspiring. For example, in the play Great Blessing, if it were performed by adults, it would not have much meaning, but the China Opera School added more than 20 cloud children who ran with the clouds and seized the championship, which made it very lively. The large mask in Caoqiao Pass, the old woman in Hanging Turtle, and the old man in Zhaoguan are all extremely talented, and the tunes are all above the main palace. The voice is broad and bright, which is especially rare and very promising in the future. The martial woman in Money Tree is extremely skilled with the knives, and the appearance is also beautiful. Although there was a slip in one place during the fight, it was in an unimportant place. However, the extremely dangerous and difficult moves such as throwing the whip, changing the double guns, and kicking the flower gun with the reversed feet were extremely stable. The audience applauded thunderously. It is truly admirable that a 13- or 14-year-old girl has such skill. The finale, Visiting Mother, has a uniform distribution, and the costumes are brand new, which is very spectacular. Before the public performance, the school can be charitable and undertake this righteous act in such a hot summer, which is enough to prove the enthusiasm of the school's teachers and students for social causes.</p>
+<p>(Editor's Note) On the third night of the charity rehearsal of the China National Opera School, I was invited by a friend to visit and saw that Mulian Saving His Mother and Catching and Releasing Cao had already been performed. Then the plays Fan Jiangguan, Second Entry to the Palace, and Yang Paifeng were performed. The scenes were magnificent, and the sound and appearance were beautiful. The students are at their childhood, the older ones are thirteen or fourteen years old, and the younger ones are eight or nine years old, but the performance is meticulous and logical. Whether singing, acting, speaking, or doing, all are quite skilled. The audience praised and applauded. With eight months of training, they have achieved such results, which shows the hard work of teaching and is truly commendable.</p>
+<h3>Advice to Those Planning to Stage "Begonia"</h3>
+<p>— Shi Mingyang</p>
+<p>When "Begonia" was being serialized in this newspaper, I had already read it once. After the separate edition was published, I read it carefully twice more. Judging the novel as a novel, it is indeed a rare work in recent years. Although there are also warlords, actors, and concubines in the middle, the structure is very special, and the consciousness and technique are much better than novels written on the same subject. Especially the ending after the revision, there is endless wonderfulness to savor.</p>
+<p>Now I hear that China United Film Company has decided to put it on the screen, directed and written by Ma Xuwibang. At the same time, the news of staging a stage play is also very loud. It is said that a certain director is indeed interested in trying it, but only because the two male protagonists in the book—Begonia and Zhao Yukun—are not easy to find suitable actors for, and fearing failure, so it has not been decided yet.</p>
+<p>This is really the biggest difficulty in staging the book "Begonia". On the screen, perhaps a clever method can be found to solve it, but on the stage it becomes a big problem. Because Begonia is the protagonist of the whole book, if he performs well, the whole play will be full of life, if he performs poorly, the whole play may fail due to personal failure. In the Shanghai theater scene, there are far fewer excellent male actors than female actors, especially like Begonia's personality (persevering and resolute), it is even more difficult to do well. For example, Shi Hui and Huang Zongjiang, both have very refined acting skills. Letting them play Begonia, they will definitely be successful after the disfigurement, but in order to increase the atmosphere of tragedy, the undisfigured Begonia must appear as a beautiful young man, and with the attitude of a famous Dan actor, which is not very suitable for Huang and Shi. Moreover, a role like Zhao Yukun who is so bloody, righteous, and yet very humorous and lively is also not easy to find a suitable person for.</p>
+<p>As for the adaptation of the script, it is really not an easy task. This kind of long masterpiece that focuses on psychological description is very easy to make the screenwriter fail. The famous work of Russia, "Les Misérables," performed on the screen is far less wonderful than the original book, which is a real example. Therefore, before starting the adaptation, the screenwriter must at least carefully consider it and solicit more opinions from readers, so as not to waste a lot of effort.</p>
+<p>I am very willing to see this play, and I firmly believe that if the script is well written and the actors are properly assigned, this play is bound to succeed.</p>
+<h3>The Future of Xue Youqin: Remarry or Remain Chaste?</h3>
+<p>— Xiepu Guest</p>
+<p>I remember when Xue Youqin performed at the Great Toad Stage, I went to see her perform Lady Mi in "Changban Slope" and Consort Yu in "Farewell My Concubine", as well as Lian Jinfeng, etc. Xue Niang's performance was meticulous and delicate, and she won the praise of many music lovers. After Qiu Bin Gao Lansheng left last autumn, she stopped performing on the red carpet and followed her husband to rent a house in Betty Alo Road, Betty Fang, with more joy than painting eyebrows. According to Xue Niang, she was Gao Jun's third little star and was very much loved by Gao. However, flowers do not always bloom well, and the moon waxes and wanes easily. Gao suddenly suffered from damp and cold typhoid fever and fell ill in the Sino-Western Nursing Home on Pushi Road on the eighth of last month. Although he was treated by famous Chinese and Western doctors, he was still unable to recover from his illness and finally passed away. Because Mr. Gao was usually chivalrous and generous, and cared for orphans and the poor, all his students and old friends were crying. When the gentleman passed away, Mrs. Gao was overwhelmed with grief, and Xue Niang sobbed even more, unable to speak, tears sparkling, like pear blossoms in the rain. From then on, the separated birds and separated swans felt endless sadness! After Mr. Gao's death, I don't know what her future will be like? Whether she will remain chaste or remarry is what music lovers are eager to know. According to my speculation from the facts, I believe that Xue Niang will definitely not play the old tune again during the mourning period.</p>
+<h3>Riding the Storm Together</h3>
+<p>— He Jia Zhi</p>
+<p>(8) What to Do?</p>
+<p>Because of Cui Zhen's disappearance, and because the robbers did not care about the property, Wei Cheng thought of Fei Changhe. He stood in the courtyard, his hands tied behind his back, took two steps forward, then took a step back, and suddenly slapped his palm on his thigh and said: "It must be him, it must be him!" Magpie, seeing little strange, hurried to report to Second Madam Ye, saying: "The young master is talking to himself." Second Madam Ye walked to the courtyard and saw that Wei Cheng had already walked out of the gate, so she called out: "Wei Cheng, where are you going?" Wei Cheng stopped and whispered a few words in Second Madam Ye's ear. Second Madam Ye said: "It shouldn't be, Fei Changhe, we have not treated him wrongly, he would not do this. Cui Zhen has not treated him wrongly either, he would not do this to Cui Zhen." Wei Cheng said: "I want to go to Fei Changhe's house unexpectedly to take a look. If he is the one who kidnapped Cui Zhen, I will grab his chest regardless of right or wrong, nearby, in the countryside, far away, in the city, anywhere is fine." Second Madam Ye quickly stopped Wei Cheng and called Ah Xing to close the bamboo fence gate from a distance, and then said to Wei Cheng: "My courage has been frightened smaller and smaller by you several times. Fei Changhe's house is a door of right and wrong. This kind of person is born a rogue, a gambler, how can you go to his house? Now, wherever you want to go, you can let Ah Xing go, He Zixing go. Just don't you go."</p>
+<p>Wei Cheng was stopped back into the house by Second Madam Ye, and he kept saying that Wei Cheng must not run around outside. Wei Cheng said: "The more I think about it, the more it is him. Besides Fei Changhe, there won't be a second one. He sees me and still calls me Young Master Ye, saying that the Ye family of Shide Hall is the only one who can do such a vicious and rogue thing." As Wei Cheng spoke, he touched the table with his hand, clenched his fist, and hammered it up and down on the table. Second Madam Ye said: "Don't be so angry. I will send Ah Xing out to take a look. Ah Xing goes west, He Zixing goes east. If it is really Fei Changhe who did it, you can't see it on Fei Changhe's face, you can always see it on Fei Changhe's wife and daughter's faces. This is a robbery case. It's not child's play." Wei Cheng raised his face and said: "Aunt, then let them go. I want them to come back within an hour." (164)</p>
+<h3>Artists at Shangjian: Han Fei Exercises Greatly with Dumbbells</h3>
+<p>— Shi Ren</p>
+<p>It seems that fate has destined those surnamed Han to be thin. Han Fei's thinness is almost the same as Han Langen's. Audiences who have seen him play "Robinson Crusoe" at the Carlton will never forget his bare-footed, naked, skinny and funny state, right? The reason why he can make people remember him particularly deeply is, of course, thanks to his natural and humorous style, and especially his thinness has given us a very deep impression.</p>
+<p>Logically, "thin" is beneficial and harmless to Han Fei, but he himself thinks otherwise. The day before yesterday morning, I went to the Shanghai Fitness Academy and accidentally met him also exercising greatly with dumbbells in the gym, his muscles all over his body were extremely tense, which is clear evidence that he is not willing to be thin for a long time. I also saw the great director Zuo Lin, famous actor Hu Xin'an, and Shi Hui, Yingzi, Shen Min, Mo Chou, etc.</p>
+<p>More than a dozen people were there. It was a pleasure to meet them in the gym. I had a brief conversation with them. From Shi Hui's mouth, I learned that their hard work is: exercising their bodies, learning to dance, immersing themselves in literature, and devoting themselves to art.</p>
+<p>After they finished their morning exercises, they rehearsed the new play "The Great Trap" at the academy, preparing to perform it in the autumn, but there is no ground yet, but that will certainly not be a problem, let us wait and see. When we meet them on the stage again, not only others, but also Mr. Thin Han Fei may become a strongman, because under the guidance of Zhao Zhuguang, the president of the academy, who is rich in experience and knowledge, there is indeed unlimited hope and confidence in the transformation of their physiques.</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.08.25.html", "next": "1942.08.27.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

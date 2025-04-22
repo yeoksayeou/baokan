@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.12.10 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 535 - 4924674</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<p>社評</p>
+<h3>糧食</h3>
+<p>糧食！目前上海最嚴重的問題——</p>
+<p>糧食的問題，一天嚴重一天的影響着民衆的生活，在今天無論是誰，無不迫切地感釗糧食的問題有待於迅速和適當的解決？</p>
+<p>以上海來說，過去並不是最缺糧食的地方，因爲它的四週，都是產米之鄕，再加它的交通便捷，原無庸憂愁米的缺乏，過去所慮的是米商國積，操縱市價，增加民衆生活的負担，造成社會的不安。不過，現在的情形不同，當局對於民間食米，已經依照統制的計劃，實行配給制度，因此，目前發生的米的嚴重的問題，和過去的米荒問題米價飛漲問題已經有着完全不同的情勢！</p>
+<p>現在米的問題，其嚴重性到了什麽程度呢？就一般市民食米的實情而言，他們是在配給制下領取戶口米，每人每十日可買一升半（大約大米一升，碎米半升，又麵粉一斤半。）平均起來，每人每日可買米一合半，又麵粉二兩餘。依中國人民一般的體質而論，每人至少每日食米半升，不能再少了；那麼，依照現在的配給制，他們所可領到的戶口米，至多還只敷半數。至於米的價格，和他們的收入是否相符，還沒有作嚴密的比較！那麽，上海市民是怎樣維特生活呢？一般赤貧的掙扎在生死終上，不必再說，其餘差堪自給的，除了領取比較廉價的戶口米以外，便只有向馬路小販購買零米，可是，××××××××××××××××××××××××××××××××××××××，這樣日增夜長的數字，除了威脅上海市民的生活外，當然，它還會影響到社會的前途」</p>
+<p>因爲米價的驚人在漲的數字，實在具有着嚴角的意義！這種嚴重的意義，在過去是不會感釗的。因爲，過去米價漲，影響還不普遍，首先是因爲去年上海市民幾乎每冢都有積米，米價高漲，儘可不管，過得一天算一天，現在可不同了，上海民間的存糧早已吃完了。其次，從前上海糧食缺少了，可由四鄕運入接濟，可是，現在有限制了，來源方面旣有了這種新的變化；要求米價的减跌，幾乎是很少希望了。但是上海一般市民的實際收入，却無法充分解決生活問題：</p>
+<p>第一，如上面所說的，戶口米只敷民食需要的一半，其餘一半就得出高價向黑市購買，以昨天市價計算，譬如一家四口二大二小，僅米一項，每家每日即至少十元左右！以上海一般市民的職業狀况而言，誰都担負不起。</p>
+<p>其次，我們知道，上海市民，除了絕少數富裕者之外，最大多數是上海社會之實際的支持者—薪水階級，也就是所謂「隱貧」階級；决多數就是赤貧」階級，所以，我們决不能因爲看到許多大酒樓打飯店之「座上客常滿，樽中酒不空而就忽視了　個上海糧食問題的嚴重性，因爲前者是絕少數富有者造成的虛浮的繁一榮一，這種「繁榮是建基在沙漠上面的，而且是非生產性的。而後者—廣大的市民却在「隱貧」「赤貧」中掙扎着，爲嚴重的食糧問題而痛苦着。</p>
+<p>第三，一般薪水階級，雖然有津貼，似乎可以補助多少；但是，要知道津貼都按照物價指數增减，而所謂物價指數却是按照工部局官定米價來計算的。試思目前戶口米每升一元半與零買米×××××××價的比例，那麼，津貼所能補助的實際意義之程度，也不難想像了。</p>
+<p>第四，我們還不能忽視更重要的事實，就是黑市米價如此飛漲，同時刺激上海其他各種物價，不僅增加了市民的生活負担，不僅使物價統制政策遭遇到執行上的阻礙，而且還刺激上海以外和平區的米價和一切物價，它的影響之大，幾乎是不易估計的</p>
+<p>第五，也是最重要的就是由於以米價飛漲爲中心的物價層層上漲，必然會由經濟的危機，發展到政治的危機，所以就不應忽視！</p>
+<p>關於食糧問題的對策，相信當局已在籌謀賢明正確的辦法了，我們站在中國人民的立塲上認爲下列幾點，是非常迫切的，所以敢對當局作芹蒭之獻：</p>
+<p>第一，是設法增加配給量：以上所說，現在每人所可領到的户口米，只敷每人實際需要的一半，以致每人不能不要求從戶口米之外別求補充，而不得不作自己力量所不逮的支出，以致增加了食糧漲價的嚴重性。所以希望增加戶口米的配給量，每人至少每日可領半升，對於勞働階級，還特別酌量增加。這樣便可大大的减了食糧問題的嚴重性；同時也可以制止其他物價之漲風，而便利物價統制政策之推行。對於社會和政治上的有利影響也就不容過低估計了。</p>
+<p>第二，我們更希望使「額外配給」普遍化，這也可以相當地减少了食糧間　的嚴重性。</p>
+<p>第三，是再度認眞實施疏散人口，尤其是對於無職業而有鄉可歸的，應在更妥善，更便利的辦法之下，積極推行，只要辦法妥善，並且給疏散者以更多的便利，尤其在手續上勿過多限制與周折，那麽成績就不會過低。這樣，一方面，可以减輕上海食糧問題的嚴重性，另方面就可以使這些無職業的人同鄕參加生產事業，參加食糧增產，具有着積極的意義。</p>
+<p>此外，如果暫時不能增加配給量，就可先行允許小販自由販賣，並規定價格不得超過戶口米價目的兩倍，我們記得六月份改用新法幣時，上海米價黑市每石舊幣五百元，合新幣應爲二白五十元，×××××××××××××××××。而依目前滬抗滬寗兩路綫各城市的米價來看，大都還只在三百元以內，所以對自由販賣價格在戶口米價兩倍以內，或四百元以內，對於販賣者也已有利可圖，不失之苛了。</p>
+<p>我們認爲糧食問題是今日上海最嚴重的問題，而且和整個和平區的經濟與政治有密切的關係，希望各方面趕快協力求得徹底的解決。</p>
+<h3>日決心作戰到底　求達共同目標　東條首相對德義記著表示</h3>
+<p>東京九日同盟社電東條首相今日午後四時十五分在其官邸接見軸心國新聞記者、表示日本抱有絕大決心、會同軸心盟國以達共同目標、東條首相因十二月十一日軸心國簽訂軍事同盟之一週年紀念日將屆、乃接見德新聞記者九人與義新聞記者三人、</p>
+<p>阿部大將廣播　大東亞戰意義</p>
+<p>東京九日同盟社電大政翼贊會總裁阿部大將今晚大東亞戰爭一週年紀念日、向國民致廣播詞、略謂、英美兩國應明瞭基本事實、即英美所以連敗於日本之手者、乃因師出無名所致、日本則不獨爲自衛、且爲解放東亞、以免英美侵略之崇高理想而戰、今次戰爭、敵國並無値得一戰之目的與道德上理由、僅係受其推行侵略壓迫東亞政策之領袖驅使而作戰、現行戰爭並非美英自衛之戰、實爲美英維護其侵略東亞的政策之戰、東亞之歷史、運篇皆是英美之侵略行爲、尤其是美國併呑夏威夷與菲列濱絕無理由、世人皆知美國籍傳敎士作榨取中國、美國更會同英國、企圖阻止日本在華之正當活動、並煽動華人反對日本、英美旣不終止此侵略政策、大東亞戰爭遂告勃發、故此次戰爭在日本方面、乃起而自衛之戰、在敵方則爲小必要的擴張勢力之戰，日本今决一戰、除保衛自己之生存外、並消滅英美對東亞之統治勢力云、</p>
+<h3>大東亞戰一週年　各地紀年盛况　鮑斯籲請印度民　反抗英美在加努力</h3>
+<p>昭南城九日同盟社電此間市民昨日慶祝大東亞戰爭一週年紀念、盛况空前、晨間各街道與公共塲所莫不人頭擁擠，日旗釗處飄揚、日僑與各民族代表的一千二百人參加紀念大會、布基蒂瑪神社亦舉行追念式、午前十一時五十九分全體市民靜默一分鐘、默禱最後勝利、市長大達於民衆大會中宣讀宣戰大詔、各民族領袖相繼致詞、保證與馬來之日行政機關合作、</p>
+<p>仰光九日同盟社電緬甸日派遣軍及中央行政機關等代表七百餘人、昨於大東亞戰爭一週年紀念日舉行追念式、以紀念緬甸戰役中陣亡之日軍將士與緬甸義勇軍、午後、印度僑民在印度獨立聯盟指導之下舉行大會、通過感謝日軍、決心反英以求印度自由之決議案、</p>
+<p>盤谷八日中央社電印度獨立聯盟泰支部爲紀念大東亞戰爭一週年、特於八日下午三時在此間國立劇塲舉行大會、</p>
+<p>爪加爾達（巴達維亞）九日同盟社電印度獨立聯盟之爪哇分會昨於大東亞戰爭一週年紀念日舉行大會、參加之印度人逾一千五百人、通過感謝日軍與抗議英國對印暴政之決議案</p>
+<p>柏林八日哈瓦斯電印度親軸心派國民黨領袖胞斯、本日向印度人民、發表廣播演說、略　、戰事已趨於有利於職心國之契機、此次戰爭與第一次大戰逈然不同、第一次大戰被封鎖者係德國、此次戰爭中被封鉗者則爲英國、美國戰後計劃、印度並無獨立地位、吾人對於戰爭前途、具有信心、故每一印度國民、務須加倍努力、反抗英美云、</p>
+<h3>劉建緒　在於被扣</h3>
+<p>南京九日中央社電頃據確息、渝閩省主席兼第三戰區副司令劉建緒、此次出席十中全會報告地方軍政狀况後、被渝當局以違反軍紀罪名加以扣押、刻在嚴訊中、按劉建緒此次被捕理由有二、（一）爲每與閩監察使陳肇與意見　突、致釀成地方行政之糾紛、、（二）爲閩三民主義靑年團及當地土豪舉發劉庇護栽種鴉片等十餘罪狀、然衆認劉被捕之主因、乃因閩省組織素極複雜、允以該省土豪最反對劉之施政、故國防最高委員會近特劃該省爲軍事要地、進行大規模之軍事建設、渝蔣爲免除直系向閩省伸進遭遇障碍計、遂逮捕劉建緒、此實爲根本之動機、</p>
+<h3>湖北　日軍戰情</h3>
+<p>漢口九日同盟社電據戰報、湖北日軍頃向共黨新四軍、與渝軍第一二八師、大舉攻擊、予以重創、日軍係於星期日拂曉、從田二河西面之天門等地出發、突攻渝軍第一二八師之一千二百名、午前佔領田二河、星期一起日軍即對活動於朱家湖四周之新四軍、繼續進行掃蕩戰、</p>
+<h3>日本國民　踴躍現金</h3>
+<p>東京九日中央社電大東亞戰爭一週年紀念日、日本國民爲對陸海軍所獲戰果表示感謝起見、自八日晨起紛紛前往陸海軍兩省獻金、僅八日一日內、陸軍省所收獻金達二五〇餘萬元、海軍省達一七〇餘萬元、連同全國各地委託各報社代收獻金爲數甚鉅、足見日本國民赤誠愛國之一斑、</p>
+<h3>日越將開始　經濟談判</h3>
+<p>河內九日同盟社電　日本駐法屬越南大使芳澤將抵西貢、與越督　古開始日本與越南間之經濟談判、同時駐越南日大使館事務所之蓑田與橫山兩氏、已定於明年初與越南經濟當局在河內賡續詳細討論、按蓑田今日從西貢抵此、就任日大使館事務所經濟科長新職、</p>
+<h2>Page 3</h2>
+<h3>突尼西亞北部　展開坦克大會戰　局勢顯於軸心軍有利　里比亞區僅有斥堠戰</h3>
+<p>吉爾九日海通社電　摩洛哥電台昨宣稱、塔布巴（Tebourba）附近發生坦克車大戰、已歷二日、雙方勝負不明、</p>
+<p>里斯本八日同盟社電　自塔布巴會戰以來、突尼西亞北部戰况轉對軸心軍有利、八日之倫敦廣播亦稱、如現在軸心軍之確保輪送路綫及在强力空軍衛護下、聯合軍實無反攻之望云、茲述最近之戰况如次、（一）聯合軍放棄塔布巴後、主力部隊卽撒退至西南方面、同時迅速調集援軍、企圖挽回頹勢、軸心軍乃由空陸同時猛攻、七日坦克大戰開始以來、兩軍主力即入混戰狀態、據聯合國方面報道稱、突尼西亞自作戰開始以來、今已展開最猛烈之激戰云、（二）軸心已完全確保突尼斯至比塞大間之鐵路及海岸沿綫、現正舉空軍全力、反復轟炸由阿爾及爾方面輸向前綫之聯合軍、因此通塔布巴之狹隘山道到處發生大火、英軍之前進因而被阻、</p>
+<p>柏林八日哈瓦斯社電　德軍界人士頃談稱、軸心軍在都尼西亞塔布巴城附近、賡續前進、英美聯軍扼守該城西南之山地，惟向德義聯軍採取包圍戰略、不得不縮小其防地、查英美聯軍最近在該處佈防、雖有大批坦克車爲其奧援、但至最後、仍不得不退却以免包圍、故已放棄大塊土地、且喪失大批軍械及彈藥、</p>
+<p>里斯本八日哈瓦斯社電　據英國中東軍司令部本日公佈、，北非里比亞前綫戰事、僅限於斥堠戰、空戰亦較昨日活動、</p>
+<h3>東綫德軍冒酷寒　發動全面反攻　佔領斯城西北各庶衝　中路前綫戰事尤激烈</h3>
+<p>里斯本八日同盟社電　據此間所接消息、德軍已於最近兩三日、在東綫開始作全面之反攻、斯城戰錢德軍在頓河平原冒雪猛攻蘇軍陣地、蘇軍刻正忙於防禦、斯城西北部及甫部各戰略要衝、已完全被德軍佔領、德軍在斯城市內北部工塲地帶、攻破蘇軍臨時陣地數處、並己擴大佔領地域、據莫斯科消息、承認八日因天氣惡劣、蘇軍作戰頗受妨礙、至於莫斯科西方之爾齊夫·加里寗·威里克埃爾基各地德軍、反攻頗爲激烈、尤其在爾齊夫·維亞慈瑪中間地區、兩軍七日徹夜爲爭奪鐵道要衝薩姆茲、展開坦克大戰、蘇軍遭德俯衝轟炸機隊集中轟炸、戰力喪失泰半、遂不得不向東北後退云、</p>
+<p>莫斯科八日哈瓦斯電　此間情報局今晚發表公報稱、斯達林城區及中路我軍、本日賡續向原來方向進攻、</p>
+<h3>義大利都林城　復遭猛炸</h3>
+<p>羅馬九日哈瓦斯社電　義最高司令部今晨宜佈、義大利都林城昨夜被敵機猛烈轟炸、市中心損失甚大、並有醫院一所及大學一所被毀、死傷不詳、敵機被擊落一架、</p>
+<h3>義工業人員　全部動員　從事戰具生產</h3>
+<p>羅馬八日海通社電　今日義政府頒令、所有實業機關之僱員及工人、今後處於勳員狀態之下、非獲得許可、不得擅離職守、違者軍法從事、按義大利參戰後、曾頒令動員兵工業及公用事業之僱員及工人、如電力廠·交通服務機關等、此次範圍又見擴大、估計受影響之僱員當在四百萬人以上、</p>
+<h3>南洋各地　更易名稱</h3>
+<p>東京九日中央社電　前在美英荷等國統治下之大東亞地區內地名中、有失亞洲木來性格者、日政府爲適應大東亞建設、恢復此等地名之亞洲性格計、決定予以改正、頃已於九日閣議正式決定、情報局並發表、（一）舊英屬馬來改稱「馬來」、（二）舊英屬婆羅洲改稱「北婆羅洲」、（三）舊荷屬婆羅洲改稱「南婆羅洲」、（四）巴達維亞改稱「爪加爾達、「</p>
+<h3>都隆法艦隊　五十一艘自行鑿沉　佔總數四分之三　潛艇四艘被脫逃</h3>
+<p>里斯本九日同盟社電　據華盛頓訊、美海長諾克斯昨日宣稱、據空中偵察及其他方面報告、法國地中海根據地都隆之法艦隊、於上月間自行鑿沉、惟其中四分之一、今仍停浪都隆港、並無損害、當時損傷與沉沒者、有軍艦五十艘與貨船一艘、另有法潛艇四艘、在特戈雨派份子之手者、則已都隆逃出、現仍浮於水而而顯無損害之法艦計有十五艘、輕巡洋艦兩艘、法戰艦「史屈拉斯堡」　號·「鄧扣克」號·與「浦洛文斯」號已受傷擱淺、但仍可修理云、</p>
+<p>里斯本八日中央社電　據華盛頓電、美海長諾克斯八日會見記者團時、根據美政府之公報聲稱、都隆港法艦隊之損害、較常初所傳實爲輕微、並謂法艦隊中有主力艦一艘·輕巡艦一艘·大型驅逐艦三艘·驅逐艦三艘·砲艦二艘潛艇四艘·及油槽船五艘確已入德軍之手、又據諾克斯發表稱、自沉之法艦隊爲主力艦一艘·巡洋艦五艘·大型驅逐艦十五艘驅逐艦十一艘·水上機航空母艦一艘驅潛網敷設艦一艘·輸送船一艘·舊戰艦一艘·潛艇三艘·及其他共計五十一艘、其中戰艦二艘係有打撈復用之可能、蓋以上之廿餘艘法艦隊在地中海併入軸心艦隊時、地中海雙方海軍即失平衡、况聯合國後方之聯絡綫、已早成爲軸心空軍及潛艇之目標云云、</p>
+<h3>弗朗哥演說　表明西國態度　認自由主義已趨於沒落　願協助建設歐洲新秩序</h3>
+<p>瑪德里九日海通社電　西班牙元首弗朗哥將軍昨於西班牙法倫琪黨國民會議第三屆大會中發表演說力言西班牙對法一四斯與國社革命之政治休戚關係、幷謂恢復王國制度、倘與西班牙有利、則有採取此項政治步驟之可能性、其言略謂、法西勘國社主義與西班牙之國民革命乃屬同一運動、不可分離、此皆歐洲文化民衆之革命運動也、西班牙所推行之內政政策即以西班牙之國民革命爲原則云、</p>
+<p>柏林九日海通社電　柏林人士、以爲弗朗哥將軍向西班牙國民會議發表之演說、爲精神上對自由主義民主主義及布爾雪維克主義之宣戰書、此項演說、表現歐洲團結一致云、弗朗哥認識新歐洲之敵人、並已於一九三六年、首先對布爾雪維克主義作戰矣、弗朗哥警告西班牙共黨之言論、顯示渠對於內政亦具有決心云、</p>
+<h3>英美在土耳其　外交活躍</h3>
+<p>蘇黎世九日中央社電　據安卡拉電、美駐土大使斯坦恩哈德前爲與本國政府協商對土政策、由土歸國、留國的二月、已於七日返任、日內即將與土外長美奈門舉行會談、又最近由莫斯科回任之蘇大使維諾格拉特夫現極活躍、英大使許閣森自聯合軍在法屬北非登陸後、亦迭次策動，企圖拉引土國入於聯合國陣營、另據安卡拉消息、德國政府對於最近之土國外交政策、已喚起土政府之嚴重注意、當地消息靈通方面對此頗爲注目、</p>
+<h3>重光大使　視察軍醫院</h3>
+<p>南京九日同盟社電　重光大使昨於大東亞戰爭一週年紀念日、偕大使館員視察此間日陸海軍醫院、對院中休養之陸海軍士兵於過去奮勇作戰、獲得光榮勝利、表示感謝、</p>
+<h3>野村率代表團　返國途徑土京</h3>
+<p>士耳其京城八日哈瓦斯社電　日本代表團一行、由野村海軍上將率領、本日自柏林抵此、小作勾留後、擬取道蘇聯、遄返東京、</p>
+<h3>美陸海軍將士　傷亡統計</h3>
+<p>里斯本八日同盟社電　據華盛頓電、美戰時情報處七日發表、自美國參戰以來、美陸海軍將士損失數目、計陸軍三五·六七八名、海軍二二·六二九名、共計五八·三〇七名、</p>
+<p>澳門通信</p>
+<h3>內地貸學金之內幕　表面似盡維護教育能事　事實上執行者措施未當</h3>
+<p>遠在二十七年二月五日，重慶政權敎育部，曾頒行「公立專科以上學校戰區學生貸金暫行辨法」，規定貸金，分爲。</p>
+<p>（甲）全額　每月八元或十元，</p>
+<p>（乙）半額　每月四元或五元。</p>
+<p>嗣後生活費用，日趨高漲，屢加修正，現行辦法，則爲：</p>
+<p>（一）戰區學生膳食貸金，分：甲等—給予原籍淪陷而經濟完全斷絕者，每月貸金爲基數十八元，及其以外之數額</p>
+<p>（二）自費學生輔助貸金，分。</p>
+<p>甲等—給予家境淸貧而原籍未淪陷者，貸金數額同（一）項乙等，</p>
+<p>乙等—給予經濟狀况較困難者，貸金數額爲甲等之半。</p>
+<p>膳食貸金，初爲固定數額，嗣因米價隨時上漲，因定數額不足以維持學生之營養，乃改爲按照當地米價，每人以二市斗一市升折算，另加油，鹽，菜蔬，燃料，及廚工等費川。以七月間川省物價估計，政府對一全膳貸金學生所負之費用，爲每月九十元至一百元，年約一千三百元左右，即以戰區乙等或自費甲等計算，政府之負擔爲每人七八十元，年的千元，僅以甲乙等兩種貸金而言，年費已不下五千萬元，此外，尚有特別貸金·零用貸金·制服貸金等，皆爲救濟戰區貧苦學生而設者。</p>
+<p>支忖之貸學金數額，不可謂不大，表面上似乎已盡維護敎育之能事，但事實不然，各大學學生發生種種不滿現象，推原其故，在於執行者措施之不妥，依據調査所得，一般感覺失當之處，約有七端，</p>
+<p>（一）在拖戰長期化後，學生經濟能力爲之有無，不能單純以「淪陷區」或「非淪陷區」劃分，往往有家雖在非「淪陷區」，而經濟上却十分困難之學生，亦有家雖在「淪陷區」，而其父兄在內地已另有經濟基礎之學生，於此不能澈底明瞭學生之家庭背景，而一味依呆板之條文行事，不平之事，殆屬難免</p>
+<p>（二）若干學校規定，凡有滙款之學生，不能貸金，此雖不失爲一種限制辦法，但不加調查詳盡，頗有誤會之處，例如某一學生收到朋友托轉之滙款信，學校當局，即據以取消其貸金資格，殊達反立法之本意</p>
+<p>（三）又有規定凡曾記過者，不滙貸金，此雖含有懲惡獎善之意，但在敎育原理上，應予靑年以自新之機會。</p>
+<p>（四）學生呈請貸金，手續繁多，過於麻煩，公文又屢此周轉，往往暨時數月，使眞正需要補助之學生，十分感覺痛苦</p>
+<p>（五）管理貸金機構，對於呈請貸金學生之審査，有碍於　面，取捨欠當之事，致應得者未得，不應得者反得，外間且盛傳敎授利用貸金拉攏學生，或學生以貸金陪愛人看電影。吃館子·之事。</p>
+<p>（六）貸金發放時間，有時拖延太久，甚至有在四五月間而尚在發一二月份貸金者，如果學生完全依賴貸金吃飯，必有斷炊之虞。</p>
+<p>（七）若干處所，浮報貸金生名額，可以冒領貸金，或故意抑發貸金，用作投資國積之不道德行爲，可謂爲淸高學府中之怪現象。</p>
+<p>關於貸金制度之本身，原無間言，惟執行方面，無公正·廉潔·精審·迅速·四要點，故流弊不可勝言，徒然糟塌有用之金錢，敎育靑年者如此，又何忍苛責靑年，故大學生，生活不能安定，自必影響學業，程度之所以低落，此亦爲因素之一也。</p>
+<h2>Page 4</h2>
+<p>國外與論</p>
+<h3>大戰下的東亞經濟懇談會　十一月廿六日東京讀買報知</h3>
+<p>從本月二十六日起，即將舉行第四次東亞經擠懇談會，愼重懇談並討論有關東亞經濟之種種問題。東亞經濟懇談會，於昭和十四年（中華民國二十八年）十二月以來，每年舉行一次，至今業已開過了二次，今年乃是共第四次，在這大東亞戰爭勃發以來，正是首逢其會，不用說，是含有重大的意義的。歷次的懇談會，例由大藏，外務兩大臣出席，今年則總理大臣，大東亞省大臣，以及陸海軍報道部長等，均將參與其會，這也是此次懇談會在現時局勢下値得特別重視的所在。</p>
+<p>隨着大東亞戰爭的發展，東亞經濟圈已非常擴大了，把安南，泰國，緬甸，南洋各地，均包含在內。在東亞經濟懇談會中，不久當可以看到這些地方的代表也來出席吧，可是這次還仍由滿洲國，華中，華北，蒙疆，日本等代表舉行懇談。</p>
+<p>昭和十五年（民國廿九年十一月內閣情報部發表之日華滿經濟建設要綱及同年九月閣議決定之國土計劃設定要綱，均係指日華滿三國爲建設東亞圈之中樞，而南方各地，亦預定在內。無論從建設的歷史來講，從南方各地主要的供給資材之點來講，日華滿三國應爲東亞經濟建設的中樞，雖在今天，這原則依然不變。東亞經濟懇談會的目的，在於謀日華滿及其他東亞諸地的經濟融合，並努力促使其綜合的經濟力的强化，所以對於業已擴大了的東亞經濟圈的建設，亦當爲三國代表所懇談的要題吧。</p>
+<p>大東亞戰爭勃發之前，世界各國，並不相信日本必會於日美交涉之中屈從美國的要求，以爲日本即使起而反抗，亦屬必然的於頃刻之間爲强大的美國軍力所擊敗。然而日本却在短時間內，竟戡定了南方諸地，更由太平洋進迫印度洋，造成了不能撼動的形勢。可是他們則還不肯放棄美國最後勝利的夢想，却跟着這個夢想而開始建立了所謂長期戰略。現在美國作成了龐大的軍備計劃；重慶則猶在自力抗戰的名目之下，頒布了國家總動員法，着手開發西北，從事建設渝印公路，以謀苟延其政權。</p>
+<p>大東亞戰爭是長期戰爭，中國事變亦須在大東亞戰爭完成後而得到解決，日本目前正在那樣堅決的意志之下，向着完成戰爭之途猛進。</p>
+<p>所以在這樣情勢之下，東亞經濟圈所負的責任是非常重大的。單需些建設等等那樣不够積極的話早已不能容許了。它是必須直接分担一翼的重要責任，爲完成大東亞戰爭而增强戰力。此即大東亞戰爭開始後，東亞經濟懇談會所負第一個重大的意義與責任。</p>
+<p>華中，華北，滿洲，蒙疆的現狀，果然已培養到能完成這重大的責任的實力了嗎？懇談會是不應單講些懇談或親睦的話就算完畢的，應該切切實實地照着深刻的時局的要求而爲之善謀才是。（丁譯）</p>
+<h3>有望於東亞經濟懇談會者　—十一月二十八日東京朝日新聞—</h3>
+<p>東亞經濟懇談會第四次大會，將於日•華·滿•蒙•各地代表多數出席之下，在十一月二十六日至二十八日之間，接連舉行三天，其盛况當不難想像的。</p>
+<p>該會對於日•華·滿·蒙·的經濟建設，貢獻極多。此次爲大東亞戰爭發生以後首逢其會的第一次，覺得它的意義和責任，更加來得重大。不用說，該懇談會的目的，是在促進經濟提携；即前來參與其會的各地經濟界人士，於濟濟聚首一堂之際，將彼此誠懇地商籌東亞經濟的卞策，疏通相互之意見，以資建設東亞新秩序。然而同時想把我國（日本）的政治·經濟。文化·等各方面的現實情形，趁此機會，給與各地來會的經濟界人士，以一個正確的認識，當亦是重要目的之一。</p>
+<p>當然，這些目標在中國事變發展到成爲大東亞戰爭的今日，依舊一點沒有失去它的重要性。不但如此，在這大東亞戰爭之下，尤其非把這成爲東亞新秩序中心之日•華•滿•蒙·的諒解與經濟的協力，加以强調不可。自然，它的內容，必須與先前有所不同。即自與美英開戰以來，由於皇軍的赫赫戰果，使東亞新秩序擴展到大東亞共榮圈，使它的包攝範圍，無論地區的·人種的·都變得非常廣大·因之一向爲日•華•滿•蒙•·間所討論的物資之生產·配給·消費·以及運輸·金融·物價等等的重要問題，也非從這個觀點重新加以檢討不可。又對於前來參加新的東亞新秩序建設聖業的各地域，如何也把他們邀入這個懇談會中，這點也非加以考慮不可。</p>
+<p>希望出席本年經濟懇談會者，鑒於大會所負的重要使命，應該把眞誠的意念，集中於擊滅美英的一點之上，以期對於完成大東亞戰爭的物質與精神兩力面的協力，都沒有，一點遺憾，趁道機會，來一新打到英美的決意。（丁譯）</p>
+<h3>棉紗麵粉榨油各廠　收購所需原料　棉花小麥來源均經統制　大豆芝蔴各六千噸運滬</h3>
+<p>商業新聞社訊、滬市各中日棉紗麵粉榨油等工廠、爲增加生產、以維需要起見、經當局及銀行界之協助、向各產區收買原料、如棉花小麥油類等後、</p>
+<p>改善棉產</p>
+<p>（一）棉花由華中棉花統制會統一收購、採取配給制度、分給各紗廠充紡紗織布之用、聞已收得之棉花江北六萬擔、江南四萬擔、業已設法運滬接濟、此外並爲增加各產地之棉產起見、將江南江北各產區劃分各管理區派昌指導、改善棉產等工作、</p>
+<p>規定麥價</p>
+<p>（二）小麥經華中製粉聯合會規定各地價格、在嚴格統制之下、由各廠向崑蘇錫常以及江北各地收買、已收得之小麥、業已絡續運滬、充製粉原料、聞當局鑒於各地小麥存底甚豐、以江南而言存麥在五十萬包以上、將實施强制收買政策、以期增加麵粉之產量、</p>
+<p>製油原料</p>
+<p>（三）製油原料除准各榨油廠直接向各產地收買、如大豆·菜子·芝蔴·花生等外、頃由華北運到鉅額大豆芝蔴各六千噸、此項大豆芝蔴、除一部份作食用外、大部份則作製油各原料之用、</p>
+<h3>棉紗棉布　今起登記</h3>
+<p>工部局物資統制部自七日起、在福州路該局大厦九十號室、發給棉紗棉布登記證書、是項證書九日爲最後發給之一天、十日起、即應將證書填竣、送請原處辦理登記、至十五日爲止、以後即不准補行登記、未經辦理登記之棉紗棉布、即予沒收處分、至已登記之棉紗棉布、以後移動、得申請物資統制部爲之、故各紗布所有人、均應於限期內履行登記、愼勿貽誤、致蒙損失、</p>
+<h3>九十六家工廠　業已發還</h3>
+<p>據日文大陸新報載稱、軍管理工塲發還式、已於八日舉行、現統計連今年中發還之軍管理工廠計五月二十五日之十三家、八月十三日之十二家、十月十日之八家、總數共計四十四家、此與去年及前年之五十一工廠、總計已達九六家、佔軍管理工塲總數百四十家之五分之三、現尚未歸還者、僅四十四家茲特探錄及軍管理工塲處理狀况如下、一、軍管理工塲總數一四〇家、內現已發還者計紡織工塲三九家、一般三四家、合計七十三家、其他解除軍管理者計紡織工塲一〇家、一般一三家、合計二三家、</p>
+<h3>警務處長渡正監　贊揚保甲</h3>
+<p>警務處長渡正監、昨於其月報中稱、保甲團爲一極佳之組織、蓋公共租界罪案之减少、謂乃由於自警員之能與警方作充分之合作、至浜北之外人保甲團、自於十月一日成立以來進行頗爲順利、</p>
+<h3>防空司令部　改正信號</h3>
+<p>本市日陸海軍防空司令　業於五日發表第十二號布告、修改上海市防空警報規定各　　報信號汽笛鳴放、該布告稱、茲將上海市防空警報所規定各　防空警報通報信號中之汽笛鳴放、改正如次、</p>
+<p>警報種類　汽笛鳴號（晝夜同）</p>
+<p>警戒警報　長聲一次　（連續三十秒）</p>
+<p>空襲警報　短聲數次　（連續五秒）</p>
+<p>警報解除　長聲二次　（連續二十秒）</p>
+<p>備考　汽笛發聲間隔時間　力求减短</p>
+<h3>公共租界實施防空　宣佈警戒管制　演習並不定期宜加準備　保甲自警圑須中意防範</h3>
+<p>喧嚷已久之再度防空演習、將在最短期內賡續不定期舉行、昨日公共租界各區保甲辦事處、均接奉警察署緊急通告、自即日起宜布警戒管制狀態、茲錄警察署通告如下、「自即日起、已在警戒管制中、居民應即嚴守防空及燈火管制之規章、並遵守下列各項、</p>
+<p>應遵守之點</p>
+<p>（一）弄內燈火全滅、但經特許裝置者、應由中長及戶長負責開關、（二）戶內應裝置黑布窗帘、電燈均須裝置黑色燈罩、（三）特別注意現在巳在警戒管制之中、各區保甲人員奉令後、對於防空設備之加添與整理、均須嚴密整頓、以期於防空演習時、能收獲優美之效果、各重要馬路及里弄、均已裝置</p>
+<p>自警圑職務</p>
+<p>防空燈、保甲長及自警團應注意者、（一）高層建築物及廣範圍之房屋娛樂塲工塲等之燈光、應特別注意、迅速熄減、其不必要燈光、使不透出屋外、（二）防空警報發出後、居民不得在屋外燃點香燭、及燃燒紙錠、（三）天窗及外廓應特別注意上下端、勿使燈光透露、（四）衖內殘置之燈、應有特別管理、其燈火不得超過十五支、並須遮蔽、（五）保甲辦事處及自警團辦事處之標幟燈、應加遮蔽、（六）訓練空襲管制發令後、爲防止發生事件起見、自警團員應用所備之繩索、紥在行人道之電桿木上、必要時應派自警團員指揮行人、（七）茲後封鎖演習月必有二三次、望注意及之、（八）當封鎖時、除持有通行證者及軍警人員保甲服役（本區）之外、不准通過封鎖綫、如有違者、即送憲兵隊從嚴處罰、（九）於封鎖時、各甲長應帶同自警團員二名、在區內巡邏、（十）空襲警報時、自警團員應分四次搖鈴、第一次係警戒警報、第二次係空襲警報、第三次係解除空襲警報、第四次係末决解除警戒警報、</p>
+<p>交通管制</p>
+<p>於防空演習時、步行亟應遵守下列各項、（一）空襲警報發出後、步行者仍可向左邊任意通行、（二）訓練空襲管制發令後、所有各車輛需靠人行道立即停車，同時乘客需下車暫避人行道上、或下車步行、（三）步行者一概不准吸烟及使用打火燈</p>
+<h3>東聯滬會設宴款待　協和會王部長</h3>
+<p>東亞聯盟中國總會上海分會、此次歡迎滿洲國協和會王指導部長子衡來滬、作交換演講、爰於昨（九）日中午十二時、假國際飯店十四層樓設宴款待、情緒歡洽、到有中日滿菲印各國長官名流、中國方面有羅君强袁履登等、日本方面有岩井副總領事、思想部佐治局長、居留民團福田團長代表松山、興亞同盟中谷聯絡局長等、滿洲國駐滬總領事葉堯公等不下一千餘人、首由東聯陳兼書記長孚木致歡迎詞、繼由滿協和會王部長答謝、末由來賓代表羅部長君强致詞、席間觥籌交錯、情緒熱烈、</p>
+<h3>學校舍糾紛　市府公平調解</h3>
+<p>本市特區私立學校以校舍發生糾紛、迭呈市敎委會請求設法調處、該會除一面派員調解、並函請法院愼重審理外、並於本年六月呈請市　轉咨司法行政部請予救濟、最近該委會鑒於校舍糾紛、益趨嚴重、爲防止業主羣起效尤、妨碍滬市敎育前途起見、經第二十二次委員會議決、由會再行呈請市府轉咨司法行政部及敎育部、聲明嗣後關於滬市學校校舍糾紛事件、概由市府公平調處、即租約期滿、亦請勿遽以法律判決執行、致碍學校前途云、</p>
+<h2>Page 5</h2>
+<h3>大東亞戰爭進入第二年　加强爭勝決心　陸海軍兩報道部長勗勉日僑</h3>
+<p>同盟社本埠訊、上海日海軍報道部長鐮田大佐與日陸軍報道部長橫山中佐、昨夜在日僑舉行之集會中、切言全亞洲之日人、均應於大東亞戰爭一週年紀念日、加强其爭勝之意志、並以身供獻戰事、俾在此巨大之爭鬥中、博取勝利、鐮田大佐係在國際劇塲向日僑大會致詞、略謂、大東亞戰爭並非反抗侵略國之戰爭、實乃鋤强扶弱之戰事、抑其結果、已擊毀英美在東亞之侵略根據地、此可由威爾基氏周遊世界後返探美國時所稱英帝國已不復存在一語證之、過去五載之中國事件、日本在陸海空獲此勝利、實乃日本士兵抱有每戰必勝之信念、有以致之、惟今次之戰爭、將展延多年、故日本人民應增强其必勝之決心、堅若鋼鐵、一年之計、在於元旦、大東亞戰爭之計、則在於十二月八日、吾人已入戰爭之第二年、務必更振作精神、加强勇氣云、橫山中佐在東和戲院向日僑大會致詞、力言日本人民必先準備應付種種困難、始能獲致最後勝利、又謂大東亞戰爭乃仗義創立公允仁愛的世界、與建設東亞共榮圈之戰爭、是以日本人民應不惜任何犧牲、以爭取勝利云、</p>
+<h3>各行荘道契財產　商洽解除敵產手續　由銀聯準備委員會主持　向管委會及兩銀行商議</h3>
+<p>自銀錢業聯合會議決各行莊承受押款道契移轉辦法後、業經各行莊代爲辦理解除敵產處分、關於銀行聯合準備委員會各同業行莊繳存財產準備中之道契、茲以原業主亟須呈騐道契、聲請解除敵產處分、所以請求發還、俾得從速辦理一切應有手續、聞該會以押品中之道契、由前英美籍保管委員保管者、轉存滙豐麥加利等銀行、未經發還、刻正由該會向新敵產管理委員會暨滙豐麥加利兩銀行淸算人商議手績、申請解除敵產處分、</p>
+<h3>日總領事館循例　招待各報記者</h3>
+<p>日本總領事館、於九日下午三時、循例假華懋飯店八樓、招待本市中國新聞記者、計到各報社記者十餘人、由福間副領事出席、直至下午四時半，始茶點散會、</p>
+<h3>中華慈幼協會　開始徵募寒衣</h3>
+<p>中華慈幼協會、定於今日開始徵募全市貧兒寒衣、目標爲兒童棉衣褲五千套、每套代金三十元、深望各界人士、踴躍贊助</p>
+<h3>上海新聞社　設採訪習成班</h3>
+<p>本市上海新聞社、爲傳授實用新聞技術、造就採訪記者人才起見、現已設　採訪習成班、期以三月、敎授編輯、指導採訪實習、報章翻譯、及西報閱讀等科目規定每星期內勤指導三次、外勤實習時間不定、凡有高中程度靑年男女均可入習、習成期滿、有志從事新聞事業者、保證爲之介紹職業、報名即日起、章程面索地點愛多亞路成都路口浦東同鄉會大樓五〇一室、</p>
+<h3>久福駁運公司開幕</h3>
+<p>仁記路一百十九號二樓十二號久福駁船運輸公司、係駁運業巨子等所組織、資本雄厚、木埠聞人如黃金榮·袁履登·馬少荃·徐朗西·高濟民·李思浩·吳楚梁·跋子超等、均係該公司之顧問、昨日開幕、各界紛往道賀、車水馬龍、盛極十時、</p>
+<p>體育新聞</p>
+<h3>滬體及中青聯合主辦　全滬公開籃球聯賽　今日起開始報名十五日截止</h3>
+<p>上海特別市體育會及中靑年會聯合主辦之全滬公開籃球聯賽、業已推定馮建維等六人組織委員會、該賽分男子甲乙及女子等三組、限制四十隊、定於今日起開始報名、至本月十五日截止、每　報名費及保證金各爲五十元、每球員須繳二寸照片二張、每隊限十二人、報名處八仙橋靑年會體育部劉荷生君、至競賽章程、亦由聯賽委員會議定、明後日即可公布、甲組及女子組定本月二十一日揭開戰幕、聞西人勁旅上屆西靑亞軍巨人隊暨蒙諾克法捕義海軍等均準備參加、華人各路雄師、亦咸在秣馬厲兵中、又悉體會籃球委員會爲普遍提倡籃球運動起見、正計劃籌辦普及籃球大聯賽、該賽將採取同時異地舉行辦法、俾予較多人數以參加機會、庶可培植新進人材、聞此賽預定明年二三月間揭幕、</p>
+<h3>星小球閉幕表演　虹聯力克現世</h3>
+<p>袁履登拍賣義球</p>
+<p>星盃小球球聯賽於昨日閉幕給獎、並排表演瀋三塲、於下午二時半開始角逐、首塲文靜對永毅、文靜卒　最後努力、以四對三小挫永毅、第二塲原定影星對混合、臨時影星因封鎖關係、未能臨陣、改由光夏戰混合、結果一比一和局而終、壓軸虹聯與現世登塲、由方采富執行裁判、虹聯以三對二力克現世、賽畢由周一星給獎、又義球拍賣、由袁履登氏親蒞主持、結果利民保險公司經理黃惠卿以二千五百元購去、該款撥充上海貧兒義校經費、</p>
+<h3>運動簡訊</h3>
+<p>合衆盃小型球聯賽、有十四塲交綏、其中台維師對虹聯一塲、因故展期、餘十三塲均照常交鋒、合組另一塲Ｗ隊棄權、合衆遂不勞而獲勝、象組象隊勝西西、雷雷乙克二棉、餘志業南其等先後告捷、</p>
+<p>合羣體育會足球隊參加本屆西聯足球、由戴麟經任領隊、楊云如任總幹事、隊長唐佐文、隊員擁　蕭子文潘鴻海等健將、</p>
+<p>商業新聞</p>
+<h3>華股變化多端　食品股冷門突出</h3>
+<p>昨華商股票市况、升沉不一、老股中之冠生園股忽出冷門、已升至三百三十元高價、梅林食品有增資贈股消思、哄見一千零五十元高價、新亞一度出七十元關、創見七十一元新高價、後稍回下、最後六十九元、尚升力角、查已連升十天、共漲十八元之巨、中法平疲在三十元左右、五洲最高成交價爲五百二十五元、終升十元、民誼曾叩一百元關口、中西四百五十元、信誼見三百十七元半、均趨穩、明星香水在二百三十五元左右、成交不寂、新亞材料三十八元前後、大中華火柴又飛升十五元、達三百六十元、南洋烟草公司一百三十二元半爲正午價、高五角、文化業商務書館亦告蓬勃、見四百七十七元半新高價、上升二十五元、中華加二元半在二百零六八元間、世界仍一百廿元、百貨業最爲軟化、永安一百卅五元、新新一百五十元、國貨公司八十四元均爲最後價、小二元至三元半不一、公用業兩週來漲風最巨、故回跌亦烈、閘北水電六十四元、華商電氣四十四元半、各小三元及二元半、紡織業之永安紡織跌入一千九百元內、小四十五元、今誌市價表於後、</p>
+<h3>金價止漲轉平</h3>
+<p>拆息軍票絕鮮變更</p>
+<p>昨本市銀樓業大新同行首飾金、門市每兩兌出掛牌未更、仍三千三百五十元、（收進减二百元左右）、同業仍無更有式行市、價已止漲轉平疲、晨爲三千三百五十元、低三十元、俄稍回做升爲三千三百七十元、某幫止進、勢頓轉虛、在供多求少情况中、正午三千三百十元有供少買戶、比上日回小七十元、有六十元差度、成交淸稀、</p>
+<p>首飾紋銀、每兩仍掛十六元、同業互做十七元半及十八元、爲進出價、</p>
+<p>昨日錢業公會拆息、仍掛一角四分未更、</p>
+<p>昨外幣市况、日軍票仍平定、同業互做價五元五角五分二四厘、銀號與小錢莊門市售出五元五角六分、收進四分半、聯銀劵跌至四元三角半及　角爲進出價、小五分云、</p>
+<h3>朔風凜凜中　衣料難得廉宜</h3>
+<p>廠布昨市以工部局紗布登記在即、散戶吐售價乃回挫、白貨細布每疋跌去三元左右、十二磅地球細布一九一元、大鵬一九〇元、富貴一八八元至九元、均有成交、惟粗布則穩定、無甚榮辱、桃花女士林起伏最巨、上午三二一元跌至三〇八元、而後市因同業有實銷搜維、市氣又昂，回升至三一五元半，最後價做三一三元、</p>
+<p>東布昨起回風、嗶嘰跌勢尤猛、晨開七元九角半、直瀉至七元六角七分、午收時稍昂、爲七元七角、較跌每碼二角八九分之鉅、細布市氣較穩、十二磅龍頭細布銀行單一九三元、彩球一九三元、飛魚一九二元、陽鶴喇叭五福最小債喊售一九一元至一元半，市面又呈盤旋之狀、</p>
+<p>呢絨最近姣之本報未復刋前、又好起許多、因受利買消息濃傳、人心觀念複變、金融富裕之同業各號、先後皆盡量吸收以致市塲上躉批交易、極爲旺盛、然因本廠貨生產有减無增、來路貨愈售態空、籌碼流通缺乏、一方面居奇、一方面猛收、其售價遂步步高漲、昨馬褲呢派力司華達呢宣維呢白嗶嘰蔴膠布等更甚、</p>
+<h3>生鐵價高銷稀</h3>
+<p>連日來各業市塲紛紛羣起向榮、五金市面亦漸趨步漲之氣、　諸花色實銷岑寂、市上多一種踢皮球生意、實際走銷殊無足述、生鐵一項、當亦無從例外、該貨行市雖仍挺秀、然探其去化、則稀散已極、門莊生意亦寥若晨星、昨市生鐵售盤印度沙漠生鐵每噸五千元、鋼模生鐵每噸四千五百元、石金山生鐵每噸三千二百元、舊生鐵每噸二千七百元、</p>
+<h3>芝蔴釘實銷難暢</h3>
+<p>三分至六分芝蔴釘交易、已久感岑寂、躉批買賣與門市零星生意俱見閒散、其最大原因、實係實銷方面難見通暢、故同業人心亦未能高昂、雖該貨滬埠存底並不豐厚、但開價始終難見挺秀、昨市如三分花色每箱沽一千四百元、四分花色每箱售一千三百元、五分貨每箱開一千二百元、六分花色則每箱喊一千一百元左右、三分西釘市貨相當軋缺、惟其走銷亦平淡無奇、故行情亦屬呆定、每箱一千五百元、</p>
+<h3>食物飛漲</h3>
+<p>核桃緊秀核　核桃近以本街需要活潑、市勢緊秀、號貨提桃開四百八十元、普通南桃統貨四百五十元、上檔如東昌桃還過七百二十元、尚未允兌、行盤因之隨緊、</p>
+<p>黑棗價升　黑棗據產區消息、以匯率見縮、漲起十元、而南京辦價亦升三十碼之譜、南鄕貨高至五百三十元、次至四百元、北鄕貨乏市、</p>
+<p>甘貝堅定　甘貝來源不多、近市轉堅、如中粒甘貝行盤爲五千元、新光小粒五千一百元、號盤未肯過宜、後市防升、</p>
+<p>山芋居奇　自米價昂貴供給缺乏以來、大多數人家所用以添補不足、首推山芋、自三十五元、四十元、逐日上漲、昨晨猶爲六十五元、近午已漲至七十五元、若以秤量合計、恐又不止此數也、</p>
+<p>香烟仍堅　因金紗暴漲不已、人心堅執不放、故如英美貨繼昂、日烟及國烟漲勢轉定、計大英牌九千三百元、老刀牌八千四百元、品海牌八千元、仙女牌六千六百元、五華牌七千四百元、日烟金槍牌三千〇五十元、金大樓三千五百元、紅玫瑰二千七百五十元、全祿牌三千一百五十元、指南牌二千三百元、雙斧牌三千八百元、國烟美麗脾六千一百元、金鼠牌四千元、白金龍三千九百五十元、黃金龍三千元、</p>
+<p>日用品貴　漲勢驚人、各貨賣價均達最高價、因存貨枯燥聲中、受近來各物上漲刺激、一般貨主愈形稀罕、一致止吐爲進、故如固本皂每箱昂達五百三十元、剪刀皂五百元、黃祥茂四百十元、白祥茂皂四百八十元、較上日續昂三四十元之鉅、鳳凰牌火柴三千二百五十元、美麗牌三千四百元、金鼎牌二千九百元、雜牌二千五百元、亦升三百元之譜、白禮氏洋燭三百八十元、繼漲十元、</p>
+<p>雜糧日升　昨日雜糧市塲交易漸暢、惟因來源仍屬有限、是以售價日昂、做開蠶豆比前步升三十元、豆餅亦漲二三元、計開崇明新沙赤豆六十包、價自三百十元至三白二十元、又陳赤豆六十包、價爲二百二十五元、又吳江揀靑豆五十包、價爲二百九十五元、閔行靑蠶豆一百四十包、價爲二百五十元、又天津赤豆二十包、價爲二百八十元、明光紅糧三車、價自一百九十五元至二百元、肥字餅三車、價自七十九元半至七十八元半、昌記餅五車、價七十七元半、</p>
+<p>本欄十一月份稿費、已結算淸楚、請於十一·十二·十三日、三天憑條向會計處領取爲荷、</p>
+<p>商業新聞部啟</p>
+<h2>Page 6</h2>
+<h3>一年來的大東來戰爭（三）</h3>
+<p>— 陳彬龢</p>
+<p>（十二）南太平洋各戰役</p>
+<p>於是，戰事更向前發展，向確保日本佔領地區和消滅英美任何反攻可能的前途進展了。</p>
+<p>首先在一月間，是俾士麥羣島的進攻。一月二十三日，在新波利敦島登陸，同時又在新愛爾蘭島登陸。二十六日展開新波利敦島的總攻，不久，附近各島嶼完全佔領。尤其是拉伐島爾與卡皮安恩哥兩要衝的佔領，使日本在南太平洋戰略上的形勢更爲有利，尤其是使美國與澳洲的聯絡切斷一點成功最大。一方面，對於新幾尼亞西方帝莫爾島的攻氣，也很進展，使日軍對新　尼亞的包圍圈的效力日益增加。二月二十日就完成了帝莫爾島的登陸。荷印與澳洲間的交通都在日軍黨握中了。</p>
+<p>日軍在東方佔領俾士麥羣島，在西卞進駐帝莫爾島，形成了對新幾尼亞的夾攻之氣。接着三月八日日軍即在新幾尼亞登陸。</p>
+<p>三月三十一日，日軍開始莫爾卡諸島及新幾尼亞西北的攻略，四月十九日，就把西部新幾尼亞所有要點完全佔領了。西部勘定後，即由北向南推進，進迫東部新幾尼亞。</p>
+<p>大東亞戰爭發展到五個月的時候，東自蘇羅門，西至新布利敦，都爲日軍佔領。四月十九日，完成了新幾尼亞西部的戡定戰，於是西南太平洋的英美勢力，已經驅逐殆盡，而澳洲也開始感受到重大的威脅。尤其是日軍佔領了蘇門答臘，爪哇，帝莫爾，新幾尼亞，新布利敦諸島，一連四千　的地域，對於澳洲已形成無可抵抗的威脅，而美國太平洋南進攻略也就　摧毀了。</p>
+<p>（十三）印度洋的控制</p>
+<p>新加坡和蘇門答臘被日軍攻陷以後，印度洋已成爲日本海空軍的競技塲了。</p>
+<p>首先是對聖誕島的攻擊，聖誕島在巽他海峽以南二百二十哩，自日軍遮斷麻利加海峽以來，該島就成為印度與澳洲運輸的中心。三月一日，日本開始空襲了破壞了該島唯一的港灣FF灣和英美聯合艦隊的設施。日本海軍於三月七日開始向該島攻擊，三十一日曰軍就完全佔領，切斷了印澳　　聯絡。</p>
+<p>另一方面，日軍又於三月十七日開始進攻西南太平洋一帶要地安達曼諸島。這是新加坡和印度間的連絡中心，與馬達拉斯，加爾喀答，和哥倫在等距離相當，可說是日度國防上的屛落。二十四日進攻依蒲洛克，安爾芬登斯島。於是東印度洋上最大的要衝　入日軍之手，印度本國的東岸和錫蘭島已經裸露在日軍砲火威脅之下了。</p>
+<p>終於，對印度本土的襲擊也開始了，四月五日日海軍部隊開始向印度洋英國最大軍事據點錫蘭島的首都哥倫布進攻，破壞了所有英國艦艇，船舶和航空兵力。六日，日軍的鋒刃已迫近印度本土，向馬德拉期州北部的要衝可卡拿大，及啓卡克樂實行空襲，自此對印空襲，幾乎不斷的進行。哥倫布和珠林可馬利兩軍港是新加坡失陷後英國最東端的軍事據點，爲死守其寶庫印度的前哨陣地，自緬甸經加爾喀答至錫蘭島，廣大的孟加拉水域，全在其控制之下。自這兩地處於日軍轟炸之下以後，印英軍事當局就不能不驚慌失措。現在印度和澳洲的交通，幾乎完全切斷，而印度與美國間的連絡也陷於危急狀態；而南非聯邦的地位也就開始被人注意。大東亞戰爭從此又和歐菲兩州的戰爭進入直接發生關係的時期了。</p>
+<p>（十四）進襲美國本土</p>
+<p>大東亞戰爭是含有世界性的戰爭，因此，戰爭一開始，就不限於太平洋的防禦，而向美國本土凖備着攻擊了。十二月八日上午九時三十分，美國廣播中就報告，舊金山西約一千三百浬地點航行中的美國運輸艦隊，遭受潛艇的攻擊，共中兩艘沉沒，從這裏可見美國太平洋沿岸的海上交通，早已遭受日本潛艇的威脅了。十二月十一日，美國海軍當局又報告日本潛艇在美國太平洋岸活動，美國運油船兩艘被擊。到了十二月三十日，日本潛艇更在美國近海出沒，奇襲布洛港，卡夫而伊港，震驚了美國的海軍。</p>
+<p>二月二十五日，日本大本營公佈日本潛艇於廿四日夜間，開始砲擊美國加利福尼亞洲沿岸的軍事設施，收到重大戰果。美國本土開始遭受攻擊，這是歷史上値得記載的大事。而在政治上對於美國人民心理的影響，更是不容忽視的。羅斯福總統於廿五日對記者團談話，也直率承認日本潛艇施擊美國本土是「優秀的政治謀略之一例」。</p>
+<p>（十五）英美海軍反攻的慘敗</p>
+<p>當英美荷在西南太平洋上的勢力慘遭崩潰的時候，立即在英美本國引起了人民的責難，英美軍事當局爲此發動了對日的「反攻」。</p>
+<p>列如五月六日，新幾尼亞島方面作戰中的日本海軍部隊，在該島東南方珊瑚海上，發見英美聯合的有力艦隊，自七日起即加以反擊。據日本大本營公表說，英美企圖在夏威夷，澳洲及新幾尼亞間的南太平洋方面蠢動，所以一舉出動了美國最精銳的航空母艦二艘，配合了許多英美主力艦和驅逐艦，建立了强力的聯合艦隊，向珊瑚海面日方陣綫前進，但經過日方猛力反擊，敵艦大多遭遇覆沒」。</p>
+<p>但是，英美的反攻宣傳仍在繼續進行着，日方爲澈底消滅一切威脅日本本土的可能起見，又自三月十九日起，展開了對重慶第三戰區浙贛綫的進攻，把英美所利用以威脅日本的玉山，麗水等地的飛機塲及一切設施加以破壞，徹底地消滅了空襲日本的可能。</p>
+<p>（十六）東太平洋的作戰</p>
+<p>從西方南方威脅日本本土的一切可能都被日方破壞以後，就開始對東北方面可能的威脅加以消滅，日本的海軍航空部隊，於六月四日開始襲擊阿留申羣島。七日日陸軍部隊與海軍緊密協力進攻阿留申擊島的軍事根據地基斯加島。</p>
+<p>美國自從中央及南太平洋對日進攻路被破壞以後，就準備從阿拉斯加，以阿留申羣島作根據地，以圖襲擊日本本土，作爲北方進攻路。但該方面在冬季不能進行軍事，只有夏季有進攻的可能，所以日本就制敵機先，以陸軍協力攻略阿—基兩島，反而造成了對美國本土的威脅。六月二十日，日本潛艇又在加拿大附近砲擊朋友巴島，給加拿大人民以極大的衝動。</p>
+<p>從此以後不僅西南太平洋已經成爲日本的海洋，就是東太平洋也成爲日本海空軍的活動區了。</p>
+<p>（十七）由蘇羅門海戰到大西洋進軍</p>
+<p>日海軍航空部隊，於八月七日在蘇羅門羣島方面發見英美聯合艦隊運輸船隊，八日，日海軍即給予殱滅的打擊。八月九日起，展開追擊戰。據十四日日本大本營發表，這次戰鬥　　收獲了世界史上無可倫比的大戰果。第一次蘇羅門海戰就這樣在日本絕對勝利中結束了。</p>
+<p>然而接着是第二次蘇羅門犬戰。第一次大戰失敗之後，美國爲了挽回頹勢，振奮人心，出動了增援艦隊，於八月廿四日向蘇羅門羣島東之洋面挺進，但立即爲日方發現，當即發動航空隊，加以急　，給予重大的打擊。</p>
+<p>從第二次蘇羅門大戰以後，日本更爭取主動第一次空襲美國本土。九月九日，日本水上飛機在美國太平洋岸奧倫根西南部海岸出現，投下燒夷彈，引起了大火，使美國四部人民爲之震　不安。後來五月下旬日本海軍更向大西洋活動了，於是亞歐的戰事，已經開始直接的合作了。</p>
+<p>山蘇羅門海戰，到大西洋進軍，表現了大東亞戰爭的歷史的發展。</p>
+<p>（十八）第三次蘇羅門海戰</p>
+<p>美國雖屢戰屢敗，但沒有完全放棄反攻的野心，尤其是對於蘇羅門羣島—它不僅是澳洲的屛陣，而且是美國的前衝，它又是夏威夷和澳洲之間之最重要的交通中心，只要美國能控制蘇羅門一帶，牠就可以企圖重振西南太平洋的勢力。相反的，倘使蘇維門方面完全爲日軍所掌握，那末不僅澳洲將完全孤立，而夏威夷也失去了價値，即美國本身的直接威脅也大大的增加了。正因爲如此，所以美國不惜一切，一而再，再而三的收拾了他在西南太平洋的殘餘勢力，增加了新銳的海空軍，向這一方面實行猛力的反攻。自十月下旬起，尤其是十一月上旬，又集中一切力量向日軍淮撲，猛烈的戰爭　不斷地進行，日軍除了不斷給敵方以打擊之外，又於十三日起，開始主動的作戰，猛擊加達而卡那爾島。</p>
+<p>自八月七日第一次蘇羅門戰爭至十一月十四日間三次蘇羅門大戰的結果，可以看到南太平洋上三次大戰的兇惡程度和日本怎樣以絕對的優勢保持着太平洋上主動的地位。</p>
+<p>敵万之損失</p>
+<p>飛機　自炸及未歸隊二〇六架，重傷三一架。</p>
+<p>（根據十一月十九日凍京名報所載）</p>
+<p>第三次蘇羅門大戰以後，美國顯然已經受到重大的打擊，反攻的能力問題已經在聯合國中間開始發生疑問。同時對於重慶政權所提出而由美國實行的這個太平洋上的第二戰綫的結果，竟是如此，自然，對於重慶政權內部又發生了政治上的動搖。</p>
+<p>三戰爭前途的觀測</p>
+<p>現在，當大東亞戰爭一週紀念而太平洋的形勢已經和一年前發生了根本的變化之時，我們來觀測這一戰爭的前途，是很有意義的，也可說是每一個亞洲國家的人民所必要認識的。</p>
+<p>首先，回顧這一年間的戰爭中，勝敗的主要原因在什麼地方呢？在日本方面我們可以舉例出來的，第一是政治上的革新，主要是實現了舉國一致的新政治體制，使全國的一切政治力量，都向着唯一的目標—爭取大東亞戰爭勝利。尤其是在人力方面，日本沒有一個人民能够處身於戰事之外，也沒有一個人民能够不分擔戰事听賦予的責任，而且沒有一個人民不在政府一定的統率之下加倍的提供出自己的力量來爲大東亞戰爭而服勞。第二，是經濟上的集中，這首先表現在國家總動員的計劃的提前完成，表現在全國一切物力和財力完全依照政府的動員計劃而供給政府，使政府能够從容地支配這全國的物力和財力，以爭取戰爭的勝利。一切都有充分的準備，不做空言的宣傳。</p>
+<p>其次，若英，若美及其同盟者又怎樣呢？從政治上來看，英美本身存在着決不能一致的矛盾性，英國政治上內在的矛盾，左派與右派的鬥爭，反邱吉爾的運動，親　派的活動，都表現出一個腐敗過程中的老大帝國主教政治上的「百孔千瘡」的醜態。正因爲這種醜態，造成了國策的凌亂，造成了國力的分散，不僅殖民地的人民開始走了求解放的途徑，而且本國人民也不能不為政府的無能而憤激了。美國的情形並不比英國的好得多少，在國內一切反戰派的活動，還有一派公開地反對羅斯福的親蘇參戰運動。因此，美國雖然具有全世界第一位的工業機構生產力，而實際上可利用以支持這次戰爭的，卻不能不大大的打個折扣。至於人民力量的結集之不可能，自更不待說了。</p>
+<p>在外交政策和民族政策方面，英美更陷於空前的失幾之中，例如英美對蘇，本來就談不到誠意，高唱了一年多的「在歐洲開闢第二戰綫」終不發動。而英美卻還有一部份人認為和蘇聯合作，無非增加了英美的負擔，貽留未來的禍患。至於民族政策方面英美雖在一年以前就由羅邱擬定了所謂「大西洋憲章」，可是，在他們對待印度民族運動的實際措施中，已經自己招認，只不過是騙人的東西了。</p>
+<p>我們把這大東亞戰爭中雙方的情形對照起來，戰爭前途的勝負，不是已經非常明顯了嗎？不過，我們還不能過於估低敵人的力量。我們應該認淸英國在這次大戰中，始終避免着主力的戰爭，他是一味無恥地退，退……。因此，也還保全着一部份的海軍力量。而美國呢，他是現代最大工業國家，內部固然也是百孔千瘡，但是道幾年來，他本國還沒有受到致命的打擊，却也是事實。因此在大東亞圈內的各國，還應該面對着這些現實，正視着這些現實，正確地認淸自己的地位和任務，加倍的努力去迎接新的時代的來臨。現在還不是狂歡的時候，現在還是我們忍受和迎接更大的苦難的時候！大家緊張起來，大家團結起來！努力奮鬥！　（完）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.12.10</h1>
+<h3>Provisions</h3>
+<p>Provisions! The most serious problem in Shanghai at present—</p>
+<p>The problem of provisions is increasingly affecting the lives of the people day by day. Today, everyone urgently feels that the problem of provisions needs to be resolved quickly and appropriately.</p>
+<p>In the case of Shanghai, it was not the most grain-deficient area in the past because it was surrounded by rice-producing regions. In addition, its convenient transportation meant there was no need to worry about a shortage of rice. The concern in the past was about rice merchants hoarding and manipulating market prices, increasing the burden on people's lives, and creating social unrest. However, the situation is different now. The authorities have implemented a rationing system for civilian rice according to a unified plan. Therefore, the current severe rice problem is completely different from the rice shortage and skyrocketing rice prices of the past!</p>
+<p>To what extent is the current rice problem serious? In terms of the actual rice consumption of ordinary citizens, they receive household rice under the rationing system, with each person allowed to buy 1.5 *sheng* every ten days (approximately 1 *sheng* of rice, 0.5 *sheng* of broken rice, and 1.5 *jin* of flour). On average, each person can buy 1.5 *he* of rice and a little over 2 *liang* of flour per day. According to the general physique of the Chinese people, each person needs to eat at least 0.5 *sheng* of rice per day, and no less. Therefore, according to the current rationing system, the household rice they can receive is at most only half of what they need. As for whether the price of rice matches their income, no rigorous comparison has been made! So, how do the citizens of Shanghai maintain their lives? It goes without saying that the extremely poor are struggling on the brink of life and death. The rest, who can barely support themselves, can only buy small amounts of rice from street vendors in addition to receiving relatively cheap household rice, but ××××××××××××××××××××××××××××××××××××××××. Such an increasing number will not only threaten the lives of Shanghai citizens, but of course, it will also affect the future of society.</p>
+<p>Because the alarming increase in rice prices has real implications! This seriousness was not felt in the past. In the past, the rise in rice prices did not have a widespread impact, primarily because almost every household in Shanghai had stored rice last year. They could ignore the high rice prices and take each day as it came. This is no longer the case. The rice reserves of the people of Shanghai have long been exhausted. Secondly, in the past, when Shanghai was short of food, it could be supplied from the surrounding countryside. However, there are now restrictions, and there have been these new changes in the source of supply; there is almost little hope for a reduction in rice prices. However, the actual income of the general public in Shanghai cannot fully solve the problem of living:</p>
+<p>First, as mentioned above, household rice only meets half of the people's food needs. The other half has to be purchased at high prices on the black market. Calculated at yesterday's market price, for example, a family of four, with two adults and two children, would spend at least ten yuan or so per day on rice alone! Given the employment situation of the general public in Shanghai, no one can afford it.</p>
+<p>Secondly, we know that, except for a very few wealthy people, the vast majority of Shanghai citizens are the actual supporters of Shanghai society—the salaried class, also known as the "hidden poor" class; and the majority are the "destitute poor" class. Therefore, we must not ignore the seriousness of Shanghai's food problem just because we see that many large restaurants and hotels are "always full of guests and never empty of wine," because the former is a superficial prosperity created by a very few wealthy people. This "prosperity" is built on the desert and is unproductive. The latter—the vast number of citizens—are struggling in "hidden poverty" and "destitution," suffering from the serious food problem.</p>
+<p>Third, although the general salaried class has subsidies, it seems that they can supplement their income to some extent; however, it should be known that subsidies are increased or decreased according to the price index, and the so-called price index is calculated according to the official rice price of the Public Works Department. If we consider the ratio between the current price of household rice at 1.5 yuan per *sheng* and the price of rice purchased in small quantities ×××××××, then it is not difficult to imagine the actual significance of the subsidies.</p>
+<p>Fourth, we cannot ignore the more important fact that the soaring black market rice prices also stimulate other prices in Shanghai. This not only increases the living burden of citizens, but also encounters obstacles in the implementation of price controls, and also stimulates rice prices and all prices in peaceful areas outside Shanghai. The impact of this is almost impossible to estimate.</p>
+<p>Fifth, and most importantly, the rising prices centered on soaring rice prices will inevitably lead to an economic crisis, which will develop into a political crisis, so it should not be ignored!</p>
+<p>Regarding countermeasures to the food problem, I believe the authorities are already planning wise and correct measures. Standing from the position of the Chinese people, we believe that the following points are very urgent, so we dare to offer humble suggestions to the authorities:</p>
+<p>First, find ways to increase the rationed quantity: As mentioned above, the household rice that each person can receive now only meets half of the actual needs of each person, so that each person has to seek supplements other than household rice and has no choice but to make expenditures beyond their means, which increases the seriousness of rising food prices. Therefore, we hope to increase the rationed quantity of household rice, so that each person can receive at least half a *sheng* per day. The amount should also be specially increased for the working class. This will greatly reduce the severity of the food problem; at the same time, it can also curb the rise in other prices and facilitate the implementation of price control policies. The beneficial impact on society and politics should not be underestimated.</p>
+<p>Second, we further hope to make "extra rations" universal, which can also significantly reduce the severity of the food problem.</p>
+<p>Third, re-implement population dispersal in earnest, especially for those who are unemployed and have a hometown to return to. It should be actively promoted under more appropriate and convenient measures. As long as the measures are appropriate and provide more convenience to those being dispersed, especially in terms of not having too many restrictions and complications in the procedures, then the results will not be too low. In this way, on the one hand, the severity of Shanghai's food problem can be reduced; on the other hand, these unemployed people can be allowed to participate in production in their hometowns, participate in increasing food production, which has positive significance.</p>
+<p>In addition, if it is temporarily impossible to increase the rationed quantity, small vendors can first be allowed to sell freely, and it can be stipulated that the price should not exceed twice the price of household rice. We remember that when the new legal tender was introduced in June, the black market price of rice in Shanghai was 500 yuan in old currency per *shi*, which should be 250 yuan in new currency ×××××××××××××××××. According to the current rice prices in cities along the Shanghai-Hangzhou and Shanghai-Nanjing lines, most are still only within 300 yuan, so allowing free sales at a price within twice the household rice price, or within 400 yuan, would still be profitable for the vendors and not too harsh.</p>
+<p>We believe that the food problem is the most serious problem in Shanghai today, and it is closely related to the economy and politics of the entire peaceful area. We hope that all parties will quickly work together to find a thorough solution.</p>
+<h3>Japan Determined to Fight to the End, Seeking to Achieve Common Goals: Prime Minister Tojo Speaks to German and Italian Reporters</h3>
+<p>Tokyo, 9th (Domei News Agency)—Prime Minister Tojo received reporters from Axis countries at his residence at 4:15 PM today. He stated that Japan has absolute determination and will work with its Axis allies to achieve common goals. Prime Minister Tojo met with nine German reporters and three Italian reporters as the first anniversary of the Axis military alliance signed on December 11th approaches.</p>
+<p>General Abe Broadcasts: The Meaning of the Greater East Asia War</p>
+<p>Tokyo, 9th (Domei News Agency)—General Abe, President of the Imperial Rule Assistance Association, delivered a radio address to the nation tonight on the first anniversary of the Greater East Asia War, stating briefly: The United States and Britain should understand the basic fact that the reason why they have been repeatedly defeated by Japan is because their cause is unjust. Japan is fighting not only for self-defense but also for the liberation of East Asia, to prevent the high ideals of Anglo-American aggression. In this war, the enemy countries have no purpose worth fighting for and no moral justification. They are only fighting at the behest of their leaders who are promoting a policy of aggression and oppression in East Asia. The current war is not a war of self-defense for the United States and Britain, but a war for them to maintain their policy of aggression in East Asia. The history and destiny of East Asia are all acts of Anglo-American aggression. In particular, the United States has no reason to annex Hawaii and the Philippines. The world knows that American missionaries extracted wealth from China, and the United States, in concert with Britain, attempted to prevent Japan's legitimate activities in China and incited the Chinese people against Japan. Since Britain and the United States did not end this policy of aggression, the Greater East Asia War broke out. Therefore, this war is a war of self-defense on the part of Japan and a war for the enemy to expand its power unnecessarily. Japan is now determined to fight, not only to defend its own survival but also to eliminate the Anglo-American domination of East Asia.</p>
+<h3>First Anniversary of the Greater East Asia War: Grand Celebrations in Various Places; Bose Appeals to the Indian People to Resist Britain and the United States in Added Efforts</h3>
+<p>Shonan City, 9th (Domei News Agency)—The citizens here celebrated the first anniversary of the Greater East Asia War yesterday with unprecedented grandeur. In the morning, the streets and public places were crowded with people, and Japanese flags fluttered everywhere. 1,200 people, including Japanese residents and representatives of various ethnic groups, participated in the commemorative meeting. A memorial service was also held at the Bukitima Shrine. At 11:59 AM, all citizens observed a minute of silence, praying for final victory. Mayor Oda read the Declaration of War at the mass rally. Leaders of various ethnic groups delivered speeches one after another, promising to cooperate with the Japanese administrative organs in Malaya.</p>
+<p>Rangoon, 9th (Domei News Agency)—More than 700 representatives from the Japanese dispatch army in Burma and the central administrative organs held a memorial service yesterday on the first anniversary of the Greater East Asia War to commemorate the Japanese soldiers and Burmese volunteers who died in the Burmese campaign. In the afternoon, Indian expatriates held a rally under the guidance of the Indian Independence League and passed a resolution thanking the Japanese army and vowing to resist Britain in pursuit of Indian freedom.</p>
+<p>Bangkok, 8th (Central News Agency)—The Thai branch of the Indian Independence League held a rally at the National Theater here at 3:00 PM on the 8th to commemorate the first anniversary of the Greater East Asia War.</p>
+<p>Jakarta (Batavia), 9th (Domei News Agency)—The Java branch of the Indian Independence League held a rally yesterday on the first anniversary of the Greater East Asia War. More than 1,500 Indians participated and passed resolutions thanking the Japanese army and protesting against British tyranny in India.</p>
+<p>Berlin, 8th (Havas)—Bose, the leader of the pro-Axis Indian Nationalist Party, delivered a radio speech to the Indian people today, stating briefly: The war is trending toward a favorable opportunity for the Axis countries. This war is completely different from the First World War. In the First World War, Germany was blockaded. In this war, it is Britain that is being blockaded. The United States' post-war plan does not include an independent status for India. We have confidence in the future of the war. Therefore, every Indian national must redouble their efforts to resist Britain and the United States.</p>
+<h3>Liu Jianxu Under Detention</h3>
+<p>Nanjing, 9th (Central News Agency)—According to reliable sources, Liu Jianxu, Chairman of the Fujian Provincial Government and Deputy Commander of the Third War Zone, was detained by the Chongqing authorities on charges of violating military discipline after reporting on the local military and political situation at the Tenth Plenary Session of the Kuomintang Central Executive Committee. He is currently under strict interrogation. According to Liu Jianxu's reasons for arrest, there are two: (1) He often had disagreements with Chen Zhao, the Fujian Provincial Supervisor, leading to local administrative disputes. (2) The Fujian Three People's Principles Youth League and local tycoons accused Liu of protecting opium cultivation and other crimes. However, it is generally believed that the main reason for Liu's arrest is that the organizational structure of Fujian Province has always been extremely complex, and the local tycoons in the province most opposed Liu's policies. Therefore, the Supreme National Defense Council recently designated the province as a military strategic area and is carrying out large-scale military construction. In order to avoid obstacles to the advance of the Zhili faction into Fujian Province, the Chongqing authorities arrested Liu Jianxu. This is the fundamental motive.</p>
+<h3>War Situation of Japanese Army in Hubei</h3>
+<p>Hankou, 9th (Domei News Agency)—According to war reports, the Japanese army in Hubei recently launched a large-scale attack on the Communist New Fourth Army and the 128th Division of the Chongqing army, inflicting heavy damage on them. The Japanese army set out from Tianerhe, west of Tianmen, and other places at dawn on Sunday, suddenly attacking 1,200 soldiers of the 128th Division of the Chongqing army and occupying Tianerhe in the morning. Since Sunday, the Japanese army has continued to carry out sweeping operations against the New Fourth Army operating around Zhujia Lake.</p>
+<h3>Japanese Nationals Enthusiastically Donate Cash</h3>
+<p>Tokyo, 9th (Central News Agency)—On the first anniversary of the Greater East Asia War, Japanese nationals, in order to express their gratitude for the war achievements of the army and navy, have been flocking to the Ministry of the Army and the Ministry of the Navy since the morning of the 8th to donate money. On the 8th alone, the Ministry of the Army received donations of more than 2.5 million yuan, and the Ministry of the Navy received more than 1.7 million yuan. Including the donations entrusted to various newspapers throughout the country, the amount is very large, which shows the sincere patriotism of the Japanese people.</p>
+<h3>Japan and Vietnam to Begin Economic Negotiations</h3>
+<p>Hanoi, 9th (Domei News Agency)—Japanese Ambassador to French Indochina, Yoshizawa, will arrive in Saigon to begin economic negotiations between Japan and Vietnam with Governor Decoux. At the same time, Mr. Minoda and Mr. Yokoyama from the Japanese Embassy Office in Vietnam are scheduled to continue detailed discussions with the Vietnamese economic authorities in Hanoi in early next year. Minoda arrived here from Saigon today to take up his new post as the head of the economic section of the Japanese Embassy Office.</p>
+<h2>Page 3</h2>
+<h3>Tank Battle Unfolds in Northern Tunisia: Situation Appears Favorable for the Axis; Only Skirmishes in the Libyan Region</h3>
+<p>Gil, 9th (Haitong News Agency)—Moroccan radio announced yesterday that a tank battle has been taking place near Tebourba for two days. The outcome is unclear.</p>
+<p>Lisbon, 8th (Domei News Agency)—Since the Battle of Tebourba, the war situation in northern Tunisia has turned to the advantage of the Axis forces. An eight-day London broadcast also stated that if the Axis forces now secure their transport routes and are protected by strong air force, the Allied forces have no hope of counterattacking. The recent war situation is described as follows: (1) After the Allied forces abandoned Tebourba, the main forces immediately withdrew to the southwest and quickly mobilized reinforcements in an attempt to reverse the decline. The Axis forces launched a simultaneous air and land attack. Since the start of the tank battle on the 7th, the main forces of the two armies have entered a state of melee. According to reports from the United Nations side, the fiercest battle since the start of the war in Tunisia has now begun. (2) The Axis has completely secured the railway and coastline between Tunis and Bizerte. The air force is now using its full force to repeatedly bomb the Allied forces transported from the Algiers side to the front line. As a result, large fires have broken out everywhere on the narrow mountain roads leading to Taburba, hindering the advance of the British army.</p>
+<p>Berlin, 8th (Havas News Agency)—German military sources recently stated that the Axis forces are continuing to advance near the city of Taburba in Tunisia. The British and American Allied forces are holding the mountainous area southwest of the city, but in order to implement an encirclement strategy against the German and Italian Allied forces, they have had to reduce their defense area. Although the British and American Allied forces have recently deployed a large number of tanks there for support, they will eventually have to retreat to avoid encirclement. Therefore, they have abandoned a large amount of land and lost a large number of military equipment and ammunition.</p>
+<p>Lisbon, 8th (Havas News Agency)—According to an announcement released today by the British Middle East Command, the battle on the North African Libyan front is limited to skirmishes, and air battles are also more active than yesterday.</p>
+<h3>German Troops Launch All-Out Counteroffensive in Eastern Front Despite Bitter Cold: Occupy Various Strategic Points Northwest of St. Petersburg; Particularly Fierce Fighting on the Central Front</h3>
+<p>Lisbon, 8th (Domei News Agency)—According to news received here, the German army has begun an all-out counteroffensive on the Eastern Front in the last two or three days. On the St. Petersburg front, the German army bravely attacked Soviet positions in the Don River plains despite the snow, and the Soviet army is currently busy defending. Various strategic points in the northwest and eastern parts of St. Petersburg have been completely occupied by the German army. In the northern factory area of ​​St. Petersburg, the German army breached several temporary Soviet positions and expanded the occupied area. According to Moscow news, it was admitted on the 8th that the Soviet army's operations were greatly hindered due to bad weather. As for the German troops in Yerzevo, Kalinin, and Wilkieel in the west of Moscow, the counteroffensive was very fierce. Especially in the area between Yerzevo and Vyazma, the two armies launched a tank battle throughout the 7th to seize Samz, a strategic railway point. The Soviet army suffered a concentrated bombing by German dive bomber squadrons, and most of its combat power was lost, so it had to retreat to the northeast.</p>
+<p>Moscow, 8th (Havas)—The Information Bureau here issued a communiqué tonight stating that our forces in the Stalin City area and on the central front continued to attack in the original direction today.</p>
+<h3>Turin, Italy Repeatedly Bombed</h3>
+<p>Rome, 9th (Havas News Agency)—The Italian Supreme Command announced this morning that Turin, Italy, was heavily bombed by enemy planes last night. The city center suffered heavy damage, and a hospital and a university were destroyed. Casualties are unknown. One enemy plane was shot down.</p>
+<h3>Italian Industrial Personnel Fully Mobilized to Engage in the Production of War Materials</h3>
+<p>Rome, 8th (Haitong News Agency)—Today, the Italian government issued an order that all employees and workers of industrial institutions will be under the status of military personnel in the future and may not leave their posts without permission. Violators will be subject to military law. After Italy entered the war, it issued an order to mobilize employees and workers in military industries and public utilities, such as power plants and transportation service organizations. This time, the scope has been expanded again, and it is estimated that more than 4 million employees will be affected.</p>
+<h3>Place Names in the South Seas Changed</h3>
+<p>Tokyo, 9th (Central News Agency)—The names of places in the Greater East Asia region, formerly ruled by the United States, Britain, the Netherlands, etc., which have lost their Asian characteristics, have been decided to be corrected by the Japanese government in order to adapt to the construction of Greater East Asia and restore the Asian characteristics of these place names. It was formally decided at the cabinet meeting on the 9th, and the Information Bureau also announced: (1) The former British Malaya will be renamed "Malaya". (2) The former British Borneo will be renamed "North Borneo". (3) The former Dutch Borneo will be renamed "South Borneo". (4) Batavia will be renamed "Jakarta."</p>
+<h3>51 Ships of the Toulon French Fleet Scuttled Themselves: Accounting for Three-Quarters of the Total; Four Submarines Escaped</h3>
+<p>Lisbon, 9th (Domei News Agency)—According to a Washington dispatch, US Secretary of the Navy Knox announced yesterday that, according to aerial reconnaissance and other reports, the French fleet in Toulon, the Mediterranean base, scuttled itself last month. However, a quarter of them are still in Toulon Harbor and have not been damaged. At that time, 50 warships and one cargo ship were damaged and sunk. In addition, four French submarines, in the hands of the Degoulle faction, escaped from Toulon and are still floating in the water and appear to be undamaged. Fifteen French warships are still floating in the water and appear undamaged, including two light cruisers. The French battleships "Strasbourg," "Dunkerque," and "Provence" have been injured and stranded, but can still be repaired.</p>
+<p>Lisbon, 8th (Central News Agency)—According to a Washington dispatch, US Secretary of the Navy Knox met with a group of reporters on the 8th. Based on a public announcement from the US government, he stated that the damage to the French fleet in Toulon Harbor was less severe than initially reported. He said that one capital ship, one light cruiser, three large destroyers, three destroyers, two gunboats, four submarines, and five oil tankers of the French fleet were indeed seized by the German army. Knox also announced that the scuttled French fleet included one capital ship, five cruisers, fifteen large destroyers, eleven destroyers, one seaplane aircraft carrier, one submarine barrier laying ship, one transport ship, one old battleship, three submarines, and 51 ships in total. Two of the battleships may be salvaged and reused. Because when the above-mentioned 20-odd French fleet merged into the Axis fleet in the Mediterranean, the naval balance on both sides of the Mediterranean was lost, and the Allied rear communication lines had long become the target of the Axis air force and submarines.</p>
+<h3>Franco's Speech States Spain's Position: Believes Liberalism Is on the Decline; Willing to Assist in Building a New European Order</h3>
+<p>Madrid, 9th (Haitong News Agency)—Spanish leader General Franco delivered a speech at the third conference of the Spanish Falange Party National Congress yesterday, strongly stating Spain's political ties with Fascist and National Socialist revolutions. He also said that if restoring the monarchy is beneficial to Spain, there is a possibility of taking this political step. His words briefly stated: Fascist National Socialism and the Spanish National Revolution are the same inseparable movement. These are all revolutionary movements of European culture and people. The domestic policies pursued by Spain are based on the principles of the Spanish National Revolution.</p>
+<p>Berlin, 9th (Haitong News Agency)—Berlin sources believe that General Franco's speech to the Spanish National Congress is a declaration of spiritual war against liberalism, democracy, and Bolshevism. This speech expresses the unity of Europe. Franco recognizes the enemies of the new Europe and first fought against Bolshevism in 1936. Franco's warning to Spanish Communists shows his determination in domestic affairs as well.</p>
+<h3>Diplomatic Activity High in Turkey for Britain and America</h3>
+<p>Zurich, 9th (Central News Agency)—According to a dispatch from Ankara, US Ambassador to Turkey Steinhardt, who returned to the United States to consult with his government on its policy toward Turkey and stayed in the United States for two months, returned to his post on the 7th and will hold talks with Turkish Foreign Minister Menemencioglu soon. In addition, Soviet Ambassador Vinogradov, who recently returned from Moscow, is currently very active. British Ambassador Knatchbull-Hugessen has also repeatedly mobilized since the Allied forces landed in French North Africa, attempting to draw Turkey into the Allied camp. According to sources in Ankara, the German government has called the Turkish government's serious attention to recent Turkish foreign policy. Well-informed local sources are paying close attention to this.</p>
+<h3>Ambassador Shigemitsu Inspects Military Hospital</h3>
+<p>Nanjing, 9th (Domei News Agency)—Ambassador Shigemitsu inspected the Japanese Army and Navy Hospitals here yesterday on the first anniversary of the Greater East Asia War, along with members of the embassy staff. He expressed his gratitude to the Army and Navy soldiers recuperating in the hospital for their brave fighting in the past and for obtaining glorious victories.</p>
+<h3>Nomura Leads Delegation Home via Turkey</h3>
+<p>Istanbul, 8th (Havas News Agency)—A Japanese delegation, led by Admiral Nomura, arrived here today from Berlin. After a short stay, they plan to return to Tokyo via the Soviet Union.</p>
+<h3>Statistics on U.S. Army and Navy Casualties</h3>
+<p>Lisbon, 8th (Domei News Agency)—According to a Washington dispatch, the U.S. Wartime Information Office announced on the 7th that the number of U.S. Army and Navy casualties since the United States entered the war totals 35,678 for the Army and 22,629 for the Navy, for a total of 58,307.</p>
+<p>Macau Correspondence</p>
+<h3>The Inside Story of Mainland China Student Loans: Seemingly Doing Everything Possible to Protect Education, But in Reality, the Implementers' Measures Are Inappropriate</h3>
+<p>As early as February 5th of the 27th year [1938], the Ministry of Education of the Chongqing government promulgated the "Provisional Measures for Student Loans in Public Specialized Schools and Above in War Zones," stipulating that loans be divided into:</p>
+<p>(A) Full amount: 8 or 10 yuan per month.</p>
+<p>(B) Half amount: 4 or 5 yuan per month.</p>
+<p>Subsequently, living expenses continued to rise, and revisions were made repeatedly. The current methods are:</p>
+<p>(1) War zone student meal loans are divided into: Class A—granted to those whose original place of residence is occupied and whose economic resources are completely cut off, with a monthly loan based on 18 yuan, plus additional amounts.</p>
+<p>(2) Self-funded student auxiliary loans are divided into:</p>
+<p>Class A—granted to those from poor families whose original place of residence is not occupied, the loan amount is the same as Class B in item (1).</p>
+<p>Class B—granted to those with more difficult economic circumstances, the loan amount is half of Class A.</p>
+<p>The meal loan was initially a fixed amount. However, because rice prices rose at any time, the fixed amount was insufficient to maintain the students' nutrition. Therefore, it was changed to be calculated based on the local rice price, converting each person to two "shi dou" and one "shi sheng," plus oil, salt, vegetables, fuel, and kitchen worker expenses. Estimated based on Sichuan Province prices in July, the government's expense for a fully subsidized meal loan student is 90 to 100 yuan per month, about 1,300 yuan per year. Even if calculated based on war zone Class B or self-funded Class A, the government's burden is 70-80 yuan per person, 1,000 yuan per year. Considering only Class A and Class B loans, the annual cost is no less than 50 million yuan. In addition, there are special loans, spending money loans, uniform loans, etc., all established to help poor students in war zones.</p>
+<p>The amount spent on student loans cannot be said to be small. On the surface, it seems to have done everything possible to protect education. However, this is not the case. Students in various universities are experiencing various dissatisfactions. Tracing the cause to its origin, it lies in the inappropriate measures of the implementers. Based on investigations, the general perception of inappropriateness can be summarized into seven points:</p>
+<p>(1) After the war dragged on for a long time, students' economic abilities could not be simply divided by "occupied area" or "non-occupied area." There are often students whose families are in "non-occupied areas" but are economically very difficult, and there are also students whose families are in "occupied areas" but whose fathers and brothers already have another economic foundation in the mainland. If one cannot thoroughly understand the students' family backgrounds and insists on acting according to rigid regulations, unfairness is almost inevitable.</p>
+<p>(2) Some schools stipulate that students who have remittances cannot receive loans. Although this is a kind of restriction method, it is prone to misunderstandings without detailed investigation. For example, if a student receives a remittance letter entrusted by a friend, the school authorities will cancel their loan qualification, which runs counter to the original intent of the legislation.</p>
+<p>(3) There is also a regulation that those who have been disciplined will not receive loans. Although this contains the meaning of punishing evil and rewarding good, young people should be given an opportunity to rehabilitate themselves in educational principles.</p>
+<p>(4) Students who apply for loans face numerous and overly cumbersome procedures. Official documents are repeatedly transferred, often taking several months, causing great distress to students who really need assistance.</p>
+<p>(5) The loan management agency obstructs fairness in the review of students applying for loans, and there are inappropriate cases of selection, resulting in those who should receive it not receiving it, and those who should not receive it receiving it. There are also rumors that professors use loans to win over students, or that students use loans to take their lovers to the movies or eat in restaurants.</p>
+<p>(6) The loan disbursement time is sometimes delayed for too long. There are even cases where loans for January and February are still being disbursed in April and May. If students rely entirely on loans for food, there is bound to be a risk of running out of food.</p>
+<p>(7) In some places, the number of loan students is falsely reported to fraudulently obtain loans, or loans are deliberately suppressed and used for unethical acts such as investing in national bonds, which can be said to be a strange phenomenon in the pure and noble halls of learning.</p>
+<p>There is originally no question about the loan system itself, but the implementation lacks the four key points of fairness, integrity, carefulness, and speed. Therefore, the malpractices are countless, and useful money is wasted in vain. If those who educate young people are like this, how can we blame the young people? Therefore, if university students cannot stabilize their lives, it will inevitably affect their studies. The decline in standards is also one of the factors.</p>
+<h2>Page 4</h2>
+<p>Foreign Commentary</p>
+<h3>East Asia Economic Conference Under the Great War - Tokyo Yomiuri Hochi, November 26th</h3>
+<p>The fourth East Asia Economic Conference, to be held from the 26th of this month, will carefully discuss and deliberate on various issues related to the East Asian economy. The East Asia Economic Conference has been held annually since December of the 14th year of Showa [1939], and two sessions have already been held. This year is the fourth session in total. Being the first meeting since the outbreak of the Greater East Asia War, it undoubtedly holds significant meaning. In past conferences, the Ministers of Finance and Foreign Affairs usually attended. This year, the Prime Minister, the Minister of Greater East Asia Affairs, and the heads of the Army and Navy information departments will also participate, which is particularly noteworthy in the current situation.</p>
+<p>With the development of the Greater East Asia War, the East Asian Economic Sphere has greatly expanded, including Annam, Thailand, Burma, and various parts of the South Seas. In the East Asia Economic Conference, representatives from these regions will soon be seen attending. However, this time, representatives from Manchuria, Central China, North China, Mengjiang, and Japan will still hold discussions.</p>
+<p>The "Essentials of Economic Construction for Japan, China, and Manchukuo" announced by the Cabinet Intelligence Department in November of the 15th year of Showa [1940], and the "Essentials for the Establishment of National Land Planning" decided by the Cabinet Council in September of the same year, both designated the three countries of Japan, China, and Manchukuo as the center of the East Asian Economic Sphere, with the Southern regions also included in the plan. Whether from the perspective of the history of construction or the perspective of the main supply of resources from the Southern regions, the three countries of Japan, China, and Manchukuo should be the center of East Asian economic construction, and this principle remains unchanged even today. The purpose of the East Asia Economic Conference is to promote economic integration between Japan, China, Manchukuo, and other East Asian regions, and to strive to strengthen their comprehensive economic power. Therefore, the construction of the already expanded East Asian Economic Sphere should also be an important topic for discussion among the representatives of the three countries.</p>
+<p>Before the outbreak of the Greater East Asia War, countries around the world did not believe that Japan would submit to the demands of the United States in the negotiations, thinking that even if Japan rose up in resistance, it would inevitably be defeated by the powerful American military in an instant. However, Japan conquered the Southern regions in a short period and advanced from the Pacific to the Indian Ocean, creating an unshakable situation. However, they still refuse to give up the dream of the ultimate American victory and have begun to establish what they call a long-term strategy following this dream. The United States has now made a huge military buildup plan; Chongqing is still promulgating the National General Mobilization Law under the guise of independent resistance, and is starting to develop the Northwest, engaging in the construction of the Chongqing-India highway, in order to prolong its regime.</p>
+<p>The Greater East Asia War is a long-term war, and the China Incident must also be resolved after the completion of the Greater East Asia War. Japan is currently advancing resolutely toward the completion of the war with such determination.</p>
+<p>Therefore, in this situation, the responsibility borne by the East Asian Economic Sphere is very significant. It is no longer enough to simply talk about construction, etc. It must directly share the important responsibility of one wing and increase its war power to complete the Greater East Asia War. This is the first major significance and responsibility borne by the East Asia Economic Conference after the start of the Greater East Asia War.</p>
+<p>Have the current situations in Central China, North China, Manchuria, and Mengjiang cultivated the strength to fulfill this major responsibility? The conference should not simply end with discussions or friendly talks, but should truly plan well according to the demands of the profound situation. (Translated by Ding)</p>
+<h3>Hopes for the East Asia Economic Conference - Tokyo Asahi Shimbun, November 28th</h3>
+<p>The fourth East Asia Economic Conference will be held consecutively for three days from November 26th to 28th, with a large number of representatives from Japan, China, Manchukuo, and Mongolia attending. Its grand scale is not difficult to imagine.</p>
+<p>The conference has contributed greatly to the economic construction of Japan, China, Manchukuo, and Mongolia. This is the first time it has been held since the outbreak of the Greater East Asia War, and its significance and responsibility feel even greater. Needless to say, the purpose of the conference is to promote economic cooperation; when the economic figures of the various regions gather together, they will sincerely discuss the best policies for the East Asian economy, clear up mutual opinions, and contribute to the construction of a new order in East Asia. However, at the same time, it is also an important goal to take this opportunity to give the economic figures from various regions a correct understanding of the actual situation of our country (Japan) in various aspects such as politics, economy, and culture.</p>
+<p>Of course, these goals have not lost their importance at all today, when the China Incident has developed into the Greater East Asia War. Not only that, but under this Greater East Asia War, it is especially necessary to emphasize the understanding and economic cooperation of Japan, China, Manchukuo, and Mongolia, which have become the center of the new order in East Asia. Naturally, its content must be different from before. That is, since the start of the war with the United States and Britain, thanks to the magnificent achievements of the Imperial Army, the new order in East Asia has expanded to the Greater East Asia Co-Prosperity Sphere, and its scope of coverage has become very wide, both regionally and racially. As a result, the important issues of production, allocation, consumption, transportation, finance, and prices that have always been discussed between Japan, China, Manchukuo, and Mongolia must also be re-examined from this perspective. Also, how to invite the various regions that have come to participate in the sacred task of building a new order in East Asia into this conference is something that must be considered.</p>
+<p>It is hoped that those attending this year's Economic Conference, in view of the important mission undertaken by the conference, should concentrate their sincere intentions on defeating the United States and Britain, so that there will be no regrets in the cooperation of both material and spiritual forces for the completion of the Greater East Asia War, and take the opportunity to renew their determination to defeat England and America. (Translated by Ding)</p>
+<h3>Cotton Yarn, Flour, and Oil Mills Purchase Required Raw Materials; Sources of Cotton and Wheat Are All Under Control; 6,000 Tons Each of Soybeans and Sesame Seeds Transported to Shanghai</h3>
+<p>Commercial News Agency report: In order to increase production and maintain needs, Shanghai's Chinese and Japanese cotton yarn, flour, and oil factories, with the assistance of the authorities and the banking sector, have been purchasing raw materials such as cotton, wheat, and oils from various production areas.</p>
+<p>Improving Cotton Production</p>
+<p>(1) Cotton is uniformly purchased by the Central China Cotton Control Association and distributed to various yarn factories for spinning and weaving under a quota system. It is reported that 60,000 dan of cotton have been collected in Jiangbei and 40,000 dan in Jiangnan, and efforts have been made to transport them to Shanghai for assistance. In addition, in order to increase cotton production in various producing areas, the Jiangnan and Jiangbei producing areas will be divided into management areas with dispatched instructors to improve cotton production and other work.</p>
+<p>Regulating Wheat Prices</p>
+<p>(2) Wheat prices in various regions have been set by the Central China Flour Milling Association. Under strict control, various factories purchase from Kunshan, Suzhou, Wuxi, Changzhou, and various parts of Jiangbei. The wheat that has been collected has been continuously transported to Shanghai to be used as flour milling raw materials. It is reported that the authorities, in view of the abundant wheat reserves in various regions, with reserves in Jiangnan alone exceeding 500,000 bags, will implement a compulsory purchase policy to increase flour production.</p>
+<p>Oil Production Raw Materials</p>
+<p>(3) In addition to allowing various oil mills to directly purchase raw materials for oil production, such as soybeans, rapeseed, sesame, and peanuts, from various producing areas, a large amount of soybeans and sesame seeds, 6,000 tons each, have been transported from North China recently. In addition to a portion of these soybeans and sesame seeds being used for food, the majority will be used as raw materials for oil production.</p>
+<h3>Cotton Yarn and Cotton Cloth to Be Registered Starting Today</h3>
+<p>The Materials Control Department of the Public Works Bureau will issue cotton yarn and cotton cloth registration certificates at Room 90 of the bureau's building on Fuzhou Road starting from the 7th. The 9th is the last day for issuing these certificates. Starting from the 10th, the certificates must be completed and submitted to the original place for registration by the 15th. Registration will not be allowed after that, and unregistered cotton yarn and cotton cloth will be confiscated. Registered cotton yarn and cotton cloth can be moved with the permission of the Materials Control Department. Therefore, all owners of yarn and cloth should complete the registration within the deadline to avoid losses due to delays.</p>
+<h3>Ninety-Six Factories Have Been Returned</h3>
+<p>According to the Japanese-language Continental News, the ceremony for the return of military-managed factories was held on the 8th. According to current statistics, including the military-managed factories returned this year, there were 13 on May 25th, 12 on August 13th, and 8 on October 10th, for a total of 44. This, together with the 51 factories returned last year and the year before, totals 96, accounting for three-fifths of the total of 140 military-managed factories. Only 44 have not yet been returned. The situation of the handling of military-managed factories is recorded as follows: 1. The total number of military-managed factories is 140, of which 73 have been returned, including 39 textile factories and 34 general factories. In addition, 23 military-managed factories have been released from military management, including 10 textile factories and 13 general factories.</p>
+<h3>Police Chief Watanabe Masami Praises the Baojia System</h3>
+<p>Police Chief Watanabe Masami stated in his monthly report yesterday that the Baojia system is an excellent organization because the reduction in crime in the Public Concession is due to the ability of self-defense members to cooperate fully with the police. The foreign Baojia group in Hamakita has been operating smoothly since its establishment on October 1st.</p>
+<h3>Air Defense Headquarters Corrects Signals</h3>
+<p>The Japanese Army and Navy Air Defense Headquarters in this city issued Bulletin No. 12 on the 5th, revising the siren signals stipulated in the Shanghai Air Raid Alert Regulations. The bulletin stated that the siren signals for the various air defense alerts stipulated in the Shanghai Air Raid Alert are hereby revised as follows:</p>
+<p>Type of Alert Siren Signal (Day and Night)</p>
+<p>Pre-Alert One Long Sound (Continuous 30 seconds)</p>
+<p>Air Raid Alert Several Short Sounds (Continuous 5 seconds)</p>
+<p>All Clear Two Long Sounds (Continuous 20 seconds)</p>
+<p>Note: The interval between siren sounds should be as short as possible.</p>
+<h3>Public Concession Implements Air Defense, Announces Alert Control; Drills Are Irregular, Preparation Should Be Strengthened; Baojia Self-Defense Groups Must Pay Attention to Prevention</h3>
+<p>The long-awaited repeated air defense drills will continue to be held irregularly in the shortest possible time. Yesterday, the Baojia offices in various districts of the Public Concession received an urgent notice from the police station, announcing a state of alert control starting immediately. The police station's notice is recorded as follows: "From today onwards, we are in a state of alert control. Residents should strictly abide by the regulations on air defense and light control, and comply with the following items:</p>
+<p>Points to Be Observed</p>
+<p>(1) All lights in the alleyways must be extinguished, but those with specially permitted installations should be switched on and off by the middle head and household head. (2) Blackout curtains should be installed in the houses, and all electric lights must be fitted with black lampshades. (3) Pay special attention as we are now under alert control. After receiving orders, the Baojia personnel in each district must strictly consolidate the addition and arrangement of air defense equipment, in order to achieve excellent results during the air defense drills. Major roads and alleyways have been fitted with</p>
+<p>Duties of the Self-Defense Group</p>
+<p>Air defense lights. Baojia heads and self-defense groups should pay attention to: (1) Special attention should be paid to the lights of high-rise buildings and large-scale houses, entertainment venues, and factories, and they should be quickly extinguished to prevent them from leaking outside. (2) After the air raid alert is issued, residents must not light incense or burn paper ingots outdoors. (3) Special attention should be paid to the upper and lower ends of skylights and outer walls to prevent light from leaking out. (4) The remaining lights in the alleys should be specially managed, and the lights must not exceed fifteen and must be covered. (5) The signs of the Baojia offices and self-defense group offices should be covered. (6) After the training air raid control order is issued, in order to prevent incidents from occurring, members of the self-defense group should use the ropes provided to tie them to the electric poles on the sidewalk. If necessary, members of the self-defense group should be dispatched to direct pedestrians. (7) There will be two or three blockade exercises every month from now on, so please pay attention. (8) During the blockade, except for those with passes and military police personnel serving in the Baojia (in this district), no one is allowed to pass through the blockade line. Violators will be severely punished by the military police. (9) During the blockade, each Jia head should patrol the district with two members of the self-defense group. (10) During an air raid alert, members of the self-defense group should ring the bell four times. The first time is the pre-alert, the second time is the air raid alert, the third time is the all-clear alert, and the fourth time is the undecided lifting of the pre-alert.</p>
+<p>Traffic Control</p>
+<p>During air defense drills, pedestrians should strictly observe the following items: (1) After the air raid alert is issued, pedestrians can still walk arbitrarily to the left. (2) After the training air raid control order is issued, all vehicles must stop immediately next to the sidewalk, and passengers must get out of the vehicle and temporarily take refuge on the sidewalk or get out of the vehicle and walk. (3) Pedestrians are not allowed to smoke or use lighters.</p>
+<h3>The East Asia League Shanghai Branch Hosts a Banquet for Minister Wang of the Concord Association</h3>
+<p>The Shanghai Branch of the China General Association of the East Asia League hosted a banquet at the International Hotel on the 14th floor at noon yesterday (9th) to welcome Minister Wang Zihang, Director of the Concord Association of Manchukuo, to Shanghai for an exchange of speeches. The atmosphere was cheerful and harmonious. Officials and celebrities from China, Japan, Manchukuo, the Philippines, and India attended, including Luo Junqiang and Yuan Ludeng from the Chinese side, Deputy Consul General Iwai, Director Saji of the Ideological Department, Matsuyama representing the head of the Resident Group Fukuda, Director Nakatani of the Xingya Alliance Liaison Bureau from the Japanese side, and Ye Yaogong, Consul General of Manchukuo stationed in Shanghai, totaling no less than one thousand people. Chen Fumu, the Secretary-General of the East Asia League, gave a welcoming speech, followed by Minister Wang of the Concord Association's response, and finally, Minister Luo Junqiang gave a speech on behalf of the guests. Toasts were exchanged during the banquet, and the atmosphere was enthusiastic.</p>
+<h3>School Building Dispute: The Municipal Government Fairly Mediates</h3>
+<p>Private schools in the Shanghai Special District have repeatedly requested the Municipal Education Committee to mediate disputes over school buildings. In addition to sending personnel to mediate and requesting the court to carefully consider the case, the committee also submitted a request to the municipal government in June of this year to forward it to the Ministry of Judicial Administration for relief. Recently, the committee, in view of the increasingly serious school building disputes, in order to prevent landlords from following suit and hindering the future of Shanghai's education, decided at the 22nd committee meeting to submit another request to the municipal government to forward it to the Ministry of Judicial Administration and the Ministry of Education, stating that all disputes concerning school buildings in Shanghai will be fairly mediated by the municipal government in the future, and even if the lease expires, please do not hastily execute the legal judgment, so as not to hinder the future of the school.</p>
+<h2>Page 5</h2>
+<h3>Entering the Second Year of the Greater East Asia War: Strengthening Determination to Win Victory; Army and Navy Information Ministers Encourage Japanese Residents</h3>
+<p>Allied Press, local report: Shanghai's Japanese Navy Information Minister Colonel Kamata and Japanese Army Information Minister Lieutenant Colonel Yokoyama stated at a gathering of Japanese residents last night that all Japanese people in Asia should strengthen their determination to win on the first anniversary of the Greater East Asia War and dedicate themselves to the war in order to achieve victory in this great struggle. Colonel Kamata addressed the general assembly of Japanese residents at the International Theater, stating that the Greater East Asia War is not a war against aggressor countries, but a war to help the weak and suppress the strong. The result is that it has destroyed the Anglo-American bases of aggression in East Asia, as evidenced by Willkie's statement after his world tour that the British Empire no longer exists. The victories Japan has achieved in the land, sea, and air during the past five years of the China Incident are due to the belief of Japanese soldiers that they will win every battle. However, this war will extend for many years, so the Japanese people should increase their determination to win, as strong as steel. The plan for one year lies in New Year's Day, and the plan for the Greater East Asia War lies in December 8th. We have entered the second year of the war, and we must boost our spirits and strengthen our courage. Lieutenant Colonel Yokoyama addressed the general assembly of Japanese residents at the Donghe Theater, emphasizing that the Japanese people must first prepare to cope with all kinds of difficulties before they can achieve final victory. He also said that the Greater East Asia War is a war to establish a just and benevolent world and to build the East Asia Co-Prosperity Sphere, so the Japanese people should spare no sacrifice to win victory.</p>
+<h3>Various Banks and Brokerages Negotiate Procedures for Releasing Enemy Property Regarding Deeds and Assets; Hosted by the Bank Union Preparatory Committee; Consultations with the Management Committee and Two Banks</h3>
+<p>Since the United Banking and Brokerage Conference resolved the measures for the transfer of deeds of pledge by various banks and brokerages, various banks and brokerages have been handling the disposal of enemy property on their behalf. Regarding the deeds of deposit in the property reserve of the Bank Union Preparatory Committee by various colleagues, the original owners urgently need to present the deeds to apply for the release of enemy property disposal, so they request their return in order to promptly handle all necessary procedures. It is reported that the deeds in the collateral, which were kept by the former British and American Custodian Committee, were transferred to banks such as HSBC and McCallum, and have not been returned. The association is currently consulting with the new Enemy Property Management Committee and the liquidators of HSBC and McCallum to handle the formalities and apply for the release of enemy property disposal.</p>
+<h3>Japanese Consulate General Hosts Journalists as Usual</h3>
+<p>The Japanese Consulate General hosted Chinese news reporters from this city at the Huamao Hotel on the 8th floor at 3 pm on the 9th, as usual. More than ten reporters from various newspapers attended, with Deputy Consul Fukuma present. The tea and refreshments ended at 4:30 pm.</p>
+<h3>China Children's Relief Association Starts Collecting Winter Clothing</h3>
+<p>The China Children's Relief Association is scheduled to start collecting winter clothing for poor children in the city today, with a target of 5,000 sets of children's cotton-padded clothing and trousers, with a cost of 30 yuan per set. It is hoped that people from all walks of life will enthusiastically support this cause.</p>
+<h3>Shanghai News Agency Establishes an Interview Training Class</h3>
+<p>The Shanghai News Agency in this city, in order to impart practical journalistic skills and cultivate talented interview reporters, has now established an interview training class. The course is for three months, teaching editing, guiding interview practice, newspaper translation, and Western newspaper reading. It is stipulated that there will be three internal guidance sessions per week, and the time for external practice is不定. Any young men and women with high school education can enter the class. Upon completion of the training, those who aspire to engage in journalism will be guaranteed job referrals. Registration starts today. The regulations can be obtained in person at Room 501, Pudong Fellow Association Building, intersection of Route Edouard and Chengdu Road.</p>
+<h3>Jiufu Lighterage Company Opens</h3>
+<p>Jiufu Lighterage Transportation Company, located at No. 12, 2nd Floor, 119 Renji Road, is organized by tycoon of the lighterage industry. It has strong capital, and prominent figures such as Huang Jinrong, Yuan Ludeng, Ma Shaoquan, Xu Langxi, Gao Jimin, Li Sihao, Wu Chuliang, and Ba Zichao are all consultants to the company. The opening ceremony was held yesterday. People from all walks of life came to congratulate, and the traffic was heavy, reaching its peak at ten o'clock.</p>
+<p>Sports News</p>
+<h3>Jointly Organized by the Shanghai Sports Association and the China Young Men's Christian Association: Shanghai Open Basketball League - Registration Begins Today, Deadline on the 15th</h3>
+<p>The Shanghai Special Municipality Sports Association and the China Young Men's Christian Association (YMCA) are jointly organizing the Shanghai Open Basketball League. A committee of six people, including Feng Jianwei, has been appointed. The league is divided into three groups: Men's A, Men's B, and Women's, with a limit of forty teams. Registration begins today and will close on the 15th of this month. The registration fee and deposit are each 50 yuan. Each player must submit two 2-inch photos. Each team is limited to twelve players. Registration is to be done with Mr. Liu Hesheng in the Sports Department of the YMCA at the Eight Immortals Bridge. The competition rules will be determined by the League Committee and will be announced in the next couple of days. The A-group and women's group matches are scheduled to kick off on the 21st of this month. It is heard that strong Western teams, including last year's YMCA runner-up Giant Team, as well as the French, Portuguese, Italian, and Navy teams, are preparing to participate. Chinese teams are also actively preparing. It is also learned that, to promote basketball, the Sports Association Basketball Committee is planning to organize a popular basketball league. This league will be held simultaneously in different locations to allow more people to participate, in order to cultivate new talent. It is said that this league is scheduled to kick off in February or March of next year.</p>
+<h3>Star Small Ball Closing Performance - Hong Lian Overpowers Xian Shi</h3>
+<p>Yuan Ludeng's Auction of Charity Balls</p>
+<p>The Star Cup Small Ball League held its closing ceremony and awards presentation yesterday, followed by three exhibition matches. The competition began at 2:30 PM. The first match was Wen Jing vs. Yong Yi. Wen Jing ultimately prevailed, narrowly defeating Yong Yi with a score of 4 to 3. The second match was originally scheduled to be Movie Stars vs. Mixed Team, but the Movie Stars were unable to attend due to a blockade. They were replaced by Guang Xia to play against the Mixed Team, resulting in a 1-1 draw. The final match was between Hong Lian and Xian Shi, with Fang Caifu as the referee. Hong Lian defeated Xian Shi with a score of 3 to 2. After the match, Zhou Yixing presented the awards. There was also a charity ball auction, which was personally hosted by Mr. Yuan Ludeng. The result was that Mr. Huang Huiqing, manager of the Livelihood Insurance Company, purchased the ball for 2,500 yuan. The proceeds will be used for the Shanghai Poor Children's Charity School.</p>
+<h3>Sports Briefs</h3>
+<p>In the United League Small Ball League, fourteen matches were scheduled. The match between Taiwan Dimension Teachers and Hong Lian was postponed due to unforeseen circumstances. The remaining thirteen matches were held as scheduled. In another match, Team W forfeited, so United won without effort. In the Elephant Group, the Elephant Team defeated West West, and Lei Lei B defeated Two Cotton. Yu Zhiye and Nan Qi also won.</p>
+<p>The Hequn Sports Association football team will participate in this year's Western League Football tournament, with Dai Linjing as team leader, Yang Yunru as general manager, Tang Zuowen as captain, and with strong players such as Xiao Ziwen and Pan Honghai.</p>
+<p>Commercial News</p>
+<h3>Fluctuations in Chinese Stocks - Food Stocks Suddenly Popular</h3>
+<p>Yesterday's Chinese stock market saw mixed results. Guanshengyuan stocks suddenly became popular among older stocks, rising to a high price of 330 yuan. There were rumors of Meilin Food increasing capital and issuing shares, pushing the price to a high of 1,050 yuan. New Asia once reached the 70 yuan mark, with Chuangjian reaching a new high of 71 yuan. Later, it slightly declined but was still strong, closing at 69 yuan, a continuous increase for ten days, rising a total of 18 yuan. Sino-French was flat, hovering around 30 yuan. The highest trading price for Wuzhou was 525 yuan, ultimately up 10 yuan. Minyi once touched the 100 yuan mark. Zhongxi was at 450 yuan, and Xinyi was at 317.5 yuan, all tending to stabilize. Star Perfume was around 235 yuan, with active trading. New Asia Materials was around 38 yuan. Great China Matches rose another 15 yuan, reaching 360 yuan. Nanyang Tobacco Company was at 132.5 yuan at noon, up 5 jiao. Cultural industries such as the Commercial Press were also booming, reaching a new high of 477.5 yuan, up 25 yuan. China was up 2.5 yuan, between 206 and 8 yuan. World remained at 120 yuan. Department stores were the weakest, with Wing On at 135 yuan, Sun Sun at 150 yuan, and National Goods Company at 84 yuan, all closing prices, down between 2 yuan and 3.5 yuan. Public utilities had seen the biggest gains in the past two weeks, so the decline was also the sharpest, with Zhabei Water and Electricity at 64 yuan and Chinese Electric at 44.5 yuan, down 3 yuan and 2.5 yuan respectively. In the textile industry, Wing On Textile fell below 1,900 yuan, down 45 yuan. Today's market price list is provided below.</p>
+<h3>Gold Prices Stop Rising, Turn Flat</h3>
+<p>Call Loan Interest Rates and Military Scrip Unchanged</p>
+<p>Yesterday, the listed price for new gold jewelry sold by the Dashin and other gold shops in the city did not change, remaining at 3,350 yuan per tael (purchase price reduced by about 200 yuan). The gold shops had no new price changes, and the price had stopped rising and turned flat and weak. The morning price was 3,350 yuan, down 30 yuan. It later rebounded slightly to 3,370 yuan. Some dealers stopped buying, and the momentum suddenly turned weak. In a situation of oversupply, the noon price was 3,310 yuan, with few buyers, down about 70 yuan from the previous day, a difference of 60 yuan. Trading was thin.</p>
+<p>Ornamental silver was still listed at 16 yuan per tael, with inter-dealer trading at 17.5 yuan and 18 yuan for buying and selling prices.</p>
+<p>Yesterday, the interest rate for call loans at the Money Trade Association remained unchanged at 1.4 jiao.</p>
+<p>Yesterday's foreign exchange market saw Japanese military scrip remain stable, with inter-dealer trading at 5 yuan, 5 jiao, 5 fen, and 2.4 li. Banks and small money shops sold at 5 yuan, 5 jiao, 6 fen, and bought at 4 fen and a half. United Reserve Notes fell to 4 yuan, 3 jiao, and a half and jiao for buying and selling prices, down 5 fen.</p>
+<h3>In the Bitter Cold, Clothing is Hard to Find at a Reasonable Price</h3>
+<p>The market for factory-made cloth yesterday saw sellers dumping their stocks due to the upcoming registration of yarn with the Public Works Department, leading to a price decline. White cotton cloth fell by about 3 yuan per piece, with 12-pound Earth brand cotton cloth at 191 yuan, Dapeng at 190 yuan, and Fugui at 188 yuan to 189 yuan, all with transactions. However, coarse cloth remained stable, with little change. The most fluctuation was seen in Peach Blossom Lady Lin, falling from 321 yuan in the morning to 308 yuan. Later, due to traders actively seeking sales, the market sentiment rose again, rebounding to 315.5 yuan, with the final price at 313 yuan.</p>
+<p>Eastern cloth rebounded yesterday, with serge seeing the steepest decline. It opened at 7 yuan and 9.5 jiao in the morning, plummeting to 7 yuan and 6.7 jiao. At noon closing, it rose slightly to 7 yuan and 7 jiao, a significant drop of 2 jiao and 89 fen per yard. The cotton cloth market was more stable, with 12-pound Dragon Head cotton cloth at 193 yuan based on bank orders, Color Ball at 193 yuan, Flying Fish at 192 yuan, and Yang He Trumpet Five Blessings being sold at the lowest debt price of 191 yuan to 1.5 yuan, with the market again in a state of flux.</p>
+<p>Woolen fabrics have risen much more recently than before our newspaper was suspended. The market has been buoyed by rumors of favorable buying, and people's attitudes have changed. Financial institutions and wealthy dealers have been actively absorbing stocks, leading to extremely active wholesale trading in the market. However, because production at domestic factories has decreased rather than increased, and imported goods are increasingly sold out, there is a lack of circulating funds. Some are hoarding, while others are aggressively buying, causing prices to rise steadily. Yesterday, prices for riding breeches, paletot cloth, valencia cloth, Xuanwei cloth, white serge, ramie cloth, and other fabrics were even higher.</p>
+<h3>High Pig Iron Prices, Scarce Sales</h3>
+<p>In recent days, various markets have been flourishing, and the hardware market has also gradually become bullish. However, sales of various products are actually sluggish, and much of the activity in the market is speculative, with actual sales being negligible. Pig iron is no exception. Although prices remain firm, sales are extremely scattered, and business is very quiet. Yesterday's market prices for pig iron were 5,000 yuan per ton for Indian Desert pig iron, 4,500 yuan per ton for steel mold pig iron, 3,200 yuan per ton for Shijinshan pig iron, and 2,700 yuan per ton for old pig iron.</p>
+<h3>Sesame Nails Difficult to Sell</h3>
+<p>Trading in sesame nails ranging from 3 fen to 6 fen has been sluggish for a long time. Both wholesale and retail sales are slow. The main reason is that sales are difficult to achieve, so traders' morale is low. Although the stock of this product in Shanghai is not large, prices have remained weak. Yesterday's market prices were 1,400 yuan per case for 3 fen nails, 1,300 yuan per case for 4 fen nails, 1,200 yuan per case for 5 fen nails, and about 1,100 yuan per case for 6 fen nails. There is a shortage of 3 fen West nails, but sales are also lackluster, so prices are stagnant, at 1,500 yuan per case.</p>
+<h3>Soaring Food Prices</h3>
+<p>Walnuts Tight and Strong - Walnuts are tight and strong because of active demand in the city. Top-grade Hebei walnuts are quoted at 480 yuan, ordinary southern walnuts at 450 yuan, and top-quality Dongchang walnuts are quoted at over 720 yuan but have not been sold. Market sentiment is therefore tight.</p>
+<p>Black Dates Rise in Price - According to news from the production area, black dates have risen by 10 yuan due to the shrinking exchange rate, and prices in Nanjing have also risen by 30 yuan. Southern goods are priced as high as 530 yuan, and secondary goods are priced at 400 yuan. Northern goods are scarce.</p>
+<p>Dried Scallops Firm - Dried scallops are in limited supply, and the market has recently firmed. Medium-sized dried scallops are priced at 5,000 yuan, and new small-sized Xingguang dried scallops are priced at 5,100 yuan. Suppliers are unwilling to lower prices, and further price increases are expected.</p>
+<p>Sweet Potatoes Hoarded - Since rice prices have risen and supplies are scarce, sweet potatoes have become the first choice for most families to supplement their diets. They have risen daily from 35 yuan and 40 yuan. Yesterday morning they were still at 65 yuan, but by noon they had risen to 75 yuan. If measured by weight, the price may be even higher.</p>
+<p>Cigarettes Remain Firm - Because gold thread has risen sharply, people are holding on tightly and unwilling to sell. British and American cigarettes continue to rise, while Japanese and domestic cigarettes are stabilizing. British American Tobacco's Big British brand is at 9,300 yuan, Old Knife brand at 8,400 yuan, Pinnacle at 8,000 yuan, Fairy at 6,600 yuan, and Five Flowers at 7,400 yuan. Japanese cigarettes such as Golden Gun are at 3,050 yuan, Golden Mansion at 3,500 yuan, Red Rose at 2,750 yuan, Quanlu at 3,150 yuan, Compass at 2,300 yuan, and Double Axe at 3,800 yuan. Domestic cigarettes such as Beautiful Spleen are at 6,100 yuan, Golden Mouse at 4,000 yuan, White Gold Dragon at 3,950 yuan, and Golden Dragon at 3,000 yuan.</p>
+<p>Daily Necessities Expensive - The rising trend is alarming, and the selling prices of various goods have reached their highest levels. Due to the depletion of inventories, and stimulated by the recent rise in the prices of various goods, most merchants are becoming increasingly reluctant to sell and are only buying. For example, Guben soap has risen to 530 yuan per case, Scissors soap to 500 yuan, Huangxiangmao to 410 yuan, and Baixiangmao soap to 480 yuan, a significant increase of 30 to 40 yuan compared to the previous day. Phoenix brand matches are at 3,250 yuan, Beautiful brand at 3,400 yuan, Golden Tripod brand at 2,900 yuan, and miscellaneous brands at 2,500 yuan, also up 300 yuan. Price's candles are at 380 yuan, continuing to rise by 10 yuan.</p>
+<p>Grains Rise Daily - Yesterday's grain market saw active trading, but because the supply was still limited, prices rose daily. Broad beans opened 30 yuan higher than before, and bean cakes also rose by 2 to 3 yuan. 60 bags of Chongming New Sand red beans were sold, with prices ranging from 310 yuan to 320 yuan. 60 bags of old red beans were priced at 225 yuan. 50 bags of Wujiang selected green beans were priced at 295 yuan. 140 bags of Minhang green broad beans were priced at 250 yuan. 20 bags of Tianjin red beans were priced at 280 yuan. Three trucks of Mingguang red sorghum were priced from 195 yuan to 200 yuan. Three trucks of Fat Brand cake were priced from 79.5 yuan to 78.5 yuan. Five trucks of Changji cake were priced at 77.5 yuan.</p>
+<p>The稿費 for November has been calculated. Please collect it at the accounting office with your slip on the 11th, 12th, and 13th.</p>
+<p>Sincerely,</p>
+<p>Commercial News Department</p>
+<h3>The Greater East Asia War Over the Past Year (3)</h3>
+<p>— Chen Binhe</p>
+<p>(12) Battles in the South Pacific</p>
+<p>Thus, the war progressed further, advancing towards securing Japanese-occupied territories and eliminating any possibility of Anglo-American counterattacks in the future.</p>
+<p>First, in January, was the invasion of the Bismarck Archipelago. On January 23rd, landings were made on New Britain Island, and simultaneously on New Ireland Island. On the 26th, the general offensive on New Britain Island began, and soon after, the surrounding islands were completely occupied. In particular, the occupation of Rabaul and Kavieng, two important locations, made Japan's strategic position in the South Pacific even more advantageous, especially in successfully cutting off the connection between the United States and Australia to the greatest extent. On the one hand, the offensive against Timor Island west of New Guinea also progressed, increasing the effectiveness of the Japanese encirclement of New Guinea. On February 20th, the landing on Timor Island was completed. Transportation between the Dutch East Indies and Australia was now under Japanese control.</p>
+<p>The Japanese army occupied the Bismarck Archipelago in the east and advanced into Timor Island in the west, forming a pincer attack on New Guinea. Subsequently, on March 8th, the Japanese army landed in New Guinea.</p>
+<p>On March 31st, the Japanese army began the conquest of the Moluccas Islands and northwestern New Guinea. By April 19th, all key points in western New Guinea were completely occupied. After consolidating the west, they advanced from north to south, pressing towards eastern New Guinea.</p>
+<p>When the Greater East Asia War developed to its fifth month, the area from the Solomon Islands in the east to New Britain in the west was occupied by the Japanese army. On April 19th, the pacification of western New Guinea was completed. As a result, Anglo-American forces in the southwestern Pacific were almost completely driven out, and Australia began to feel a significant threat. In particular, the Japanese occupation of Sumatra, Java, Timor, New Guinea, New Britain, and other islands, a continuous area of four thousand miles, formed an irresistible threat to Australia, and the American southward strategy in the Pacific was also destroyed.</p>
+<p>(13) Control of the Indian Ocean</p>
+<p>After Singapore and Sumatra were captured by the Japanese army, the Indian Ocean became the arena for the Japanese navy and air force.</p>
+<p>First was the attack on Christmas Island, located two hundred and twenty miles south of the Sunda Strait. Since the Japanese army blocked the Strait of Malacca, the island had become the center of transportation between India and Australia. On March 1st, Japan began air raids, destroying Flying Fish Cove, the island's only harbor, and the facilities of the Anglo-American joint fleet. The Japanese navy began attacking the island on March 7th, and the Japanese army completely occupied it on the 31st, cutting off communications between India and Australia.</p>
+<p>On the other hand, the Japanese army began attacking the Andaman Islands, a key area in the southwestern Pacific, on March 17th. This was a communication center between Singapore and India, equidistant from Madras, Calcutta, and Colombo, and could be said to be a shield for India's national defense. On the 24th, they attacked Port Blair and the Andaman Islands. As a result, the largest strategic point in the eastern Indian Ocean fell into the hands of the Japanese army, and the east coast of mainland India and Ceylon were exposed to the threat of Japanese artillery fire.</p>
+<p>Finally, attacks on the Indian mainland also began. On April 5th, Japanese naval forces began attacking Colombo, the capital of Ceylon, the largest British military base in the Indian Ocean, destroying all British warships, ships, and air power. On the 6th, the Japanese vanguard approached the Indian mainland, carrying out air raids on Cocanada, a key location in northern Madras State, and Chicacole. From then on, air raids on India were almost continuous. Colombo and Trincomalee, two military ports, were the easternmost British military strongholds after the fall of Singapore, serving as the front line for defending their treasure trove, India. The vast waters of Bengal, from Burma through Calcutta to Ceylon, were all under their control. After these two locations were subjected to Japanese bombing, the Indo-British military authorities could not help but panic. Now, transportation between India and Australia was almost completely cut off, and communication between India and the United States was in a critical situation; the position of the Union of South Africa also began to attract attention. From then on, the Greater East Asia War entered a period of direct involvement with the wars in Europe and Africa.</p>
+<p>(14) Attacks on the American Mainland</p>
+<p>The Greater East Asia War contained the nature of a world war, and therefore, from the very beginning of the war, it was not limited to defense in the Pacific, but prepared for attacks on the American mainland. At 9:30 a.m. on December 8th, American radio reported that an American transport fleet sailing about 1,300 nautical miles west of San Francisco was attacked by submarines, and two of them sank. From this, it can be seen that maritime traffic along the American Pacific coast had long been threatened by Japanese submarines. On December 11th, the American naval authorities reported that Japanese submarines were operating on the American Pacific coast, and two American oil tankers were attacked. By December 30th, Japanese submarines were even appearing near the American coast, carrying out surprise attacks on Port Orford and Cove, shocking the American navy.</p>
+<p>On February 25th, the Japanese headquarters announced that Japanese submarines had begun shelling American military facilities along the coast of California on the night of the 24th, achieving significant results. The American mainland began to suffer attacks, which was a historically significant event. Moreover, the political impact on the psychology of the American people was not to be ignored. President Roosevelt, in a conversation with reporters on the 25th, frankly admitted that the Japanese submarine shelling of the American mainland was "an example of excellent political strategy."</p>
+<p>(15) The Miserable Defeat of Anglo-American Naval Counterattacks</p>
+<p>When Anglo-Dutch-American forces suffered a disastrous collapse in the southwestern Pacific, it immediately aroused criticism from the people in Britain and America. To this end, the Anglo-American military authorities launched a "counterattack" against Japan.</p>
+<p>For example, on May 6th, Japanese naval units operating in the New Guinea area discovered a powerful Anglo-American joint fleet in the Coral Sea southeast of the island and began counterattacking it on the 7th. According to the announcement of the Japanese headquarters, "Anglo-America attempted to stir up trouble in the South Pacific between Hawaii, Australia, and New Guinea, so it dispatched two of America's most elite aircraft carriers, along with many Anglo-American battleships and destroyers, establishing a powerful joint fleet to advance towards the Japanese line in the Coral Sea, but after a fierce Japanese counterattack, most of the enemy ships were destroyed."</p>
+<p>However, Anglo-American propaganda about the counterattack continued. In order to completely eliminate any possibility of threatening the Japanese mainland, the Japanese side launched an offensive on the Zhejiang-Jiangxi Line of the Third War Zone from March 19th, destroying the airfields and all facilities in Yushan, Lishui, and other places used by Anglo-America to threaten Japan, thoroughly eliminating the possibility of air raids on Japan.</p>
+<p>(16) Operations in the Eastern Pacific</p>
+<p>After all possibilities of threatening the Japanese mainland from the west and south were destroyed by the Japanese side, they began to eliminate possible threats from the northeast. Japanese naval air units began attacking the Aleutian Islands on June 4th. On the 7th, Japanese army units closely cooperated with the navy to attack Kiska Island, a military base in the Aleutian Islands.</p>
+<p>After the American offensive routes in the central and southern Pacific were destroyed, they prepared to use Alaska and the Aleutian Islands as bases to attack the Japanese mainland, as a northern offensive route. However, military operations in that area could not be carried out in winter, and there was only the possibility of an offensive in summer, so Japan preempted the enemy by cooperating with the army to conquer Attu and Kiska Islands, instead creating a threat to the American mainland. On June 20th, Japanese submarines shelled Estevan Point near Canada, giving the Canadian people a great shock.</p>
+<p>From then on, not only had the southwestern Pacific become a Japanese sea, but the eastern Pacific had also become the area of activity for the Japanese navy and air force.</p>
+<p>(17) From the Solomon Sea Battle to the Advance into the Atlantic</p>
+<p>On August 7th, Japanese naval air units discovered an Anglo-American joint fleet convoy in the Solomon Islands area. On the 8th, the Japanese navy dealt them a devastating blow. On August 14th, the Japanese headquarters announced that this battle had yielded unparalleled results in world history. The First Battle of the Solomon Sea thus ended in an absolute Japanese victory.</p>
+<p>However, the Second Battle of the Solomon Sea followed. After the defeat in the first battle, the United States, in order to reverse the decline and boost morale, dispatched reinforcement fleets, advancing towards the waters east of the Solomon Islands on August 24th, but was immediately discovered by the Japanese side, which immediately launched air units to attack them urgently, inflicting heavy blows.</p>
+<p>After the Second Battle of the Solomon Sea, Japan further seized the initiative and carried out the first air raid on the American mainland. On September 9th, Japanese seaplanes appeared off the southwestern coast of Oregon on the American Pacific coast, dropping incendiary bombs, causing a large fire, which shocked and disturbed the American people. Later, in late May, the Japanese navy even operated in the Atlantic Ocean, and thus the wars in Asia and Europe had already begun direct cooperation.</p>
+<p>From the Solomon Sea Battle to the advance into the Atlantic, the historical development of the Greater East Asia War was demonstrated.</p>
+<p>(18) The Third Battle of the Solomon Sea</p>
+<p>Although the United States was repeatedly defeated, it did not completely abandon its ambition to counterattack. Especially the Solomon Islands – it was not only a shield for Australia but also an outpost for the United States; it was also the most important transportation center between Hawaii and Australia. As long as the United States could control the Solomon Islands, it could attempt to revive its forces in the southwestern Pacific. Conversely, if the Solomon Islands were completely controlled by the Japanese army, then not only would Australia be completely isolated, but Hawaii would also lose its value, and the direct threat to the United States itself would also greatly increase. It was precisely for this reason that the United States spared no effort, again and again, to collect its remaining forces in the southwestern Pacific, increase its new naval and air forces, and carry out a fierce counterattack in this area. From late October, especially in early November, it concentrated all its forces to pounce on the Japanese army, and fierce battles continued incessantly. In addition to constantly inflicting blows on the enemy, the Japanese army began active operations from the 13th, fiercely attacking Guadalcanal.</p>
+<p>From the First Battle of the Solomon Sea on August 7th to November 14th, the results of the three Battles of the Solomon Sea show the ferocity of the three major battles in the South Pacific and how Japan maintained its dominant position in the Pacific with absolute superiority.</p>
+<p>Enemy Losses:</p>
+<p>Aircraft: 206 self-destroyed and missing, 31 severely damaged.</p>
+<p>(Based on the Tokyo Nichinichi Shimbun of November 19th)</p>
+<p>After the Third Battle of the Solomon Sea, the United States was clearly dealt a major blow, and doubts about its ability to counterattack had begun to arise among the Allied nations. At the same time, the result of this second front in the Pacific, proposed by the Chongqing regime and implemented by the United States, was such that political turmoil naturally occurred within the Chongqing regime.</p>
+<p>The Prospects of the War</p>
+<p>Now, as the first anniversary of the Greater East Asia War approaches and the situation in the Pacific has undergone fundamental changes compared to a year ago, it is very meaningful for us to observe the prospects of this war, and it can be said that it is necessary for the people of every Asian country to recognize it.</p>
+<p>First of all, looking back at the war over the past year, where did the main reasons for victory or defeat lie? On the Japanese side, we can cite the following: First, political reform, mainly the realization of a unified national political system, so that all political forces in the country were directed towards a single goal—to win the Greater East Asia War. In particular, in terms of manpower, no Japanese person could be outside the war, no Japanese person could fail to share the responsibilities assigned by the war, and no Japanese person failed to provide their strength twofold under the government's command to serve the Greater East Asia War. Second, economic concentration, which was first reflected in the early completion of the national general mobilization plan, and in the fact that all national materials and financial resources were fully supplied to the government in accordance with the government's mobilization plan, so that the government could calmly control these national materials and financial resources in order to win the war. Everything was fully prepared, without empty words of propaganda.</p>
+<p>Secondly, what about Britain, America, and their allies? From a political point of view, Britain and America themselves had irreconcilable contradictions. Britain's internal political contradictions, the struggle between the left and right wings, the anti-Churchill movement, and the activities of pro-Soviet factions, all revealed the ugly state of an aging empire in the process of decay, with "hundreds of holes." It was precisely because of this ugly state that national policies were chaotic, and national strength was dispersed. Not only did the people of the colonies begin to seek liberation, but also the people of the country could not help but be indignant at the incompetence of the government. The situation in the United States was not much better than that of Britain. At home, all anti-war factions were active, and there was even a faction that openly opposed Roosevelt's pro-Soviet war effort. Therefore, although the United States had the world's number one industrial production capacity, the actual amount that could be used to support this war could not but be greatly discounted. As for the impossibility of gathering the strength of the people, it goes without saying.</p>
+<p>In terms of foreign policy and ethnic policy, Britain and America were even more trapped in unprecedented failure. For example, Britain and America did not have sincerity towards the Soviet Union. The "opening of a second front in Europe," which had been touted for more than a year, was never launched. And some people in Britain and America still believed that cooperating with the Soviet Union would only increase the burden on Britain and America and leave future troubles. As for ethnic policy, although Britain and America had drafted the so-called "Atlantic Charter" a year ago by Roosevelt and Churchill, in their actual measures in dealing with the Indian nationalist movement, they had already confessed that it was just a deceptive thing.</p>
+<p>When we compare the situation of both sides in this Greater East Asia War, isn't the outcome of the war already very obvious? However, we cannot overestimate the enemy's strength too much. We should recognize that Britain has always avoided major battles in this war. It has retreated shamelessly all the way... Therefore, it has also preserved a part of its naval power. As for the United States, it is the largest industrial country in modern times. Although it also has hundreds of holes internally, it is also a fact that its country has not suffered fatal blows in the past few years. Therefore, the countries within the Greater East Asia Co-Prosperity Sphere should face these realities, face these realities squarely, correctly recognize their own position and mission, and redouble their efforts to welcome the arrival of the new era. Now is not the time to celebrate, now is the time for us to endure and welcome greater suffering! Everyone, get tense, everyone, unite! Strive and struggle! (The End)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.12.09.html", "next": "1942.12.11.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

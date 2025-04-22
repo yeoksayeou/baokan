@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.06.07 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 364 - 4924503</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日軍圍攻四日　衢州城昨晚陷落　贛省日軍佔領東鄕</h3>
+<p>衢州六日同盟社電　日軍擊破顧祝同第三戰區之廿萬大軍後、已於今日F午六時完全佔領衢州、該地之佔領、係由日遠征軍司令於今晚六時公布、據公報透露、星期三日軍開始衢州攻擊後、曾予守軍十五師之部默以致命之損失、總攻被圍之城、已歷四日、至今晨八時一刻、巳達最高峯、蓋當時日軍已佔領郊外之飛機傷、此舉使日軍迅速終午間自東南方面猛攻衢州、以擊破守軍之最後抵抗、日軍術進城門後、曾發生巷戰若干時、終於下午六時完全佔領城區、</p>
+<p>同盟社滬訊　據臼軍前錢來電、華中日軍當局六日下午六時發表、　日軍自六月三日黎明起、對衢州開始總攻擊、六日下午六時完全攻陷衢州城、　陸軍航空部默、連臼冒惡劣氣候、協力地上部歟、攻擊殊為得手、　日軍士氣甚旺</p>
+<p>衢州鄰外六日同盟社電　衢州飛機傷巳於今晨八時一刻被日軍佔領、該機傷位於城東、面積廣大計長一千五白公尺、闊一百五十公尺、三十公分厚之三和土機　道交义終塲中、營房以外、尚有飛機庫十處、軍需儲藏所、隱蔽於衢州以北十五公里明嘉鎭、汽油儲藏所在城南八里、機塲備有高射砲四尊、及高射機關槍多尊、並有特別之鐵路支綫與其他配備、此項配備、遭日機轟炸破壞、</p>
+<p>據同盟社衢州城外來電　攻衢州城之日軍、五日下午十一時半、以主力一齊向南門·西北門·東南門·東北門·北門猛撲、到處展開白刃戰、臼軍敢死隊爬城猛攻、另一隊日軍則猛攻貓頭山、至今晨、衢州西南約十公里之浙贛綫廿里街車站、漸聞槍砲聲、</p>
+<p>衢州城外日軍前綫六日同盟社電　衢州城外飛機傷今晨八時十五分為日軍攻陷、日軍進迫益力、昨晚傳僅距城一公里、昨晚因飛襲不已、天空火光熊熊、日軍在南面包圍、攻破一處去城牆一公里、其他日軍目衢州西南三公里之駱馬橋趨浙贛路、日飛機昨襲常山、</p>
+<p>東京六日同盟社電　　據浙江前綫來常、日空軍協助衢州作戰、於五日下午出動、除掩護地上進擊部隊外、更低空掃射衢州城內及城外東南方面散兵庫地、予以軍大損害、各嘰繼又急襲距衢州西力三十公里之常山、對該地軍事設施、猛烈轟炸、衙州城內外渝軍軍用倉141、經日寮軍轟炸後、即起大火、至六日晨猶黑烟繚繞、仍獵續燃燒中、</p>
+<p>據同盟社江西日軍前緩來電　日軍六日拂曉、進抵東鄉（進賢東南方三十五公里）城外、奮取該市各城門後、一湧術入市內、於上午七時完全佔領、　漸擴大戰果中、該縣城叫面皆山、地形險要、</p>
+<p>江西日軍前綫六日同盟社常　昨晨入撫州之日軍主力、今日進至撫西山嶺之地、在大雨中與第七十九軍之兵四萬交戰、此軍為第九八·八二·一九叫·三師與新編之第六師組織而成、今晨天明、日軍左翼亂進賢東南三十三公里之東鄉、東鄉有戶口三萬、在浙贛路上以產鐵鉛鋅聞名、</p>
+<p>廣州六日同盟社電　據此間所接消息、日軍攻擊韶關、顯已急迫、該地已趨混亂、又據前紅軍稱、屬於第六十集團軍之駐於燕塘湖（譯音）東之山區、正在日軍猛攻中、</p>
+<p>伊克昭盟六日同盟社電　日陸軍各部隊、五日拂曉突一齊渡過黃河南下、向渝第八戰區大舉進攻、於伊克昭盟高原地帶、展開大戰、時屆盛夏、伊克昭盟原野、天氣酷熱、日軍士氣旺盛、正沿陝省北部沙漠地帶南進、</p>
+<p>妥西日隨車記者六日司盟社電　臼分遺歟應合中國遼遠前綫之大規模戰爭行動、終昨日破曉在第八戰區之荒凉地帶進攻新近組緻之第三十二師、當破曉之前、臼軍臼越過黃河、開始總攻、向南墜迫傳作義將軍指揮下之軍隊、最後報告稱、日軍不顧困難之情况、正作順利之進展、</p>
+<h3>日政府　聘請顧問</h3>
+<p>東京六日海通社電　昨夜正式宣構、東條首相將在臼木衆議員中、聘請一百六十人、貴族院議員中聘請四十人、各界有名望人士中聘請一百人、任日本政府及各部之顧問、軍部不在其列、內閣顧問團包括顧問叫十五人、每部則將有顧問三十人、</p>
+<p>東京八臼同盟社電　陸軍省今日宣布、台灣總督府府府前交通課長泊氏及橫濱正金銀行職員中西氏、已被任為日軍佔　區駐軍顧間、</p>
+<h3>紐約燈火管制</h3>
+<p>里斯本六日同盟社電　據倫敦英國廣播常台廣播稱、紐約市於五日下午九時半（上海時間六日上午十時半）發出燈火管制令、歷時甚久、</p>
+<h3>本間中將　視察柯列基陀</h3>
+<p>馬尼刺五日同盟社電　菲列賓方面日軍最高指揮官本間中將、今晨率同僚屬第一次視察柯列基陀島要塞、晚問始返、</p>
+<h3>日美外交人員　卽將交換　瑞典美僑返國</h3>
+<p>華盛頓五日哈瓦期社電　國務院木日宣布瑞典輸船一格里普期霍姆號、將於本月八日駛抵紉約、載乘客一百九十三人、大半係來自瑞典之美國僑民、該　　在　此間停泊數日後、再賊送日本駐美外交人員前往非洲葡屬莫二鼻給、俾在羅倫索馬貴斯港與美駐日本及日本佔領地之外交人員互相交換、</p>
+<h3>日大本營公布　擊沉潛水艇四艘　美發表參戰後損失統計</h3>
+<p>東京六日同盟社電　日大本營六日下午三時四十分發表、日本海軍部隊、於五月下旬及六月上旬、擊沉出沒東京灣潮岬南方海面及丸州西南力海面之敵潛艇四艘、</p>
+<p>里斯本五日同盟社雷　日海軍特別潛航艇攻擊雪梨及第亞哥蘇勒士港、予協約國方面以莫大衝動、據倫敦來雷、五日每臼郵報社評、指出協約國對於珊瑚海海戰以來、太平洋九暫時寂靜狀熊、不可忽視、略謂日本海軍奇襲雪梨、暗示太平洋戰局將有新發展、日木不使協約國有輸送軍隊增援澳洲之餘暇、故吾人今後應採取萬全措置、以防備日軍對澳洲以攻擊、或日軍在印度上之攻勢、</p>
+<p>阿根廷京城五日同盟社電　美國參戰忽巳半年、美國聯合新聞社、茲根據海陸軍部公報、統計美國損失計有叫、三三○人陣亡、叫·六九四人失蹤、二·丸四一人受傷、軍艦損失三十四艘、</p>
+<p>雪梨五日哈瓦斯社電　、木日有渡輪一艘、滿載搭客、駛抵港灣中流、瞥見黑色龐然大物一對、顯現海面、來勢洶洶、乘客之神經過敏者、頓憶上月三十日、日本潛艇襲擊雪梨港事件、以為日艇又來偷襲矣、一時全船大為驚惶、不知所措、迨渡輪靠岸、乘客驚魂甫定、始知此兩大黑色巨物、並非潛艇、實乃游向公海之巨鯨兩頭、</p>
+<p>西貢六日海通社電　雪梨報告稱、日本潛艇一艘在澳洲新南威爾斯海岸附近、擊沉貨船一艘、該輸之國籍未予透露、據稱、該輪被魚雷擊中後半分鐘即沉沒水中、船員叫十二人中、已獲救者迄今僅知五人、</p>
+<h3>日海軍發言人　再度警吿澳洲　若不改變已往政策定必遭受戰事恐怖</h3>
+<p>東京六臼同盟社電　日木帝國大本營海軍報道部發言人平出大佐、昨夜廣播演說、再度警告澳洲、謂如執迷不悟、重行審愼考慮其已往對日政策、則澳洲大陸定必遭受戰爭恐怖、日木潛艇隊襲擊雪梨成功、足證澳洲防務之寮虛及美國海軍之不足恃、</p>
+<p>東京六日海通社電　日海軍發言人平出弋佐、咋在雷台發表談話稱、日本特種潛艇奇襲馬達加期加英艦之詳細情形、一俟該艇駛返根據地、即可發表、臼本海軍力足毀滅印度洋中一切英軍、如英艦敢出現於印度洋上、日艦隨時準備與之）戰云、</p>
+<h3>芳澤談日越　經濟關係</h3>
+<p>河內六日海通社電　日本駐越南大使芳澤、昨單獨接見海通社記者、作一小時之談話、據稱日本與越南之政治·經濟·文化關係、均極良好、經濟方面、俟加緊商務關係之新協定、在短期內簽訂後、前途之美滿可以預卜、尚有其他經濟協定均將絡續成立、橫山氏率領之經濟團、來越調查天然富源、今仟務已畢、業已返國、聞調查結果極為滿意、精神方面、雙方在相互諒解之情形下、未來合作、必可更行加緊、</p>
+<h3>婆羅洲日軍當局　調整軍政人員</h3>
+<p>婆羅洲某地六日同盟社電　婆羅洲方面日軍最高指揮官官官前田中將、最近已決定婆羅洲方面軍政施行大綱、並調整軍政人員、頃發表婆羅洲日軍全部管轄下之五州長官名單如次、任命陸軍司政長官隈部種樹為東海岸州長官、陸車司政長官村七義巳為西海岸州長官、陸軍司政長官兒玉魯一為密里州長官、陸軍司政長官德野外次郎為占普州長官、陸軍司政長官千田俱次郎為西部州畏官、父各部課長反各州縣知事等、亦已同時發表、</p>
+<h3>日駐德武官　抵斯丹埠　日內將往土京</h3>
+<p>斯丹埠五日哈瓦期社電　口本駐德陸軍武官坂田將軍、本日抵此、擬於日內、前往土京一行、大抵在土京稍事勾留後、即當返任、此間各界對於阪田氏此行、極為重視、</p>
+<h3>菲島華僑零售商　擬組各業公會</h3>
+<p>馬尼刺六日同盟社電　旅居菲島華僑、會設置菲島華僑協會、對菲島經濟之恢復、貢獻殊多、頃擬組織各種職業公會、偉在各部門分別開始活動、預斜華僑零售商人總鬥恢被活動、當可促進金融狀態之圓滑、</p>
+<h3>東亞戰事影片　首次在德開映</h3>
+<p>柏林六日海通社電　日本駐德大使、咋假此間烏發大戲院、邀請德國傷兵二千名、參觀東亞戰事影片之首次放映、全片歷半小時始映畢、有香港、珍珠港、菲列濱、婆羅洲等實地寫眞、獵映日本之應一片、係日本總司令部獻終德元首及德人民者、開映之前、空軍樂隊會奏德國空軍歌及日本愛國歌、</p>
+<h3>日雜誌社編輯長　訪南京各機關</h3>
+<p>南京六日電　日本各雜誌社編輯長視察團一行、十五日抵京、六日上午九時半、訪問合機關、十時半赴中央大學訪問、正午應日大使館情報部在東亞俱樂部舉行之午宴、當山該館松平書記官代表好富部長招待、迄一時許始盡歡而散、</p>
+<h3>英下議院　戰後改組　高級國會設南非</h3>
+<p>瑞典京城六日海通社電　英戰爭經濟部大臣塞爾本勳爵在上院之演說、提及英帝國戰後之改組、略稱、目前之英國F院、將為最後之一種組織、戰後即將解散、而在英格蘭·蘇格蘭·南威爾斯及北愛爾蘭等區、各分立一下院、另組織一帝國高級國會、設在南非之開浦敦城、其議員由各地方國會之代表組成之、以解決帝國之外交及國防問題、倫敦政界及報紙、對此消息大為衝動、</p>
+<h3>英譯員巴亞　抨擊邱吉爾</h3>
+<p>維希五日同盟社電　據倫敦來電、英保守黨議員巴亞、四日在英國工業都市里子市發表演說攻擊首相邱吉爾稱、余今希望下院應要求邱吉爾及其所領導之政府、報告其過去工作經過、蓋邱吉爾一派勞力、佔據政府之結果、已使美國陷入歷史所未有之重大情勢中、邱吉爾對終此點．竟置若罔聞、故如邱吉爾者、吾人殊不需要蓋央國為民主主義國家、眞正之民主國家、並不需要所謂偉大之＾物也、</p>
+<h3>傳蘇聯下令　拘土要人</h3>
+<p>期丹埠五日哈瓦斯社電　　間盛傳蘇聯政府已下令逮捕土耳其要人　名、據一般人相信、蘇聯常局採取此項措置、殆為對於土國開審謀殺巴本案時逮捕蘇聯公民二人一事之報復手段、</p>
+<p>員期科五H哈瓦斷社電　關於德駐土大使　木被刺一案、土京法庭曾屢次開庭審訉各犯　　　　　眞相、其中嫌疑犯名為蘇聯公民、亦曾屢被　訊茲悉土宗法庭最近兩次開庭時、曾禁止蘇聯被告律師用俄語辯護塔斯社頃發稿對此舉大事抨擊、認為有失公允本日此問各　均以巨大為區予以登</p>
+<h3>中歐各國外交家　集維也納開會</h3>
+<p>瑞典京城六日哈九斯社電　瑞典日報今晨載柏林　、中歐各國外交家多人、昨日到連維也納、俾乘維也納仲裁條約成立　年之便、舉行會議出席者有匈牙利羅馬尼亞各國駐德公使、義大利軍事參　、匈牙利文化參贊及義大和法西斯當駐德代表等多人、</p>
+<h3>緬甸日軍　已開抵河馬林　距印度邊境三十公里巴瑪恩將組緬新政府</h3>
+<p>瑞士京城六日同盟社電　據路透社昨日消息、緬甸方向日軍一支隊已開抵河馬林、距印度邊境約三十公里、惟人數若干則不詳、</p>
+<p>東京六日海通社電　緬甸日軍總司令飯田中將、已任命緬甸前任內閣總理巴瑪恩博士、組織緬甸中央行政　關、據巴氏向新聞記者種、渠將終兩月內、成立新政府、各項困難尚待解決、但緬甸人希望建設緬甸人之緬甸、</p>
+<h3>土接收希鐵路</h3>
+<p>斯丹埠六日海　社　　耳其鐵路管理局現已接收前希臘鐵船長約六十公里、並在前三處希獵車站開辦斯丹埠與保京間之熾路交通、該路係侄烏森柯普魯與卡拉茄耶之間、此與斯丹埠聯接亞德里安諾浦爾之士斗具人城市、頗關重要</p>
+<h3>瑞典大規模　演習防空</h3>
+<p>瑞典京城六日海通社電　此間星期四夜舉行大規模防穴演習、參加者二萬人、備戰時使川之食物供給器、亦首次試用、</p>
+<p>瑞與京城五日哈瓦斯社電　上月二十一日、德機各架在哥德堡附近飛越瑞典領空、常　間別砲；不　砲射擊、總工會人面對此表示小滿、爰於小日　衣宣言責　政府、並以不復為　　國防計劃效力相威脅．該宣言係里斯吉雨港L人　千名聯合具名（按該港設有砲廠一　、內　、「上月三十一日　　多架飛越里斯吉爾　上空、其時適有　典軍艦十一艘、停　附近海面、當時視綫甚明、德機飛　父低、儘可用高射砲向之射擊絕無傷害平民之處　當局竟不此之圖、用意何在、實令人百思莫解、　　策路是否冉見終　來、亦令人不無焦慮、政府如果繼續保持此項態度、勢將引起國、不滿、結果所屆、即國防公債募捐運動、將完全陷於停頓、深望政府引以為戒」</p>
+<h2>Page 3</h2>
+<h3>風沙稍平熱度又昇　北非戰局仍混沌　沙漠地帶英劃三戰區設砲壘陣以防衛埃及</h3>
+<p>德元首行營六日海通社電　今午德軍戰報稱、北非境內德、義聯軍擊退進攻之英軍、進行反攻英坦克車損失三十六輛、摩托車多輛及俘虜數百名、敵機被擊落十叫架、昨夜杜白魯克港被穗轟炸機猛炸、</p>
+<p>羅馬六日同盟社電　德·義兩軍自上月二十七日在托波兒克南方沙漢地帶對英軍機械化部隊展開大攻勢後、至今仍在激戰中、因該地為一特殊沙漠地、故是項作戰目的不在地區之佔領、而在摧燬敵軍之實力、此為甚明顯之事實、至於美方對埃及之防衛組織、據中立國方面傳稱、英軍係以托波兒克南方沙漠地帶作為第一戰區、將通過巴魯底亞南北綫作為第二戰區、以西幾巴拉尼南北綫作為第三戰區、於各地區敷設小砲壘、砲壘間之空地並埋設地雷、至現在止德·義兩軍之戰果、計俘敵三千以上、奪獲或擊燬敵戰車百餘鞠反大砲多尊、</p>
+<p>柏琳五日同盟社電　　德國新聞社羅馬常、軸心國快速艇隊、於北非托波爾克海面、將英驅逐艦一艘擊沉、</p>
+<p>瑞典京城六日海通社電　此間報載倫敦常訊稱、開羅訪員報告、迄昨夜止、北非沙漠戰傷、較前數日為寂靜、雙方利用里大軍事接觸之期間、從虫準備作戰之布置、英方報告謂、皮爾哈根仍什英軍手中、風沙已稍平靜、　熱度又見上昇、來日作戰、恐較前益為酷熱、</p>
+<p>里比亞前緩某地五日哈瓦斯社電　北非前棧戰局仍極混沌、雙方戰報均諱莫如深、英方公報僅道及哈根區附近戰事、謂其增援部隊、已開到到到該處協助戍軍作戰、學泿軸心軍隊之猛烈新攻勢、查哈根區現為弋戰中心、四十八小時來、穗軍向該處大規模進攻、不下兩次之多、現有種種理山可信、加柴拉以西、亦有戰事發生德軍常局顯欲向英軍陣緩之兩端進攻、以便解除中區所受威脅、該區德·義聯軍、原已在英軍陣地衝一裂口、後方彈藥及援軍、即係經由此一裂口、到達前綫、至於地雷陣地方面、戰事亦未停止、尤以騎士橋以西為然、騎士橋者、地勢險峻、即英軍所調「鬼門關者也」、益以前方天時惡劣之至、坦克車戰　員非有銅筋鐵骨、寶難忍受、英方相信穗軍總司令羅美爾必百計設法使其增援部隊、得以通過裂口、傳可全力向東進攻、目下羅美爾尚有大批軍隊可調、因此仍極可畏、英方唯一可引為樂觀者、即其鐵甲部隊堅强如昔、堪與敵軍週旋到底、</p>
+<h3>對保羅匈宣戰案　羅斯福已簽署</h3>
+<p>阿根廷京城六日同盟社電　據華盛頓消息、美國對保加利亞·羅馬尼亞·匈牙利三國宣戰案、經由參·衆兩院表決通過後、昨臼已由羅斯福總統簽署生效、</p>
+<p>華盛頓五日哈瓦斯社電　羅斯福總統木日公布宣言書、聲明美國與保加利亞·羅馬尼亞及匈牙利三國之間、已存在戰爭狀態，</p>
+<p>柏林六日海通社電　德外部昨日招待新聞記者時、史頓公使答則關於美國對保·羅·匈三國宜戰之問話、略稱、保·羅·匈三國依據三國公約第三條、對美宣戰之時、羅期福以憲法為護符、等待國會之決定、日前美國對保·羅·匈三國宣戰、僅證實渠對新歐洲之熊度而已、維·匈兩國積極參加對蘇戰事、保國在國內採取消滅布爾希維克主義之政策、</p>
+<h3>挪境大爆炸　各處波動猛烈情形如地震</h3>
+<p>瑞典京城六日同盟社電　挪威方面會於上星期三四發生猛烈爆炸、歷二十四小時之久、斯屈隆斯泰特地方以至瑞典海岸極南端之哥特堡、均被震動、其猛烈情形有如地震、原因未詳、惟悉斯屈隆斯泰特地方距挪威最大兵工廠（位於科業斯堡地方）僅隔二十英里之遙、</p>
+<p>瑞典京城五日哈瓦斯社電　瑞典與挪威交界處、亦即哥特堡城北面某地、昨夜忽發生猛烈爆炸、殆係飛機投彈所致、當時居民並聞見飛機引擎旋轉之聲、</p>
+<h3>伊拉克　內閣總辭</h3>
+<p>斯丹埠五月哈瓦斯社電　近日國際觀察家原頂料伊拉克國內行將發生閣潮、初不料竟如是之速、諾萊總理果終本臼向攝政提出內閣總辭呈、當經接受、但攝政仍命其組織新閣、</p>
+<h3>德芬領袖會談　有關軍事問題　傳對茂曼斯克方面將採取大規模攻勢</h3>
+<p>柏林六日海通社電　外交部人士昨日談稱、德元首與芬軍總司令孟納興上將會晤、德國人民同表友好之反應、元首此次訪問芬蘭、並無外交上之繁文俗例，故此間官塲人士咸認寫此係歐洲各國關係之新體型、要知新歐洲並不以國土之大小而異其待遇、芬蘭人民此次參預作戰、卓著勞續、德國人民深為感動、</p>
+<p>瑞典京城六日海通社電　　倫敦報章對希特勒報聘芬蘭、會作種種推測、彼等認為德元首與芬籣領袖之談話、當與軍事間題有關、恐係德·芬聯軍將在茂曼斯克戰錢採取攻勢、昨日晚報刊載一文、指陳德元首之報聘芬蘭、恰與列寗格勒戰錢軍事行動又見活躍之情事相合、究竟德·芬聯軍將在茂曼斯克或列寗格勒天舉進攻、局外人尚難臆斷、但論者多謂茂曼斯克方面德·芬聯軍採取大規模攻勢之成分居多、果爾、美芬關係有惡化之虞、但頃接紐約一訊、謂美政府不擬與芬蘭絕交、國會方面亦不乏與芬蘭仍表同情者、</p>
+<p>瑞典京城五日哈瓦斯社電　此間各報本日多著文評論德元首希特勒訪間芬蘭總司令孟納與上將事、咸認此舉僅為友誼的訪問、芬蘭地位不致根本改變、但觀於此次與穗元首同來者、尚有季台爾上將及駐芬德軍司令戴特爾將軍等、足見雙方必有重要會談、再希特勒元首之親向孟納興將軍祝嘏、具證德國重視芬蘭之合作、而芬蘭之不致與蘇聯單獨媾和、亦可於此見之、今後對蘇作戰、芬蘭不致避不參加固矣、第最近數月來、芬軍避不參加對蘇攻勢、其行動僅以防守原有戰略的據點為限、要為不可否認之事實、且孟納與將軍曾迭次表示芬蘭係從事防禦戰爭、並重申其作戰目的、僅在防止蘇聯之兼併芬蘭、故決計進兵至易於防守之邊界為止、現有理由可信、此項見解並無變更、其意志之堅決、與其民主政治不受外國干涉之決心、初無一致、若謂芬蘭擬與穗國締結軍事同盟、尚屬不無疑間、且芬蘭雅不欲對美關係惡化、更不願演成對美宣戰、故儿足以危害芬·美外交關係之舉動、均當竭力避免、芬蘭之所以不欲切斷茂曼期克鐵路、其動機即在於此、良以若果如此、即不啻截斷英·美接濟蘇聯之路緩、亦即等於與美作戰矣、故芬蘭殆仍將維持現行態度、繼續採取守勢、而任令德軍自行攻佔其在芬蘭前綫之目標、就軍略言、如果茂曼斯克港陷落、則該方面蘇聯對芬蘭之威脅、即將完全解除、設冽寗城再陷落、則在芬蘭視之、必以為戰事已告結東、在技衛上、芬蘭雖未必即停止軍事行動、但大軍可以復員、從則造送壯丁從專耕種、俾能解決本國逐漸嚴重之糧荒矣、</p>
+<h3>丹志願軍團長　作戰陣亡</h3>
+<p>丹京六日海通社電　此間昨日宣稱、丹麥志願軍團團長夏爾堡（四十六歲、六月二日在東綫作戰陣亡、德公使芬克昨已將此訊通知丹麥政府、木炭瓦斯、其他如酒精、電力、煤氣等物之生產，均甚積極、此外、金屬品亦極匱乏、其中尤以銅為最甚、往往以鋁為代用品、織物缺少、列以人造絲代之、國內各化騐室、最近努力工作、成效卓著、發現新物質多種、惟在目前情况下、一時尚不能盡量實現、</p>
+<h3>維希內閣通過　普遍統制經濟　向所忽視若干種資源　政府當局已着手開發</h3>
+<p>維希五日哈瓦斯社電　內閣本日午前十時半舉行國務會議、貝當元首親任主席、首由賴伐爾戰告一般局勢、國務會議旋即討論民食間題、將統制主要食物之辦法、稍加修正、以期减少民困、司法部長巴綏萊密要求制定法律、嚴徹一切負有保存食物責任而辦事不力或有意聽仟各項食物敗壞之官員、最後並通過下開兩案、　國防部提議、確立一般的統制經濟、主張設一委員會，由警察總監備爾蓋主持其事、　公共衛生部長格拉賽博十提議、改進法國衛生事務、</p>
+<p>克萊　費朗城五日哈瓦斯電</p>
+<p>法國進口貿易旣已中斷、無法再自海外取給其所需要之貨物、加以兵燹之餘、國內瘡瘦滿目、受戰敗之影響、各項工業原料、均將消耗殆盡、政府當局為應付此項局勢起見、業已着手開發資源、尤其注重向來所忽視之若干種資源、此種自給自足之經濟政策、可使法國城輕原料匱乏之痛苦、例如若干煤礦、過去因其產量不大、早已放棄、但至此際、因各地煤斤匱乏之故、已不得不重予開採、尚有其他數處煤礦、例如聖戴田及亞萊、馬賽三處礦區、則或因品質惡劣、或因開採匪易、過去從未為當局所注意、茲亦積極加以開發矣、至於汽油代用品、現每月可產三萬六千噸、本年可望增加至五萬噸、相當戰前消耗量六分之一、各種車輛均用</p>
+<h3>塞伐斯托波爾　要塞被轟</h3>
+<p>德元首行營六日海通社電　今午德軍戰報稱、塞伐斯托波爾之敵軍要塞被重砲轟擊、復被飛機轟炸、中路及北路之敵軍數隊、巳被包團、愈逼愈緊在伏爾恪夫方面德急降轟炸機協助陸軍舉退頑抗之敵軍、敵坦克車損失二十二輛、吾軍艦在芬蘭蘭中開砲擊中蘇潛艇一艘、該艇連中數彈、似不免沉沒</p>
+<h3>美副總統　傳將訪英　或更有南愛之行</h3>
+<p>日內瓦五日德國新聞社電　　「每口郵報」載紐約消息稱、美副總統華萊士或將終今夏訪問英國與愛爾蘭、此行目的將與伐勒拉政府成立關於南愛海軍根據地之某種諒解、華萊士將在杜白林進行之討論、頂料不致有逍接之結果、但一般認為在許久之將來、南愛　蘭或將聽　人言、而將其根據地供給協約國利用、</p>
+<h3>芝加哥城外　美火藥廠爆炸　工人死傷共六十餘名東海岸各處森林失火</h3>
+<p>里斯本五日同盟社電　據紐約電、伊利諾斯州之額魯烏多地方、美國最大彈藥製造所之火藥充塡工塲、五日夜突然爆炸、原因不明、建築物均被炸毀、死十六名、傷五十名、爆炸巨聲會驚破八十公里外芝加哥市民之酣夢、</p>
+<p>里斯本六日海通社電　美國東海岸五月上半月因久早不雨、各慮森林失火、當時權威方面以為大火由於破壞行動、雜德島損失最鉅、焚燬森林五十方英里、軍民救火者三·（○○○人、政府所有木村約二五〇〇〇〇立方英尺被焚燬、浮琴尼亞洲西南部、兩星期內焚燬農田及森林四〇·〇○○英畝、該州於三月二十臼以後森林失火一·一七四次、失火面積逾一〇○·○○○英畝、諾克新維爾附近及大燜山之森林數千英畝、尚在焚燒巾、</p>
+<h3>赫特里區遺體　德將舉行國葬　捷人又有甘二名處死</h3>
+<p>布拉格六日海通社電　波摩保護地副專員赫特里區之遺體、星期四夜以莊重之行列由醫院運往布拉格古堡、</p>
+<p>德國邊境某地六日哈瓦斯社電赫特里區遺體、聞將舉行國葬、</p>
+<p>布拉格六日海通社電　咋日此間判處二十二人死刑、因援助敵方間諜、與謀殺赫特里區案有關、且未向警局註册、另在布魯恩有八人因私藏軍火亦被處死刑、</p>
+<p>布拉格六日海通社電　哈嘉總統昨致　德元首希特勒、慰唁赫特里區逝世一事、並保證捷克政府效忠元首反德國之誠意、</p>
+<h3>德國科倫城　損失奇重　一夜間景象全變</h3>
+<p>瑞典京城五日哈瓦斯社電　茲悉上月二十九日晚聞、英機羣轟炸德國科倫城結果、該城損失奇重、科倫日報遲至本月四日始發表該城被炸情形（按該報館巳被炸毀）、據稱、是晚英機轟炸科倫城時、計炸毀或重創敎堂九所、其中包括著名之聖馬丁及聖瑪麗敎堂在內、數百年前之歷史建築物、均化為一片瓦爍、房屋被毀極多、世界聞名之古蹟亦被炸毀、其損失之巨、決非日後所能補償、總之、一夜之間、巳使全城景象完全改變、令人觸目驚心、</p>
+<p>柏林六日海通社電　此間官方文告稱、最近英機猛炸科倫之結果、平民死於非命者共三百零五人、</p>
+<h3>泰國着手　建設新都</h3>
+<p>盤谷六日同盟社電　泰國政府前曾決定將首都移往盤谷東北約百二十公里之羅富里、該市位於沿湄南河支流之巴薩克河畔、現正着手新首都嫂設計劃大綱、已定二十四日革命紀念日盛大舉行建設新首都奠裝典禮、建設計劃之大要如次、　新首都之面積約二百平方公里、建設費約為一億至一億五千萬拔茲、預定十年至十五年完成、　建設計劃、前五年先行建設羅富里與其他重要都市之交通路緩、並修築水道、水遼工事費、決定為二百萬拔茲、</p>
+<h2>Page 4</h2>
+<h3>法租界組織　保甲籌備委會　指定人員成立中央保甲籌備會各捕房區再組織保甲籌備分會</h3>
+<p>法租界當局為施行領事署署令第一六三號內關於鈇租界組織保甲之各親定、法國總領事於五月三十一日以第一八四號署令、指定下列各人成立中央保甲籌備委員會、</p>
+<p>委員名單　　　主席法總領事之代表、　副主席慕利斯神父、　委員劉荇蓀（法外灘九號裕鹽貿易公司經理）、葛維菴（舟山路十二號海味同業公會主席）、余永綏（伕大馬路四五六號實成號經理）、張仁忠（愷自邇路二十二號新鹽商店主人）、余徲敬（康悌路四四一弄六號惠福工業公司總經理），張善崑（海格路五四三號中聯影業公司經理）、吳哲生（徐家匯路一一○二號大中華橡膠廠經理）、薩爾禮（醫察署副總監）、梅塞克（警察署副督察）、居愉（警察署督察長）、馬龍（警察署督察長）、</p>
+<p>另組分會</p>
+<p>該委員會係負責討論領事警察署總監交來研究之各項開題、至於各警察區內、依繚監之提議、亦成立西人至九人之保甲籌備委員分會、以便在籌備保甲期聞內、捕助署長、該中央保甲籌備委員會及分會等一度工作兀成、則依一九四二年五月二十日公佈之第一六三號領事署署令第四條之規定、予以取銷、木署令（第一八四號）由警察署總監負責執行之、</p>
+<h3>中農角票　繼續流通</h3>
+<p>中國農民銀行鈔票、依照規定係不在掉換慷備券範圍之內、然流通於民問之中農鈔為數至鉅、為使民衆免受重大損失起見、傳將另行公布處理辦法、於是市上若干錢兌店等、忽開始收買中農鈔、而遂有暗市之發生、據悉暗市中農鈔之價格、約為每白元可掉中中交三行鈔八十五元左右云、</p>
+<p>又據英文上海泰晤士報云、據鈇商電燈電車公司總經理杜克萊士昨（五日）語記者稱、該公司之電車無軌電車公共汽車上現已收用中國農民銀行輔幣券、以及中中交三行之一元五元十兀老法幣、杜克萊士氏解釋謂、該公司之所以能收用此項鈔票、乃事前曾與儲備銀行商妥一項協定、被獵謂此項辦伕爲暫時性質、得隨時予以廢止云、</p>
+<p>最後又據杜克萊士氏告大美晚報記者稱、鈇租界電車之收用中農輔幣券、昨（五日）經試行一天之後、巳因乘客之拒收而告失敗、記者即以賣票員亦有拒收中農角票情事相叩、彼答稱、此項角票在原則上准予收用、而在實際上礙難施行、蓋賣票員可收用、但公衆拒絕收用也、終是賣票負亦不得不拒收、而結果法商曾車上、巾農角票巳完全不能通用、但中中交三行之一元五兀十元鈔、聞確已收用云、</p>
+<h3>錢業各滙劃莊　提高存放款利率　遏止投機囤積抑低物價提倡儲蓄發展工商各業</h3>
+<p>錢業各會員　劃莊頃經商定、為遏止市塲投機、以及杜絕囤積貨物、協助當局抑平物價計、於將各莊存放款利率提高、蓋投機囤積者所需之資金、均賴續莊貸放、今將欠息如信用抵押往來透支等放款提高、使其無法再行任意囤積居奇、同時將存息如定斯活期儲蓄等存款提高、旨在提倡儲蓄、餐成國民儉樸、使各莊收受之存款、用於有利社會發展實業復興市面之正當之途、鄰以上之辦法、俟錢菜通過後、下半年度開始時即實施云、</p>
+<h3>米號今日出糶洋米　改收儲鈔</h3>
+<p>兩租界米號今日出糶洋米總數、共有一萬餘包、故出糶狀况當能普遍、每人仍為一升半、售法幣七元六角、或中儲券三元八角、惟工部局已宣布今日起、應以儲鈔付款、米號勢將拒收法幣矣、至米號向米糧辦事處付款、今日起亦完全改為儲鈔云、</p>
+<h3>法租界　食品限價　六月七日至十日</h3>
+<p>貨品售價（一）菜市、舊法幣價値、　二等伙食店新法幣價値、　頭等伙食店新法幣價値、</p>
+<p>牛肉　肥利（每磅）　十四元五角充肥利　十三兀○五分前腿上肉　十二元一角醫上肉　十二元牛排　十元〇六角　十二元醫肉　十元○一角五分　十一元四角胸上肉　十一元一角後腿上肉　八元八角湯肉　六元六角　七兀二角五分牛油　六兀六角</p>
+<p>猪肉　裹精肉　六元七角五分後腿　十兀〇四角二分　五元五角　六兀叫角前腿　五元七角五分　六兀二角腰肉六元一角五分排骨　十兀〇四角二分匕　五元五角　六元一角五分蹄膀　五元六角板油　六元六角五分熟獵油　十元○七角八分　五元八角肥肉　五元一角</p>
+<p>熟猪肉　外國火腿　十一元中國火腿　九元六角</p>
+<p>魚類　鮮　魚　七元　三元五角至四元冰黃魚　二元二角　一元二角　一元三角大明蝦　二元　一元一角　一元二角寗波比目角　一元六角　一元　一元白魚　三元二角　一元七角　一元八角</p>
+<p>鹹魚　鹹鱈魚　二元六角　一元五角鹹鮭魚　六元五角　三元三角　一元四角鹹帶魚　二元八角　一元叫角五分　一元五角鹹養魚　二元八角</p>
+<p>雞鴨及蛋　童子雞　十一元五角　六元○五分　六元二角五分鮮雞　九元○五元　五元二角五分蛋　六元　三元三角五分　三元四角五分</p>
+<p>水菜　半梨　三元至四元　一元五角至二元二角五分</p>
+<p>蔬菜　紅蘿葡　一元　五角五分　六角鮮由菜　三角斤分　一角八分　一角鹹　菜　六角葱　二角五分　一角三分　一角八分新薯　八角　四角二分　四角五分舊薯　六角五分　三角五分　一角八分菠菜　叫角　角二分　一角五分刀豆　一元一角　六角　六角五分白蘿葡　三角一角七分　二角</p>
+<p>南貨　鹽一元一角五分精鹽一元二角咖啡十元太古糖爪哇白糖三元　六</p>
+<p>牛奶　A字牛奶二元一角五分B字半奶一元八角普通消毒牛奶一元六角麥琪林十一元</p>
+<h3>華探自殺身死</h3>
+<p>法捕房一三　號華探據平人汪振才、二十五歲、因感刺戟、忽生短見、於五日下午七時、玉滿柏路大陸公寓開二三三號房間、服毒自殺、至昨晨由茶房發覺、巳經身死、報告捕房、將尸車入騐　所、即由家屬領回、昇往殯儀館成殮、</p>
+<h3>在華美僑　准本月中撤退　僅由康德浮第一輪載運</h3>
+<p>英文大美晚報云、日總領著通譯司長告記者稱、協約國僑民撒退計劃、已起一重大變化、即木月中離滬之六百五十名美國人與加拿大人、僅將搭乘康德浮第輪一艘而撤退、而不能依照計刻分乘兩愉、首批撤退者之名單、尚未完全、則有數點必須加以斟酌也、彼復證躓該蝓航期並未延綏、瑞七領署方面亦不能出示撤退者各單、至義大利豪華巨輸康穗浮第號、於歐戰初即停泊本埠、現已將全身漆作灰色、準備聞航、船舷並巳漆有日木國旗、烟突與船首船尼亦已漆有白十字、按照以前計劃、擬以兩艘撤僑輸載英美僑民往葡屬東菲、以與日僑相交換、現則改為康德浮第號一艘、而英國官負與平民之撤退、則已延期、</p>
+<h2>Page 5</h2>
+<h3>絞決死罪人犯　明日繼續執行　昨絞決盜犯殷松卿凌陽生</h3>
+<p>公共租界第一特區法院死刑人犯謝金安、前晨移送南市地院看守所絞決後、昨晨地院檢察處在刑塲檢騐後、因無家屬具領、遂由同仁輔元堂殮埋隊予以收險、十時三十分第一特區法院、復獵續移送死刑盜匪殷松鄉（即殷大二麻子）及强盜殺人犯凌陽生兩名、軍該刑塲一併執行、當將兩犯提至案前、經詢以年齡籍貫後、除凌犯請求法院予以殮埋、不願通知家屬收屍外、殷則供有戚黃正賢住居滬西勞勃生路廣益中聲院對過三九一號、囑向楊正和處賒欠二百元棺木一具、至地院收屍、俟秋間再通知其鄉間妻女等語、供畢、即行發綁執行絞決、並發貼佈告、聞下星期一尚有四犯執行、並悉第一特區法院所判處死刑之二十三人中、處有數人係屬女犯、亦將在該處執行紋決、</p>
+<p>昨晨絞決</p>
+<p>劇盜兩名判處死刑待決之囚犯、自經明令由上海地方法院看守所執行後、前晨已有公共捕房押送强盜殺人犯謝金安一名、執行絞決、昨晨又有江北人殷松卿、（即陳寶記叉名陳大麻子年五十四歲、）及江北人凌陽生、年三十六歲二名、緣殷松鄉於民國廿六年八月三日料黨持械綁架翻砂廠主項意心、勒贖未遂、實行撕票、將次用槍擊斃、而凌陽生則於民國汁五年七月十日上午十時、在檳椰路戈登路口路刦行人陳菊生現款八百元、幷開槍將陳擊斃、因而被捕、均經訊明判處死刑、羈押獄中、聽候執行、昨晨捕房將殷凌兩犯從獄中提出、訊問有無遺言、據殷松卿供、函至勞勃生路廣益中醫院對面三九一號其舅王正言處、囑代購二百元之棺材、前來收屍、迨秋後再行通知家屬、幷索酒食、而凌陽生則稱並無遺言、旋殷凌二人由捕房押送上海地方伕院看守所、執行絞決、</p>
+<h3>各界雜訊</h3>
+<p>順風牌木炭代油爐　巨籟達路四二○號合鑫製造廠、係汽車業先進陳克昌等所創辦、茲為適應環境需安、出品順風牌木崁代油爐、專家設計、科學結晶、式樣玲瓏美觀、行駛靈便穩快、中途不致停頓、功用不讓汽油、歡迎各界參觀試車、</p>
+<p>人可圖害服務社　人可圖害服務社、搜集有大批文藝創作·繙譯·劇本·通俗小說等類、都千百種出租、現終徵求基木讀者時期、優待祇取半價、社址戈登路一力叫弄六三號（愛文義路北）、</p>
+<p>道奇車行今日開幕　道奇車行鑒於本埠近來交通諸多不便、特集資選辦各國名廠出品如自由車．三輪車等等、定今日上午十時開幕、優待顧客、全部特價、屆時並請聞蘭亭先生揭幕、曹憲鱗小姐剪綵、金信民先生拍攝電影、以留紀念、車水龍馬、定有一番盛況、</p>
+<p>蘿雷咖啡館將開幕　虞洽卿路汕頭路口、將有新頴式咖啡館出現、命名蘿雷、係建築師陳志昌及陸炳元陳菊生等合資開設、內部佈置富麗堂皇、廚司均有相當經騐、現已籌備就緒、定終本月十臼正式開幕、</p>
+<h3>整理舊幣委會　遷移新址辦公</h3>
+<p>整理舊幣委員會、自成立設　辦事處於上海外灘十五號中央儲備銀行上海分行三樓辦公後各項應行工作、積極批進中、現以委定木市各銀行錢莊、代理收同舊幣兌換新法幣手續、大致業已準備就緒、準於八日起全面開始兌換、整理事務勢必更加繁忙、惟因原有辦公地址狹小、不敷應用、故決定終八日起遷栘外灘十六號前交通銀行內辦公、</p>
+<h3>羊癎病少女　倒臥路側　因受父親責打遍體受有重傷</h3>
+<p>霞飛路亞爾倍路口馬路畔、於上月二十日發現有一靑年女子倒臥地上、口吐白沬、奄奄一息、當出巡捕查見、報告捕房、派救護車送往廣慈醫院、經醫生檢騐該女下體浮腫、傷勢甚重、顯係被人打傷所致、目終日昏迷、不能開口、直至前日卜午、該女始能言語、據稱、姓名馮愛第、今年二十歲、住居趙主敎路小劉家宅十三號對門半房內、父名馮雲初、今年五十三歲、無錫人、向為成衣匠、近因失業為小販度日、母親李氏、於上年病故、近因時遭乃父毒打、以致週身受傷、因不堪虐待、逃出一時、昏倒地卜等語、當時由醫院通知捕房、派探將馮雲初帶案、訊錄馮供、女兒愛弟、素有羊癎病、時發時愈、平時月尿屎遺溺褲襠、上月十八日父遺溺滿褲、民人一時氣恨、將木板責打數下有之、餘供支吾、捕頭飭令候愛弟傷痊再核、</p>
+<h3>司閽捕黑吃黑　案發被捕</h3>
+<p>粵籍巨騙餘紀明、前向某姓處騙得哥倫比亞牌子價値萬金之無綫雷收音機一架、放在愛麥虞限路寓所中、旋因案發潛逃、由其用人彭某將該收音機寄藏於同路七十六號司閣捕劉阿根處、乃劉心起不良、串同閻鳳崗·陸阿洪·袁阿慶等、將該收音機售與公共租界某電台、得價二千六百元、分肥化用、現為法捕房探員查知、將劉等四人拘擭、吊出贓款、帶入捕房偵查後、依收贓罪訴究、訊問一過、着收押候核、</p>
+<p>今日本報發報時間六點二十分</p>
+<h3>留滬西人愛美劇團A·D·C·「李查王三世的出演」（續）</h3>
+<p>— 白熊</p>
+<p>照沙翁作品研究者，機械地分析起來，「李查王三世」是屬於歷史的悲劇一類，又所謂「自出意志的悲劇」（Free　will　Tragedies）。這是沙翁後期終品中進步標記。他的「雷米及朱　」也是悲劇，出他將悲劇的發生，放在「定命鑰」上，而後期的罪劇，沙翁却將戲中人的過失，伏在那人的本性中——就是悲劇者本人的意志薄弱，思想錯與，逆道橫行，結果是受內心良知賣咎，自悔自恨，甚至頹唐氣垂。遭也許可以洪觀衆作一憫參考的。</p>
+<p>自然，沙翁筆下的李查三世，決不是英國正史中的李查三世，史家也許是道學氣重了一些，好聽些說，都是學院派的作風，因此對終李查二世的蹩脚一點，都吞吐其詞，不敢下一個斷論。但沙翁的根據，却十足的，就是他要描盡出1個人民心目中所痛恨的「奸雄」，不一定是李查三世，因為人類中，是有這樣一種人存在着，他就老實地將奸雄的特點，集中在李查三世的身上，讓他盡情地暴露了出來。這是觀衆對於刻本的主題，應有的認識</p>
+<p>記者每看到沙翁劇作時—無論是在舞台上或銀幕上，常有一個念頭，就是希望能看到用沙翁時代的草台戲的形式，來演出沙翁的劇本。好像這　戲中有一羣假民衆向李查王要求登基時，那些飾民衆的人，台詞就用大音（Cockney）念出來，李查王的台词中，儘量將他歪曲的揷話，使其成爲「噱頭」等，但這是不可能的事吧？現在演出的沙翁劇作，已經變成了文藝的聖品而淨化了。這是題外的話了，就此帶住吧</p>
+<p>A·D·C公演莎士比亞名劇李查王三世」之一幕。栗去蒙公爵（後為亨利七世與亨利六世之寡妻馬格萊相會。</p>
+<p>體育新聞</p>
+<h3>小型足球聯賽展幕　龍威西聯精彩表演　下午五時半在貧兒敎養院</h3>
+<p>小型足球協會舉辦第一屆聯賽、今日邀請龍威聯軍及西聯隊終下午五時半起、在膠州路武定路口貧兒敎養院球塲、作一特別表演、以點綴本季第一次特賽、前奏曲於下午四時開始、為小龍對小威、蓋因瑞龍體育會去年今日成立、故此賽亦含有慶祝該會一週年紀念之意、時値梅季、今日倘能放睛、比賽照常舉行、否則將順延至明日）星期一）再賽、可於午後一至三時、電話一二九二八或九四五一叫號詢問、今日節目精彩、為維持秩序起見、酌收門票三元（舊幣）、並以六百張為限、另設座位一百、每座五元、單票並請自備、收入除一部分貼補塲地租費外、悉充該會基金、並悉熱心體育之鄭起鳳氏、捐贈大銀盃各一座、今日秩序如次、龍威對西聯五時半</p>
+<p>西聯　　仙奈</p>
+<p>法凡笑　柯拉沙</p>
+<p>奧列佛　　V蘇石　蓋恩　福恩　傑　華特</p>
+<p>龍　　　秦必高</p>
+<p>吳祺祥　江潮　張林根　馮壽彭</p>
+<p>張昭鵬　韓龍海　蔡聲森　張邦綸</p>
+<p>袁錕田　戴麟經　買幼良　費春華</p>
+<h3>航業盃小球賽　今日下午展幕</h3>
+<p>瑞龍對萬隆決梅生盃　　萬隆體育會主辦之首屆航業盃小球聯賽、參加者共有八路雄師、計分爲「航」「業」「盃」「賽」等四組、每組七隊　現定於今日下午三時在慕爾鳴路光夏中學球塲揭幕、計有盃賽一塲、特請航業界巨子徐貴生蒞塲開球、壓軸另有梅生盃總決瑞龍對萬隆、該盃總決業已舉行二次、瑞龍及萬隆先後均戰和小威、故今日一仗、勝者即得總冠軍、今日不售門票、歡迎參觀、</p>
+<h2>Page 6</h2>
+<p>家庭</p>
+<h3>幼童賭負自殺</h3>
+<p>— 益</p>
+<p>本月四日本報新聞欄中越月一幼童賭負自殺」新聞一貝，以個十七歲的在學靑年，因為父親在外經商，無人管敎，沉溺賭博，常將家中衣物拿出曲質，前天為母親斥責，頓生自殺之念，由三樓晒蔡上跳下，跌傷頭部，到下一天就不治而身死。一個正可有作有為的靑年，就此犧牲，豈不可惜！</p>
+<p>在上海目前的環境裹，無知的靑年，如果意志薄弱，很容易失足，所以做父母的對於敎養的責任，更應該加緊地負在自己的肩上。而自己應該　身作則，做個良好的榜樣，許多整天在打牌的母親，不去管敎她們的子女。使他們在不良的環境下長大起來，那裹會有良好的桔果。</p>
+<p>因為般人忽略家庭敎育，把敎育子女的責任，推在學校的身上，（這固　是不合理的見解），學校當局，對於學生的私生活，也宜乎特別注意，提倡正當的消遣，指導學衛的修養，都司以列為學校中的工作。</p>
+<p>好勝是人類天性中的本能之一，但為什麼不可以在學術上或技術上爭一個你勝我員，而偏要拿金錢來做賭博的舉動呢，因　無知的靑年，尚有待於父母和帥長的管敎。</p>
+<h3>略談煤球</h3>
+<p>— 靜</p>
+<p>靜煤球是每一個家庭中所需要的（除T用煤氣或電　的人家），每月的消費，也是家用中一筆很大的支出，普涌的家庭，每月用三扣，就要一百五十兀左右。</p>
+<p>煤球的創製是在英國惠爾斯的卡的夫地方，那地方所產的煤，燒起來沒有烟，所以起初是在海軍中用煤，壓成弋塊來燒的，因為軍艦中所用的燃料，如果有烟，豈不要被敵人看見，而成為攻擊的目標？</p>
+<p>後來，中國就有蛋形的煤球，以前是用鴻基煤做成的，燃燒時沒有多最的燜，因此不需要烟囪，於是每一個家庭，就放棄了大　和木寵而改用煤球爐r。其實住在北平的人家，應用煤球，早已有幾百年的歷史了，可是北平所犛的煤性霄堅硬，所以只官於手製（用煤屑和水，放大大箕裹滾成），方能燃燒，目前鴻基煤來源缺乏，就用北平煤來什替，因此不容易發火，一般家庭就無形中產生了「好煤球」和「壞煤球」兩個新名詞來。</p>
+<p>用質料較次的煤球，要使牠易於燃燒，只得把牠們敲碎燒，燒的時候，應把牠們架空，因為火要空心人要實一，必先求其通風，然後方有相當的火力。</p>
+<p>早晨生火用木柴燒過的木崁。不耍棄去，備在火力减退時臨時救急應用。懂得家庭經濟的主婦，弋都在注意她們家裹所用的煤球，最好是每天數好了隻數使用，可以知道每天的需用確寶是多少，不要再把一切家務，委緒傭婦，仟憑他們去隨便處置。</p>
+<h3>家庭格言</h3>
+<p>處實貴之時，須知貧賤人痛癢。處少壯之時，須念襄老人辛苦。</p>
+<p>人之可愛者，豈無一件短處，勿併其短虛護之。人之可憎者，豈無一件長處，勿併其長處忘之。</p>
+<p>有以名利來告者，勿問大小，宜應之以淡心。有以是非來告者，勿問長短，宜應之以平心。</p>
+<p>笑忠厚人無用，無用處正是他有用（休跨聰明人有用，有用處正是他無用。</p>
+<p>月聞人私語，切勿傾耳竊聽。凡見人私室，大忌側目旁觀。</p>
+<p>待人宜寬，當於有過中求無過。克己貴嚴，常於無過中求有過。</p>
+<p>量大要如滄海，任百川灌而不滿。志立須似泰山，憑萬人推而不搖。</p>
+<p>靜坐常思己過，思己過叫過日少。閒談莫論人非，論人非則非日多。</p>
+<h3>教育子女　不宜太晚</h3>
+<p>— 集</p>
+<p>某此，有一個母親，抱着她的一歲半的孩子，去見天演進化原理創始者達爾文，希望他能　指導她怎樣去抚育她的孩子，成為一個優秀的兒童，達爾文對她說，「你已經太晚了一年半了。」他的意思是母敎之外，尚須要胎教。</p>
+<p>這是一個有趣的故事，表面看來，有些過甚其辭，其實一個母親能　在孩子二歲半的時候，就去注意抚育問題，比把帶領孩子的責任，托付給　婦，而自己終日打麻雀。已經好得多了。</p>
+<p>兒童之友</p>
+<h3>一個勤讀的天文家</h3>
+<p>— 莉</p>
+<p>在公曆五四六年的時候，瑞典克納　德地方　生了一個孩了，他的名字叫做泰基勃拉，他的父母是很有錢的。</p>
+<p>有許多人為了很窮困，所以非自己努力不可，但是他因為有錢，却需妥奮鬥，因為他的父母希望他做一個律師，所以把他送進各處學校裹去讀書。但是他的興趣是在研究天文，所以他把他們的寄用錢去購買一個地球義，他的敎師禁止他去應用那個地球儀，他就用他僅有的一個望遠鏡，在臥室的窗口，看着天上的羣星和月亮，他不但自己學得了許多智撤，更發現r許多學者的錯誤。</p>
+<p>經過十幾年的努力，在他三十歲的時候，成為一個有各的天文學家，丹麥王很對他表同情，特地為他建造了一個天文台，終是他就達到了他的目的，成為一個傑出的大文學家</p>
+<p>小朋友，你們想一想，如果他沒有志氣，不把零用錢積起來買那一具地球儀，他怎會成功呢。</p>
+<h3>兩隻雄雞</h3>
+<p>— 燕之</p>
+<p>一次，兩隻雄雞在街中相　·那隻戰勝了的雄雞，很驕傲地跳着叫着，昂高着它的頸，炫燿着它勝利的光榮</p>
+<p>忽然間，有一隻老鷹乘它不防備的當兒，撲的飛掠下來，攫取而去了。</p>
+<p>我們讀了這個寓言故事，知道一個人，在任何地方得到一些勝利之後，不應該因此驕傲，欣然自滿。因為在不知不覺間，或者有患難的事情，會爬到你的身上來，那時，你恐怕後悔也不及了。</p>
+<h3>生動有趣的圖畫</h3>
+<p>— 文</p>
+<p>做法簡單得很</p>
+<p>靜的圖畫，怎樣會得生動有趣呢？七十容易得很，祗要盒　張硬紙板，裁成一定的尺寸，（長　時半闊一寸一五或比但放大）然後在紙板的兩面，各繪一匱，須位置相等，目最好有聯繫性，如附圖中的魚和义，或是烏和節等。書好以後，應將紙板的其餘地位，完全塗黑，再在它的兩邊，如中央附圖所示的地位，各鑽一孔，穿以細繩，結好以後，紙要兩手谷執一繩，將紙</p>
+<p>板上下旋動，由緩而速，愈轉愈急，這樣明明書的兩樣東西，看起來却好似合而為；如魚和义，可變而為飛义取魚，再一變而為义入魚腹：如其所盡的是籠和烏，則一變而為有翅雖展的籠中烏，再變而為籠門未啟烏飛去。這樣不是比靜的圖資生動有趣麼？小朋友有興，不妨一試！</p>
+<h3>小算題三則</h3>
+<p>答案準下星期日在本刋發表，現在請小朋友們利用星期假日，略費腦筋，思索下，算對三題，贈申報拍紙簿二册，答對兩題，贈拍紙簿一木，答對一題，恕不贈送，以先到三百名為限，答函請盡六月十三日前寄申報家庭編輯部。問題　，王先生買馬一匹，價洋九十元，嗣以一百元賣出，後此馬仍為渠買進，價洋八</p>
+<p>十元，請問王先生此項買費賺得若干？問題一，假使六頭貓，在六分鐘內，吞吃老鼠六頭，那未共需貓幾更，方能在九十六分</p>
+<p>鐘內，吞吃老鼠九十六頭？問題三，某君賣去馬二匹，每匹售價洋九十九元，算算成本，其中一匹，虧損了百分之</p>
+<p>十，另一匹賺得百分之十，請問某君此項買賣到底是膁錢還是虧本？</p>
+<h3>一星期家常菜單</h3>
+<p>— 華英女士</p>
+<p>杜米的價格每石已近七西元關，粒粒的米，眞像一顆顆的珍珠了。在吃不起杜米，吃些饅頭，也是果腹之一法。上星期日提供了做饅頭的土法，有幾位謂者寫信來問另一種做法：遺是用酵母做的（西名Yeast）如分量適當，結果定能滿意。（酵母可向廣東店家購得）現將做法介紹於下：用麵粉三磅酵母一方，鹽半茶匙，豬油湯匙，搪一湯題，溫水，餡料隨時選擇，先將酵母用溫水溶終碗中調和之，另備一碗以溫水半滿調人食鹽豬油白糖，復將此液，與酵母液混和，再以飾過麵粉置於調麵盆內，將溶液逐漸倒入調勻，以麵塊的濕度增减麵粉之多少，過半小時，將濕麵倒在板上，加粉揉捏，到柔軟不黏手為止，然後將捏成麺置於缽頭內，上蓋潔淨濕布，置於溫暖處過二小時就可包饀，然後置入蒸籠內，在沸水鍋中蒸熟，即可供食。</p>
+<p>星期一</p>
+<p>鹹肉豆腐湯　糖醋煎黃魚　乾絲蓬蒿菜　百棄炒菱白</p>
+<p>星期二</p>
+<p>洋葱牛肉絲　淸炊鯽魚湯　葱花豆瓣沙　清炒雞毛菜</p>
+<p>星期三</p>
+<p>捲心菜包肉　幹燒鳳尾魚　清炒紅莧菜　雪菜菉豆芽</p>
+<p>星期四</p>
+<p>番茄牛肉湯　鹹　煎豆腐　青菜炒線粉　油條黃豆芽</p>
+<p>星期五</p>
+<p>茭白炒肉絲　雪菜燜烏　　生　金花菜　香椿拌豆腐</p>
+<p>星期六</p>
+<p>青椒炒雞丁　油爆鱔絲湯　醋溜捲心菜　葱花　萄絲</p>
+<p>星期日</p>
+<p>肉炒醬　蒸　魚　素十景　炒刀豆</p>
+<p>天廚食譜（一〇四）</p>
+<p>本食譜為適應環境起見，徵求各種足以果腹耐饑而又合於經濟條件，不背時令之各種食品製法，此項食品，不一定須用味精，蓋木食譜意在貢獻社會解決食的問題，選料不妨實惠，堅法力求簡易，尚祈讀者踴躍賜稿，一經選刋，當舉薄酬。</p>
+<p>在四月底以前應奉投稿諸君之酬品，業已分別送出，惟有來稿未附地址，及路經過　者，容未送達，凡未接得酬品者，希卽來團（派克路協和里十一號），俾卽補奉。</p>
+<h3>（一八四）薄荷風糕</h3>
+<p>— 金警釗</p>
+<p>預備：粟米粉　乾麺粉　發酵粉　薄荷　糖味精　　製法：於粟米粉內，加入少許乾麵粉及適量之味精，白搪，發酵粉等，用簿荷湯（薄荷可向藥材店購取·洗净後用水路黨即成）澆人綢勻，乃匱蒸籃內，俟其發酵（至發生氣泡為度），蒸熱後，切成斜方塊，形色頗為羨觀，食之鬆甜凉爽，誠夏令之妙品，亦經濟之點心也。</p>
+<p>介紹：誠夏令之妙品，亦經濟之點心也。天廚味精廠出品之「味精」，「味宗」，「天廚醬油精液」，「天廚家用菱粉」，本市各大公司，各南貨食品店，均有出售</p>
+<p>家庭信箱</p>
+<h3>還羊癲病的愛人</h3>
+<p>— 貞</p>
+<p>主筆先生：我是一個十八歲的女子，尚在小學讀書，在四年前與一個二十歲的同居（在高中求學相處日久，由友誼進人戀愛，去年他雖則遷居到別處去，但每逢假日，依舊相聚，現巳決定白頭偕老，不過難問題就發生了，因為他在五歲的時候，忽患羊癲病，遍請醫師診治，終無效力，至今已十五年之久，過分勞動之後，就要復發，母親因為他有這個疾病，不允許我和他結婚，並且說羊癲病是有遺傳性的，為了這件事，使我左思右想，得不到　個解快，如果要對他斷絕關係，又不是我所願意的，所以提出下列的問題，希望你給我一個滿意的答買　羊癲病有醫治希望嗎？請那一個醫生？　患羊癲病是否不能結婚？　我決定非他不嫁，但家長從中阻止，如何對付？　如與他私下訂立約言，是否妥當？　如雙方家長都不允許我倆結婚，用什麼方伕對付？</p>
+<p>貞：經過四年的友誼，自然彼此會發生濃烈的情感，但婚姻是關係終身幸福的事，決不能使情感蒙蔽你的聊智，家長的反對，完全是顧到你的前途幸福，所以這種反對，與普通的家長反對兒女的婚事，完全不同，所列問題，現特答復如下：</p>
+<p>羊癲病是屬於神經系的疾病，事實上是可以根治的，要找神經系專科的醫生，不要放棄希望，速即設法，趕快醫治。　患羊癲病者，不是不能結婚而是不宜結婚，因為結婚以後，你不會有你所希望的幸福，並目所生的子女，一定不會健全（這一點更為重要，所以在沒有把疾病醫好之前，萬勿為時情感的動動，透成不健全的家庭，帶病態的兒實）。　　在第一條未解決前決不宜結婚，家長的阻止，完全是合理而且是善意的措置。　做不得，除非你只顧到過去僅僅四年的情感，而不顧到今後叫五十年的家庭幸福。</p>
+<h2>Page 7</h2>
+<p>商業新聞</p>
+<h3>公債空方一再施壓力　多方頗能應付裕如</h3>
+<p>公値晤盤、昨市復轉　翔、因賣力售出較前為减、多方氣勢轉盛　空方氣燄轉低、市塲人氣之興奮、空力已無以前之氣盛、一冉施以壓迫、而多方霄力竟足以周旋而有餘、市塲頗有一般人、存劃頭不如存公債之感想、是以在各方普遍收進中、繼續七漲、依前價合之、甲種又穿出匕十兀大關、合七十二元、乙種亦逼近七十元、趨勢之優美、在目下環境中、殊不易多得、怡泰·順泰·首先買進、潤德·觀工·繼之、五和·裕中·大通·寶隆·胡　記等均有買進、仍由同利·同康·鴻大·聯益·中孚·同順等供給、市價仍屬卜翔、結果一律上漲二三角至一元一角　成交約一百餘萬元、　列　明表終後、</p>
+<h3>華股收買　仍極踴躍</h3>
+<p>華股漲風仍熾、買戶投資者仍在踴　收吸中、中法（新）由八十元步升至八十五兀、新亞（新）由二十八元飛升為四十三元、後叫十二元、村料二十七元半、　升二元半之巨、中西藥房五百十元、永安公司八十元、新新八十五元、各升叫五元、中國內衣二十三元、升為三十五一兀左右、大中華火柴一百七十五元、華商　氣二十七元半閘北水常升為二十七元、永祥即書館二十七元半、商務書館二百叫十元、中華一百叫十元、南洋烟公司升為六十二元、雙馬紗倏進倏出己比日紗廠單高出一二百元</p>
+<h3>雙馬紗倏進倏出　已比日紗廠單高出一二百元</h3>
+<p>析紗市況轉趨上升　此因原料難鬆、所以成本上不得廉宜、四十二支藍鳳九千三百元至九千四百元、四十二文天女八千六百兀、四十二支仙桃八千六白五十元、四十二支水月八千八百元、八十支彩球　萬六千元、六十支獵鳳一萬八千四白元、二十支水月五千　百五十元、十支陽鶴五千一百五十兀、一十支月琴五千一百元、一十支金塔五千元、十支雙馬五千百元至五千一百五十元、一十支雙虎五千一百五十元、十六支紅奎四千七百五十元、十四支織女四千八百一兀、十支紅雙馬四千　一百元、十支紅寶彝四千元、十支綠寶彝叫千七白元、十支雙馬廠單初開價即昂為五千叫百元、此時獲利者放出、即疲至五千三百元、終以人心振作、復為五千四百元收盤、查目前　馬廠單之價、比一十支上身日紗廠單高過一二白元之譜矣、但投機者利用籌碼關係、所以倏而放出則跌、倏而收進則昂耳、</p>
+<h3>行方搜羅　東疋廠單</h3>
+<p>有　昨市因紗價續昂、業內外買氣又濃、各布機續上升、十六磅地球粗布二〇五元、飛鴻　九五元、八磅振中一一三儿、約漲每疋五元、十二磅地球</p>
+<p>七七元、大鵬一七〇　、富貴六五元、桃花女士林由二八元、起升至二八八元、蛟漲八　、木蘭漂布一八〇元、秦良玉七〇元、則無榮辱、長專府綢六元七角牛、排球紗府綢叫元一角半、亦好起每碼二角半、</p>
+<p>東布　昨現貨市傷因行方搜織廠棧單、業內實力派祇進不出、漲風重起、十二磅　頭細布新單開　二一四元、稍挫至二二元、即步趨挺秀、午收時為二一九元、星期一　出做至三二〇元、彩球細布一九三元半、叫君子嗶　晨開七元八角半、收盤現出升至八元一角、星期一出八　元二角、咬　日激漲每碼四角半</p>
+<h3>現金高翔</h3>
+<p>現金烚赤暗市、重轉昂勝、實因天津幫寶意中報、金融界及擁資者收吸、且棉紗劇漲、各方人心突挺、晨初首先成交價為　萬〇二百元、即高二百元、現金號及證券幫代津幫力售、削第百五十元、至萬九千九百五十元、十點左有、津幫止售、市勢突堅、銀號幫證券商某幫進提、比上日　升二百元、收後即見喊高、某金號及證券號與某幫在館話中進抬、正午　升至二萬　五百元、樓飾金每兩兌出價、大新同行均仍掛二千二百元、（收進减二百元）、紋銀掛十六元、黑市已升為十叫元半、銀幣一枚八元五角、亦稍上升云、</p>
+<h3>金鎊續升</h3>
+<p>昨外幣市况、英美金鎊續升十元、前者為五白二十元、後者為五百叫十元、美金票為二十八元、香港票高至三元左右、軍用票為五元四角半、</p>
+<p>錢業公會折息一角五分、新匯劃票據貼現率每千元仍牛掉、外行須貼手續費二十元、儲鈔與法幣差價、為二元及二兀零二分、亦平、</p>
+<h3>山芋亁　採用日增</h3>
+<p>豆類交易昨見减退、良以雜糧組已有少數黃豆派出、致人心轉呈觀望、買戶甚稀、統市祗開崇明沙赤五十包、舊幣二百〇三元自出、又沙　一包新幣八十三元自出、</p>
+<p>苞米到錄不寂、散戶頗有鬆脫、市是平疲、昨售開蕪湖苞米二百餘包、價新幣九十八元送到、九十六元自出、滁州苞米一車、新幣九十八元送到、</p>
+<p>豆餅走銷猶未見暢、交易仍屬零星、市勢續鮮變選、計開利字豆餅五月份棧單三百張、新幣四十三元、漢口宿餅一千元、三十一元至三十元、姓記豆餅四月份舊棧單五百張、三十五元、又五月份新棧單五白張、四十五元半、</p>
+<p>山芋乾邇因貧民採食者日增、走銷頗佳、市勢步挺、昨開五十包價為新幣一百十六元、</p>
+<p>麩皮賣戶稀少、人心向上、昨開三盡小包麥皮五月底打棧單五百包、價新轄七十五元、</p>
+<h3>海參花色不全</h3>
+<p>海參因市存檔子、殘缺不全、四洋貨尤屬寥寥、東貨如花色參十辦參均告缺乏、惟花瓶參稍有存貨、數亦有限、故市價又升、現市售新幣八百元、比前又升舊幣百元之譜、</p>
+<h3>紅棗新盤開出</h3>
+<p>紅棗因申存不多、而津號以來本雖劃、叫價頻增　前途有步緊之象、昨開出滄州紅棗一棵樹數十包、價為新幣一百三十五　、</p>
+<h3>竹節鋼條岑寂</h3>
+<p>叫十尺竹節　條、最近因本埠建築事業一落千丈、兼之北幫客銷亦停、致市況岑寂、然同菜喊價仍高、寶銷益　、昨如三四分花色每噸售中儲券七千六西元、五分至一寸上身每噸沽七干五百元、其他花色標準亦堅、如舊油池鋼板每噸沽七千兀、正號車光元一萬三千元、副號軍光元一萬用、廢鐵（甲級）開千元、（乙級）八百五十元、（內級）每噸七百元、</p>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.06.07</h1>
+<h3>After Four Days of Japanese Siege, Quzhou City Fell Last Night; Japanese Troops in Jiangxi Province Occupied Dongxiang</h3>
+<p>Quzhou, 6th (Domei News Agency dispatch) After the Japanese army defeated Gu Zhutong's Third War Area's 200,000-strong army, it completely occupied Quzhou at 6 p.m. today. The occupation of the area was announced by the Japanese Expeditionary Force Commander at 6 p.m. this evening. According to a public announcement, after the Japanese army began attacking Quzhou on Wednesday, they inflicted fatal losses on part of the 15th Division of the defending forces. The general assault on the besieged city lasted four days, reaching its peak at 8:15 a.m. this morning, when the Japanese army occupied the airfield outside the city. This allowed the Japanese army to quickly launch a fierce attack on Quzhou from the southeast at noon, breaking the final resistance of the defending forces. After the Japanese army entered the city gates, some street fighting occurred, and they finally completely occupied the urban area at 6 p.m.</p>
+<p>Shanghai, (Domei News Agency) According to a telegram from the Japanese army on the front line, the Japanese army authorities in Central China announced at 6 p.m. on the 6th that the Japanese army had launched a general attack on Quzhou from dawn on June 3rd, and completely captured Quzhou city at 6 p.m. on the 6th. The Army Air Force, despite the adverse weather conditions, cooperated with the ground forces, and the attack was very successful. The morale of the Japanese army is very high.</p>
+<p>Quzhou Outskirts, 6th (Domei News Agency dispatch) The Quzhou airfield was occupied by the Japanese army at 8:15 a.m. this morning. The airfield is located east of the city and has a large area of 1,500 meters long and 150 meters wide, with a 30 cm thick ternary soil runway crossing through the field. In addition to the barracks, there are ten airplane hangars and military supply storage facilities hidden in Mingjia Town, 15 kilometers north of Quzhou, and gasoline storage facilities located eight li south of the city. The airfield is equipped with four anti-aircraft guns and multiple anti-aircraft machine guns, as well as a special railway branch line and other equipment. This equipment was bombed and destroyed by Japanese aircraft.</p>
+<p>According to a telegram from outside Quzhou city by Domei News Agency, the Japanese army attacking Quzhou city launched a simultaneous assault on the South Gate, Northwest Gate, Southeast Gate, Northeast Gate, and North Gate with their main force at 11:30 p.m. on the 5th, launching bayonet fights everywhere. The Japanese army's suicide squads climbed the city walls and launched a fierce attack, while another team of Japanese soldiers fiercely attacked Maotou Mountain. As of this morning, gunfire could be heard from the 20 Li Street station on the Zhejiang-Jiangxi Railway, approximately 10 kilometers southwest of Quzhou.</p>
+<p>Quzhou Front Line, 6th (Domei News Agency dispatch) The airfield outside Quzhou city was captured by the Japanese army at 8:15 a.m. this morning, and the Japanese army's advance is intensifying. It was reported last night that they were only one kilometer away from the city. Last night, due to continuous air raids, the sky was ablaze with fire. The Japanese army encircled the city from the south, breaking through a point one kilometer from the city wall. Other Japanese troops are heading towards the Zhejiang-Jiangxi Road at Luoma Bridge, three kilometers southwest of Quzhou. Japanese aircraft attacked Changshan yesterday.</p>
+<p>Tokyo, 6th (Domei News Agency dispatch) According to reports from the Zhejiang front, the Japanese air force assisted in the Quzhou operation, dispatching aircraft on the afternoon of the 5th. In addition to covering the ground assault troops, they also strafed the ammunition depots inside and southeast of Quzhou city at low altitude, inflicting heavy damage. The aircraft then launched a rapid attack on Changshan, 30 kilometers west of Quzhou, and intensely bombed the military facilities there. Military warehouses 141, inside and outside Yazhou City, caught fire after being bombed by the Japanese army and were still smoldering with black smoke and continued to burn as of the morning of the 6th.</p>
+<p>According to a telegram from the Jiangxi Japanese army front by Domei News Agency, the Japanese army advanced to the outskirts of Dongxiang (35 kilometers southeast of Jinxian) at dawn on the 6th. After bravely seizing each city gate, they poured into the city and completely occupied it at 7 a.m., gradually expanding their war gains. The county town is surrounded by mountains on all sides, with a strategically important terrain.</p>
+<p>Jiangxi Front Line, 6th (Domei News Agency dispatch) The main force of the Japanese army, which entered Fuzhou yesterday morning, advanced to the mountainous area west of Fuzhou today, engaging in battle with 40,000 soldiers of the 79th Army amidst heavy rain. This army is organized by the 98th, 82nd, 19th, and 3rd Divisions and the newly formed 6th Division. This morning at dawn, the left wing of the Japanese army invaded Dongxiang, 33 kilometers southeast of Jinxian. Dongxiang has a population of 30,000 and is famous for producing iron, lead, and zinc on the Zhejiang-Jiangxi Road.</p>
+<p>Guangzhou, 6th (Domei News Agency dispatch) According to news received here, the Japanese army's attack on Shaoguan appears imminent, and the area is becoming chaotic. According to former Red Army soldiers, the 60th Army Group stationed in the mountainous area east of Yantang Lake (transliteration) is under intense attack by the Japanese army.</p>
+<p>Ikezhao League, 6th (Domei News Agency dispatch) The Japanese army units suddenly crossed the Yellow River in unison at dawn on the 5th and advanced south, launching a major offensive against the Eighth War Area in Chongqing. A major battle is unfolding in the Ikezhao League plateau area. It is the height of summer, and the Ikezhao League plains are scorching hot. The morale of the Japanese army is high as they advance south along the northern Shaanxi desert area.</p>
+<p>Tuoxi Reporter on the Vehicle, 6th (Domei News Agency dispatch) The large-scale war actions of the Japanese army, in response to China's distant front lines, finally advanced on the newly organized 32nd Division in the desolate area of the Eighth War Area at dawn yesterday. Before dawn, the Japanese army crossed the Yellow River and began a general offensive, forcing General Fu Zuoyi's troops to retreat south. The latest reports indicate that the Japanese army is making smooth progress despite the difficult conditions.</p>
+<h3>Japanese Government to Hire Advisors</h3>
+<p>Tokyo, 6th (Haitong News Agency dispatch) It was officially announced last night that Prime Minister Tojo will hire 160 members from the House of Representatives, 40 members from the House of Peers, and 100 prominent figures from all walks of life as advisors to the Japanese government and various ministries. The military is not included. The Cabinet Advisory Group includes fifteen advisors, and each ministry will have thirty advisors.</p>
+<p>Tokyo, 8th (Domei News Agency dispatch) The Ministry of the Army announced today that Mr. Tomari, the former Chief of the Transportation Section of the Taiwan Governor-General's Office, and Mr. Nakanishi, an employee of the Yokohama Specie Bank, have been appointed as advisors to the Japanese occupation area garrison.</p>
+<h3>New York Blackout</h3>
+<p>Lisbon, 6th (Domei News Agency dispatch) According to a broadcast from the British Broadcasting Corporation in London, New York City issued a blackout order at 9:30 p.m. on the 5th (10:30 a.m. Shanghai time), which lasted for a long time.</p>
+<h3>Lieutenant General Homma Inspects Corregidor</h3>
+<p>Manila, 5th (Domei News Agency dispatch) Lieutenant General Homma, the supreme commander of the Japanese army in the Philippines, led his colleagues on his first inspection of the Corregidor Island fortress this morning and returned late in the evening.</p>
+<h3>Exchange of Japanese and American Diplomats Imminent; American Citizens Returning from Sweden</h3>
+<p>Washington, 5th (Havas News Agency dispatch) The State Department announced today that the Swedish liner Gripsholm will arrive in New York on the 8th of this month, carrying 193 passengers, most of whom are American citizens from Sweden. After docking here for a few days, it will then transport Japanese diplomats stationed in the United States to Portuguese Mozambique in Africa to exchange with American diplomats stationed in Japan and Japanese-occupied territories at Lourenço Marques.</p>
+<h3>Japanese General Headquarters Announces Sinking of Four Submarines; US Releases Loss Statistics Since Entering the War</h3>
+<p>Tokyo, 6th (Domei News Agency dispatch) The Japanese General Headquarters announced at 3:40 p.m. on the 6th that Japanese naval units had sunk four enemy submarines appearing in the sea south of the Cape of Chao, Tokyo Bay, and the sea southwest of Maru Island in late May and early June.</p>
+<p>Lisbon, 5th (Domei News Agency dispatch) The Japanese navy's special submarine attack on Sydney and Diego Suarez ports caused a major shock to the Allied side. According to a telegram from London, the Daily Mail commented on the 5th that the Allies should not ignore the temporary quiet state in the Pacific since the Battle of the Coral Sea. It stated that the Japanese navy's surprise attack on Sydney hinted at a new development in the Pacific war. Japan is not giving the Allies the leisure to transport troops to reinforce Australia, so we should take all possible measures in the future to prevent a Japanese attack on Australia or a Japanese offensive in India.</p>
+<p>Argentina, 5th (Domei News Agency dispatch) Half a year has passed since the United States entered the war. The United Press, based on public announcements by the Navy and Army Departments, has compiled statistics on US losses totaling 4,330 dead, 4,694 missing, 2,441 injured, and 34 warships lost.</p>
+<p>Sydney, 5th (Havas News Agency dispatch) Today, a ferry full of passengers, sailing in the middle of the harbor, caught sight of a pair of huge black objects, looming on the surface of the water, coming menacingly. Nervous passengers immediately recalled the Japanese submarine attack on Sydney Harbor on the 30th of last month, and thought that the Japanese submarines had come to attack again. For a moment, the entire ship was panic-stricken and at a loss. When the ferry docked, the passengers' fright was finally settled, and they realized that these two large black objects were not submarines, but two giant whales swimming towards the open sea.</p>
+<p>Saigon, 6th (Haitong News Agency dispatch) Sydney reports that a Japanese submarine sank a cargo ship off the coast of New South Wales, Australia. The nationality of the ship was not disclosed. It is said that the ship sank into the water half a minute after being hit by a torpedo. Of the forty-two crew members, only five have been rescued so far.</p>
+<h3>Japanese Navy Spokesperson Warns Australia Again: If You Don't Change Your Past Policies, You Will Surely Suffer the Terror of War</h3>
+<p>Tokyo, 6th (Domei News Agency dispatch) Colonel Hiraide, spokesperson for the Naval Press Department of the Japanese Imperial General Headquarters, gave a broadcast speech last night, warning Australia again that if it is obsessed with its past anti-Japanese policies and does not carefully reconsider them, the Australian continent will surely suffer the terror of war. The successful attack by Japanese submarine units on Sydney proves the vulnerability of Australia's defenses and the unreliability of the US Navy.</p>
+<p>Tokyo, 6th (Haitong News Agency dispatch) Japanese Navy spokesperson Hiraide Yisa gave a speech on Leidi, stating that the details of the special Japanese submarine's surprise attack on British ships in Madagascar will be announced as soon as the submarine returns to its base. The Japanese navy is capable of destroying all British forces in the Indian Ocean. If British ships dare to appear in the Indian Ocean, Japanese ships are ready to fight them.</p>
+<h3>Yoshizawa Discusses Japan-Vietnam Economic Relations</h3>
+<p>Hanoi, 6th (Haitong News Agency dispatch) Yoshizawa, the Japanese ambassador to Vietnam, met with a Haitong News Agency reporter alone yesterday for an hour-long conversation. It is said that the political, economic, and cultural relations between Japan and Vietnam are very good. On the economic side, after a new agreement to intensify business relations is signed in the short term, the prospects for the future can be predicted to be bright. Other economic agreements will also be established successively. The economic delegation led by Mr. Yokoyama came to Vietnam to investigate natural resources. Now that their mission is completed, they have returned to their country. It is said that the results of the investigation are very satisfactory. In terms of spirit, under the circumstances of mutual understanding between the two sides, future cooperation will definitely be further strengthened.</p>
+<h3>Japanese Authorities in Borneo Adjust Military and Political Personnel</h3>
+<p>Somewhere in Borneo, 6th (Domei News Agency dispatch) Lieutenant General Mae Tanaka, the supreme commander of the Japanese army in Borneo, has recently decided on the general outline for military and political implementation in Borneo and adjusted military and political personnel. The list of governors of the five provinces under the overall jurisdiction of the Japanese army in Borneo has just been released as follows: Appointed Army Commander Kuma Be Shushu as the Governor of the East Coast Province, Army Commander Muraki Yoshimi as the Governor of the West Coast Province, Army Commander Kodama Robuichi as the Governor of Miri Province, Army Commander Tokuno Gaishiro as the Governor of Zhanpu Province, and Army Commander Senda Tsunajiro as the Governor of the West Province. The chiefs of various departments and the magistrates of various counties have also been announced at the same time.</p>
+<h3>Japanese Military Attache to Germany Arrives in Istanbul; Will Go to Ankara Within Days</h3>
+<p>Istanbul, 5th (Havas News Agency dispatch) General Sakata, the Japanese military attaché to Germany, arrived here today. He plans to visit Ankara within days. After a brief stay in Ankara, he will return to his post. Various circles here attach great importance to Mr. Sakata's trip.</p>
+<h3>Overseas Chinese Retailers in the Philippines Plan to Form Trade Associations</h3>
+<p>Manila, 6th (Domei News Agency dispatch) Overseas Chinese residing in the Philippines established the Philippine Overseas Chinese Association and have made many contributions to the recovery of the Philippine economy. They are now planning to organize various professional associations, hoping to start activities in various sectors. It is predicted that the overall recovery of the overseas Chinese retail merchants will promote the smooth functioning of the financial situation.</p>
+<h3>East Asia War Film to Premiere in Germany</h3>
+<p>Berlin, 6th (Haitong News Agency dispatch) The Japanese Ambassador to Germany yesterday invited 2,000 German wounded soldiers to the Ufa Grand Theatre to watch the premiere of the East Asia War film. The entire film lasted half an hour and featured on-the-spot photos of Hong Kong, Pearl Harbor, the Philippines, and Borneo. The film reflecting Japan's response was dedicated by the Japanese General Headquarters to the German leader and the German people. Before the screening, the Air Force band played the German Air Force Song and the Japanese Patriotic Song.</p>
+<h3>Editors-in-Chief of Japanese Magazines Visit Various Institutions in Nanjing</h3>
+<p>Nanjing, 6th (Dispatch) A group of editors-in-chief of Japanese magazines arrived in Nanjing on the 15th. At 9:30 a.m. on the 6th, they visited various government agencies. At 10:30 a.m., they visited National Central University. At noon, they attended a luncheon held by the Information Department of the Japanese Embassy at the East Asia Club, where Secretary Matsudaira represented Minister Tokomi to host them. The gathering ended happily at around 1 p.m.</p>
+<h3>British House of Commons to Reorganize After the War; Senior Parliament to be Established in South Africa</h3>
+<p>Stockholm, 6th (Haitong News Agency dispatch) Lord Selborne, British Minister of War Economy, mentioned the reorganization of the British Empire after the war in his speech in the House of Lords, stating that the current British House of Commons will be the last of its kind of organization. It will be dissolved after the war, and a House of Commons will be established separately in England, Scotland, South Wales, and Northern Ireland. A senior Imperial Parliament will be organized separately and established in Cape Town, South Africa. Its members will be composed of representatives of local parliaments to resolve the empire's diplomatic and defense issues. The London political circles and newspapers were greatly shocked by this news.</p>
+<h3>British Interpreter Baya Criticizes Churchill</h3>
+<p>Vichy, 5th (Domei News Agency dispatch) According to a telegram from London, Baya, a member of the British Conservative Party, gave a speech in the British industrial city of Leeds on the 4th, attacking Prime Minister Churchill, saying, "I now hope that the House of Commons should ask Churchill and his government to report on their past work. The result of Churchill's faction occupying the government has put the United States in a major situation unprecedented in history. Churchill turned a blind eye to this. Therefore, we do not need Churchill. Britain is a democratic country, a truly democratic country, and does not need so-called great figures."</p>
+<h3>Rumor That the Soviet Union Has Ordered the Detention of Important Turkish Figures</h3>
+<p>Istanbul, 5th (Havas News Agency dispatch) It is rumored here that the Soviet government has ordered the arrest of important Turkish figures. It is generally believed that the Soviet authorities have taken this measure as a retaliatory measure for the arrest of two Soviet citizens when Turkey opened the trial of the murder of Papen.</p>
+<p>Ankara, 5th (Havas News Agency dispatch) Regarding the case of the assassination of the German ambassador to Turkey, the Ankara court has repeatedly held trials to investigate the truth of the case. One of the suspects is a Soviet citizen and has been interrogated repeatedly. It is now learned that the Turkish court recently prohibited Soviet defense lawyers from using Russian to defend their clients during the last two hearings. TASS recently issued a draft heavily criticizing this move, considering it unfair. All the newspapers in this country today published it with a large box.</p>
+<h3>Diplomats from Central European Countries Gather in Vienna for a Meeting</h3>
+<p>Stockholm, 6th (Havas News Agency dispatch) The Swedish Daily News reported from Berlin this morning that many diplomats from Central European countries arrived in Vienna yesterday to hold a meeting on the occasion of the anniversary of the Vienna Arbitration Treaty. Attendees included the ministers of Hungary and Romania to Germany, the Italian military attaché, the Hungarian cultural attaché, and the representatives of the Italian Fascist Party stationed in Germany.</p>
+<h3>Japanese Army in Burma Has Reached Homalin, 30 Kilometers from the Indian Border; Ba Maw Will Form New Burmese Government</h3>
+<p>Stockholm, 6th (Domei News Agency dispatch) According to a Reuters report yesterday, a Japanese army detachment in Burma has reached Homalin, about 30 kilometers from the Indian border. However, the number of troops is unknown.</p>
+<p>Tokyo, 6th (Haitong News Agency dispatch) Lieutenant General Iida, Commander-in-Chief of the Japanese Army in Burma, has appointed Dr. Ba Maw, the former Prime Minister of Burma, to organize the Burmese Central Administrative Agency. According to Ba, he will establish a new government within two months. Difficulties remain to be resolved, but the Burmese people hope to build Burma for the Burmese.</p>
+<h3>Turkey Receives Greek Railway</h3>
+<p>Istanbul, 6th (Haitong News Agency dispatch) The Turkish Railway Administration has now taken over the former Greek railway, which is about 60 kilometers long, and has opened up railway traffic between Istanbul and Bulgaria at the three former Greek stations. The line runs between Kizkapaniköprü and Karacaevren and is important for connecting Istanbul to the cities of Edirne and Studzha.</p>
+<h3>Large-Scale Air Defense Drill in Sweden</h3>
+<p>Stockholm, 6th (Haitong News Agency dispatch) A large-scale air raid drill was held here on Thursday night, with 20,000 people participating. The food supply equipment used in wartime was also used for the first time.</p>
+<p>Stockholm, 5th (Havas News Agency dispatch) On the 21st of last month, several German aircraft flew over Swedish airspace near Gothenburg. The Anti-Aircraft Artillery Regiment fired at them. The General Confederation of Labor expressed its dissatisfaction with this, and on the 4th, issued a declaration scolding the government and threatening to no longer serve the country's defense plan. The declaration was jointly signed by 1,000 people in Rieshiri Harbour. (Note: There is an artillery factory in the harbor.) The contents of the declaration are as follows: "On the 31st of last month, many German aircraft flew over Rieshiri Harbour. At that time, there were eleven Swedish warships anchored in the nearby waters, and the visibility was very good. The German aircraft flew very low, and it would have been possible to shoot at them with anti-aircraft guns without harming civilians. The authorities did not attempt to do this. What is the purpose? It is really puzzling. Whether this policy will be seen again in the future is also a source of anxiety. If the government continues to maintain this attitude, it will inevitably cause national dissatisfaction, and the result will be that the national defense bond fundraising campaign will be completely paralyzed. We hope the government will take this as a warning."</p>
+<h2>Page 3</h2>
+<h3>Wind and Sand Subside Slightly, Heat Rises Again; The Situation in the North African War is Still Chaotic; In the Desert Area, the British Divide into Three War Zones and Set Up Fortress Lines to Defend Egypt</h3>
+<p>Headquarters of the German Leader, 6th (Haitong News Agency dispatch) This afternoon's German military report stated that in North Africa, the German and Italian Allied forces repelled the attacking British forces and launched a counteroffensive. Thirty-six British tanks and many motorcycles were lost, and hundreds of prisoners were taken. Ten enemy aircraft were shot down. Last night, Tobruk Harbor was fiercely bombed by Heinkel bombers.</p>
+<p>Rome, 6th (Domei News Agency dispatch) Since the German and Italian forces launched a major offensive against the British mechanized units in the Shahan area south of Tobruk on the 27th of last month, fierce fighting has continued. Because the area is a unique desert area, the purpose of this operation is not to occupy the territory, but to destroy the strength of the enemy forces. This is a very obvious fact. As for the US defense organization of Egypt, it is rumored from neutral countries that the British army is using the desert area south of Tobruk as the first war zone, the north-south line passing through Bardia as the second war zone, and the north-south line passing through Sidi Barrani as the third war zone, laying small fortresses in various areas, and landmines are buried in the open space between the fortresses. As of now, the war results of the German and Italian forces are estimated to be more than 3,000 enemy prisoners, and more than 100 enemy tanks and many cannons have been captured or destroyed.</p>
+<p>Berlin, 5th (Domei News Agency dispatch) The German News Agency in Rome reported that Axis fast boat teams sank a British destroyer in the sea off Tobruk, North Africa.</p>
+<p>Stockholm, 6th (Haitong News Agency dispatch) A report in London was carried in the newspapers here, saying that a visitor from Cairo reported that, as of last night, the desert warfare in North Africa was quieter than in the past few days. Both sides are using the period of major military contact to prepare for battle. The British report stated that Bir Hakeim is still in the hands of the British army, the wind and sand have subsided slightly, and the heat has risen again. Future battles are feared to be hotter than before.</p>
+<p>Somewhere on the Libyan Front Line, 5th (Havas News Agency dispatch) The war situation on the North African front line is still extremely chaotic, and both sides' war reports are very evasive. The British communique only mentioned the fighting near the Hakeim area, saying that its reinforcements had arrived there to assist the garrison in combat. The fierce new offensive by the Heinkel Axis forces is being studied. The Hakeim area is now the center of the battle. Over the past 48 hours, the Heinkel forces have launched large-scale offensives there no less than twice. There is now every reason to believe that fighting is also taking place west of Gazala. The German forces are obviously attempting to attack both ends of the British line of defense in order to relieve the pressure on the central area. The German and Italian Allied forces in this area have already torn a gap in the British lines, and ammunition and reinforcements are arriving at the front line through this gap. As for the minefield area, the fighting has not stopped, especially west of Knightsbridge. Knightsbridge is a strategically important area, which the British call "Hell's Gate." In addition, the weather conditions on the front line are extremely bad, and it is difficult for tank soldiers to endure without iron and steel bones. The British believe that Heinkel forces commander Rommel will do everything possible to allow his reinforcements to pass through the gap and launch a full-scale eastward offensive. Rommel still has a large number of troops to deploy, so he is still very formidable. The only thing the British can be optimistic about is that their armored forces are as strong as ever and can deal with the enemy forces to the end.</p>
+<h3>Roosevelt Has Signed the Declaration of War Against Bulgaria and Hungary</h3>
+<p>Argentina, 6th (Domei News Agency dispatch) According to a report from Washington, after the US Congress and Senate passed the declaration of war against Bulgaria, Romania, and Hungary, it was signed into law by President Roosevelt yesterday.</p>
+<p>Washington, 5th (Havas News Agency dispatch) President Roosevelt announced a declaration today, stating that a state of war exists between the United States and Bulgaria, Romania, and Hungary.</p>
+<p>Berlin, 6th (Haitong News Agency dispatch) When the German Foreign Ministry entertained journalists yesterday, Minister Stone answered a question about the US declaration of war against Bulgaria, Romania, and Hungary, saying, "When Bulgaria, Romania, and Hungary declared war on the US in accordance with Article 3 of the Tripartite Pact, Roosevelt used the Constitution as a shield and waited for the decision of Congress. The recent US declaration of war against Bulgaria, Romania, and Hungary only confirms his attitude towards the new Europe. Hungary and Romania are actively participating in the war against the Soviet Union, and Bulgaria is taking measures to eliminate Bolshevism at home."</p>
+<h3>Large Explosion on the Norwegian Border; Violent Vibrations Everywhere Like an Earthquake</h3>
+<p>Stockholm, 6th (Domei News Agency dispatch) A violent explosion occurred in Norway on Wednesday and Thursday of last week, lasting for 24 hours. It shook the Skien district and even Gothenburg at the southernmost tip of the Swedish coast. The violent situation was like an earthquake. The cause is unknown, but it is known that the Skien district is only 20 miles away from Norway's largest armaments factory (located in Kolsberg).</p>
+<p>Stockholm, 5th (Havas News Agency dispatch) A violent explosion suddenly occurred last night in a certain area on the border between Sweden and Norway, that is, in the area north of the city of Gothenburg. It was probably caused by bombs dropped by aircraft. At that time, residents also heard the sound of airplane engines.</p>
+<h3>Iraq: Cabinet Resigns En Masse</h3>
+<p>A Reuter's dispatch from Istanbul, dated May: International observers had anticipated a cabinet reshuffle in Iraq, but not so soon. Prime Minister Nuri al-Said, as expected, submitted his cabinet's resignation to the Regent, which was accepted. However, the Regent has instructed him to form a new cabinet.</p>
+<h3>Finnish Leader Meets with German Leader on Military Matters: Large-Scale Offensive Expected Near Murmansk</h3>
+<p>A Havas dispatch from Berlin, dated June 6th: A Foreign Ministry official stated yesterday that the meeting between the German leader and Finnish Commander-in-Chief, General Mannerheim, has been met with a friendly response from the German people. This visit to Finland by the leader is devoid of diplomatic formalities, leading officials to believe that it represents a new model for relations among European nations. The new Europe does not differentiate treatment based on the size of a nation's territory, and the German people are deeply moved by the Finnish people's commendable efforts in participating in the war.</p>
+<p>A Havas dispatch from Stockholm, dated June 6th: London newspapers are speculating on Hitler's visit to Finland, suggesting that the talks between the German leader and Finnish leaders likely concern military matters. It is feared that German-Finnish forces will launch an offensive on the Murmansk front. A newspaper article published last night pointed out that the German leader's visit to Finland coincides with renewed military activity on the Leningrad front. It is difficult for outsiders to determine whether the German-Finnish forces will attack Murmansk or Leningrad. However, many commentators believe that a large-scale German-Finnish offensive on the Murmansk front is more likely. If so, there is a risk that US-Finnish relations will deteriorate. However, a dispatch from New York indicates that the US government does not intend to sever ties with Finland, and many in Congress still express sympathy for Finland.</p>
+<p>A Havas dispatch from Stockholm, dated June 5th: Local newspapers today commented on German leader Hitler's visit to Finnish Commander-in-Chief General Mannerheim, generally considering it a friendly visit that will not fundamentally change Finland's position. However, considering that General Keitel and German Commander in Finland, General Dietl, accompanied the German leader, important talks must have taken place. Furthermore, Hitler's personal congratulations to General Mannerheim prove Germany's appreciation for Finnish cooperation, and it is evident that Finland will not make a separate peace with the Soviet Union. In the future, Finland will undoubtedly not avoid participating in the war against the Soviet Union. However, it is undeniable that in recent months, the Finnish army has avoided participating in the Soviet offensive, limiting its actions to defending existing strategic strongholds. General Mannerheim has repeatedly stated that Finland is engaged in a defensive war and reiterated that its war aim is solely to prevent the Soviet annexation of Finland, thus deciding to advance to easily defended borders. There is reason to believe that this view has not changed, its will is firm, and its determination that its democratic politics not be interfered with by foreign countries is consistent. It is doubtful whether Finland intends to conclude a military alliance with Sweden. Furthermore, Finland is unwilling to worsen its relations with the United States, let alone declare war on the United States. Therefore, any actions that could harm Finnish-American diplomatic relations will be avoided. Finland's reluctance to cut off the Murmansk railway is motivated by this, as doing so would cut off the supply route from Britain and the United States to the Soviet Union, which would be tantamount to going to war with the United States. Therefore, Finland will likely maintain its current attitude, continue to adopt a defensive posture, and allow German forces to occupy their objectives on the Finnish front. Strategically, if the port of Murmansk falls, the Soviet threat to Finland in that area will be completely eliminated. If Leningrad also falls, Finland will consider the war to be over. Although Finland may not immediately cease military operations from a technical standpoint, the army could be demobilized, and young men could return to farming to solve the country's increasingly serious food shortage.</p>
+<h3>Commander of Danish Volunteer Corps Killed in Action</h3>
+<p>A Havas dispatch from Copenhagen, dated June 6th: It was announced here yesterday that the commander of the Danish Volunteer Corps, Schalburg (46 years old), was killed in action on the Eastern Front on June 2nd. German Ambassador Fink has already informed the Danish government of this news. The production of charcoal gas and other items such as alcohol, electricity, and coal gas is very active. In addition, metal products are extremely scarce, especially copper, which is often replaced by aluminum. Fabrics are scarce, and artificial silk is used as a substitute. Domestic laboratories have been working diligently recently and have achieved remarkable results, discovering many new materials. However, under the current circumstances, it is not possible to fully implement them at this time.</p>
+<h3>Vichy Cabinet Passes Universal Economic Control: Government Begins to Develop Neglected Resources</h3>
+<p>A Havas dispatch from Vichy, dated June 5th: The cabinet held a state council meeting at 10:30 this morning, presided over by Marshal Pétain. First, Laval reported on the general situation. The state council then discussed the issue of food for the people, making slight revisions to the methods of controlling essential foods in order to alleviate public hardship. Justice Minister Barthélemy requested the enactment of laws to severely punish officials responsible for preserving food who are negligent or intentionally allow food to spoil. Finally, the following two proposals were passed: The Ministry of National Defense proposed establishing general economic control, advocating for the establishment of a committee chaired by Police Commissioner General Bels. The Minister of Public Health, Grasset, proposed improving French health affairs.</p>
+<p>A Havas dispatch from Clermont-Ferrand, dated June 5th:</p>
+<p>French import trade has been interrupted, making it impossible to obtain needed goods from overseas. In addition, the country is scarred by war, and due to the defeat, various industrial raw materials are on the verge of exhaustion. In order to cope with this situation, the government has begun to develop resources, especially focusing on certain resources that have been neglected in the past. This self-sufficient economic policy can alleviate France's raw material shortage. For example, some coal mines that were abandoned in the past due to their small output are now being re-mined due to the coal shortage in various regions. In addition, several other coal mines, such as those in Saint-Étienne, Alès, and Marseille, were previously ignored by the authorities due to poor quality or difficult mining, but are now being actively developed. As for gasoline substitutes, the current monthly output is 36,000 tons, and it is expected to increase to 50,000 tons this year, equivalent to one-sixth of pre-war consumption. Various vehicles are using</p>
+<h3>Sevastopol Fortress Bombed</h3>
+<p>A Havas dispatch from the German leader's headquarters, dated June 6th: This afternoon's German war report stated that the enemy fortress in Sevastopol was bombarded by heavy artillery and bombed by aircraft. Several enemy units in the central and northern sectors have been encircled and are being increasingly pressured. On the Volkhov front, German dive bombers assisted the army in driving back the resisting enemy. Twenty-two enemy tanks were lost. German warships fired on and hit a Soviet submarine in the Finnish Gulf. The submarine was hit several times and appears to have sunk.</p>
+<h3>US Vice President Rumored to Visit Britain, Possibly with a Trip to Southern Ireland</h3>
+<p>A dispatch from the German News Agency in Geneva, dated June 5th: The "Daily Mail" carried a New York news report stating that US Vice President Wallace may visit Britain and Ireland this summer. The purpose of this trip would be to reach some understanding with the Valera government regarding naval bases in Southern Ireland. Wallace's discussions in Dublin are not expected to yield immediate results, but it is generally believed that in the near future, Southern Ireland may heed advice and allow the Allied powers to use its bases.</p>
+<h3>US Powder Factory Explodes Outside Chicago: Over Sixty Workers Killed or Injured; Forest Fires Break Out Along the East Coast</h3>
+<p>A dispatch from the Allied News Agency in Lisbon, dated May 5th: According to a New York dispatch, a gunpowder filling factory at the largest ammunition manufacturing plant in Elwood, Illinois, suddenly exploded on the night of the 5th. The cause is unknown. All buildings were destroyed in the explosion. Sixteen people were killed and fifty injured. The huge sound of the explosion awakened residents of Chicago, 80 kilometers away, from their sleep.</p>
+<p>A Havas dispatch from Lisbon, dated June 6th: Due to a prolonged drought in the first half of May, forest fires have broken out in various parts of the US East Coast. Authorities at the time believed that the fires were due to sabotage. Rhode Island suffered the greatest losses, with fifty square miles of forest burned. Three thousand soldiers and civilians fought the fires. About 250,000 cubic feet of government-owned timber were burned. In southwestern Virginia, farmland and forests covering 40,000 acres have been burned in two weeks. Since March 28th, there have been 1,174 forest fires in the state, burning over 100,000 acres. Thousands of acres of forests near Knoxville and the Great Smoky Mountains are still burning.</p>
+<h3>Heydrich's Body to Receive State Funeral in Germany; Another Twenty-Two Czechs Executed</h3>
+<p>A Havas dispatch from Prague, dated June 6th: The body of Heydrich, Deputy Protector of Bohemia, was transported from the hospital to Prague Castle on Thursday night in a solemn procession.</p>
+<p>A Havas dispatch from an unspecified location on the German border, dated June 6th: It is reported that Heydrich's body will receive a state funeral.</p>
+<p>A Havas dispatch from Prague, dated June 6th: Yesterday, twenty-two people were sentenced to death for aiding enemy spies, being involved in the murder of Heydrich, and failing to register with the police. In addition, eight people were executed in Brno for privately possessing weapons.</p>
+<p>A Havas dispatch from Prague, dated June 6th: President Hácha yesterday sent German leader Hitler a message of condolence regarding Heydrich's death, and guaranteed the Czech government's loyalty to the leader's anti-German sincerity.</p>
+<h3>The City of Cologne, Germany, Suffers Extremely Heavy Losses: The Scene Changes Completely Overnight</h3>
+<p>A Havas dispatch from Stockholm, Sweden, dated June 5th: It has been learned that as a result of the British air raid on the city of Cologne, Germany, on the evening of the 29th of last month, the city suffered extremely heavy losses. The Cologne Daily News did not publish the situation of the bombing until the 4th of this month (note that the newspaper office has been bombed). It is said that during the British air raid on Cologne that night, nine churches were destroyed or severely damaged, including the famous St. Martin and St. Mary churches. Historical buildings from hundreds of years ago have been reduced to rubble. Many houses have been destroyed, and world-famous historical sites have also been bombed. The magnitude of the losses cannot be compensated for in the future. In short, overnight, the entire city scene has been completely changed, which is shocking.</p>
+<p>A Havas dispatch from Berlin, dated June 6th: An official document here stated that as a result of the recent heavy bombing of Cologne by British aircraft, a total of 305 civilians were killed.</p>
+<h3>Thailand Begins Construction of New Capital</h3>
+<p>A dispatch from the Allied News Agency in Bangkok, dated June 6th: The Thai government previously decided to move the capital to Lopburi, about 120 kilometers northeast of Bangkok. The city is located on the banks of the Pasak River, a tributary of the Chao Phraya River. The outline of the new capital's design plan is now being developed. A grand ceremony will be held on the 24th Revolutionary Memorial Day to commemorate the foundation of the new capital. The main points of the construction plan are as follows: The new capital will cover an area of approximately 200 square kilometers, with a construction cost of approximately 100 million to 150 million baht, scheduled to be completed in ten to fifteen years. In the first five years of the construction plan, priority will be given to constructing transportation routes between Lopburi and other important cities, as well as building waterways. The water conservancy project cost is determined to be 2 million baht.</p>
+<h2>Page 4</h2>
+<h3>French Concession Organizes Baоjia Preparatory Committee: Personnel Designated to Establish Central Baоjia Preparatory Committee; Baоjia Preparatory Subcommittees Established in Each Police District</h3>
+<p>In order to implement the provisions of Consular Decree No. 163 regarding the organization of Baоjia in the French Concession, the French Consul General issued Decree No. 184 on May 31, designating the following individuals to establish the Central Baоjia Preparatory Committee:</p>
+<p>List of Committee Members: Chairman: Representative of the French Consul General; Vice Chairman: Father Mouly; Committee Members: Liu Xingxun (Manager of Yu Salt Trading Company, No. 9 Quai de France), Ge Wei'an (Chairman of Seafood Traders Association, No. 12 Zhoushan Road), Yu Yongsui (Manager of Shicheng Company, No. 456 Avenue Joffre), Zhang Renzhong (Owner of Xin Salt Store, No. 22 Rue Corneille), Yu Zhijing (General Manager of Huifu Industrial Company, No. 6 Lane 441 Route Conty), Zhang Shankun (Manager of Zhonglian Film Company, No. 543 Route Haig), Wu Zhesheng (Manager of Da Zhonghua Rubber Factory, No. 1102 Route Zikawei), Salel (Deputy Director of Medical Inspection Office), Messeck (Deputy Inspector of Police Department), Ju Yu (Chief Inspector of Police Department), Marlon (Chief Inspector of Police Department).</p>
+<p>Establishment of Subcommittees:</p>
+<p>The committee is responsible for discussing various topics submitted by the Director of the Consular Police Department for research. In addition, in each police district, based on the Director's proposal, Baоjia preparatory subcommittees of nine people (including Westerners) are established to assist the Chief of Police during the Baоjia preparation period. Once the work of the Central Baоjia Preparatory Committee and the subcommittees is completed, they will be abolished in accordance with Article 4 of Consular Decree No. 163, promulgated on May 20, 1942. This decree (No. 184) is to be implemented by the Director of the Police Department.</p>
+<h3>Central Farmer Bank Notes Continue to Circulate</h3>
+<p>The banknotes of the Central Farmer Bank are not included in the scope of exchangeable reserve certificates according to regulations. However, the amount of Central Farmer Bank notes circulating among the people is enormous. In order to prevent the public from suffering significant losses, it is rumored that separate handling methods will be announced. As a result, some money exchange shops in the market have suddenly started buying Central Farmer Bank notes, leading to the emergence of a black market. It is reported that the price of Central Farmer Bank notes in the black market is about 85 yuan of banknotes from the Central, China, and Communications Banks for every 100 yuan.</p>
+<p>According to the English-language Shanghai Times, according to Mr. Duclaux, the general manager of the French Concession Electricity and Tramway Company, yesterday (the 5th), trams, trolleybuses, and buses of the company now accept auxiliary coin notes from the Central Farmer Bank, as well as 1-yuan, 5-yuan, and 10-yuan old French currency from the Central, China, and Communications Banks. Mr. Duclaux explained that the company is able to accept these banknotes because it has agreed on an agreement with the Reserve Bank in advance. It is said that this method is temporary and can be abolished at any time.</p>
+<p>Finally, according to Mr. Duclaux's statement to the North China Daily News, the acceptance of auxiliary coin notes from the Central Farmer Bank on trams in the French Concession failed yesterday (the 5th) after a day of trial due to passengers' refusal to accept them. When the reporter asked whether ticket sellers also refused to accept Central Farmer Bank corner notes, he replied that these corner notes were allowed to be accepted in principle, but were difficult to implement in practice. Because ticket sellers could accept them, but the public refused to accept them, ticket sellers ultimately had to refuse to accept them as well. As a result, Central Farmer Bank corner notes are completely unusable on French trams, but it is reported that 1-yuan, 5-yuan, and 10-yuan banknotes from the Central, China, and Communications Banks are indeed being accepted.</p>
+<h3>Money Exchange Houses Increase Interest Rates on Deposits and Loans to Curb Speculation and Hoarding, Lower Prices, Promote Savings, and Develop Industry and Commerce</h3>
+<p>Money exchange houses have recently agreed to increase interest rates on deposits and loans in order to curb market speculation, eliminate hoarding of goods, and assist the authorities in stabilizing prices. The funds needed by speculators and hoarders all rely on loans from money exchange houses. Now, the interest rates on loans such as credit mortgages and overdrafts are increased, making it impossible for them to arbitrarily hoard goods again. At the same time, the interest rates on deposits such as fixed-term, current, and savings accounts are increased, with the aim of promoting savings and cultivating national thrift, so that the deposits received by money exchange houses can be used for legitimate purposes that are beneficial to social development, industrial development, and market recovery. The above methods will be implemented at the beginning of the second half of the year after being approved by the money exchange houses.</p>
+<h3>Rice Shops to Sell Foreign Rice Today, Switching to Reserve Certificates</h3>
+<p>The total number of bags of foreign rice sold by rice shops in the two concessions today is over 10,000, so the sales situation should be widespread. The amount per person is still one and a half liters, sold for 7 yuan and 6 jiao in French currency or 3 yuan and 8 jiao in Central Reserve Bank certificates. However, the Municipal Council has announced that from today onwards, payment should be made in Central Reserve Bank certificates, and rice shops will inevitably refuse to accept French currency. The payment from rice shops to the Rice and Grain Office will also be completely changed to Central Reserve Bank certificates from today.</p>
+<h3>Price Limits on Food in the French Concession, June 7th to 10th</h3>
+<p>Price of Goods (1) Market Price, Old French Currency; (2) Value of New French Currency in Second-Class Restaurants; (3) Value of New French Currency in First-Class Restaurants</p>
+<p>Beef: Fat (per pound) 14 yuan and 5 jiao, Relatively Fat 13 yuan and 5 fen, Top Round 12 yuan and 1 jiao, First-Class Round 12 yuan, Steak 10 yuan and 6 jiao (12 yuan), Second-Class Round 10 yuan and 1 jiao 5 fen (11 yuan and 4 jiao), Brisket 11 yuan and 1 jiao, Sirloin 8 yuan and 8 jiao, Soup Meat 6 yuan and 6 jiao (7 yuan and 2 jiao 5 fen), Butter 6 yuan and 6 jiao.</p>
+<p>Pork: Lean Meat 6 yuan and 7 jiao 5 fen, Ham 10 yuan and 4 jiao 2 fen (5 yuan and 5 jiao, 6 yuan and 1 jiao), Shoulder 5 yuan and 7 jiao 5 fen (6 yuan and 2 jiao), Loin 6 yuan and 1 jiao 5 fen, Ribs 10 yuan and 4 jiao 2 fen (5 yuan and 5 jiao, 6 yuan and 1 jiao 5 fen), Knuckle 5 yuan and 6 jiao, Lard 6 yuan and 6 jiao 5 fen, Rendered Lard 10 yuan and 7 jiao 8 fen (5 yuan and 8 jiao), Fatty Meat 5 yuan and 1 jiao.</p>
+<p>Cooked Pork: Foreign Ham 11 yuan, Chinese Ham 9 yuan and 6 jiao.</p>
+<p>Fish: Fresh Fish 7 yuan (3 yuan and 5 jiao to 4 yuan), Iced Yellow Croaker 2 yuan and 2 jiao (1 yuan and 2 jiao, 1 yuan and 3 jiao), Large Prawns 2 yuan (1 yuan and 1 jiao, 1 yuan and 2 jiao), Ningbo Flounder 1 yuan and 6 jiao (1 yuan, 1 yuan), White Fish 3 yuan and 2 jiao (1 yuan and 7 jiao, 1 yuan and 8 jiao).</p>
+<p>Salted Fish: Salted Cod 2 yuan and 6 jiao (1 yuan and 5 jiao), Salted Salmon 6 yuan and 5 jiao (3 yuan and 3 jiao, 1 yuan and 4 jiao), Salted Ribbonfish 2 yuan and 8 jiao (1 yuan and 4 jiao 5 fen, 1 yuan and 5 jiao), Salted Croaker 2 yuan and 8 jiao.</p>
+<p>Chicken, Duck, and Eggs: Spring Chicken 11 yuan and 5 jiao (6 yuan and 5 fen, 6 yuan and 2 jiao 5 fen), Fresh Chicken 9 yuan (5 yuan, 5 yuan and 2 jiao 5 fen), Eggs 6 yuan (3 yuan and 3 jiao 5 fen, 3 yuan and 4 jiao 5 fen).</p>
+<p>Aquatic Vegetables: Water Chestnuts 3 yuan to 4 yuan (1 yuan and 5 jiao to 2 yuan and 2 jiao 5 fen).</p>
+<p>Vegetables: Carrots 1 yuan (5 jiao 5 fen, 6 jiao), Fresh Cabbage 3 jiao per pound (1 jiao 8 fen, 1 jiao), Salted Cabbage 6 jiao, Scallions 2 jiao 5 fen (1 jiao 3 fen, 1 jiao 8 fen), New Potatoes 8 jiao (4 jiao 2 fen, 4 jiao 5 fen), Old Potatoes 6 jiao 5 fen (3 jiao 5 fen, 1 jiao 8 fen), Spinach 4 jiao (1 jiao 2 fen, 1 jiao 5 fen), String Beans 1 yuan and 1 jiao (6 jiao, 6 jiao 5 fen), White Radishes 3 jiao (1 jiao 7 fen, 2 jiao).</p>
+<p>Dried Goods: Salt 1 yuan and 1 jiao 5 fen, Refined Salt 1 yuan and 2 jiao, Coffee 10 yuan, Taikoo Sugar, Java White Sugar 3 yuan (6).</p>
+<p>Milk: A-Grade Milk 2 yuan and 1 jiao 5 fen, B-Grade Milk 1 yuan and 8 jiao, Ordinary Pasteurized Milk 1 yuan and 6 jiao, Maggi Milk 11 yuan.</p>
+<h3>Chinese Detective Commits Suicide</h3>
+<p>Chinese detective No. 13 of the French Police Department, Wang Zhencai, 25 years old, a native of Ping, suddenly took his own life due to stimulation. On the afternoon of the 5th at 7:00 PM, he committed suicide by poisoning himself in Room 233 of the Continental Apartment on Route Tenant de la Tour. The tea boy discovered his death yesterday morning and reported it to the police department. The body was taken to the mortuary for examination and then claimed by his family, who took it to the funeral home for preparation.</p>
+<h3>Americans in China Approved to Evacuate This Month, Transported Only by the Conte Verde</h3>
+<p>According to the English-language North China Daily News, the chief translator of the Japanese Consulate General informed reporters that a major change has taken place in the evacuation plan for Allied nationals. The 650 Americans and Canadians leaving Shanghai this month will only be transported by the Conte Verde, and will not be divided between two ships as planned. The list of the first batch of evacuees is not yet complete, and there are several points that must be considered. He also confirmed that the ship's sailing schedule has not been delayed, and the Swiss Consulate cannot provide a list of evacuees. The luxurious Italian ocean liner Conte Verde, which has been docked in Shanghai since the beginning of the European war, has now been painted gray in preparation for sailing. The Japanese flag has also been painted on the ship's hull, and a white cross has been painted on the funnel, bow, and stern. According to the previous plan, two evacuee ships were to transport British and American nationals to Portuguese East Africa for exchange with Japanese nationals. Now, the plan has been changed to one ship, the Conte Verde, and the evacuation of British officials and civilians has been postponed.</p>
+<h2>Page 5</h2>
+<h3>Execution of Condemned Criminals to Continue Tomorrow: Robbers Yin Songqing and Ling Yangsheng Executed Yesterday</h3>
+<p>After Xie Jin'an, a criminal sentenced to death by the First Special District Court of the Public Concession, was transferred to the Nanshi District Court Detention Center for execution by hanging the day before yesterday, the District Court Prosecutor's Office inspected the execution ground yesterday morning. Since no family members claimed the body, it was collected and buried by the Tongren Fuyuantang Funeral Team. At 10:30 AM, the First Special District Court continued to transfer two criminals sentenced to death, robber Yin Songxiang (also known as Yin Da Ermazi) and robber-murderer Ling Yangsheng, to the same execution ground for execution. The two criminals were brought before the case and asked about their age and origin. Ling requested that the court arrange for burial and did not want to notify his family to collect the body, while Yin stated that his relative Huang Zhengxian lived at No. 391, opposite the Guangyi Central Hospital on Route Roberts, and asked to borrow 200 yuan from Yang Zhenghe to purchase a coffin for the District Court to collect the body, and to notify his wife and daughters in his hometown in the autumn. After the statements were completed, they were tied up and executed by hanging, and notices were posted. It is reported that four more criminals will be executed next Monday, and that several of the 23 people sentenced to death by the First Special District Court are female criminals, who will also be executed there.</p>
+<p>Executions Yesterday Morning</p>
+<p>Two notorious robbers sentenced to death and awaiting execution have been executed by the Shanghai District Court Detention Center since the order was given. The day before yesterday, the Public Concession Police escorted robber-murderer Xie Jin'an for execution by hanging. Yesterday morning, Yin Songqing (also known as Chen Baoji, alias Chen Da Mazi, 54 years old), a native of Jiangbei, and Ling Yangsheng, 36 years old, a native of Jiangbei, were also executed. Yin Songqing kidnapped Xiang Yixin, the owner of a foundry, on August 3, 1937, with the intention of extorting a ransom. When the extortion failed, he shot Xiang Yixin to death. Ling Yangsheng robbed Chen Jvsheng of 800 yuan in cash at the intersection of Penang Road and Gordon Road at 10:00 AM on July 10, 1936, and shot Chen to death. Both were arrested, interrogated, and sentenced to death, and detained in prison awaiting execution. Yesterday morning, the police brought Yin and Ling from the prison and asked if they had any last words. Yin Songqing sent a letter to his uncle Wang Zhengyan at No. 391, opposite the Guangyi Central Hospital on Route Roberts, asking him to purchase a 200-yuan coffin to collect the body and to notify his family after the autumn. Ling Yangsheng said that he had no last words. Yin and Ling were then escorted by the police to the Shanghai District Court Detention Center for execution by hanging.</p>
+<h3>Miscellaneous News from All Circles</h3>
+<p>Shunfeng Brand Wood Charcoal Substitute Oil Stove: Hesin Manufacturing Factory, located at 420 Julai Road, was founded by Chen Kecheng and other pioneers in the automotive industry. In order to adapt to current environmental needs, they have produced the Shunfeng brand wood charcoal substitute oil stove, designed by experts and a product of scientific research. Its style is exquisite and beautiful, and it runs smoothly and quickly without stalling midway. Its performance is comparable to gasoline. All are welcome to visit and test drive.</p>
+<p>Ren Ke Tu Hai Service Agency: Ren Ke Tu Hai Service Agency has collected a large number of literary creations, translations, scripts, popular novels, etc., totaling hundreds and thousands of items for rent. Currently, they are in the period of seeking basic readers and offering preferential discounts of half price. The address is No. 63, Yili Call Lane, Gordon Road (North of Avenue Road).</p>
+<p>Dodge Car Company Grand Opening Today: In light of the recent traffic inconveniences in this city, Dodge Car Company has specially raised funds to select and purchase products from famous international manufacturers, such as bicycles, tricycles, etc. The grand opening is scheduled for 10:00 AM today. Customers will receive preferential treatment with special prices on all items. Mr. Wen Lanting has been invited to cut the ribbon, Miss Cao Xianlin to cut the ribbon, and Mr. Jin Xinmin to film the event for commemoration. The scene will be bustling with activity.</p>
+<p>Luo Lei Coffee Shop to Open Soon: A new style coffee shop will soon appear at the intersection of Yu Qiaqing Road and Shantou Road, named Luo Lei. It is jointly invested by architect Chen Zhichang and Lu Bingyuan, Chen Jusheng, and others. The interior is richly decorated and the chefs have considerable experience. Preparations are now complete, and the official grand opening is scheduled for the tenth of this month.</p>
+<h3>Old Currency Consolidation Committee Moves to New Office</h3>
+<p>The Old Currency Consolidation Committee, since its establishment and the setting up of its office on the third floor of the Shanghai Branch of the Central Reserve Bank at 15 The Bund, Shanghai, has been actively processing various tasks that need to be carried out. It has now appointed banks and money houses in the city to act as agents for collecting and exchanging old currency for new legal tender. The preparations are largely complete, and the exchange is scheduled to begin fully on the 8th. The consolidation work will inevitably become more busy. However, due to the small size of the original office space, which is insufficient for the needs, it has been decided to move to the former Bank of Communications at 16 The Bund, starting on the 8th.</p>
+<h3>Young Girl with Epilepsy Collapses on Roadside, Severely Injured from Father's Beating</h3>
+<p>On the 20th of last month, a young woman was found lying on the roadside at the intersection of Avenue Joffre and Avenue Hoche, foaming at the mouth and on the verge of death. A patrolling officer discovered her, reported it to the police station, and sent an ambulance to Guangci Hospital. After examination by a doctor, the woman was found to have swelling and severe injuries to her lower body, indicating that she had been beaten. She remained unconscious for days and unable to speak. It wasn't until the afternoon of the day before yesterday that she was able to speak. She claimed her name was Feng Aidi, 20 years old, and lived in a half-room opposite No. 13, Xiaoliu Family Residence, Zhaozhu Church Road. Her father's name was Feng Yunchu, 53 years old, from Wuxi, who used to be a tailor but recently became a peddler due to unemployment. Her mother, nee Li, passed away last year. Recently, she was often brutally beaten by her father, resulting in injuries all over her body. Unable to bear the abuse, she ran away and collapsed on the ground, etc. The hospital notified the police station, which sent a detective to bring Feng Yunchu in for questioning. Feng confessed that his daughter, Aidi, suffered from epilepsy, which recurred frequently. She often urinated and defecated in her pants. On the 18th of last month, she urinated and defecated all over her pants, and he, in a moment of anger, beat her several times with a wooden board. The rest of his statement was vague. The police chief ordered him to wait until Aidi's injuries healed before further investigation.</p>
+<h3>Gatekeeper Arrested for Corruption and Blackmail</h3>
+<p>Yu Jimin, a con artist from Guangdong, previously defrauded someone surnamed Mou of a Columbia brand wireless radio worth ten thousand gold, which he placed in his residence at 76 Avenue Edward VII. When the crime was discovered, he fled. His servant, Peng, hid the radio with Liu A'gen, the gatekeeper at 76 Avenue Edward VII. Liu then had malicious intentions and colluded with Yan Fenggang, Lu A'hong, Yuan A'qing, and others to sell the radio to a radio station in the Public Concession for 2,600 yuan, which they divided and spent. This was discovered by detectives from the French Concession Police, who arrested Liu and the other three, recovered the stolen money, and brought them to the police station for investigation. They were charged with receiving stolen goods, interrogated, and then detained pending further investigation.</p>
+<p>Today's newspaper distribution time is 6:20.</p>
+<h3>The American Dramatic Club (A.D.C.) in Shanghai Presents "Richard III" (Continued)</h3>
+<p>— White Bear</p>
+<p>According to scholars of Shakespeare's works, "Richard III" belongs to the category of historical tragedies, also known as "Free Will Tragedies." This is a progressive marker in Shakespeare's later works. His "Romeo and Juliet" is also a tragedy, but he places the cause of the tragedy on "fate," while in the later tragedies, Shakespeare attributes the fault of the characters to their nature—that is, the weakness of will, flawed thinking, and perverse behavior of the tragic figures themselves. As a result, they are plagued by their conscience, regret, hate themselves, and even become dejected. Perhaps this can be a reference for the audience.</p>
+<p>Of course, Shakespeare's Richard III is definitely not the Richard III of English history. Historians may be overly serious, or, to put it nicely, they have an academic style, so they are hesitant to make a definite judgment on Richard II's shortcomings. However, Shakespeare's basis is sufficient: he wants to depict a "villainous hero" hated by the people, not necessarily Richard III. Because such a person exists in humanity, he honestly concentrates the characteristics of the villainous hero on Richard III and allows him to fully expose himself. This is the understanding that the audience should have of the theme of the play.</p>
+<p>Whenever the reporter sees a Shakespearean play—whether on stage or on screen—he often has a thought: he hopes to see Shakespeare's plays performed in the style of the grass-roots theaters of Shakespeare's time. For example, when a group of fake commoners in the play ask King Richard to ascend the throne, the lines of those playing the commoners should be spoken in Cockney, and King Richard's lines should include as many distorted interjections as possible to make them "jokes," etc. But this is impossible, right? Shakespearean plays performed today have become literary masterpieces and have been purified. This is beside the point, so let's stop here.</p>
+<p>A scene from the A.D.C.'s production of Shakespeare's famous play "Richard III." Duke of Gloucester (later Henry VII) meets with Margaret, widow of Henry VI.</p>
+<p>Sports News</p>
+<h3>Small Soccer League Kicks Off: Dragon Power vs. Western Union Exciting Performance at Poor Children's Home at 5:30 PM</h3>
+<p>The Small Football Association is holding its first league tournament. Today, it has invited the Dragon Power United and Western Union teams to give a special performance starting at 5:30 PM at the Poor Children's Home playing field at the intersection of Jiaozhou Road and Wuding Road, to add to the excitement of the first special game of the season. The prelude begins at 4:00 PM with Little Dragon vs. Little Wei, as the Ruidong Sports Association was established on this day last year, so this game also celebrates the association's first anniversary. If the weather is clear today during the rainy season, the game will be held as scheduled; otherwise, it will be postponed to tomorrow (Monday). You can call 12928 or 9451 between 1:00 and 3:00 PM to inquire. The program is exciting today. To maintain order, a ticket fee of three yuan (old currency) will be charged, limited to 600 tickets. There will also be 100 seats available for five yuan each. Please bring your own single ticket. The income, after deducting a portion to cover the field rental fee, will be used for the association's funds. Mr. Zheng Qifeng, who is enthusiastic about sports, has donated two large silver cups. Today's schedule is as follows: Dragon Power vs. Western Union at 5:30 PM</p>
+<p>Western Union: Sennett</p>
+<p>Favaro Xiao, Corasa</p>
+<p>Oliver V, Soshi Gaine, Vaughn, Jie, Walter</p>
+<p>Dragon: Qin Bi Gao</p>
+<p>Wu Qixiang, Jiang Chao, Zhang Lingen, Feng Shou Peng</p>
+<p>Zhang Zhaopeng, Han Longhai, Cai Shengsen, Zhang Banglun</p>
+<p>Yuan Kuntian, Dai Linjing, Mai Youliang, Fei Chunhua</p>
+<h3>Shipping Cup Small Ball Game Kicks Off This Afternoon</h3>
+<p>Ruidong vs. Wanlong Final of the Mei Sheng Cup: The first Shipping Cup Small Ball League, organized by the Wanlong Sports Association, has a total of eight strong teams participating, divided into four groups: "Shipping," "Industry," "Cup," and "Competition," with seven teams in each group. The opening ceremony is scheduled for 3:00 PM today at the Guangxia Middle School playing field on Mulou Road. There will be one Cup match, and Mr. Xu Guisheng, a leader in the shipping industry, has been specially invited to kick off the match. The highlight will be the Mei Sheng Cup final between Ruidong and Wanlong. The cup final has already been held twice, with Ruidong and Wanlong drawing with Xiaowei. Therefore, the winner of today's match will be the overall champion. No tickets will be sold today, and all are welcome to watch.</p>
+<h2>Page 6</h2>
+<p>Family</p>
+<h3>Child Gambles, Loses, and Commits Suicide</h3>
+<p>— Yi</p>
+<p>In the news column of this newspaper on the fourth of this month, there was a piece of news about "A Child Gambles, Loses, and Commits Suicide." A 17-year-old student, because his father was away doing business and there was no one to supervise him, became addicted to gambling and often took household items to pawnshops. The day before yesterday, he was reprimanded by his mother and had the thought of committing suicide. He jumped from the third-floor balcony, injured his head, and died the next day. A young man who could have been promising sacrificed himself in this way. What a pity!</p>
+<p>In the current environment in Shanghai, ignorant young people, if they have weak wills, can easily go astray. Therefore, parents should intensify their responsibility for education and upbringing and should set a good example. Many mothers who spend all day playing mahjong do not supervise their children, allowing them to grow up in a bad environment. How can there be good results?</p>
+<p>Because people generally neglect family education and push the responsibility of educating children onto the schools (this is certainly an unreasonable view), school authorities should also pay special attention to the private lives of students, promote proper recreation, and guide the cultivation of academic hygiene. These should all be included in the work of the schools.</p>
+<p>Being competitive is one of the inherent instincts in human nature, but why not compete for victory and defeat in academics or technology, but insist on using money for gambling? Because ignorant young people still need the supervision of parents and teachers.</p>
+<h3>A Brief Discussion on Coal Balls</h3>
+<p>— Jing</p>
+<p>Coal balls are needed in every household (except for families that use gas or electricity), and monthly consumption is also a large expense in household expenses. For ordinary families, using three bundles a month costs about 150 yuan.</p>
+<p>The creation of coal balls was in Cardiff, Wales, England. The coal produced in that area does not produce smoke when burned, so initially it was used in the navy, pressed into blocks for burning, because if the fuel used in warships had smoke, wouldn't it be seen by the enemy and become a target for attack?</p>
+<p>Later, China had egg-shaped coal balls, which were previously made of Hongji coal. There was not much suffocating smoke when burning, so there was no need for a chimney. Therefore, every family abandoned large stoves and wooden chimneys and switched to coal ball stoves. In fact, people living in Beijing have been using coal balls for hundreds of years, but the coal produced in Beijing is very hard, so it can only be made by hand (using coal dust and water, rolling it into large sieves) to burn. Currently, the supply of Hongji coal is lacking, so Beijing coal is used as a substitute, so it is not easy to ignite. Generally, families have unconsciously created two new terms: "good coal balls" and "bad coal balls."</p>
+<p>To make coal balls of inferior quality easier to burn, you have to smash them and burn them. When burning, they should be placed in the air, because fire needs to be hollow and people need to be solid—you must first seek ventilation, and then there will be considerable firepower.</p>
+<p>The firewood burned in the morning should not be discarded, but should be prepared for emergency use when the fire weakens. Housewives who understand family economics are all paying attention to the coal balls used in their homes. It is best to count the number of pieces used every day to know exactly how much is needed every day. Do not entrust all household affairs to maids and let them dispose of things casually.</p>
+<h3>Family Maxims</h3>
+<p>When in a position of power, you must understand the pain and suffering of the poor and lowly. When young and strong, you must remember the hardships of the elderly.</p>
+<p>People who are lovable must have some shortcomings; do not cover up their shortcomings and protect them. People who are hateful must have some strengths; do not forget their strengths.</p>
+<p>When someone comes to you with matters of fame and fortune, do not ask about the size; respond with a calm heart. When someone comes to you with matters of right and wrong, do not ask about the length; respond with an even heart.</p>
+<p>Do not laugh at honest and kind people for being useless; their uselessness is precisely where they are useful. Do not praise clever people for being useful; their usefulness is precisely where they are useless.</p>
+<p>When you hear people whispering, never eavesdrop. When you see people's private rooms, avoid peeking.</p>
+<p>Treat others with leniency, seeking innocence in those who have made mistakes. Be strict with yourself, constantly seeking mistakes in those who are innocent.</p>
+<p>Let your capacity be as vast as the sea, able to accommodate hundreds of rivers without being full. Let your determination be like Mount Tai, unmoved by the pushing of ten thousand people.</p>
+<p>In quiet contemplation, often reflect on your own faults, and with fewer faults, you will live better days. In idle talk, do not discuss the faults of others, for discussing the faults of others will lead to more faults.</p>
+<h3>Educating Children Should Not Be Too Late</h3>
+<p>— Ji</p>
+<p>Once, a mother took her one-and-a-half-year-old child to see Charles Darwin, the originator of the theory of evolution, hoping that he could guide her on how to raise her child to become an excellent child. Darwin said to her, "You are already one and a half years too late." He meant that in addition to maternal education, prenatal education is also necessary.</p>
+<p>This is an interesting story. On the surface, it seems a bit excessive, but a mother who starts paying attention to raising her child at the age of two and a half is much better than entrusting the responsibility of taking care of the child to a nanny while she spends all day playing mahjong.</p>
+<p>Children's Friend</p>
+<h3>A Diligent Astronomer</h3>
+<p>— Li</p>
+<p>In the year 1546 AD, a child was born in Knard, Sweden. His name was Tycho Brahe, and his parents were very wealthy.</p>
+<p>Many people have to work hard because they are very poor, but he needed to struggle even though he was rich because his parents wanted him to become a lawyer, so they sent him to schools everywhere to study. However, his interest was in studying astronomy, so he used his allowance money to buy a globe. His teacher forbade him to use the globe, so he used his only telescope to look at the stars and the moon from the window of his bedroom. He not only learned a lot of wisdom himself, but also discovered many scholars' mistakes.</p>
+<p>After more than ten years of effort, at the age of thirty, he became a famous astronomer. The King of Denmark sympathized with him and specially built an observatory for him. Finally, he achieved his goal and became an outstanding great scholar.</p>
+<p>Children, think about it. If he had not had ambition and saved his pocket money to buy that globe, how could he have succeeded?</p>
+<h3>Two Roosters</h3>
+<p>— Yan Zhi</p>
+<p>Once, two roosters met in the street. The rooster that won was jumping and crowing proudly, raising its neck high, flaunting its glory of victory.</p>
+<p>Suddenly, an eagle swooped down and snatched it away when it was off guard.</p>
+<p>After reading this fable, we know that a person should not be proud and complacent after achieving some victory anywhere because unknowingly, or some misfortune may come upon you. At that time, you may regret it, but it will be too late.</p>
+<h3>Vivid and Interesting Pictures</h3>
+<p>— Wen</p>
+<p>The method is very simple.</p>
+<p>How can static pictures become vivid and interesting? It's very easy. Just prepare a hard cardboard, cut it to a certain size (one and a half inches long and one and a half inches wide, or larger in proportion). Then, draw two pictures on both sides of the cardboard, with equal positions and preferably related, such as a fish and a fork or a bird and a cage in the attached picture. After drawing, completely blacken the remaining parts of the cardboard. Then, drill a hole on each side of the cardboard, as shown in the center of the attached picture, and thread a thin rope through it and tie it tightly. Hold one rope in each hand and rotate the cardboard up and down, from slow to fast, and faster and faster. In this way, the two things that are clearly drawn will seem to merge; for example, a fish and a fork can change into a flying fork catching a fish, and then change into a fork entering the fish's belly. If what is drawn is a cage and a bird, then it changes into a caged bird with wings spread, and then changes into a bird flying away with the cage door unopened. Isn't this more vivid and interesting than static pictures? Children who are interested may wish to try it!</p>
+<h3>Three Small Math Problems</h3>
+<p>The answers will be published in this journal next Sunday. Now, please use the weekend to put your minds to work and think. Correctly answering three questions will earn you two Shenbao notepads. Correctly answering two questions will earn you one notepad. No gifts will be given for answering one question. Limited to the first 300 correct answers. Please send your answers to the Family Editorial Department of the Shenbao before June 13th. Question 1: Mr. Wang bought a horse for 90 yuan, then sold it for 100 yuan. Later, he bought the same horse back for 80 yuan. How much money did Mr. Wang make from these transactions? Question 2: If six cats can eat six mice in six minutes, how many cats are needed to eat ninety-six mice in ninety-six minutes? Question 3: A gentleman sold two horses for 99 yuan each. Considering the cost, he lost 10% on one horse and made a profit of 10% on the other. Did this gentleman make a profit or a loss on this transaction?</p>
+<h3>A Week's Worth of Home-Style Recipes</h3>
+<p>— Ms. Hua Ying</p>
+<p>The price of durum wheat is close to 70 yuan per stone. Every grain of rice is truly like a pearl. If you can't afford durum wheat, eating steamed buns is also a way to fill your stomach. Last Sunday, we provided a local method for making steamed buns. Some readers wrote to ask about another method: using yeast (Western name Yeast). If the amount is appropriate, the results will definitely be satisfactory. (Yeast can be purchased from Guangdong stores.) Here's how to make it: Use three pounds of flour, one cube of yeast, half a teaspoon of salt, a spoonful of lard, a spoonful of sugar, and warm water. Choose the filling as desired. First, dissolve the yeast in a bowl of warm water and mix it well. Prepare another bowl with half a bowl of warm water and mix in salt, lard, and sugar. Then, mix this liquid with the yeast liquid. Next, place the sifted flour in a mixing bowl and gradually pour in the liquid, mixing well. Adjust the amount of flour according to the moisture content of the dough. After half an hour, pour the wet dough onto a board, add flour, and knead until it is soft and not sticky. Then, place the kneaded dough in a bowl, cover with a clean, damp cloth, and place in a warm place for two hours. Then, you can wrap the filling and place it in a steamer to steam until cooked. It is then ready to eat.</p>
+<p>Monday</p>
+<p>Salted Pork Tofu Soup, Sweet and Sour Fried Yellow Croaker, Dried Bean Curd with Garland Chrysanthemum, Lily Bulb with Water Chestnut</p>
+<p>Tuesday</p>
+<p>Onion Beef Stir-fry, Clear Steamed Crucian Carp Soup, Scallion and Broad Bean Paste, Stir-fried Amaranth</p>
+<p>Wednesday</p>
+<p>Cabbage Rolls, Braised Pomfret, Stir-fried Red Amaranth, Pickled Cabbage with Mung Bean Sprouts</p>
+<p>Thursday</p>
+<p>Tomato Beef Soup, Salted Dried Turnip with Fried Tofu, Vegetable Stir-fry with Vermicelli, Fried Dough Sticks with Soybean Sprouts</p>
+<p>Friday</p>
+<p>Water Bamboo Shoots with Shredded Pork, Pickled Cabbage with Fish, Raw Golden Flower Vegetable, Toona Sinensis with Tofu</p>
+<p>Saturday</p>
+<p>Green Pepper Chicken Stir-fry, Stir-fried Eel Fillets Soup, Vinegar Cabbage, Scallion Shrimp Floss</p>
+<p>Sunday</p>
+<p>Meat Sauce Stir-fry, Steamed Sea Bass, Vegetarian Ten-Delicacy Dish, Stir-fried Green Beans</p>
+<p>Tianchu Recipes (104)</p>
+<p>This recipe is to meet the needs of the environment, soliciting various food preparation methods that can fill the stomach, are affordable, and conform to economic conditions and are in season. This food does not necessarily need to use MSG. This recipe aims to contribute to society and solve the problem of food. The selection of ingredients may be practical, and the preparation method should be simple. Readers are requested to submit manuscripts enthusiastically. Once selected for publication, a small fee will be offered.</p>
+<p>The rewards for those who submitted articles before the end of April have been sent out separately. However, there are some submissions that did not include an address, and those that were returned in the mail have not been delivered. Those who have not received their rewards are requested to come to the office immediately (No. 11, Concord Lane, Park Road) so that they can be supplemented.</p>
+<h3>(184) Mint Wind Cake</h3>
+<p>— Jin Jingzhao</p>
+<p>Ingredients: Cornstarch, Dry Flour, Yeast, Mint, Sugar, MSG Preparation: Add a little dry flour and appropriate amount of MSG, white sugar, yeast, etc., to the cornstarch. Pour mint water (mint can be purchased from pharmacies, wash and boil in water) into it and mix well. Then, put it in a steaming basket and let it ferment (until bubbles appear). After steaming, cut it into rhomboid pieces, which are quite beautiful in shape and color. It tastes soft, sweet, and refreshing, and is truly a wonderful product for summer, and an economical snack.</p>
+<p>Introduction: A wonderful product for summer, and an economical snack. Tianchu MSG Factory's "MSG," "Wei Zong," "Tianchu Soy Sauce Essence," and "Tianchu Household Lotus Root Powder" are sold in major companies and southern goods food stores in the city.</p>
+<p>Family Mailbox</p>
+<h3>Still Love a Person with Epilepsy</h3>
+<p>— Zhen</p>
+<p>Dear Editor: I am an eighteen-year-old girl who is still in elementary school. Four years ago, I started living with a twenty-year-old (we were in high school and got along for a long time, and our friendship developed into love. Although he moved elsewhere last year, we still meet on holidays. Now we have decided to grow old together. However, the problem has arisen because he suddenly contracted epilepsy at the age of five. Doctors have been consulted everywhere, but to no avail. It has been fifteen years now. It will recur after overexertion. My mother does not allow me to marry him because he has this disease, and she says that epilepsy is hereditary. This matter has made me think over and over again, and I can't find a solution. If I want to break off relations with him, I am not willing to do so. Therefore, I ask the following questions, hoping you can give me a satisfactory answer. Is there any hope of curing epilepsy? Which doctor should I consult? Can people with epilepsy not get married? I am determined to marry him, but my parents are preventing me. How should I deal with this? Is it appropriate to make an agreement with him in private? If both parents do not allow us to marry, what method should I use to deal with it?</p>
+<p>Zhen: After four years of friendship, you will naturally develop strong feelings for each other, but marriage is a matter of lifelong happiness, and you must not let emotions cloud your judgment. Your parents' opposition is entirely for your future happiness, so this opposition is completely different from the ordinary parental opposition to their children's marriage. Here are the answers to the questions you listed:</p>
+<p>Epilepsy is a disease of the nervous system and can actually be cured. You should find a doctor specializing in the nervous system and not give up hope. You should find a way to get treatment as soon as possible. People with epilepsy should not get married because you will not have the happiness you hope for after marriage, and the children you give birth to will definitely not be healthy (this is even more important, so do not be moved by temporary emotions before the disease is cured, creating an unhealthy family with sick children). It is not appropriate to get married until the first problem is resolved. Your parents' prevention is entirely a reasonable and well-intentioned measure. You must not, unless you only care about the feelings of the past four years and do not care about the family happiness of the next fifty years.</p>
+<h2>Page 7</h2>
+<p>Business News</p>
+<h3>Public Bond Shorts Repeatedly Exert Pressure, Longs Are Able to Cope With Ease</h3>
+<p>Regarding the bond market, the situation reversed yesterday. Due to decreased aggressive selling, the momentum of the longs increased, and the arrogance of the shorts decreased. The market sentiment was excited, and the power of the shorts was not as strong as before. Even with repeated pressure from the shorts, the power of the longs was enough to cope with ease. Many in the market have the feeling that saving money is not as good as saving public bonds. Therefore, amidst widespread buying from all parties, it continued to rise by seven points. Compared with the previous price, Class A broke through the 71 mark, reaching 72 yuan. Class B also approached 70 yuan. The excellent trend is rare in the current environment. Yi Tai and Shun Tai first bought in, followed by Run De and Guan Gong. Wu He, Yu Zhong, Da Tong, Bao Long, Hu Ji, etc. also bought in, still supplied by Tong Li, Tong Kang, Hong Da, Lian Yi, Zhong Fu, Tong Shun, etc. Market prices still trended upward, resulting in a uniform increase of 2-3 jiao to 1 yuan 1 jiao. Transactions amounted to more than 1 million yuan. The detailed list follows.</p>
+<h3>Chinese Stocks Buying Still Very Enthusiastic</h3>
+<p>The surge in Chinese stocks remains strong. Buyers and investors are still enthusiastically absorbing them. Sino-French (new) rose from 80 yuan to 85 yuan. New Asia (new) soared from 28 yuan to 43 yuan, later quoted at 12 yuan. Cun Liao 27.5 yuan, a huge increase of 2.5 yuan. Sino-Western Dispensary 510 yuan, Wing On Company 80 yuan, Sincere 85 yuan, each up about 5 yuan. China Underwear 23 yuan, rising to around 35.1 yuan. Great China Match 175 yuan, China Merchants Gas 27.5 yuan, Zhabei Water often rose to 27 yuan, Yongxiang Bookstore 27.5 yuan, Commercial Press 290 yuan, China 190 yuan, Nanyang Brothers Tobacco Company rose to 62 yuan. Shuang Ma yarn's rapid buying and selling already exceeded the Japanese yarn factory price by 100-200 yuan per unit.</p>
+<h3>Shuang Ma Yarn Rapidly Bought and Sold, Already Higher Than Japanese Yarn Factory Price by 100-200 Yuan Per Unit</h3>
+<p>The yarn market has turned upward. This is because raw materials are difficult to loosen, so costs cannot be reduced. 42-count Blue Phoenix 9300 yuan to 9400 yuan, 42-count Moon Goddess 8600 yuan, 42-count Fairy Peach 8650 yuan, 42-count Water Moon 8800 yuan, 80-count Colored Ball 16,000 yuan, 60-count Hunter Phoenix 18,400 yuan, 20-count Water Moon 5950 yuan, 10-count Yang Crane 5150 yuan, 10-count Moon Lute 5100 yuan, 10-count Golden Pagoda 5000 yuan, 10-count Shuang Ma 5100 yuan to 5150 yuan, 10-count Shuang Hu 5150 yuan, 16-count Red Kui 4750 yuan, 14-count Weaver Girl 4810 yuan, 10-count Red Shuang Ma 4900 yuan, 10-count Red Bao Yi 4000 yuan, 10-count Green Bao Yi 3700 yuan. The initial price of 10-count Shuang Ma factory yarn was high at 5400 yuan. Those who made a profit at this time released their holdings, causing it to fall to 5300 yuan. Finally, with renewed confidence, it closed at 5400 yuan. Currently, the price of Shuang Ma factory yarn is already higher than the price of 10-count Japanese yarn factory yarn by 100-200 yuan per unit. However, speculators use margin relationships, so when they release, prices fall, and when they buy, prices rise.</p>
+<h3>Firms Seek Out Dong Pi Factory Orders</h3>
+<p>Yesterday, due to the continued rise in yarn prices and strong buying interest both inside and outside the industry, various cloth mills continued to rise. 16-pound Earth coarse cloth 205 yuan, Flying Hong 195 yuan, 8-pound Zhen Zhong 113 yuan, an increase of about 5 yuan per bolt. 12-pound Earth 177 yuan, Da Peng 170 yuan, Fu Gui 65 yuan, Peach Blossom Women's Forest rose from 280 yuan to 288 yuan, an increase of 8 yuan. Magnolia bleached cloth 180 yuan, Qin Liangyu 70 yuan, remained unchanged. Chang Zhuan Fu silk 6.75 yuan per chi, Volleyball gauze Fu silk 9.15 yuan per chi, also rose by 2.5 jiao per yard.</p>
+<p>Dong cloth: Yesterday, the spot market rose because firms sought out woven factory warehouse orders, and powerful figures in the industry only bought and did not sell, and the rising trend restarted. The new order for 12-pound Tou Xi fine cloth opened at 214 yuan, slightly fell to 212 yuan, and then gradually rose to 219 yuan at noon closing. Monday's price was 320 yuan. Colored ball fine cloth 193.5 yuan, Junzi Bi opened at 7.85 yuan in the morning and rose to 8.1 yuan at closing, Monday's price was 8.2 yuan, biting the market with a sharp increase of 4.5 jiao per yard.</p>
+<h3>Cash Soars</h3>
+<p>The black market for cash has turned strong again. This is because Tianjin Gang Bao Yi reported favorable news, and the financial community and asset holders are absorbing it. Furthermore, the sharp rise in cotton yarn has suddenly boosted confidence in all sectors. The initial transaction price in the morning was 20,200 yuan, up 200 yuan. Cash firms and securities firms acted as agents for the Tianjin gang to sell aggressively, cutting 150 yuan to 19,950 yuan. Around 10 o'clock, the Tianjin gang stopped selling, and the market suddenly strengthened. Banks and some securities firms increased their bids, up 200 yuan from the previous day. After the close, the asking price immediately increased. A certain gold firm and securities firm and a certain gang discussed raising the price in the hall, rising to 20,500 yuan at noon. The exchange rate for gold ornaments was still quoted at 2,200 yuan per tael by Da Xin and its peers (buying price reduced by 200 yuan). Silver bullion was quoted at 16 yuan, the black market has risen to 19.5 yuan, and silver coins were also slightly higher at 8.5 yuan each.</p>
+<h3>Gold Pound Continues to Rise</h3>
+<p>Yesterday's foreign exchange market saw the British and American gold pounds continue to rise by 10 yuan, the former to 520 yuan, the latter to 510 yuan. US dollar notes were 28 yuan, Hong Kong notes were high at around 3 yuan, and military notes were 5.45 yuan.</p>
+<p>The Money Trade Association discounted interest by 1.5 jiao. The discount rate for new exchange bills remained unchanged at 1/10th of a chi. External firms had to pay a handling fee of 20 yuan. The price difference between savings certificates and legal tender was 2 yuan and 2.02 yuan, which was also flat.</p>
+<h3>Sweet Potato Noodles Increasingly Adopted</h3>
+<p>Soybean trading saw a decline yesterday. This is because the miscellaneous grain group had already dispatched a small number of soybeans, leading to a wait-and-see attitude. Buyers were very rare. Only 50 packages of Chongming beach red beans were opened in the unified market, selling themselves at 203 yuan in old currency, and one package of Shaba sold itself at 83 yuan in new currency.</p>
+<p>The arrival of corn was not active, and scattered households were quite willing to let go, and the market was flat and tired. Yesterday, more than 200 packages of Wuhu corn were sold, priced at 98 yuan in new currency for delivery, selling themselves at 96 yuan. One truckload of Chuzhou corn was priced at 98 yuan in new currency for delivery.</p>
+<p>Soybean cake sales were still not smooth, and transactions remained sporadic. The market trend continued to lack change. A total of 300 warehouse orders for Li Zi soybean cake in May were priced at 43 yuan in new currency. Hankou overnight cake 1000 yuan, 31 yuan to 30 yuan. Xing Ji soybean cake 500 old warehouse orders in April, 35 yuan, and 500 new warehouse orders in May, 45.5 yuan.</p>
+<p>Sweet potato noodles: Because more and more poor people are eating them, sales are quite good, and the market trend is gradually strengthening. Yesterday, 50 packages were opened at a price of 116 yuan in new currency.</p>
+<p>Wheat bran: Sellers were scarce, and sentiment was upward. Yesterday, 300 small packages of wheat bran were opened at the end of May, and 500 packages of warehouse orders were priced at 75 yuan in new jurisdiction.</p>
+<h3>Sea Cucumber Colors Incomplete</h3>
+<p>Sea cucumber: Because the market has incomplete files, especially the foreign goods are rare, and the eastern goods, such as patterned sea cucumber and ten-strand sea cucumber, are lacking. Only bottle sea cucumber has some inventory, but the number is also limited, so the market price has risen again. The current market price is 800 yuan in new currency, which is about 100 yuan more than the previous price in old currency.</p>
+<h3>Red Dates New Market Opens</h3>
+<p>Red dates: Because there are not many Shen deposits, and although the Tianjin numbers have been planned for some time, the asking price has frequently increased, and the future has a tightening trend. Yesterday, several dozen packages of Cangzhou red dates were opened, priced at 135 yuan in new currency.</p>
+<h3>Bamboo Steel Bars Quiet</h3>
+<p>Due to the sharp decline in the local construction industry recently, coupled with the suspension of sales to northern customers, the market for 10-foot bamboo steel bars has been quiet. However, the shouted price of Tongcai is still high, and Bao Xiao Yi is more and more. Yesterday, for example, 3-4 point patterned steel bars sold for 7670 yuan per ton in Central Reserve certificates. 5-point to 1-inch upper body sold for 7500 yuan per ton. Other patterned standards are also firm, such as old oil pond steel plates sold for 7000 yuan per ton, Zheng Hao Che Guang 13,000 yuan, Fu Hao Jun Guang 10,000 yuan, scrap iron (Grade A) opened at 1000 yuan, (Grade B) 850 yuan, (internal grade) 700 yuan per ton.</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.06.06.html", "next": "1942.06.08.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

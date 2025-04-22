@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.09.05 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 454 - 4924593</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日軍奇擊成功　佔領小巽他島　就地民兵自動解除武裝</h3>
+<p>的摩爾島右邦四日同盟社電　的摩爾島北方小巽他羣島中完把島·龐塔盧島·倫浦林島等三地、自日軍於六月廿八臼奇　上陸後、即經完全敉平、完把島人口約十萬、荷印曾派兵駐此、日陸軍部隊在該島卡拉派部落上陸之前、該部落烏馬爾王即將所捕獲之荷兵及官吏等送至日軍部隊、當日軍上陸時、烏馬爾王復率大羣民衆親自出迎、同時並沿途奏樂、以表歡迎、就地民兵亦即自動解除武裝、且表示與日軍協力、現彼等早已改編爲維持島上治安夕警備巡捕矣、又該島其他三十一王亦一致與日軍協力、驅逐荷人、當地華僑尤能與日軍親密合作、至其他兩島荷軍無若何防衛設施、故其敉平更爲容易、日軍上陸時、島上住民均在海邊表示歡迎、</p>
+<h3>日機昨擊衡陽　零陵桂林同時被炸</h3>
+<p>南京四日同盟社電　此間日陸軍報道部午後四時宣布、日陸軍轟炸機昨襲衡陽、零陵與桂林飛機塲、在後兩機塲上擊毀戰鬥機七架、按此等飛機塲已遭日機數没襲擊</p>
+<h3>埃及前綫　戰事沉寂　德機炸海德港</h3>
+<p>柏林四日海通社電　此間獲悉、英軍集中在埃及前綫之坦克車與卡車、昨會遭德機猛烈轟炸、亞歷山大附近之英機塲亦遭德機襲擊、</p>
+<p>倫敦三日哈瓦斯社電　頃據埃及方面來電稱、埃及前綫各區、戰事依然沉寂、</p>
+<p>海法三日哈瓦斯社電　官方宣布、軸心國飛機兮晨轟炸本港、有數彈落於城外、地面略有損失、英國飛機曾升空迎戰、</p>
+<p>羅馬三日哈瓦期電　總司令部頃宜布、埃及前錢各處、昨日斥堠戰甚劇、英方損失坦克車五十一輛及裝甲車二十輛、軸心國空軍轟炸敵軍各集中點、頗爲得手、空戰結果、英機二十一架被德機擊落、另有英機三架被高射砲擊落、兩日以來、我機五架未返根據地、我空軍第四團第八十一隊已出戰百次之多、均告得勝、</p>
+<h3>美澳巴紐簽訂　互助協約</h3>
+<p>里斯本四日海通社電　咋日華盛頓文告透露、美、澳、巴西、紐西蘭及特戈爾將軍領導之政府、簽訂互助協約、</p>
+<p>里斯本四日同盟社電　據華盛頓訊、美國爲誘使特戈爾派更積極參與反軸心之戰爭努力起見、昨與特戈爾政權締結互助協定、美國並與英國·澳洲及紐西蘭締結相類才協定、訂明英·澳·紐與特戈爾政權將以戰具與服務、接濟美國、其條件與美國予彼等以租借援助相同、</p>
+<h3>華維爾　廣播演說</h3>
+<p>瑞七京城四日同盟社電　據新總里電、印度方面總司令華維爾將軍咋夜廣播稱、莫斯科及開維兩處、重要會議席上、並無悲觀氣象、中東方面協約軍戰鬥精神、亦未因六月間挫折而减退、其攻擊力已告恢復、吾人不宜只顧自身之失敗而困難、而當注意對方之困難、</p>
+<h3>威爾基　將訪土京</h3>
+<p>斯丹埠四臼同盟社電　土耳其外長孟門卓格魯頃從土京抵此、立即晤總統伊斯美於總統之別墅、所談者、大約與美羅斯福總統專使威爾基行將訪問土京事有關、按威爾基刻在開羅、</p>
+<p>土京四日海通社電　羅斯福總統之特使威爾基、定今午十一時乘飛機抵此、據土國外交部交際司稱、土國總統伊斯美尚未決定於何時接見威爾基、</p>
+<h3>希特勒委任　空防署長</h3>
+<p>柏林四日海通社電　希特勒咋派高射砲隊將軍希爾孝爲察防署長、主管全國防空事官、</p>
+<h3>維希國務會議</h3>
+<p>維希四日哈瓦斯社電　內閣今晨舉行國務會議、貝當元首主席、</p>
+<h3>美軍開抵　比屬剛果</h3>
+<p>里斯本四日海通社電　頃接電訊、美軍若干人開抵比屬剛果之首府里沃波斯維爾、</p>
+<h3>直布羅陀　重要會議　美大使前往參加</h3>
+<p>蘇列克四日同盟社電　據馬德里消息、美國駐西班牙大使海斯、昨偕美大使館要員突離馬德里前往直布羅陀、馬德里觀察家相信、海斯擬往晤直布羅陀英當局、討論美國協助西班牙、而盼西班牙對美洲各國保持友好中立之問題、</p>
+<p>馬德里四日海通社電　美國駐西班牙大使海斯、咋午乘飛機離此赴塞維拉、轉赴直布羅陀、參加重要會議、</p>
+<h3>印度監獄暴動</h3>
+<p>西貢四日海通社電　據此間昨晚息、孟加拉省達加監獄昨發生自印度發生動亂以來最嚴重之衝突、有獄犯廿九人及獄卒一人斃命、獄犯一百卅六人受傷、衝突發生時、獄犯作有組織夕暴動、獄卒倉惶開槍、遂肇巨案、</p>
+<p>里斯本四日海通社電　倫敦新開記事報駐新德里特派員稱、印度因暴動而損失之財產、估計約値數百萬鎊、政府機關房屋之受重大損失者不下二百餘所、</p>
+<h3>弗朗哥改組西內閣　外陸內三部長易人</h3>
+<p>馬德里三日哈瓦斯社電　弗朗哥元首本日簽署命令、更迭內閣重要閣員多人、其人選如次、　外交部長蘇納辭職照准、遺缺由查達那將軍繼任、政洽會議主席一職、原由弗朗哥元首兼任、茲已改由查達那兼任　陸軍部長伐萊拉將軍辭職照准、遺缺由亞遜西沃將軍繼任、　內政部長加拉柴上校辭職照准、遺缺由卡勃萊拉繼任、　長槍會副秘書長孟特茲去職後、所有職務業由現任東綫西班牙志願軍「藍師」參謀長費圭洛亞少校代理、茲巳命其正式繼任、</p>
+<p>馬德里四臼海通社電　西班牙新閣員咋夜在弗朗哥將軍之官邸埃爾帕多宮舉行宣誓禮後，內閣舉行會議、由弗朗哥主席、所討論之問題未經公布、</p>
+<p>馬德里四日海通社電　西班牙新閣員定今日宣誓就職、前外長蘇納昨夜在報端刋載告別外交部同人之啟事一則、今晨仍將按時到部、接見新外長查達那·處理公文移交之手續、新近辭職之陸長伐萊拉已有四日未到部、</p>
+<p>馬德里匹日海通社電擄與西外部接近人士方面消息、西外長雖更動、外交方針並無改變、查達那將軍會於內戰方酣、局勢艱難之際、任外長之職、彼時與英法辦理外交事務、手段靈敏、處事有方、此次出長外交、可慶得人、弗朗哥將軍亦曾數度闡明、保持外交政策一貫方針、不予變更、</p>
+<p>馬德里四日海通社電　官方宣布內閣變動後、識者謂、此次西班牙閣員更動之主旨、爲化除黨軍兩界之隔閡、俾得增進行政之效率、</p>
+<p>馬德里四日海通社電西班牙內閣突然改組、頗使一般人感覺驚異、雖更動之說、謠傳已久、然外長兼法輪琪黨政治委員會主席蘇納之辭職、則殊出人意料之外、昨晚六時四十五分（馬德里時刻）報紙巳悉即將有重要公報發表、未幾又奉令暫停付印、一小時後、內閣改組之訊、遂成爲各晚報之大標題矣、政界人士認爲內閣改組後、西政治組織內之軍事大量巳見增强、數月來迭有軍界有經騐之七新任要職未始不爲此次改組之先聲、</p>
+<p>馬德里四日海通社電　新任外長查達那將軍、爲弗朗哥將軍之好友、於內戰時期、國民政府在蒲爾哥斯成立時、即仟外交部長、新任陸長阿遜西沃在弗朗哥將軍才好友、會仟西屬麼洛哥高級委員、穩健而有幹才、最近任參謀總長兼陸軍部次長、新任內政部長卡勃萊拉。爲法倫琪黨老黨員、會任加泰隆尼亞大學法律教授、</p>
+<h3>英機將廣泛炸　法淪陷區　辛克萊廣播演說</h3>
+<p>倫敦三日哈瓦期社電　航空大臣辛克萊、本日發表廣播演說稱、歐洲淪陷區所有鐵路工人及碼頭運輸工人、均有遭英機襲擊之可能、每一火車頭每一駁船、均係作戰武器、自又加以襲擊之必要、英機發現任何地點有貨物遝輸時、自當設法加以摧毀、</p>
+<p>巴黎四日海通社電　據拉巴特息、英機昨飛越法屬摩洛哥之南部時、又有飛機一架幾擊落、法屬摩洛哥於數日來擊落之英機已達五架、</p>
+<p>法國聖那柴爾港三日哈瓦勘社電。七千噸貨船一艘、已於本月一日在邦霍埃船塢下水、此爲法國淪陷區所造第一艘新船、</p>
+<h3>土總理偕軍官　視察東疆</h3>
+<p>羅馬三日同盟社電　據安加拉消息、土國總理薩拉卓格魯、偕土國高級軍官、頃已行抵土、蘇邊界附近之卡斯地方、視察土國東部、</p>
+<h3>羅倫區居民　須服軍役</h3>
+<p>瑞士京城四日哈九斯社電羅倫區行政長官勃格爾今日下令、羅倫區所有居民、均須依照德國本部情形、加入軍隊服役、據上星期內亞爾薩斯區行政長官亦曾發表此項命令、所不同者、羅倫行政長官所頒發之命令、規定服軍役者、須受年齡限制、且須係屬日耳曼種、</p>
+<h3>英陸軍部　檢討戰局</h3>
+<p>瑞典京城四日海通社電　英國睦軍部於昨日檢討歐戰三年來之戰局、申述英美兩國、準備開關第二戰錢、巳歷數月之久、不列顚羣島將爲英美進攻西歐之根擬地、英軍及協約國軍隊、正在英國海岸、作登陸戰之訓練、</p>
+<h3>羅斯福昨向　學生代表演說</h3>
+<p>里斯本四日海通社電　昨午羅斯福總統向美英蘇及他國學生代表約三百名、發表演說、承諾建樹一新「世界文化」、羅氏　指責軸心國軍事領袖、「賜給靑年者、無他、死而已矣、英美蘇諸協約國　　　視者、靑年之前途也」、又稱此次作戰之主旨、爲融化歐亞美各洲之文化、創造一眞止的世界文化」、</p>
+<h3>英商船被擊沉</h3>
+<p>華盛頓三日哈瓦斯社電　海軍部本日發表公報稱、英國中型商船一艘、於八月中旬、在加勒比安海面、被魚雷擊沉、</p>
+<p>里斯本三日哈瓦斯社電　英國輪船「荷蘭賽特」及「本洛司」號、今晨在距葡萄牙海岸十六英里處雪奈斯及藤爾杜亞兩角之間被魚雷所擊沉、獲救船員九十六人、已乘西班牙漁船兩艘抵此、</p>
+<p>瑙典京城四日海通社電　據英海軍部公布、英航空母艦鷹軍在地中海被擊沉、艦員喪生者、井一百六十名、</p>
+<h3>智利總統聘美</h3>
+<p>智利京城四日海通社電　智利總統厲沃斯、定於十月十五日乘飛機訪間美國當局、並擬於赴美途中、往秘魯·赤道國，及哥倫比亞三都、各勾留一日、在巴拿馬躭擱兩日、在墨京亦擬稍作勾留、</p>
+<p>智利京城三日哈瓦斯社電里沃斯總統美國之行、大約將歷時一月、據各報載稱、總統當以聘問太乎洋沿岸各國始、而以聘問大西洋沿岸各國終、聞中美哥斯達黎加政府、亦邀請里沃斯總統、便道前往該國一遊、</p>
+<p>智利京城四臼海通社電　智利總統厲沃斯擬於返國途中、歷遊古巴首都、委內瑞拉、巴西京城、烏拉圭首都、阿根廷京城、隨侍總統訪問各國者、已內定爲貿易部長阿爾薩芝、及總統府秘書長魯伊芝、</p>
+<h3>歐戰三週紀念日　倫敦舉行祈禱</h3>
+<p>里斯本四日同盟社電　咋爲歐戰第三週年紀念日、英國奉國王喬治六世諭、各教堂於是日舉行祈禱以資紀念、晨間十時則由英國·播電台播送祈禱節目十五分鐘、</p>
+<p>瑞典京城四日海通社電　倫敦電訊、昨爲戰爭第三週年紀念、英國各地民衆昨均在教堂舉行祈禱、邱吉爾及其閣員亦參加衛期特敏斯特大教堂之祈禱儀式，</p>
+<p>羅馬尼亞京城三日哈瓦斯社電內閣協理米契爾恩多奈斯哥、乘現行歐戰三週年之便、發表廣播演說、略謂、德國元首希特勒、倘未預見鮑爾雪維克主義之危險、則今日歐洲、將至如何境地、時至今日、現行歐戰、已入第四年、吾國軍隊、刻正與德軍並肩作戰、以反抗危害吾國之惡勢力、</p>
+<p>雅典四日海通社電　希臘總理查拉柯格魯、於歐戰已週年紀念日發表演說、指陳希臘與新歐洲及軸心國家間密切之聯　、</p>
+<p>里斯本三臼同盟社電　據坎培拉來電、澳首相寇丁於三二日英國對德宣戰三週年時、會向全澳發表廣播演說、指出澳洲之危機、以促其國民之覺悟、</p>
+<h3>澳蘇將提早　樹立外交關係</h3>
+<p>西貢四日海通社電　此間人士相信、澳洲外相愛伐特昨夜在坎伯拉演說之意向、爲澳洲將與蘇聯提早成立外交關係、愛氏稱蘇聯之抗戰爲世界最大之希望、故澳洲心須與蘇聯維持密切關係、</p>
+<h2>Page 3</h2>
+<h3>斯達林格勒戰事已進入最後階段　德軍實行慘烈包圍戰　爾齊夫蘇軍攻勢仍勁</h3>
+<p>柏林四日同盟社電　今日據此間軍界消息、斯達林城爭奪戰最高潮已經過去、現已近尾聲、蘇聯南路總司令丁　生　將雖以全力阻止德軍攻勢迄無效果、</p>
+<p>柏林四日同盟社電　德軍司令部今日宣布、德軍已進抵斯達林格勒西郊、</p>
+<p>里斯本四日中央社電　綜合各方消息、進攻斯達林格勒之德軍、迄三日爲止、於烈日灼炙下展　大戰車戰　市西南方最爲危迫、德軍以二百輛戰車、十五萬兵力、與掩蔽天空之急降轟炸機相呼應、自斯達林格　　南以迄伏爾加河全綫、同時實行慘烈之包圍戰、又該市西北方戰區之蘇軍、現正迭行拚死反玫、圖　正德軍前進、</p>
+<p>柏林四日海通社電　　軍界權戚方面透露消息、斯達林格勒之戰事、已由最激烈之陪段進入最後　段矣、斯達　之衛隊已協助作戰、殆將竭力保衛該城、</p>
+<p>德兀首行營四日　通社電　今日德軍戰報稱、九月一日德羅聯軍得海空軍之助、巳渡過寇爾許海峽、擊潰敵軍之堅强抵　後、即　破其沿海防綫、迅速推進、已於昨日與自東推進之維軍取得聯絡、塔曼半島之　軍現仍在頑抗中、諾伏洛西斯克西北之山上要塞續有被吾軍佔領、德摩托魚雷艇在黑海東部擊沉敵船三艘、共八千五百噸、自高加索戰爭開始迄今德海軍已擊沉蘇聯商船三萬五千四百噸、德軍進攻斯達林格勒、已於咋日進入該城西郊、該城北面之德軍在伏爾加擊沉敵砲艇三艘、戰艦二艘、貨船三艘及小船多　、卡魯加西南與梅狄恩西北敵軍進犯、均被吾軍擊退、爾齊夫方面敵軍進犯亦未獲逞、共搫毀敵戰車八十三輛、敵機轟炸束錢中路德軍某機塲、被吾擊落二十四架、伊爾門南　敵軍局部進犯、亦予擊退、拉多加湖南面及列寗格勒前綫、敞　進犯亦未獲逞、敵軍企圖偷渡奈伐河、被吾擊毀敵船二十艘、</p>
+<h3>斯達林城數區蘇軍退新陣線</h3>
+<p>英斯科四日哈瓦斯社電　總司令部今晨宜布、紅軍咋日繼續在斯達林城西南及諾伏洛西斯克西北撇退、</p>
+<p>瑞典京城四日同盟社電　斯達林格勒西北與西南之蘇軍陣綫、遭德大軍二十五師及坦克車數白輛攻擊、已告不克、而數區蘇軍正退全新陣綫、　蘇方紅星報戰稱、該城西北與西南戰事之激烈、及雙方出動士　武器數之衆多、爲蘇境歷次戰役所未見、蘇方消息承認、城之四北德軍　力重大、該方面數區之德軍人數、昨已增加二三倍之多、西北　數區之德軍、已突破蘇軍之外圍防綫、刻正惡戰中、斯城上空德機屢施俯　襲擊、蘇方戰鬥機加以阻擊、不斷發生空戰、蘇方公報承認斯城以南之德方坦克車與步兵已獲前進、另一區蘇軍亦被迫撤至新陣綫、公報又披露、蘇軍在諾伏洛西斯克戰事中、續取守勢、德坦克軍與摩托公步兵於飛機大砲猛擊之後、突入蘇軍陣地、又聞德軍並已重新進　格洛慈尼油田、詳情未悉、</p>
+<p>瑞典京城四日哈瓦斯社電　德軍總攻斯達林城內圍防綫之緊急情形、與時俱增、城北城西戰事亦甚猛烈、蘇聯軍隊步步退却、不得不集中在較狹促區城、據蘇聯方面公報、德車機械化部隊所受損失尚難全部統計、僅知在一處戰區、德軍戰車三十八輛中、被擊毀者僅有六輛、另一處德軍戰車二十輛中、有十一輛被衝過、時至此際、德軍突破斯達林城內圍防綫之處、已不勝枚舉、軍事專家今日咸謂、蘇聯軍隊挽救斯達秣城之希望、已日趨渺茫、守軍雖在數處地方從事反攻、亦無法轉危爲安、德方丞認敵軍抵抗堅强、作戰勇敢、但預料斯達林城之陷落、僅時間問題、惟亦不以爲守軍將突然屈服、蓋有奧特薩及塞伐斯托波爾前車可鍳也、四十八小時以來、德軍在城南之攻勢、益見激烈、並巳於惡戰後奪獲山頭一座、該山足以俯視克拉斯那梅斯克鎭、至於城西城北、蘇聯軍隊抵抗較有效力、至於德軍其他目標有二、一爲黑海要港諾伏洛西斯克、一爲高加索方而之格洛慈尼、黑海方面、德軍攻勢已爲大雨及地勢所阻、蘇聯方面、則擬自海道接濟諾伏洛西斯克、似有久守之意、惟增援部隊能否及時開到、頗屬可疑、格洛慈尼方面、德軍步兵及戰車、已渡過特勒克沙、油區已受直接威脅、</p>
+<h3>諾伏洛西斯克西北一帶戰</h3>
+<p>莫斯科三日哈瓦斯社電　蘇聯統帥部頃發表戰報　、過去二十四小時上、我軍在斯達林城西北、西南及諾伏洛西斯克港西北一帶與德軍　戰、其他各縣無重要變化、</p>
+<p>烏克蘭邊境哈瓦斯社電　前縣昨日最重大之變化、　為德軍向諾伏洛西斯克附近進展、距該港僅十英里之夏浦蘇格斯加亞城、昨已被德、羅聯軍佔據莫、斯科今晨首次發表公報、提及諾伏洛西斯克東北之戰事、德國飛機不斷轟炸該港、預料該區現正從事大規模撒退、目前在諾港之蘇軍似有三師、高加索前錢共他各路局勢、較爲穩定、德蘇兩軍地位、均無變動、蘇軍防力似較前爲强、據德國軍事專家談稱、高加索小地並無統一陣綫、各軍現正個別作戰、</p>
+<p>柏林四日同盟社電　官方宣布、九月一日波寇爾許海峽在塔曼半島登陸之德軍、今日已從東前進之羅軍獲得聯絡、在塔曼牛島被截斷之蘇軍、仍加抵抗、但其軍力並不龐大、</p>
+<p>蘇聯邊界某地三日哈瓦斯社電　本日爲德蘇戰爭第四百三十八日、斯達林城所受壓力、依然如故、德軍及其友軍、自南北西三方面進攻、各路前綫距城約十五英里至二十五英里、城西及西南方面之蘇軍、處境極爲危險、而北路德軍亦進抵伏爾加河畔之杜勃伏加城、惟該處德　交通綫時有受蘇軍襲擊之　、故形勢尚不十分　重、蘇聯方面現亦承認該城形勢危急、惟蘇軍抵抗極為堅強、丁莫生柯上將在克萊資卡亞區展開之反攻、仍使德軍統帥部不能安枕、據本日柏林接獲報告、斯達林昨乘砲艦一艘、離開阿斯特位漢城、已於本日駛抵斯達林城坐鎮、足見蘇軍勢將守城到底、至爾　夫前縣、蘇軍攻勢仍極強勁、蘇方會調集大批坦克車助戰、損失慘重、惟截至目前止、蘇軍並未獲自重要戰果、高加案前綫無大變化、西路德羅聯軍對諾伏洛西斯克港之壓力、依　有增無减、蘇軍地位危急、雖竭力利用地勢、以圖阻止德軍、但預料其抵抗力之崩潰、僅屬時間問題、東南方面特爾萊河一帶、現亦有戰事、聞德軍巳在莫資多克區渡河、此在莫斯科方面、則謂德軍尚未能在南　建立橋頭、</p>
+<h2>Page 4</h2>
+<h3>為抑低物價籌設產銷聯合組織　製造批發零售一致行動　日來商店售價已見抑低</h3>
+<p>英文大美晚報　、工部局物品統制處主任稻　今日（四日）向記者概述當局爲抑低物價而刻正加　調查之各種因素、略稱、製造商·此發商與零售商各自成立聯合會、　酊給之計劃、將在一般的穩定上海生活狀况之工作中、佔一重要部份、</p>
+<p>批發價格積極調整</p>
+<p>日當局最近頒佈之物價統制通告、旨在謀取生活標準之穩定、並指導民衆瞭解與合作、目下當局從事種種研究、莫不儼格遵照近頒之物價統制通告辦理、而工部局之行動、均與日當局合作進行、以目前而言、僅零售商已受統制、故倘須更深刻調香批發商與零售商間交易之價格、對於批發商與零售商間之售價、加以調整、實乃極重要少事、一如製造商與批發商間之售價亦須加以調整然、</p>
+<p>考量適當配給計劃</p>
+<p>當局爲對製造商售價、加以　當之統制起見、現囑彼等是報製造費用之詳報、然　將蒐集批發商之成本若干加以調查、最後始調查零售商之成本、配給物品之方法、當局亦將加以研究、而考量適當之配給計劃，亦屬必要之舉、俾能發現其缺乏或不足之處、職是之故、製造商。批發商與零售商、均須分別成立聯合會、</p>
+<p>三方商定一律價格</p>
+<p>而由此三個部份、商定一律之價格、呈請當局核准、當局則參酌物品成本之詳報、保證樹立合理之物價水準、尚有若干種零售商業、並不列入普通零售業者、將由工部局嚴施統制、務使其保持合理之售價、今受日當局統制之一切物品售價、或將大减、而從臼本等地運滬之物品、亦僅許獲取合理之利潤、以言內地運物供給上海事、渠認爲「廉供廉購」、可使內地產物順利運滬、同時、物品之運輸與移動許可、應有較大之自由云、</p>
+<p>商店售價均見低落</p>
+<p>大通社云、本市整個民生經濟狀況已爲當局之積極採取嚴峻抑價辦法而轉佳、各大百貨公司於本月來、巳逐漸對所出售之貨物標價、使其符合於當局所規定之限價、其影響所及、使本埠其他各商店所原定貨價、均起動搖、此等商店店中皆預料於不久期間、當局將施壓力於若輩所售貨物之範圍、故現時亟　脫手、均巳稍將價目减低、以免日後被</p>
+<h3>强迫壓抑</h3>
+<p>至更低價目時之地步、昨據記者探悉、本埠首先依照當局規定貨價出售之中國國貨公司、自於前日中午十一時二十五分打烊後、直至昨晨十時、方始恢復營業、在該公司未開鐵門以前、鵠等於馬路之行人道上顧客、已逾千人、由巡捕維持秩序、執行排隊、計分男女二種行列、男人之行列、竟延長至山東路中、而女人之行列、亦延長至慈淑大樓底　內、而　不够空納、其擁擠狀況、</p>
+<h3>一如平耀</h3>
+<p>局米之行列、然該公司十時開啟側門、將顧客一部放入後、因人數過衆、至中午後叉打烊、並在門前揭示、「明日請早」之通告、共他四公司如永安公司亦擁擠異常、亦採分批將顧客放入制、大新公司亦然、先施新新則終日開啟側門一道、並未關閉、但均未至六時、即行牧市、</p>
+<h3>工部局警務處　設音樂檢查科</h3>
+<p>上海泰晤士報云工局部警務處已設音樂檢查科、以督察上海各舞塲與夜總會所奏之音樂、此在上海有史以來、尚屬初次、昨日（三日）午後、各樂隊領隊被召至警務處總部、當由警方發給禁止演奏各歌曲之名單、並規定新製歌曲、須經檢查員核准、始可演奏、被禁之歌、西曲有英美國歌「America,I　loqe　you」「Thank　yoy,　America」「Good　luck　and　Same　to　y　ou」、及「Georgia　Marek」、中曲有「桃花江」及「何日君再來」、以其歌詞不妥也、</p>
+<h3>偽造洋酒</h3>
+<p>公共捕房荊事科華探目薛瑞霖等、近偵悉有人僞造威士忌酒出售、遂飭員與此輩接洽、約定每打價一千八百元、於前臼送達至靜安寺路大華路　口交貨、屆時果有蘇州人孔林書車送假威士忌一打前來、即爲探拘捕、經供出、叉往成都路四十六街十一號拘獲蘇州人張有光一名、抄出假白蘭地酒四批、旋又在愛爾近路三五三號、拘獲甬人王益興一名、抄得薜華立路十九號法華廠所出品海倫特威士忌酒六打、經調查得彼等即以該海倫特酒稍加紅茶、置入英國出品威士忌酒空瓶內、混充出售，現因尚須調查、乃諭飭暫押候查明究辦、</p>
+<h3>申報讀者助學捐助</h3>
+<p>昨收到姚母奠儀、滕克勤三十元、沈遜士二十元、沈選士十元、共計儲券六十元、前存一萬七千七百四十五元、總結一萬七千八百〇五元、</p>
+<p>又收到之助學金百樂會一百二十九元六角五分、饒餘慶饒餘蔭（小兄弟二人節糖菓費）八十四元、王毓仙（退還助學金）八十元、共計儲券二百九十三元六角五分、兩共計儲券三百五十三元六角五分、前存二十萬七千丸百五十允元九角二分、總結共存二十萬八千三百十三元五角七分、</p>
+<h3>侵占款項被捕</h3>
+<p>平湖人郭金城、在福州路三百十三號中西藥房廣告部辦事、最近郭利用職務、購買用品時、以小報多、向會計科領款、將　數侵占、迄月數月、共侵佔得新幣約二萬二千四百　元、日前為該藥房發覺、報告老　捕房、由華控周振興將郭拘捕、而郭對於侵占事件、供認不諱、惟僅　一萬　元、因數目發生爭執、故令郭收押、候查明帳目、再行核辦、</p>
+<h3>工部局公布　定期分發四批米票　第十期口米數量公布</h3>
+<p>工部局頃發布告、定自本月九日星期三起、由該局各分發購米證辦事處分發第四批購米證、此項購米證、仍分四聯、按照計口授糧計劃、得於第十三·十四·十五·　十六星期內。　以購米、界內納稅人或其代表、可按照其夏季房捐收據背面註明之日期、隨携秋季房捐收據、前往其住區內之發證辦　處領取購米證、爲求發證之迅速起見、納稅人除携帶秋季房捐收據外、並應隨携夏季房捐收據、以資呈騐、納稅人或居民倘有不能呈騐秋季房捐收　、或對於領證臼期有所疑問時、應於每日（星期六及星期日除外）下午三時至四時、前往發證辦事處詳詢一切、再各發證辦事處之辦公時間、爲每日上午九時至中午、下午一時至四時、星期六及星期日停止辦公、</p>
+<p>又工部局頃發布告略稱、查以憑購買局米及麵粉之購米證第九號聯票、僅准用至本月五日爲止、過期作廢、在本月七日至十二日止之一期內、各米店暨本局售米、僅憑購米證第十號聯票售米、屆時按每一聯票由票上註明登記號數之米店發售白米半升、碎米一升、售價合計三元八角、同時持票人得隨意搭購麵粉一斤、售價二元三角、</p>
+<h3>珠寶店婦　串黨行竊</h3>
+<p>霞飛路六三號洪興珠寶店、於七月間起、至上月中旬止、陸續失竊價値十餘萬之珠鑽寶石首飾、至前日經店夥瞥見傭婦林魏氏（三十歲潮州人）、在二樓首飾房內、開啟鐵箱行竊、當即扭住鳴捕拘入捕房、訊之魏氏、供認陸續行竊首飾後、轉　同鄉黃許氏（三十七歲·在霞飛路二十七弄四號幫傭）、再託嵩山路光德里掃弄人林德順（三十六歲同鄉）銷售、分肥化用、捕頭據供、派探將黃許氏林德順二人先後拘案、吊出一部份原贓、押候偵查究辦、</p>
+<h2>Page 5</h2>
+<h3>趙德氏昨日設奠　各界紛往唁　本報同人舉行公祭</h3>
+<p>昨日爲木報記者趙有豪　之尊翁德齋先生　　奠之期、各界人士、紛往弔　、自朝至暮、絡繹不絕、各情如次、</p>
+<p>德齋先生畢生致力史地、興辦教育、有功　會、遽　謝世、各界咸增痛悼、昨日前往弔唁者、有耆紳沈恩孚·丁福保·袁履登·馮炳南·蔣維喬·龐甸材等、及各界領袖凡一千餘人、誄詞聯幛、　懸四壁、咸對先生名山事業、深致景崇、</p>
+<p>正午本報同人舉行公祭、由王　欽主祭、陸以銘唐世昌　祭、首由半江兒童教養院奏哀樂、獻花獻爵　、恭讀祭文、儀式肅穆、一時許禮成、午後各界續往弔唁、牯嶺路上竟日素事白馬、備極哀榮、</p>
+<h3>從趙氏設奠　想到人生的價值</h3>
+<p>人生原是在旅途中的、有的是致力學術、畢了他建立　業的旅程、這是有意義有價値的人生　我們對於咋天趙備齋先生在滬寂奠　讀到各界人士的誄詞和　聯、更加深切體會到人生的價値、德齋先生興辦教育篤研史地、與夫孝友陸婣之道、爲士林所推重、克享高齡、向時也完畢了他致力學術的　程、現在把各界悼詞擇錄如次、以見先生音容雖渺、德行猶存、</p>
+<p>七九老人沈恩孚先生輓聯學精史地、行備孝慈、是翁宜入儒林傳、病起憂時、魂歸樂國。成佛知由净土宗、</p>
+<p>陳陶遺先生誄詞　高臥空山、著書見志、永登樂土、捨報安祥、</p>
+<p>胡樸安先生誄詞　嗚呼先生、高尚其志淸潔其身、學通乙部、識遠德新、和介之間、居常申申、義方教子、誠意待人、未臻期顧、天心何因、後學安仰、秋水生　、嗚呼、自先生之歿兮、誰是儒者之眞、</p>
+<p>馮炳南先生誄詞由錢崇威太史作書文　長庚日黯、少微星沉哲人云逝、孔懷德音、惟公盛年、蜚聲庠序、察變觀時、目光如炬、學求實用、肆力九章、覃精輿地粽覽八方、胸有千秋、網　載紀、考古證今著成通史、廣陵建學、講座宏聞、培植後進、桃李多材、竭力事親、刲股療疾、至誠感神、孝思維則、義方訓子、淸白傳家、克昌厥後、蔚爲國華、杖履逍遙、隱居田里、蒔花栽竹、尋山問水、忽遭離亂、蒿目時艱、殷憂成疾、遽棄人寰、老成考終、典型未墜、眷念者賢、臨風灑淚、</p>
+<p>蔣維喬先生輓　　學擅三長、致用大原莫若史、堂前四鳳、明德之後有達人、</p>
+<p>李浩然先生輓聯　耽讀史紀方輿、考證與亡、遠識何殊顧景范、善傳家惟積學、繼承弓冶、後賢無媿惠松崖、</p>
+<p>獨鶴先生輓聯　鎔經　史、興學育才、濁世挽狂瀾、允推先覺孝友陸婣、愼微立德、淸芬價遺澤、乖裕後昆、</p>
+<p>諤聲先生　詞　在昔蕭衍、曾著通史、江陵一炬、文武同殷、千載聲香、惟尊涷水、先生卓識後先媲美、上下古今、網羅載記斟酌變遷、獨標新旨、哲嗣、承訓述聞時事、秉筆申江、特立不倚、積學裕後、足勵當世、班馬高風、永垂無既、</p>
+<p>本報全體同人　聯　人寰歷刦、遍地瞢騰、公　用以佛法證三乘、竚看霞蔚雲蒸、魂着有憑便化去、令子發聞、所嚮浹洽、天不　為孺慕遺一老、待到參橫月落靈如勿味儻歸來、</p>
+<h3>公教黃鐘社廣播</h3>
+<p>上　天主教黃鐘播音社、　於丸月六日起、假座上海法國文化　　台繼續廣播、電台呼號ＦＦＺ、周率長波二四〇〇、派一二·〇九播音時間仍每兩星期一次自標準鐘十九點始、至十九點四十五分止、木年度講題中心爲「天主教的眞面目」、一茲將九月六日第一次　目　講題「山上之城」蔡中賢司鐸、　音樂播送慈幼音樂會、　兒童節目公教服務團、</p>
+<h3>昨日木報發報時間六點二十分慈善排球賽功德圓滿</h3>
+<p>興仁聯隊今晚決賽　七時半在中靑聞蘭亭主持拍球　　維他富盃慈善排球賽、今晚七時半起在八仙橋靑年會健身房展開最後決賽、功德圓滿、屆時請濟民醫院董事長　蘭老主持閉幕典禮、並拍賣賽球、門票分榮譽券五元、及普通券二元、收入掃數捐助上海貧民肺病醫院及濟民醫院經費、首幕乙組總決、Ａ部盟主虹隊對Ｂ部冠軍內河、次幕女子各位之爭、捷門戰藍星、兩隊戰績並等、捷門擁有滬星、陳氏三雄、藍星能手如張亦煊楊成棣朱金　等、精彩可期、壓軸爲甲組決賽興仁聯隊會師、興仁二戰二勝今晚勝則錦標穩取、如不幸敗北、亦須重決雌雄、聯隊不幸在前週受挫于白隊、錦標前途仍有望、今晚秩序如次、</p>
+<p>虹隊—內Ａ（乙決）七時三十分、藍星—捷門（女子）八時三十分，興仁—聯隊（甲決）九時一刻、</p>
+<h3>上海乒乓聯合會　舉辦聯合賽</h3>
+<p>陳霖笙榮任主席上海乒乓聯合會、昨晚假萬利酒樓召開常務理事會議、出席理事盧仲球胡建坤·徐多·劉克仁·陳霖笙等、一致推選陳霖笙爲主席、全權處理會務、陳君服務乒乓界達十餘年、奔走提倡、勞績素著、今膺重任、定能爲該會發揚光大、決議案如次、　定本月十五日開始辦公、由書記長胡建坤函知各團體、接受各項申請事宜、　增　周道謙梁錦堂二君爲顧問、　舉辦聯合盃聯賽、推陳霖笙、徐多、劉克仁籌備進行　定本月二十日假啟昌照相館攝影、以留紀念、　通過同仁盃註冊、　會址設愛文義路福田邨四八十號、</p>
+<h3>中法排球揭幕</h3>
+<p>本市中法學堂發起之中法盃排球賽、今日下午二時起在敏體尼蔭路該校球塲揭幕、參加達二十隊之多、歡迎參觀、秩序如下、</p>
+<p>滬聯華華靑二時、華嚴Ｙ隊三時、小聯—磊隊四時、</p>
+<h3>大康銀行提倡體育</h3>
+<p>大康銀行自張新初任　經理後、對同人業餘娛樂、亦頗注意組織俱樂部、分圖書象棋平劇足球乒乓等組、象棋組已開始循環比賽不久產生冠軍、擬向各界象棋同志、舉行友誼賽、</p>
+<h3>港來球星　點將錄（三）</h3>
+<p>前鋒全材卓石金　　卓石金爲香島前鋒之全能人才、左右開弓、能雙足並用、前鋒任何位置、無不勝任愉快、故有全能之譽、此君出身於號稱香港足球學府之南華體育會、十八歲時　蜚聲球塲、我國世運代表隊、君爲入選代表之一、時年僅二十二、爲代表隊中最年幼者、事變前改隸港光華嫁、曾率隊克聲勢赫赫之南華隊、尤　　前、</p>
+<p>後起之秀鄭英權</p>
+<p>此君出身行伍、體魄堅實、每賽足球、港　洋兵亦畏避之、港　革　工程兵隊、一度曾邀之助陣、　再爲東方會效力、民二十、九東方　港淘決賽冠軍、君與有功也。今年二十七歲、閩之寶寗　、足球各種位置、拒能　仟、亦全材也、</p>
+<p>舊地重遊金家標</p>
+<p>金原爲上海人、一度爲東華效力、旋赴內地、復轉赴香港就業、最近曾任光華甲組中衛、在港考足球裁判員、此君榮　文憑、今者舊地重遊、上別三日、當刮日相看也、</p>
+<h3>買氣籠罩下　債市成直線上</h3>
+<p>咋日統一公債市况、飛黃騰達、市氣挺俏、異常穩固、蓋以各幫實收衆多、人心不無煥發、目因籌碼奇枯、更引起浮空之扒補、是以漲勢逾演　勁、全市爲買氣所籠罩、幾引成直綫而上、觀趨勢在新多與大戶之實收下、賣者在籌碼上之潛力、不無稍遜、故暫觀雙方、尚以買者較優耳、當晨間開出、先以鴻大同源順泰謙益協康等買進、雖中途以同順新康蘭心潤德同裕聯和胡鶴記等力售、一度略軟、但後以潤利同利及散戶之需要、遂被拉昂、結果除甲種祇好七角外、其他各好一元左右、成交約三百餘萬元、茲列表於後、</p>
+<h3>華股一籌莫展　除百貨業已轉機外　其他莫不疲憊如故</h3>
+<p>昨華商股票市況、跌風仍烈、獨百貨業永安·新新·中國國貨等三公司股、近來銳退過巨、已有乘低買戶活動、市趨穩掔、永安升五角、新新加一元、國貨升一元五角、中國內衣迄少起色、因聞今晨該廠失火消息、竟狂落一元半之巨、新藥業尤一蹶不振、新亞猛跌二元、中法破入七十元關口、小三元五角、民誼跌一元爲六十元、文化業中華書局獨見穩定、商務小七元半、世界低五元、公用業閘北水電小五角、降近卅元關口、華商市氣平定、大中華火柴續退二元半、南洋烟公司低一元、各新股亦隨之下挫、孚昌染　小五角、大中華織造與上海棉織　上日價回、照各方人心迄難安定、成交不寂、今分記各股市價衣於後、</p>
+<h3>呢絨光貨獨俏</h3>
+<p>光貨呢羢邇來趨勢頗俏因、原料毛綫斷檔、將後廠方生產勢必减少無疑、因此業中有存貨者、多居奇不售、又因存底不多零　需要反不弱、人心更　樂觀也、昨如細毛織成之介質厚薄花呢、各種有字無字之西裝花呢、嗶嘰海林棒、宜維華達呢、馬褲呢駝叫巾之類、市氣倶俏、成交暢達、行情步漲需供尚相埒，</p>
+<h3>貨物限價　雜糧交易甚稀</h3>
+<p>昨日雜糧市况、供稀求少、交易頗淸、良以貨主因到缺未肯輕脫、木街店戶則受抑制物價而乏意進取、故市是互擯、統市祇開崇明沙蠢五十包、價一百卅四元、三鑫小包麩皮七月份棧單三百包、價一百十六元、</p>
+<h3>橘餅看緊</h3>
+<p>號方所到橘餅開出　、因値北幫頗有需要、市勢甚俏、轉瞬即將告罄、聞產區餅坯已乏、故雖有去電催裝、即有到來、數亦有限、故其後市、尚防再升、</p>
+<h3>糖股出戶不多</h3>
+<p>糖商合作營業處搪股單、近以該處有派分紅利之舉、故出戶甚少、交易遂稀粗砂股爲三百〇一元、又小五角、成交四白包、后乏做出、赤砂股叫原價、未有成交、</p>
+<h3>首飾金　同業互做亦淸</h3>
+<p>昨本市銀樓業大新同行首飾金門市每兩兌出價、仍掛二千一百元未更、收進减三百元左右、同業互做價有小範圍內迂迴、成交更稀初　千八白七十七元五角、高一元半、俄見一千八百七十元市　　向榮在小額買　中、哄起十五元、達一千八百八十五元、午刻爲一千八百七十五元、與上日價同、有十五元差度、成交淸稀首飾紋銀每兩掛十四元、同業對做價爲十一元左右、</p>
+<h3>軍票拆息　俱無變更</h3>
+<p>昨外幣市况、日軍票呆平、同業互做價約爲五元五角五分五七厘未更、致銀號與小錢莊門市售出五元五角七分、收進五元五角五分云、</p>
+<p>昨踐業公會拆息一角三分、仍平、新劃頭興現鈔平掉云、　　五洲江蘇地方兩行</p>
+<p>本市銀行業聯合準備委員會、昨日通函各交換銀行略云、茲訂定於三十一年九月七日（下星期一）、由本會開始代理五洲銀行、江蘇地方銀行票據交換並編定五洲銀行在交換所號次爲52—12、江蘇地方銀行在交換所號次為52—14</p>
+<h2>Page 6</h2>
+<p>游藝界</p>
+<h3>如是我聞之宋德珠</h3>
+<p>— 病鳩</p>
+<p>宋德珠以武旦姿態，蜚聲歌壇，其機緣半仗技藝，半亦人和也。客有詢宋伶身世經歷者，乃草斯文以告之。</p>
+<p>學藝經過</p>
+<p>宋德珠河北天津人，世業商，迄至其父，家道中落，宋父乃送德珠入戲校，時德珠年僅十二齡，以靑衣開蒙，繼習武旦，迭受九　風，朱桂芳，郭際湘，余玉琴等名師薰陶，藝大成。民國二十六年北平立言報主辦童伶票選，德珠得票最多榮膺武旦冠軍，聲名更噪。當其在校時，副校長李伯言最寵愛之，拔德珠於舉校數百學生之中，教導嚴督，有如已出，且爲之編排新戲「平陽公主」，該劇中之武技，頗多新頴玩意，如「如意雙鈎」之起舞，配以姑蘇水仙及傍妝台等古譜曲牌，古色古杳，悅耳娛目，時人稱之。同時更聘國術家高紫雲教授太極羅漢乾坤對擊劍，此種技術能下苦工，胥有助益於旦角之身段，德珠今日之成就，實基於此。</p>
+<p>初次組班</p>
+<p>民國二十八年元旦，德珠初次組班演出於北平新新戲院，以武旦挑班，創梨園界之紀錄。劇目爲全部楊排風，其配角陣容，靑衣爲陳盛蓀，王盛意，武生鍾鳴岐，鬚生陸鳳山，武淨蕭德賓趙　勛，武丑殷金振，裏子老生修德新，小生李德彬，大半爲戲校舊人。</p>
+<p>出國未成</p>
+<p>二十八年美國舊金山舉行金門博覽會，時李伯言仟職海外，頗欲使宋劇團赴美參加表演，爲國家及個人爭光榮，益以旅美華籍電影明星黃柳霜之慫恿，願作經濟上之助益，以是函電往返，接洽已有端倪，但終以人事問題，未能解決，况國家又在多事之秋，雅不欲有所舖張，功敗垂成，彌可惜也。</p>
+<p>藝事一斑</p>
+<p>宋德珠爲武旦專工，技藝大半受自九隙風，觀　出手之驚險迅捷，頗相類似，所打套子完全，花式繁多，絕少雷同，態度從容不迫，時有美妙之花旦身段參雜其間，婀娜生姿，頗爲可愛。武旦能剛柔兼俱者，德珠實爲第一人。蹺工純屬武旦式，「立」「坡」互有，深含中庸之道，進退如意，美觀絕倫，惜下蹬及站住工夫稍差，打快槍時每能見之，德珠嗓狹唱靑衣戲，尚宜勤加鍛練，否則武旦之外，兼學花旦，未始不能逞雄旦行，藝貴精而不求博，鄙意深以後說爲然也。</p>
+<h3>孫劍秋藝事猛晋</h3>
+<p>— 海生</p>
+<p>美麗坤旦孫劍秋，隸演更新舞台，色藝俱佳，此番宋德珠來申演蝶戀花，美人魚，得意緣，花田錯諸劇，劍秋之合演，殊收組花綠葉，相得益影之妙。劍秋力求深造，沂央名丑慈少泉爲說荷珠配，小放牛諸劇，編劇家翁偶虹對之甚爲讚許許，推爲後起之秀，劍秋日內將拜列名票胡耕雲君門牆爲義女云。</p>
+<h3>靑光劇團動態</h3>
+<p>— 良人</p>
+<p>靑光劇團首次演出「寄生草」曾由馬來華僑鄭歌之導演，博得各界一致好評。現正積極排練七幕哀情文藝名劇「花月佳期」，曲折離奇，新頴非凡，決定中秋節隆山獻演，地點正與某大戲院接洽中。其後緊接五幕熱情歌舞劇「南海戀歌」爲歌之編導，並由華僑舞踊專家鄭里　君及音樂家楊頌平君任歌舞指導，聞該團現有演員仍不敷分酊，如有對於戲劇愛好而稍有經騐者，均可投考參加，函寄大通路一二三號該團接洽。</p>
+<h3>薛進在「血淚」中</h3>
+<p>— 范石人</p>
+<p>提起薜進這名字，好像跟諸位都很生吧？的確，就是不佞在以前也並未耳聞，我發現道位有演劇大才的藝人還是最近的事。在一個明風淸的秋夜，被一位友人邀往璇宮觀未名劇團公演的。血淚二劇，我初次見到了這位優秀而有望的靑年，他在該劇中飾一個風流的匪魁，出現於第二幕中。當他登塲後，滿院的觀衆　立刻鴉雀無聲地靜寂下來，再不像第一二幕那樣煩囂不安，一個個莫不聚精會神地安坐着靜觀，到得意處使來一陣熱烈的掌聲。我不批評台上人的演技是如何細膩傳神，可觀台下人的情緒是否整　被表演者所控制；只要演戲人的神跟看戲人的心膠着，其情有如觸電，這演員的藝事便可承認到了　當的境界了；而一個藝、的全部精靈也便寄在這里，薛進任許多未名的藝人中便是飽孕着這種媚力的一個。</p>
+<p>第四幕盜窟被剿的一瞬，是全劇的最高潮，　跟其他優良的演員一樣，很能將高潮的中心點把握住使全塲的空氣始終保持着極度的緊張，於槍聲劈拍中他最後的一個動作是飲彈畢命。慕下時，台上橫滿着屍體，而我的額角也堆滿着汗珠了。</p>
+<p>有知道薛進的人說他今年才二十歲，進未名劇團做基本演員還不久。演過的戲有女人心中的王維仁，雷雨中的鄒平，女子公寓中的駱委員，等個性絕對小同的角色，可謂善於演戲的了，而　說劇團的主人却並沒有把他看得十分重要，這種吃虧，也許　基囚於他的年靑境困的緣故吧！</p>
+<h3>藝苑動態</h3>
+<p>— 一靑</p>
+<p>唐槐秋唐彩靑將自皇后期滿　，實踐中國旅行劇團」的名羲，預備大隊人馬門到華北各馳演出。</p>
+<p>藝劇團正積極籌　中的　大地　，　請舒適担任導演，舒適尚在考慮中。</p>
+<p>蘭心決定今日駇封，院務經地趙朱孫三君，親往檢視一切，待陸露明的「少奶奶的扇子」演畢後，即將正式執行演出權，委由劇壇某某兩君負責進行中。</p>
+<p>CZC公司解散後，李健吾巳衣示灰心，無意經營，佐臨所組織的「苦幹」，或有與「華藝」合作的可能性。</p>
+<h3>平和義演</h3>
+<p>— 海子</p>
+<p>今日平和票房假座大舞台爲同仁輔元堂舉行慈善公演，日夜兩塲，臼戲主要劇目爲顧禎祥朱俾茗朱傳芳之「斷橋二陳鼎新之「乾元山」賀松年顧宜翔曹雪芹之打漁殺家。夜塲李元龍詹筱　之「戰長沙」，費席珍顧禎祥之販馬記，及顧宜翔之「捉放曹」，聞銷券認捐L達五六萬元，圖爲顧宜　君便裝小影。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（八）奈若何</p>
+<p>衛雲卿忘了算盤砸在桌子上，咂壞了一個釘子，又砸壞了銅皮，於今叉把算盤提起來拍在桌子上，喝道：一少雲，到底你是我的父親，還是我是你的父親？你說話，怎麼不講理的？我年紀這麼大了，早就想把家政交給你，只看你一味是個浮滑少年的樣子，不大放心。你一不讀書，二不做買賣，不叫你管家裏的事，你倒父管起家裏的事來了。去！給我去唸書，便不唸出聲音來，是看書，看到新年，我再給你幾個錢，至少總是十塊錢，讓你在新年裏樂一樂。」衛少雲聽十塊錢是一個小數目，衛雲卿說十塊錢是一個大數目，兩個人的心理小同，所以衛少雲披一披嘴笑道：「爸爸，你怎麼把十塊錢來誘惑我？我是問你，在我家裏的女人是誰？我耍看一看，你怎麼不給我看？我猜是費長河弄來的女人，也不會漂亮。但是我說的漂亮，水準也並不怎樣高的，只要比你的兒媳婦高明一些，便算漂亮了。」</p>
+<p>衛雲卿道：一畜生。說到後來，又不知道說到什麼地方去了。你當做你娶了老婆，我便不能打你，沒有這個話。你惹的我的火冒上來了，我還是會打。忘了嗎？前十年，打折了一根竹竿。去！到你媳婦那裏去！看看她，織的那藍道紅格的布，織多少了。我好好的說話你不聽，你是沒便宜的。秦潤之說了今天來的，算起來要來了，你不聽我的話，給外邊的人知道了，傳出去是笑話。衛少雲昂着頭想了想，把皮鞋在地下頓一頓，往外就走。衛雲卿輕輕的走到門口，看他往那裏走看時，他是往大門外走的，才放了心，又自言自語道，「蠜妻劣子，串關前世。唉！（一七三）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.09.05</h1>
+<h3>Successful Surprise Attack by Japanese Troops - Occupation of Little Sunda Islands - Local Militia Disarms Voluntarily</h3>
+<p>Maoer Island, 4th (Domei News Agency dispatch) - In the northern Little Sunda Islands of Maoer Island, Wanba Island, Pangtalu Island, and Lunpulin Island, after a surprise landing by Japanese troops on June 28th, they were completely pacified. Wanba Island has a population of about 100,000. The Dutch East Indies had stationed troops there. Before the Japanese army landed at the Kalapai tribe on the island, King Umar of the tribe sent the captured Dutch soldiers and officials to the Japanese troops. When the Japanese troops landed, King Umar led a large group of people to greet them in person, and played music along the way to express their welcome. The local militia also voluntarily disarmed and expressed their cooperation with the Japanese army. They have already been reorganized into police patrols to maintain order on the island. In addition, the other 31 kings on the island are also cooperating with the Japanese army to drive out the Dutch. The local overseas Chinese are especially able to cooperate closely with the Japanese army. The Dutch army had no defense facilities on the other two islands, so their pacification was even easier. When the Japanese troops landed, the island residents all welcomed them on the beach.</p>
+<h3>Japanese Planes Bombed Hengyang Yesterday - Lingling and Guilin Also Bombed Simultaneously</h3>
+<p>Nanjing, 4th (Domei News Agency dispatch) - The Japanese Army Press Department here announced at 4:00 PM that Japanese army bombers attacked the Hengyang, Lingling, and Guilin airfields yesterday. Seven fighter planes were destroyed at the latter two airfields. These airfields have been attacked by Japanese planes several times.</p>
+<h3>Egyptian Front - War Remains Quiet - German Planes Bomb Port Said</h3>
+<p>Berlin, 4th (Haitong News Agency dispatch) - It is learned here that British tanks and trucks concentrated on the Egyptian front were heavily bombed by German planes yesterday. British airfields near Alexandria were also attacked by German planes.</p>
+<p>London, 3rd (Havas News Agency dispatch) - According to a dispatch from Egypt, the war remains quiet in all areas of the Egyptian front.</p>
+<p>Haifa, 3rd (Havas News Agency dispatch) - Officials announced that Axis planes bombed this port this morning. Several bombs fell outside the city, causing slight damage to the ground. British planes took off to intercept them.</p>
+<p>Rome, 3rd (Havas News Agency dispatch) - The General Headquarters announced that skirmishes were fierce at various locations on the Egyptian front yesterday. The British lost 51 tanks and 20 armored vehicles. The Axis air force bombed enemy concentration points with great success. As a result of air combat, 21 British planes were shot down by German planes, and another 3 British planes were shot down by anti-aircraft guns. Five of our planes have not returned to base in the past two days. The 81st Squadron of the 4th Air Force Regiment has fought over a hundred times and has been victorious each time.</p>
+<h3>US, Australia, and Brazil Sign Mutual Aid Agreement</h3>
+<p>Lisbon, 4th (Haitong News Agency dispatch) - Yesterday, a Washington statement revealed that the United States, Australia, Brazil, New Zealand, and the government led by General Tegar have signed a mutual aid agreement.</p>
+<p>Lisbon, 4th (Domei News Agency dispatch) - According to a Washington report, in order to induce the Tegar faction to participate more actively in the war effort against the Axis powers, the United States yesterday concluded a mutual aid agreement with the Tegar regime. The United States has also concluded similar agreements with Britain, Australia, and New Zealand, stipulating that Britain, Australia, New Zealand, and the Tegar regime will supply the United States with war materials and services, on the same terms as the United States provides them with Lend-Lease assistance.</p>
+<h3>Wavell's Broadcast Address</h3>
+<p>Ruishi Jingcheng, 4th (Domei News Agency dispatch) - According to a new report, General Wavell, Commander-in-Chief of the Indian Command, broadcast last night that there was no pessimism at the important meetings in Moscow and Kaivei. The fighting spirit of the Allied forces in the Middle East has not diminished due to the setbacks in June. Their offensive power has been restored. We should not only focus on our own failures and difficulties, but also pay attention to the difficulties of the enemy.</p>
+<h3>Willkie to Visit Turkish Capital</h3>
+<p>Istanbul, 4th (Domei News Agency dispatch) - Turkish Foreign Minister Menemencioglu arrived here from the Turkish capital and immediately met with President Ismet at the President's villa. The discussion was mainly related to the impending visit of Willkie, the special envoy of US President Roosevelt, to the Turkish capital. Willkie is currently in Cairo.</p>
+<p>Turkish Capital, 4th (Haitong News Agency dispatch) - Roosevelt's special envoy, Willkie, is scheduled to arrive here by plane at 11:00 AM today. According to the Turkish Ministry of Foreign Affairs' Protocol Department, Turkish President Ismet has not yet decided when to receive Willkie.</p>
+<h3>Hitler Appoints Air Defense Chief</h3>
+<p>Berlin, 4th (Haitong News Agency dispatch) - Hitler yesterday appointed General Hill Xia of the Anti-Aircraft Artillery Corps as the Director of the Air Defense Office, in charge of national air defense affairs.</p>
+<h3>Vichy State Council Meeting</h3>
+<p>Vichy, 4th (Havas News Agency dispatch) - The cabinet held a State Council meeting this morning, chaired by Marshal Pétain.</p>
+<h3>American Troops Arrive in Belgian Congo</h3>
+<p>Lisbon, 4th (Haitong News Agency dispatch) - According to a recent telegram, a number of American troops have arrived in Léopoldville, the capital of the Belgian Congo.</p>
+<h3>Important Meeting in Gibraltar - US Ambassador Attends</h3>
+<p>Su Lieke, 4th (Domei News Agency dispatch) - According to a Madrid report, US Ambassador to Spain Hayes, accompanied by key members of the US Embassy, ​​suddenly left Madrid for Gibraltar yesterday. Madrid observers believe that Hayes intends to meet with the British authorities in Gibraltar to discuss the issue of the United States assisting Spain and hoping that Spain will maintain friendly neutrality towards the Americas.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - US Ambassador to Spain Hayes left here by plane yesterday afternoon for Seville and then to Gibraltar to attend an important meeting.</p>
+<h3>Riot in Indian Prison</h3>
+<p>Saigon, 4th (Haitong News Agency dispatch) - According to news received here last night, the Dhaka Jail in Bengal Province experienced the most serious conflict since the riots in India. Twenty-nine prisoners and one warden were killed, and 136 prisoners were injured. When the conflict occurred, the prisoners staged an organized riot, and the wardens fired in panic, causing a major incident.</p>
+<p>Lisbon, 4th (Haitong News Agency dispatch) - A special correspondent of the London New Chronicle in New Delhi stated that the property lost in India due to riots is estimated to be worth millions of pounds, and no less than two hundred government buildings have suffered major damage.</p>
+<h3>Franco Reorganizes Spanish Cabinet - Foreign, Army, and Interior Ministers Replaced</h3>
+<p>Madrid, 3rd (Havas News Agency dispatch) - Head of State Franco signed an order today to replace several important cabinet members, as follows: The resignation of Foreign Minister Su Na has been approved, and the vacancy will be filled by General Zha Dana. The position of Chairman of the Political Conference, originally held concurrently by Head of State Franco, has now been changed to be held concurrently by Zha Dana. The resignation of Army Minister General Fa Laila has been approved, and the vacancy will be filled by General Ya Xun Xi Wo. The resignation of Interior Minister Colonel Jia La Chai has been approved, and the vacancy will be filled by Ka Bo Lei La. After the removal of the Deputy Secretary-General of the Falange Party, Meng De Zi, all positions have been temporarily held by Major Fei Gui Luo Ya, Chief of Staff of the current Eastern Front Spanish Volunteer Army "Blue Division," and it has now been ordered that he officially succeed to the position.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - After the new Spanish cabinet members took their oaths at General Franco's residence, the El Pardo Palace, last night, the cabinet held a meeting chaired by Franco. The issues discussed were not disclosed.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - The new Spanish cabinet members are scheduled to be sworn in today. Former Foreign Minister Su Na published a farewell notice to his colleagues in the Ministry of Foreign Affairs in the newspapers last night. This morning, he will still arrive at the ministry on time to meet the new Foreign Minister Zha Dana and handle the handover of official documents. The recently resigned Army Minister Fa Laila has not been to the ministry for four days.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - According to sources close to the Spanish Foreign Ministry, although the Spanish Foreign Minister has been changed, the diplomatic policy will not change. General Zha Dana served as Foreign Minister during the fierce civil war and difficult situation. At that time, he handled diplomatic affairs with Britain and France with skillful methods and efficient work. His appointment as Foreign Minister this time is a cause for celebration. General Franco has also repeatedly clarified that he will maintain the consistent direction of foreign policy without any changes.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - After the official announcement of the cabinet reshuffle, it is said that the main purpose of this change of Spanish cabinet members is to eliminate the separation between the party and the military, so as to improve the efficiency of administration.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - The sudden reorganization of the Spanish cabinet has caused surprise to many people. Although rumors of the change have been circulating for a long time, the resignation of Foreign Minister and Chairman of the Falange Party Political Committee Su Na was unexpected. At 6:45 PM last night (Madrid time), newspapers were informed that an important announcement would be issued soon, but were ordered to suspend printing. An hour later, the news of the cabinet reorganization became the headline of various evening newspapers. Political figures believe that after the cabinet reorganization, the military strength in the Spanish political organization has been greatly enhanced. The appointment of experienced military personnel to key positions in the past few months may have been a prelude to this reorganization.</p>
+<p>Madrid, 4th (Haitong News Agency dispatch) - The new Foreign Minister, General Zha Dana, is a friend of General Franco. When the National Government was established in Burgos during the Civil War, he served as Foreign Minister. The new Army Minister, Ya Xun Xi Wo, is a friend of General Franco. He served as a senior commissioner in Spanish Morocco and is steady and capable. Most recently he served as Chief of Staff and Deputy Minister of the Army. The new Minister of the Interior, Ka Bo Lei La, is a veteran member of the Falange Party and served as a professor of law at the University of Catalonia.</p>
+<h3>British Planes to Bomb Widely in Occupied France - Sinclair's Broadcast Address</h3>
+<p>London, 3rd (Havas News Agency dispatch) - Aviation Minister Sinclair delivered a broadcast address today stating that all railway workers and dock transport workers in occupied Europe are at risk of being attacked by British planes. Every locomotive and every barge is a weapon of war, and there is a need to attack them. When British planes discover any location where goods are being transported, they will try to destroy them.</p>
+<p>Paris, 4th (Haitong News Agency dispatch) - According to a report from Rabat, one British plane was shot down again while flying over southern French Morocco yesterday. French Morocco has shot down five British planes in recent days.</p>
+<p>French Saint-Nazaire Port, 3rd (Havas News Agency dispatch) - A 7,000-ton cargo ship was launched on the 1st of this month at the Bonhoët shipyard. This is the first new ship built in occupied France.</p>
+<h3>Turkish Prime Minister and Military Officers Inspect Eastern Border</h3>
+<p>Rome, 3rd (Domei News Agency dispatch) - According to an Ankara report, Turkish Prime Minister Saraçoğlu, accompanied by high-ranking Turkish military officers, has arrived in Kars, near the Turkish-Soviet border, to inspect eastern Turkey.</p>
+<h3>Residents of Lorraine Region Must Serve in the Military</h3>
+<p>Switzerland Jingcheng, 4th (Havas News Agency dispatch) - Böckel, the administrative director of the Lorraine region, ordered today that all residents of the Lorraine region must join the military service in accordance with the situation in mainland Germany. Last week, the administrative director of the Alsace region also issued this order. The difference is that the order issued by the Lorraine administrative director stipulates that military service is subject to age restrictions and must be of Germanic origin.</p>
+<h3>British Army Headquarters Reviews the War Situation</h3>
+<p>Sweden Jingcheng, 4th (Haitong News Agency dispatch) - The British Army Headquarters yesterday reviewed the war situation in the past three years of the European War, stating that Britain and the United States have been preparing to open a second front for several months. The British Isles will be the base for the British and American offensive in Western Europe. British troops and Allied forces are undergoing landing warfare training on the British coast.</p>
+<h3>Roosevelt Delivered a Speech to Student Representatives Yesterday</h3>
+<p>Lisbon, 4th (Haitong News Agency dispatch) - Yesterday afternoon, President Roosevelt delivered a speech to about 300 student representatives from the United States, Britain, the Soviet Union, and other countries, promising to build a new "world culture." Roosevelt condemned the military leaders of the Axis powers, saying, "They give the youth nothing but death. The Allied countries of Britain, the United States, and the Soviet Union see the future of the youth." He also said that the main purpose of this war is to integrate the cultures of Europe, Asia, and the Americas and create a true world culture.</p>
+<h3>British Merchant Ship Sunk</h3>
+<p>Washington, 3rd (Havas News Agency dispatch) - The Department of the Navy issued a bulletin today stating that a British medium-sized merchant ship was sunk by a torpedo in the Caribbean Sea in mid-August.</p>
+<p>Lisbon, 3rd (Havas News Agency dispatch) - The British ships "Holandsyte" and "Benloise" were sunk by torpedoes this morning 16 miles off the coast of Portugal between Cape Sines and Cape Espichel. Ninety-six rescued crew members have arrived here on two Spanish fishing boats.</p>
+<p>Nau Dian Jingcheng, 4th (Haitong News Agency dispatch) - According to a announcement from the British Admiralty, the British aircraft carrier Eagle was sunk in the Mediterranean Sea, with a loss of 1,160 crew members.</p>
+<h3>Chilean President Hires American</h3>
+<p>Chile Jingcheng, 4th (Haitong News Agency dispatch) - Chilean President Livos is scheduled to visit the US authorities by plane on October 15th, and plans to stay for one day each in Peru, Ecuador, and Colombia on the way to the US, and two days in Panama. He also plans to stay in Mexico City for a short time.</p>
+<p>Chile Jingcheng, 3rd (Havas News Agency dispatch) - President Livos' trip to the United States is expected to last about a month. According to various newspapers, the president will start by hiring from countries along the Pacific coast, and end by hiring from countries along the Atlantic coast. It is reported that the governments of Central America and Costa Rica have also invited President Livos to visit their countries on the way.</p>
+<p>Chile Jingcheng, 4th (Haitong News Agency dispatch) - Chilean President Livos plans to visit the capital of Cuba, Venezuela, the capital of Brazil, the capital of Uruguay, and the capital of Argentina on his way back to the country. The Minister of Trade, Arsa Zhi, and the Secretary-General of the Presidential Palace, Rui Zhi, have been designated to accompany the President on his visit to various countries.</p>
+<h3>Third Anniversary of the European War - Prayers Held in London</h3>
+<p>Lisbon, 4th (Domei News Agency dispatch) - Yesterday was the third anniversary of the European War. Britain, according to the decree of King George VI, held prayers in various churches on this day to commemorate the event. At 10:00 AM, the British Broadcasting Corporation broadcasted a prayer program for 15 minutes.</p>
+<p>Sweden Jingcheng, 4th (Haitong News Agency dispatch) - According to a London report, yesterday was the third anniversary of the war, and people across Britain held prayers in churches yesterday. Churchill and his cabinet members also participated in the prayer ceremony at Westminster Abbey.</p>
+<p>Romania Jingcheng, 3rd (Havas News Agency dispatch) - Cabinet Coordinator Mitchell En Donaisko, taking the opportunity of the third anniversary of the current European War, delivered a broadcast address, roughly stating that if German Head of State Hitler had not foreseen the danger of Bolshevism, where would Europe be today? Today, the current European War has entered its fourth year. Our country's troops are currently fighting alongside the German army to resist the evil forces that endanger our country.</p>
+<p>Athens, 4th (Haitong News Agency dispatch) - Greek Prime Minister Charakogulu delivered a speech on the anniversary of the European War, pointing out the close connection between Greece and the new Europe and the Axis countries.</p>
+<p>Lisbon, 3rd (Domei News Agency dispatch) - According to a report from Canberra, Australian Prime Minister Curtin delivered a broadcast address to the entire Australian nation on the 32nd anniversary of Britain's declaration of war on Germany, pointing out the crisis in Australia in order to promote the awakening of its people.</p>
+<h3>Australia and the Soviet Union to Establish Diplomatic Relations Early</h3>
+<p>Saigon, 4th (Haitong News Agency dispatch) - People here believe that the intention of Australian Foreign Minister Evatt in his speech in Canberra last night was that Australia will establish diplomatic relations with the Soviet Union early. Evatt called the Soviet Union's resistance the greatest hope in the world, so Australia must maintain close relations with the Soviet Union.</p>
+<h2>Page 3</h2>
+<h3>The Battle of Stalingrad Has Entered the Final Stage - German Troops Carry Out a Tragic Encirclement - Soviet Offensive in Erzef Still Strong</h3>
+<p>Berlin, 4th (Domei News Agency dispatch) - Today, according to military sources here, the climax of the battle for Stalingrad has passed and is now nearing its end. Although Soviet Southern Front Commander Ding has tried his best to prevent the German offensive, it has been ineffective.</p>
+<p>Berlin, 4th (Domei News Agency dispatch) - The German High Command announced today that German troops have advanced to the western suburbs of Stalingrad.</p>
+<p>Lisbon, 4th (Central News Agency dispatch) - According to various sources, as of the 3rd, the German troops attacking Stalingrad launched a large-scale tank battle under the scorching sun. The southwest of the city is the most dangerous. The German army, with 200 tanks and 150,000 troops, echoed the dive bombers that covered the sky, and carried out a tragic encirclement along the entire line from Stalingrad south to the Volga River. In addition, the Soviet troops in the northwestern war zone of the city are currently carrying out desperate counterattacks to prevent the German advance.</p>
+<p>Berlin, 4th (Haitong News Agency dispatch) - Military authorities revealed that the battle of Stalingrad has entered its final stage from the most intense stage. Stalingrad's guards have been assisting in the battle and are doing their best to defend the city.</p>
+<p>German Führer Headquarters, 4th (Haitong News Agency dispatch) - Today's German war report stated that on September 1, the German and Romanian allied forces, with the assistance of the navy and air force, crossed the Kerch Strait, defeated the enemy's strong resistance, broke through their coastal defense line, and quickly advanced. Yesterday, they established contact with the German troops advancing from the east. The enemy troops on the Taman Peninsula are still stubbornly resisting. Mountain fortresses northwest of Novorossiysk continue to be occupied by our troops. German motor torpedo boats sank three enemy ships with a total of 8,500 tons in the eastern Black Sea. Since the beginning of the Caucasus war, the German Navy has sunk 35,400 tons of Soviet merchant ships. The German offensive on Stalingrad entered the western suburbs of the city yesterday. German troops north of the city sank three enemy gunboats, two warships, three freighters, and many small boats on the Volga River. Enemy offensives southwest of Kaluga and northwest of Medyn were repelled by our troops. Enemy offensives in Erzef also failed, with a total of 83 enemy tanks destroyed. Enemy planes bombed a German airfield on the central sector of the eastern front, and 24 were shot down by our troops. Local enemy offensives south of Lake Ilmen were also repelled. Offensives south of Lake Ladoga and on the Leningrad front also failed. The enemy's attempt to cross the Neva River was thwarted, with 20 enemy ships destroyed by our troops.</p>
+<h3>Soviet Troops Retreat to New Front Lines in Several Areas of Stalingrad</h3>
+<p>Ensk, 4th (Havas News Agency dispatch) - The General Headquarters announced this morning that the Red Army continued to retreat in the southwest of Stalingrad and the northwest of Novorossiysk yesterday.</p>
+<p>Sweden Jingcheng, 4th (Domei News Agency dispatch) - The Soviet front lines northwest and southwest of Stalingrad were attacked by 25 divisions of the German army and hundreds of tanks, and were defeated. Soviet troops in several areas are retreating to new front lines. The Soviet Red Star newspaper reported that the intensity of the fighting northwest and southwest of the city, and the large number of soldiers and weapons deployed by both sides, were unprecedented in Soviet battles. Soviet sources admitted that the German forces north of the city were strong, and the number of German troops in several areas in that direction had increased by two or three times yesterday. German troops in several areas in the northwest have broken through the outer defense line of the Soviet army and are currently engaged in fierce fighting. German planes have repeatedly carried out dive bombing attacks over the city of Stalingrad, and Soviet fighter planes have intercepted them, resulting in continuous air battles. The Soviet communique admitted that German tanks and infantry south of the city of Stalingrad had made advances, and Soviet troops in another area were also forced to withdraw to new front lines. The communique also revealed that Soviet troops continued to maintain a defensive posture in the battle of Novorossiysk. German tank troops and motorized infantry, after heavy bombardment by aircraft and artillery, broke into the Soviet positions. It is also reported that German troops have re-entered the Grozny oil fields, but the details are unknown.</p>
+<p>Sweden Jingcheng, 4th (Havas News Agency dispatch) - The emergency situation of the German army's general attack on the inner defense line of Stalingrad is increasing. The fighting in the north and west of the city is also very fierce. The Soviet troops are retreating step by step and have to concentrate in a narrower area. According to a Soviet communique, the losses suffered by the German mechanized units have yet to be fully accounted for. It is only known that in one war zone, only six of the 38 German tanks were destroyed. In another area, 11 of the 20 German tanks were overrun. At this point, the number of places where the German army has broken through the inner defense line of Stalingrad is too numerous to count. Military experts today generally believe that the hope of the Soviet troops saving Stalingrad is becoming increasingly slim. Although the defending troops have launched counterattacks in several places, they have been unable to turn the tide. The German side admits that the enemy's resistance is strong and the fighting is brave, but expects that the fall of Stalingrad is only a matter of time. However, they do not believe that the defending troops will surrender suddenly, as there is a precedent of Odessa and Sevastopol. The German offensive in the south of the city has intensified in the past 48 hours, and has captured a mountain after fierce fighting. The mountain is enough to overlook the town of Krasnaya Sloboda. As for the west and north of the city, the Soviet troops' resistance is more effective. As for the other two objectives of the German army, one is the Black Sea port of Novorossiysk, and the other is Grozny in the Caucasus. On the Black Sea front, the German offensive has been hindered by heavy rain and terrain. The Soviet side intends to resupply Novorossiysk by sea, and seems to intend to hold it for a long time. However, whether reinforcements can arrive in time is questionable. On the Grozny front, German infantry and tanks have crossed the Terek River, and the oil area is under direct threat.</p>
+<h3>News from the Northwest of Novorossiysk</h3>
+<p>Moscow, 3rd (Havas Agency) – The Soviet High Command has issued a war report stating that in the past twenty-four hours, our forces engaged in combat with German troops northwest and southwest of Stalingrad, and northwest of the port of Novorossiysk. There have been no significant changes in other regions.</p>
+<p>Ukrainian Border, (Havas Agency) – The most significant development in the former region yesterday was the German advance towards the vicinity of Novorossiysk. The city of Shapshugskaya, only ten miles from the port, has already been occupied by German and Romanian forces. Moscow issued a communiqué for the first time this morning mentioning the fighting northeast of Novorossiysk. German aircraft are continuously bombing the port, and it is expected that a large-scale retreat is currently underway in the area. It appears that there are currently three Soviet divisions in the port of Novorossiysk. The situation on other fronts in the Caucasus is relatively stable. The positions of both German and Soviet forces remain unchanged. Soviet defenses appear to be stronger than before. According to German military experts, there is no unified front in the small Caucasus region, and each army is currently operating independently.</p>
+<p>Berlin, 4th (DNB Agency) – An official announcement stated that German troops who landed on the Taman Peninsula in the Pokrovsky Strait on September 1st have today made contact with Romanian troops advancing from the east. Soviet forces cut off on the Taman Peninsula continue to resist, but their military strength is not significant.</p>
+<p>Somewhere on the Soviet Border, 3rd (Havas Agency) – Today is the 438th day of the German-Soviet war. The pressure on Stalingrad remains as before. German and allied forces are attacking from the north, south, and west, with the front lines about fifteen to twenty-five miles from the city. The Soviet forces west and southwest of the city are in a very dangerous situation. German troops on the northern route have also reached the city of Dubrovka on the banks of the Volga River. However, German supply lines there are frequently attacked by Soviet forces, so the situation is not yet extremely critical. The Soviet side now also acknowledges that the situation in the city is critical, but Soviet resistance is extremely strong. General Timoshenko's counter-offensive in the Kletskaya region continues to keep the German High Command on edge. According to reports received in Berlin today, Stalin left Astrakhan yesterday aboard a gunboat and arrived in Stalingrad today to take command, demonstrating the Soviet determination to defend the city to the end. As for the former region of Rzhev, the Soviet offensive remains very strong. The Soviet side has mobilized a large number of tanks to assist in the battle, suffering heavy losses. However, to date, the Soviet forces have not achieved any significant gains. There have been no major changes on the Caucasus front. The pressure from German and Romanian forces on the port of Novorossiysk continues to increase. The Soviet position is critical. Although they are making every effort to use the terrain to stop the German forces, it is expected that the collapse of their resistance is only a matter of time. There is also fighting in the area of the Terek River in the southeast. It is reported that German troops have crossed the river in the Mozdok area. However, Moscow claims that German troops have not yet been able to establish a bridgehead in the south.</p>
+<h2>Page 4</h2>
+<h3>Establishing Joint Production and Sales Organizations to Suppress Prices</h3>
+<h3>Manufacturers, Wholesalers, and Retailers to Act in Concert</h3>
+<h3>Shop Prices Have Already Been Reduced Recently</h3>
+<p>The English-language Shanghai Evening Post and Mercury reports that Mr. Inao, Director of the Industrial Bureau's Commodity Control Office, today (the 4th) outlined to reporters the various factors the authorities are currently investigating to suppress prices, stating that the establishment of associations by manufacturers, wholesalers, and retailers will play an important part in the overall effort to stabilize life in Shanghai.</p>
+<p>Active Adjustment of Wholesale Prices</p>
+<p>The recent price control notice issued by the Japanese authorities aims to stabilize living standards and guide public understanding and cooperation. Currently, the authorities are conducting various studies, all strictly in accordance with the recently issued price control notice, and the actions of the Shanghai Municipal Council are being carried out in cooperation with the Japanese authorities. As it stands, only retailers are subject to control, so it is extremely important to make a more thorough adjustment of the prices of transactions between wholesalers and retailers, and to adjust the sales prices between wholesalers and retailers. Similarly, the sales prices between manufacturers and wholesalers must also be adjusted.</p>
+<p>Consideration of Appropriate Rationing Plans</p>
+<p>In order to effectively control manufacturers' sales prices, the authorities have now instructed them to submit detailed reports of manufacturing costs. They will also collect information on the costs of wholesalers. Finally, they will investigate the costs of retailers. The authorities will also study methods of rationing goods and considering appropriate rationing plans is also a necessary measure in order to discover shortages or inadequacies. For this reason, manufacturers, wholesalers, and retailers must each establish associations separately.</p>
+<p>Three Parties Agree on Uniform Prices</p>
+<p>And from these three sections, agree on a uniform price, submit it to the authorities for approval, the authorities will refer to the detailed report of the cost of goods, to ensure the establishment of reasonable price levels. There are still several types of retail businesses that are not included in ordinary retailers and will be strictly controlled by the Shanghai Municipal Council to ensure that they maintain reasonable sales prices. The prices of all goods currently controlled by the Japanese authorities may be greatly reduced, and goods shipped to Shanghai from Japan and other places will only be allowed to obtain reasonable profits. Regarding the supply of goods from the interior to Shanghai, he believes that "cheap supply and cheap purchase" can smoothly transport products from the interior to Shanghai. At the same time, there should be greater freedom in the transportation and movement permits for goods.</p>
+<p>Shop Prices Have All Fallen</p>
+<p>The Datong News Agency reports that the overall economic situation of the city's people has improved as a result of the authorities' active adoption of strict price suppression measures. Major department stores have gradually marked the prices of goods they sell this month to conform to the price limits set by the authorities. The impact of this has caused the prices originally set by other shops in the city to start to waver. The shopkeepers of these stores all expect that in the near future, the authorities will put pressure on the scope of the goods they sell, so they are now eagerly getting rid of their stock, and have slightly reduced prices, so as not to be</p>
+<h3>Forcibly Suppressed</h3>
+<p>To even lower prices in the future. According to reporters, the Chinese domestic goods company, which was the first in this city to sell goods according to the prices set by the authorities, only reopened at 10 a.m. yesterday, after closing at 11:25 a.m. the day before. Before the company opened the iron gates, there were already over a thousand customers waiting on the sidewalk of the road, and police maintained order and enforced queuing, dividing them into two lines for men and women. The men's line extended to the middle of Shandong Road, while the women's line extended to the bottom of the Cishu Building, and there was not enough space to accommodate them. The crowding situation was</p>
+<h3>As Before</h3>
+<p>The rice line at the Municipal Council. Then the company opened the side door at ten o'clock, putting a part of the customers in, because the number of people was too large, it closed again after noon and posted a notice in front of the door, "Please come early tomorrow." Other four companies, such as Wing On, were also extremely crowded and adopted the system of putting customers in in batches. Sincere and The Sun Sun also opened a side door all day long and did not close it, but all closed shop before six o'clock.</p>
+<h3>Shanghai Municipal Police Department Establishes Music Inspection Section</h3>
+<p>The Shanghai Times reports that the Shanghai Municipal Police Department has established a Music Inspection Section to supervise the music played in Shanghai's dance halls and nightclubs. This is the first time in Shanghai's history. Yesterday (the 3rd) afternoon, the leaders of the various bands were summoned to the headquarters of the Police Department, where they were given a list of songs prohibited from being played by the police, and it was stipulated that newly composed songs must be approved by the inspectors before they could be played. The banned songs include the Western songs "America, I Love You," "Thank You, America," "Good Luck and Same to You," and "Georgia Marek." The Chinese songs include "Peach Blossom River" and "When Will You Return?" because their lyrics are inappropriate.</p>
+<h3>Counterfeit Foreign Wine</h3>
+<p>Xue Ruilin, a Chinese detective of the Criminal Division of the Public Concession Police, recently learned that someone was counterfeiting and selling whiskey. He instructed his officers to contact these people and agreed on a price of 1,800 yuan per dozen. They were to be delivered to the intersection of Jing'an Temple Road and Dahua Road the day before. When a Suzhou man, Kong Linshu, arrived with a dozen bottles of fake whiskey, he was arrested. After interrogation, he confessed and the police went to No. 11, Lane 46, Chengdu Road, and arrested Zhang Youguang, a Suzhou native, seizing four batches of fake brandy. Then, at No. 353, Aierjin Road, they arrested Wang Yixing, a native of Ningbo, seizing six dozen bottles of Helen Te Whiskey produced by the Fahua Factory at No. 19 Xuhuali Road. After investigation, it was found that they were adding a little black tea to the Helen Te wine and putting it into empty bottles of British whiskey to pass it off as the real thing. As further investigation is required, they were ordered to be temporarily detained pending further investigation.</p>
+<h3>Shen Bao Readers' Education Donations</h3>
+<p>Yesterday, we received 30 yuan from the Yao Mother funeral offering and Teng Keqin, 20 yuan from Shen Xunshi, and 10 yuan from Shen Xuanshi, totaling 60 yuan in savings certificates. The previous balance was 17,745 yuan, bringing the total to 17,805 yuan.</p>
+<p>We also received the following educational grants: Paradise Club 129 yuan and 65 fen, Rao Yuqing and Rao Yuyin (two young brothers' candy savings) 84 yuan, and Wang Yuxian (returned educational grant) 80 yuan, totaling 293 yuan and 65 fen in savings certificates. The two totals are 353 yuan and 65 fen in savings certificates. The previous balance was 207,959 yuan and 92 fen, bringing the total to 208,313 yuan and 57 fen.</p>
+<h3>Arrested for Embezzlement</h3>
+<p>Guo Jincheng, a native of Pinghu, worked in the advertising department of the Zhongxi Pharmacy at No. 313 Fuzhou Road. Recently, Guo took advantage of his position to over-report purchases to the accounting department when buying supplies, embezzling the difference. Over several months, he embezzled approximately 22,400 new yuan. The pharmacy discovered this a few days ago and reported it to the Lao Zha Police Station. Chinese detective Zhou Zhenxing arrested Guo. Guo confessed to the embezzlement, but only admitted to 10,000 yuan. As there was a dispute over the amount, Guo was detained pending investigation and verification of the accounts.</p>
+<h3>Shanghai Municipal Council Announces Periodic Distribution of Four Batches of Rice Tickets</h3>
+<h3>Tenth Issue of Rice Ration Quantity Announced</h3>
+<p>The Shanghai Municipal Council has issued a notice stating that the fourth batch of rice purchase certificates will be distributed by the Council's rice purchase certificate issuing offices starting on Wednesday, the 9th of this month. This rice purchase certificate is still divided into four coupons, and can be used to purchase rice during the 13th, 14th, 15th, and 16th weeks in accordance with the planned amount of rice per capita. Taxpayers or their representatives within the Settlement can bring their autumn property tax receipt along with the summer property tax receipt on the date indicated on the back of the summer property tax receipt to the certificate issuing office in their residential area to receive the rice purchase certificate. In order to speed up the certificate issuing process, taxpayers should bring both the autumn property tax receipt and the summer property tax receipt for verification. Taxpayers or residents who are unable to present their autumn property tax receipt or have questions about the certificate issuing date should go to the certificate issuing office between 3:00 p.m. and 4:00 p.m. every day (except Saturdays and Sundays) to inquire about everything. The office hours of each certificate issuing office are from 9:00 a.m. to noon and from 1:00 p.m. to 4:00 p.m. every day. The office is closed on Saturdays and Sundays.</p>
+<p>The Shanghai Municipal Council also issued a notice stating that the No. 9 coupon of the rice purchase certificate for purchasing Municipal Council rice and flour is only valid until the 5th of this month and will be invalid after the expiration date. During the period from the 7th to the 12th of this month, rice shops and the Municipal Council will only sell rice with the No. 10 coupon of the rice purchase certificate. At that time, half a liter of white rice and one liter of broken rice will be sold for a total price of 3 yuan and 8 jiao for each coupon by the rice shop with the registration number indicated on the coupon. At the same time, the coupon holder can freely purchase one jin of flour for a price of 2 yuan and 3 jiao.</p>
+<h3>Jewelry Store Maid Conspires with Gang to Commit Theft</h3>
+<p>Hongxing Jewelry Store at No. 63 Avenue Joffre has been the victim of successive thefts of jewelry and precious stones worth more than 100,000 yuan from July until the middle of last month. The day before yesterday, a shop assistant saw the maid, Lin Wei (30 years old, Chaozhou native), opening the iron safe in the jewelry room on the second floor to commit theft. He immediately grabbed her and called the police, who took her to the police station. Under interrogation, Wei confessed that after successively stealing jewelry, she transferred it to her fellow villager, Huang Xu (37 years old, working as a domestic helper at No. 4, Lane 27, Avenue Joffre), and then entrusted Lin Deshun (36 years old, fellow villager, street sweeper in Guangdeli, Songshan Road) to sell it, sharing the profits. According to the confession, the police chief dispatched detectives to arrest Huang Xu and Lin Deshun one after another, recovering a portion of the stolen goods and detaining them pending investigation.</p>
+<h2>Page 5</h2>
+<h3>Mr. Zhao De's Memorial Service Held Yesterday</h3>
+<h3>People from All Walks of Life Came to Express Condolences</h3>
+<h3>Staff of This Newspaper Held a Public Memorial Ceremony</h3>
+<p>Yesterday was the date of the memorial service for Mr. Zhao Dezai, the father of Zhao Youhao, a reporter for this newspaper. People from all walks of life came to express their condolences in an endless stream from morning till night. The details are as follows:</p>
+<p>Mr. Dezai devoted his life to history and geography and the development of education, making contributions to society. His sudden death has caused grief in all circles. Those who went to offer condolences yesterday included elders Shen Enfu, Ding Fubao, Yuan Ludeng, Feng Bingnan, Jiang Weiqiao, Pang Diancai, and other leaders from all walks of life, totaling more than 1,000 people. Eulogies and scrolls were hung on all four walls, all deeply respecting Mr. Zhao's achievements.</p>
+<p>At noon, the staff of this newspaper held a public memorial ceremony, presided over by Wang Ziqin, with Lu Yiming and Tang Shichang as assistant officiants. The Banjiang Children's Home first played sad music, presented flowers and wine, and solemnly read the eulogy. The ceremony was solemn and lasted for an hour. In the afternoon, people from all walks of life continued to offer condolences. The entire road on Kuling Road was filled with white horses and elaborate decorations, showing great respect.</p>
+<h3>Thinking about the Value of Life from Mr. Zhao's Memorial Service</h3>
+<p>Life is originally a journey. Some devote themselves to academia, completing their journey of establishing a career. This is a meaningful and valuable life. Reading the eulogies and couplets from people of all walks of life at Mr. Zhao Dezai's memorial service in Shanghai yesterday, we deeply felt the value of life. Mr. Dezai devoted himself to education and the study of history and geography, and his filial piety and friendship were respected by scholars. He enjoyed a long life and completed his journey of devoting himself to academia. Now, we select excerpts from the condolences from all walks of life to show that although Mr. Zhao's image is gone, his virtue still remains:</p>
+<p>Elderly man Shen Enfu (79 years old) couplet: Skilled in history and geography, accomplished in filial piety and kindness, this old man should enter the Confucian biography, worrying about the times when he was ill, and his soul returned to the land of happiness, knowing that he achieved Buddhahood through the Pure Land sect.</p>
+<p>Chen Taoyi's eulogy: Living in the empty mountains, writing books to show his ambition, ascending to the land of happiness forever, abandoning his body in peace.</p>
+<p>Hu Pu'an's eulogy: Alas, Mr. Zhao, lofty in his aspirations, pure in his body, versed in all the books, knowledgeable and virtuous, living in harmony, teaching his sons with righteousness, treating people with sincerity, but not reaching the age of hope, what is the reason for the heavens? The younger generation looks up to him, and the autumn water is born. Alas, since Mr. Zhao's death, who is the true Confucian?</p>
+<p>Feng Bingnan's eulogy written by Qian Chongwei: Venus is dim, and Shao Wei star falls. A philosopher has passed away, and the sound of virtue is lacking. Only Mr. Zhao, in his prime, was famous in the school. Observing the times and judging changes, his eyes were like torches. Seeking practical knowledge, he devoted himself to mathematics and astronomy, and studied geography. He had a thousand years in his heart and recorded them in his writings. Studying the past to verify the present, he wrote a general history. Building a school in Guangling, he held grand lectures, cultivating future generations, with many talented students. He tried his best to serve his parents, cutting his own flesh to treat their illness, moving the gods with his sincerity. His filial piety was a model, his righteous ways taught his sons, and he passed on a clean family, bringing prosperity to his descendants, becoming the essence of the country. Strolling with a cane, he lived in seclusion in the fields, planting flowers and bamboos, searching for mountains and asking questions. Suddenly encountering chaos and hardship, he became ill with worry and abandoned the world. An elder achieved a good end, and his model did not fall. The thoughtful ones are virtuous, shedding tears in the wind.</p>
+<p>Jiang Weiqiao's couplet: Skilled in the three fields of learning, using the original principles, nothing is better than history. Four phoenixes in front of the hall, virtuous generations have talented people.</p>
+<p>Li Haoran's couplet: Indulging in reading historical records and geography, studying the past and the present. What is the difference between his far-sightedness and Gu Jingfan? Passing on the family is only accumulating learning, inheriting the methods of his predecessors, and future generations will not be ashamed of Hui Songyai.</p>
+<p>Du He's couplet: Melting the classics and history, developing learning and nurturing talents, saving the world from chaos, he can be regarded as a pioneer. Filial piety and friendship, cautious in the small and upright in virtue, his pure fragrance will leave a legacy, blessing his descendants.</p>
+<p>E Sheng's eulogy: In the past, Xiao Yan wrote a general history. When Jiangling was burned, both civil and military officials were saddened. For thousands of years, only the sound of Dongshui was respected. Mr. Zhao's foresight matched that of his predecessors. He roamed the past and the present, collecting records and weighing changes, uniquely marking new ideas. His son, bearing his father's teachings, reported on current affairs, holding a pen in Shanghai, independent and unyielding, accumulating knowledge and benefiting future generations, encouraging the present world. His high style will last forever.</p>
+<p>All the staff of this newspaper couplet: The world has experienced disasters, and the land is full of chaos. Mr. Zhao used Buddhist principles to prove the three vehicles. Let us wait and see for the rosy clouds, and his soul will have a basis to transform. His son's fame is widely known. Heaven does not destroy his filial piety, leaving an old man. Waiting for the Pleiades to set and the moon to fall, his spirit is like a fragrance. If he returns,</p>
+<h3>Public Catholic Yellow Bell Society Broadcast</h3>
+<p>The Shanghai Catholic Yellow Bell Broadcasting Society will continue broadcasting from the French Cultural Station in Shanghai, starting on September 6th. The station's call sign is FFZ, the wavelength is long wave 2400, and the frequency is 12.09. The broadcasting time is still once every two weeks, starting from 19:00 standard time to 19:45. The theme of this year's lecture is "The True Face of Catholicism." The first program on September 6th is a lecture on "The City on the Hill" by Father Cai Zhongxian, and will include music from the Salesian Music Concert and a children's program from the Public Catholic Service Group.</p>
+<h3>Yesterday, This Newspaper Started Publishing at 6:20</h3>
+<h3>Charitable Volleyball Match a Complete Success</h3>
+<p>Xingren United Team to Play in the Finals Tonight</p>
+<h3>7:30 p.m. at the Youth Association Wenlan Pavilion</h3>
+<p>The Vita-Rich Cup Charitable Volleyball Tournament will hold its final game tonight at 7:30 p.m. in the gymnasium of the Youth Association at Eight Immortals Bridge. The event has been a complete success. Mr. Lan, Chairman of the Board of Directors of Jimin Hospital, will preside over the closing ceremony and auction off the match ball. Tickets are divided into honorary tickets for five yuan and regular tickets for two yuan. All proceeds will be donated to the Shanghai Poor People's Lung Disease Hospital and Jimin Hospital. The first match will be the Group B final, with the Group A champion Rainbow Team against the Group B champion Inland River. The second match will be the women's championship game, with the Jiemen team playing the Blue Star team. The two teams have equal records. Jiemen has Shanghai Stars and the Chen brothers, while Blue Star has players such as Zhang Yixuan, Yang Chengdi, and Zhu Jin. A wonderful game is expected. The final match will be the Group A final, with the Xingren United Team meeting the other Xingren team. Xingren II has won two games, and if they win tonight, they will definitely win the championship. If they unfortunately lose, they will have to replay the game. The United Team unfortunately suffered a defeat to the White Team last week, but there is still hope for the championship. The schedule for tonight is as follows:</p>
+<p>Rainbow Team - Inland A (Group B Final) 7:30 p.m. Blue Star - Jiemen (Women's) 8:30 p.m. Xingren - United Team (Group A Final) 9:15 p.m.</p>
+<h3>Shanghai Table Tennis Association Holds Joint Tournament</h3>
+<p>Chen Linsheng Appointed Chairman. The Shanghai Table Tennis Association held a meeting of the Standing Committee last night at Wanli Restaurant. Committee members Lu Zhongqiu, Hu Jiankun, Xu Duo, Liu Keren, and Chen Linsheng attended. Chen Linsheng was unanimously elected as chairman and given full authority to handle association affairs. Mr. Chen has served in the table tennis community for more than ten years, advocating and promoting the sport. He has made great contributions and is now taking on a heavy responsibility, which will surely lead the association to greater glory. The resolutions are as follows: The office will open on the 15th of this month. Secretary-General Hu Jiankun will notify all groups to accept various applications. Zhou Daoqian and Liang Jintang have been added as consultants. A joint cup league will be held. Chen Linsheng, Xu Duo, and Liu Keren will prepare for the event. A photo will be taken on the 20th of this month at Qichang Photo Studio to commemorate the event. The registration of the Together Cup has been approved. The association's address is No. 480, Futian Village, Avenue Haig.</p>
+<h3>Sino-French Volleyball Tournament Opens</h3>
+<p>The Sino-French Cup volleyball tournament initiated by the Sino-French School in this city will open at 2:00 p.m. today at the school's playing field on Route de Messimy. More than twenty teams are participating. Visitors are welcome. The schedule is as follows:</p>
+<p>Shanghai United - China Youth 2:00 p.m. Huayan - Y Team 3:00 p.m. Small United - Lei Team 4:00 p.m.</p>
+<h3>Dakang Bank Promotes Sports</h3>
+<p>Since Zhang Xinchu took office as manager of Dakang Bank, he has paid attention to the amateur entertainment of his colleagues and organized a club, divided into groups for books, chess, Peking opera, football, table tennis, etc. The chess group has already started a round-robin competition and will soon produce a champion, planning to hold friendly matches with chess enthusiasts from all walks of life.</p>
+<h3>Spotlight on Hong Kong Football Stars (3)</h3>
+<p>Versatile Forward Zhuo Shijin</p>
+<p>Zhuo Shijin is a versatile forward from Hong Kong, able to use both feet equally well and comfortable in any forward position, hence his reputation for versatility. He comes from the South China Athletic Association, known as the Hong Kong football academy. At the age of eighteen, he became famous on the football field. He was selected as one of the representatives of China's World Games team. At the age of only twenty-two, he was the youngest member of the team. Before the incident, he transferred to Hong Kong Guanghua, once leading the team to defeat the mighty South China team, especially impressing in the past.</p>
+<p>Rising Star Zheng Yingquan</p>
+<p>This gentleman comes from the military, and is physically strong. Hong Kong soldiers also fear him when playing football. The Hong Kong Engineering Corps once invited him to help out, and he then played for the Eastern Association. In 1931, Eastern won the Hong Kong-Guangzhou final, and he contributed to the victory. This year, at the age of twenty-seven, this treasure from Fuan, Fujian, is able to play any football position and is also versatile.</p>
+<p>Jin Jiabiao Revisits Old Haunts</p>
+<p>Jin was originally from Shanghai and once played for Donghua. He then went to the interior and then to Hong Kong for employment. Recently, he served as a central defender for Guanghua's Group A team. He has been studying to become a football referee in Hong Kong. This gentleman has a diploma, and now he is revisiting old haunts. He has been separated from Shanghai for three days and should be looked at with new eyes.</p>
+<h3>Under the Coverage of Buying Sentiment, the Bond Market Becomes a Straight Line</h3>
+<p>Yesterday, the unified government bond market was thriving, the market sentiment was strong, and it was exceptionally stable. This was because various banks received a lot of cash, and people's hearts were refreshed. Because the number of chips was rare, it caused short covering, so the rising trend became stronger and stronger. The whole city was covered by buying sentiment, almost becoming a straight line up. Judging from the trend, with the actual receipts of new entrants and large holders, the potential of sellers in terms of chips is slightly inferior. Therefore, for the time being, the buyers are in a better position. In the morning, Hongda, Tongyuan, Shuntai, Qianyi, Xie Kang, etc. first bought in. Although Tongshun, Xin Kang, Lanxin, Runde, Tongyu, Lianhe, Hu Heji, etc. sold hard along the way, it was slightly softer for a while. However, later, due to the needs of Runli, Tongli, and retail investors, it was pulled up. As a result, except for Class A bonds which only rose 7 jiao, the other bonds rose about 1 yuan each. The turnover was about 3 million yuan. The table is listed below.</p>
+<h3>Chinese Stocks at a Loss</h3>
+<h3>Except for Department Stores Which Have Turned Around</h3>
+<h3>Others are Exhausted as Before</h3>
+<p>Yesterday, the Chinese stock market was still falling sharply. Only the stocks of the three department stores, Wing On, Sincere, and China National Goods, have rebounded due to excessive declines recently and the activity of bargain hunters. The market has stabilized. Wing On rose 5 jiao, Sincere added 1 yuan, and China National Goods rose 1 yuan and 5 jiao. China Underwear has shown little improvement. Due to news of a fire at the factory this morning, it fell by a huge 1 yuan and 5 jiao. The new pharmaceutical industry was particularly depressed. New Asia plunged by 2 yuan. Sino-French broke through the 70 yuan mark, small 3 yuan and 5 jiao. Minyi fell 1 yuan to 60 yuan. In the cultural industry, only China Bookstore saw stability. The Commerce Press was at a small 7 yuan and 5 jiao. World Book Company was down 5 yuan. In the public utilities sector, Zhabei Water and Electricity was down a small 5 jiao, falling close to the 30 yuan mark. The Chinese market sentiment was stable. The Great China Match Company continued to decline by 2 yuan and 5 jiao. The Nanyang Tobacco Company was down 1 yuan. The new stocks also fell accordingly. Fu Chang Dyeing fell by a small 5 jiao. Great China Weaving and Shanghai Cotton Weaving returned to the previous day's price. As of today, people's hearts are still difficult to stabilize. The turnover was not lonely. The prices of each stock are recorded below.</p>
+<h3>Woolen Fabrics and Guang Goods are Uniquely Popular</h3>
+<p>The trend of Guang goods and woolen fabrics has been quite popular recently. The supply of raw materials, wool, is cut off, and there is no doubt that the production of factories will inevitably decrease in the future. Therefore, those in the industry with inventory are mostly hoarding and not selling. Also, because the inventory is not large, the retail demand is not weak, and people's hearts are more optimistic. Yesterday, such as fine wool woven medium-thick flower呢, various patterned and plain western-style suit 花呢, ビジ海林棒, 宜維華達呢, 馬褲呢驼叫巾 and the like, were popular in the market, with brisk transactions. The prices are rising, and the demand and supply are still equal.</p>
+<h3>Commodity Price Limits - Very Little Grain Trading</h3>
+<p>Yesterday, the grain market saw scarce supply and little demand, resulting in very light trading. This was because sellers were unwilling to easily sell due to a lack of inventory, while shops on Muji Street were reluctant to purchase due to price controls. Thus, the market was mutually exclusive. Only 50 bales of Chongming sand silkworm pupae were traded, priced at $134. 300 bales of July futures contracts for Sanxin small package bran were priced at $116.</p>
+<h3>Preserved Tangerines Watched Closely</h3>
+<p>The preserved tangerines that arrived from the suppliers sold out quickly because the Northern merchants have quite a need for them, and the market was brisk. It is said that the supply of tangerine cakes in the producing areas is already low, so even if telegrams are sent to urge shipment, the number of arrivals will be limited. Therefore, the future market may see further price increases.</p>
+<h3>Few Sugar Shares Offered</h3>
+<p>Sugar merchant cooperative business office sugar shares, recently because the place has dividends to distribute, so the output is very small, transaction is sparse crude sugar shares of 301 yuan, and a small five corners, the deal four white bags, after the lack of make, raw sugar shares called the original price, no deal.</p>
+<h3>Jewelry Gold - Even Inter-Dealer Trading Is Light</h3>
+<p>Yesterday, the retail price of jewelry gold at Dasin Jewelers in this city remained unchanged at 2,100 yuan per tael. The buying price was reduced by about 300 yuan. Inter-dealer trading prices fluctuated within a small range, and the trading volume was even lower. Initially, it was 1,877 yuan and 5 jiao, up by one and a half yuan. Then, it was seen at 1,870 yuan. Xiangrong was buying in small amounts, pushing it up by 15 yuan to 1,885 yuan. At noon, it was 1,875 yuan, the same as the previous day's price, with a difference of 15 yuan. Trading was light. Jewelry silver was listed at 14 yuan per tael, and the inter-dealer price was around 11 yuan.</p>
+<h3>Military Note Discount Rate - No Change</h3>
+<p>Yesterday in the foreign exchange market, the Japanese military notes were flat. The inter-dealer price was about 5 yuan, 5 jiao, 5 fen, 5 and 7 li, unchanged. As a result, the banks and small money shops sold them at 5 yuan, 5 jiao, and 7 fen and bought them at 5 yuan, 5 jiao, and 5 fen.</p>
+<p>Yesterday, the discount rate of the Commercial Practice Association remained flat at one jiao and three fen. The new clearing houses are settling cash at par. Five Continents Jiangsu Local Banks.</p>
+<p>The Joint Reserve Committee of the banking industry in this city yesterday sent a circular to all exchange banks, stating that the Committee will begin to act as an agent for the exchange of bills of the Five Continents Bank and the Jiangsu Local Bank on September 7, 1942 (next Monday). The exchange number of the Five Continents Bank in the exchange is 52-12, and the exchange number of the Jiangsu Local Bank in the exchange is 52-14.</p>
+<h2>Page 6</h2>
+<p>Entertainment World</p>
+<h3>As I Heard It: Song Dezhu</h3>
+<p>— Sick Dove</p>
+<p>Song Dezhu is famous in the opera world as a female martial role, partly because of her skills and partly because of her good relationships. A guest inquired about Song's life experience, so I wrote this article to tell you about it.</p>
+<p>Learning Experiences</p>
+<p>Song Dezhu is from Tianjin, Hebei. Her family was in business, but by the time of her father, the family fortune had declined. Song's father sent Dezhu to a drama school. At that time, Dezhu was only twelve years old. She started with female lead roles and then studied female martial roles. She was nurtured by famous teachers such as Jiu Jianfeng, Zhu Guifang, Guo Jixiang, and Yu Yuqin, and her skills became great. In 1937, the Beiping Liyan Daily organized a child actors' election, and Dezhu received the most votes and won the female martial role champion, and her reputation became even more loud. When she was in school, Vice Principal Li Boyan loved her the most. He singled Dezhu out from among hundreds of students in the school, and taught and supervised her strictly, as if she were his own daughter, and also choreographed a new play "Princess Pingyang" for her. The martial arts in the play had many new and interesting things, such as the dance of "Ruyi Shuang Gou," which was matched with ancient melodies such as the Suzhou Narcissus and the Beside the Dressing Table. The ancient colors were ancient, and it was pleasant to hear and entertaining to see, and people called it that. At the same time, he also hired national martial artist Gao Ziyun to teach Tai Chi Arhat Qiankun sparring sword. This kind of technology can work hard, and it will help the figure of the female role. Song Dezhu's achievements today are based on this.</p>
+<p>First Time Forming a Group</p>
+<p>On New Year's Day in 1939, Dezhu formed a group for the first time and performed at the Xin Xin Theater in Beiping, taking the lead as a female martial role, creating a record in the opera world. The repertoire was the entire Yang Paifeng. Her supporting cast included Chen Shengsun and Wang Shengyi as female leads, Zhong Mingqi as a male martial role, Lu Fengshan as a male character with a beard, Xiao Debin and Zhao Xun as martial roles with painted faces, Yin Jinzhen as a martial clown, Xiu Dexin as an old male character, and Li Debin as a young male character. Most of them were former students of the opera school.</p>
+<p>Failed to Go Abroad</p>
+<p>In 1939, the Golden Gate Exposition was held in San Francisco, USA. At that time, Li Boyan was working overseas and wanted to send the Song troupe to the United States to participate in the performance, to win glory for the country and individuals. In addition, with the encouragement of Chinese-American movie star Anna May Wong, he was willing to provide economic assistance. Therefore, letters and telegrams were exchanged, and negotiations had already begun, but in the end, personnel problems could not be resolved. Moreover, the country was in a time of turmoil, and she did not want to make a show of it. The effort failed, which is a pity.</p>
+<p>A Glimpse of Artistic Affairs</p>
+<p>Song Dezhu is a specialist in female martial roles. Most of her skills were learned from Jiu Jianfeng. The thrilling and swift movements of the audience's shots are quite similar. The set of moves she plays is complete, with many patterns, and rarely the same. Her attitude is calm and unhurried, and there are often beautiful female lead movements interspersed between them, graceful and charming, and very lovely. Dezhu is the first person to be both strong and soft in martial roles. The "standing" and "slope" of the high-soled shoes are mutually available, deeply containing the doctrine of the mean, advancing and retreating as desired, and are beautiful. It is a pity that the skills of going down the stairs and standing still are slightly lacking, and they can often be seen when playing fast guns. Song Dezhu's narrow voice is suitable for singing female lead roles, and she should practice more diligently. Otherwise, in addition to martial roles, she may as well learn flower roles, and she may not be able to show her strength in the role. Art is valued for its excellence rather than its breadth, and I deeply believe that the latter is true.</p>
+<h3>Sun Jianqiu's Artistic Achievements Are Rapidly Improving</h3>
+<p>— Hai Sheng</p>
+<p>Beautiful female lead Sun Jianqiu, who performs at the Gengxin Stage, is excellent in both beauty and art. This time, Song Dezhu came to Shanghai to perform Butterfly Lovers, Mermaid, An Accidental Romance, and Flower Field Wrong. Jianqiu's co-performance is a wonderful combination of green leaves and shadows. Jianqiu strives for further studies. Yi Yang, a famous comedian, told him about He Zhu Pei and Little Shepherd Boy. Playwright Weng Ouhong praised him very much and recommended him as a rising star. Jianqiu will soon be listed as a goddaughter under the tutelage of famous amateur opera singer Hu Gengyun.</p>
+<h3>Dynamics of the Qingguang Troupe</h3>
+<p>— Liang Ren</p>
+<p>The Qingguang Troupe's first performance of "Parasitic Grass" was directed by Zheng Gezhi, an overseas Chinese from Malaysia, and won unanimous praise from all walks of life. It is now actively rehearsing the seven-act sad literary drama "A Good Time for Flowers and Moon", which is tortuous, bizarre, new and extraordinary. It is decided that the Mid-Autumn Festival will be performed at Longshan, and the location is being negotiated with a major theater. Then, the five-act passionate song and dance drama "South China Sea Love Song" was directed by Gezhi, and Zheng Lizhen, a dance expert from overseas Chinese, and musician Yang Songping were the song and dance instructors. It is said that the troupe still does not have enough actors, and those who love drama and have some experience can apply to participate by sending a letter to the troupe at 123 Datong Road.</p>
+<h3>Xue Jin in "Blood and Tears"</h3>
+<p>— Fan Shiren</p>
+<p>Mentioning the name Xue Jin seems to be very unfamiliar to everyone, right? Indeed, even I had not heard of it before. I discovered this artist with great acting talent only recently. On a clear and breezy autumn night, I was invited by a friend to see the premiere of the "Blood and Tears" drama by the Unnamed Troupe at the Xuan Palace. I saw this excellent and promising young man for the first time. He played a romantic bandit leader in the play, appearing in the second act. When he appeared on stage, the audience in the whole theater immediately fell silent, no longer as noisy and restless as in the first and second acts. Everyone sat quietly and attentively, and gave a warm round of applause when they were happy. I don't criticize how delicate and expressive the acting skills of the people on stage are, but I can see whether the emotions of the people off stage are controlled by the performers; as long as the spirit of the actors and the hearts of the audience are intertwined, and the emotion is like an electric shock, then the artist's artistic career can be admitted to a proper state; and all the essence of an artist is also placed here. Xue Jin, among many unknown artists, is one who is full of this kind of charm.</p>
+<p>The moment when the bandit's lair was wiped out in the fourth act was the climax of the whole play. Like other excellent actors, he was able to grasp the center of the climax and keep the atmosphere of the whole scene in extreme tension from beginning to end. In the midst of the gunfire, his last action was to drink bullets and die. When the curtain fell, the stage was full of corpses, and my forehead was covered with beads of sweat.</p>
+<p>Someone who knows Xue Jin said that he is only twenty years old this year, and he has not been a basic actor in the Unnamed Troupe for long. He has played roles with absolutely different personalities, such as Wang Weiren in A Woman's Heart, Zou Ping in Thunderstorm, and Committee Member Luo in Women's Apartment. He can be said to be good at acting, but it is said that the owner of the troupe does not value him very much. This disadvantage may be based on his youth and poverty!</p>
+<h3>Dynamics of the Art Garden</h3>
+<p>— One Qing</p>
+<p>Tang Huaiqiu and Tang Caiqing will prepare to go to northern China to perform with a large number of people in the name of "China Touring Troupe" after the end of the Huanghou.</p>
+<p>The Art Troupe is actively preparing for The Earth. I have invited Shu Shi to be the director, and Shu Shi is still considering it.</p>
+<p>Lan Xin decided to seal the building today. Zhao, Zhu, and Sun, the managers of the theater, personally inspected everything. After Lu Luming's "The Young Lady's Fan" is finished, the right to perform will be officially exercised, and two gentlemen from the drama world will be responsible for carrying it out.</p>
+<p>After the CZC company was dissolved, Li Jianwu showed discouragement and had no intention of operating it. "Kugan" organized by Zuo Lin may have the possibility of cooperating with "Huayi".</p>
+<h3>Peace Charity Performance</h3>
+<p>— Hai Zi</p>
+<p>Today, the Peace Box Office will hold a charity performance at the Grand Stage for the Tongren Fuyuan Hall. There will be two performances day and night. The main repertoires of the daytime performance are "Broken Bridge" by Gu Zhenxiang, Zhu Biming, and Zhu Chuanfang, "Qianyuan Mountain" by Er Chen Dingxin, and "Fishing and Killing Family" by He Songnian, Gu Yixiang, and Cao Xueqin. The evening performance is "Battle of Changsha" by Li Yuanlong and Zhan Xiaoling, "The Story of the Horse Trader" by Fei Xizhen and Gu Zhenxiang, and "Catching and Releasing Cao" by Gu Yixiang. It is said that sales and donations have reached 50,000 to 60,000 yuan. The picture shows a small casual photo of Mr. Gu Yixiang.</p>
+<h3>Sharing the Same Boat in Wind and Rain</h3>
+<p>— He Jia Zhi</p>
+<p>(8) What Can Be Done</p>
+<p>Wei Yunqing forgot that the abacus hit the table, smashed a nail, and broke the copper skin. Now he picked up the abacus and slapped it on the table again, shouting: "Shao Yun, are you my father or am I your father? Speak, why are you so unreasonable? I'm so old, I've long wanted to hand over the household affairs to you, but I see that you're just a frivolous young man and I'm not very relieved. You don't study, and you don't do business. I don't ask you to take care of the family's affairs, but you're starting to take care of the family's affairs for your father. Go! Go read a book, even if you don't read it out loud, just read, read until the new year, and I'll give you some money, at least ten yuan, so you can have fun in the new year." Wei Shaoyun heard that ten yuan was a small amount, but Wei Yunqing said that ten yuan was a large amount. The two people's psychology was different, so Wei Shaoyun smiled and said, "Dad, why are you using ten yuan to tempt me? I'm asking you, who is the woman in my house? I want to take a look, why won't you let me see? I guess it's the woman that Fei Changhe brought, and she won't be pretty. But the pretty that I'm talking about is not that high of a standard, as long as she's better than your daughter-in-law, then she's pretty."</p>
+<p>Wei Yunqing said, "Beast! In the end, I don't know where I'm talking about. You think that just because you married a wife, I can't hit you? There's no such thing. If you make me angry, I'll still hit you. Have you forgotten? Ten years ago, I broke a bamboo pole. Go! Go to your daughter-in-law's place! See how much of the blue-striped red-checkered cloth she's woven. You don't listen to me when I talk nicely, you won't get any benefits. Qin Runzhi said that he's coming today, it's about time he'll be here. If you don't listen to me, and people outside know about it, it'll be a joke." Wei Shaoyun raised his head and thought for a while, stomped his leather shoes on the ground, and walked out. Wei Yunqing walked lightly to the door. When he saw where he was going, he was walking outside the gate, and then he was relieved. He muttered to himself again, "Rebellious wife and wicked son, intertwined in the past life. Sigh! (173)"</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.09.04.html", "next": "1942.09.06.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

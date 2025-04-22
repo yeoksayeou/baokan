@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.05.15 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 477 - 4924480</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>卡柯夫前線　蘇聯軍展開反攻　加里寗區克復據點數處　寇爾許蘇軍退守新陣地</h3>
+<p>蘇邊某地十四日哈瓦斯社電　本日爲德蘇戰爭第三百二十六日、當前重要事件、厥爲德軍再度東進、尤以寇爾許半島方面局勢最爲顯著、該地實爲進攻髙加索油田之要這、蘇聯統帥部似亦已採取攻勢、以爲牽掣之計、其發動地點雖與寇爾許半島有相當距離、但兩者實有聯帶關係、蘇聯通訊社雖曾發表進攻消息、但確實地點則求經宣佈、據軍事觀察家推測、蘇聯殆欲進佔貝爾戈洛特城、以威脅卡柯夫德軍陣地、其作用當在阻止德軍進窺羅斯托夫、設蘇軍果向卡柯夫進攻則唐納資區之德軍後路將受威脅、因而迫使德軍不得不向北移動、另據蘇聯方面消息、蘇軍在莫斯科以西之加里寗區、亦已實行反攻、鏖戰三日、蘇聯已克復陣地數處云、</p>
+<p>倫敦十四日路透社電　蘇方丁莫生柯上將所部精銳紅軍、刻正向卡柯夫（通往高加索之鎖鑰）挺進、寇爾許半島蘇軍即似在後撤中、維希通訊社消息謂寇爾許城已於今日拂曉被德羅機械化與騎兵部隊佔領，同時蘇方中午公報謂、昨夜寇爾許半島通宵激戰、</p>
+<p>莫斯科十三日哈瓦斯電蘇聯官方今夜發表公報稱、寇爾許半島我軍因敵衆我寡、已退至新陣　、德國官報所稱該區戰事於德方有利、及德軍俘獲大批俘虜、並擊毀大批飛機坦克車各節、完全無稽、我軍撤退秩序井然、日曾予敵重創、至卡柯夫前綫、我軍大舉反攻順利、其他各綫無事足述云、</p>
+<p>瑞典京城十四日哈瓦斯　　　關於羅馬尼亞方面今晨所傳德羅聯軍已佔領寇爾許及爾兩城之說、官方旣未加以證實、亦未加以否認、德軍總司令部戰報亦未提及此事、</p>
+<p>蘇邊某地十三日哈瓦斯社電中立國若干觀察家雖以爲寇爾許半島戰事之重要性、不免煊染過甚、但德軍在該處之進展、亦足以獲有通至髙加索之要道、本日據羅馬尼亞方面消息、寇爾許半島被圍之蘇軍三師、確已有一部份被殲滅、殘部雖仍在寇爾許半島以西數處負嵎抵抗、但其潰滅亦僅時間問題，時至此際、寇爾許半島南北兩岸除亞索夫海至黑海十英里地段外、現均在德維聯軍控制之下、至於阿拉巴特灣及黑海沿岸以及塞奧都西亞至寇爾許海峽之公路一帶、則仍有劇戰、德羅聯軍一支聞巳於昨日到達距寇爾許海峽四英里之處、又據中立方面觀祭、寇爾許半島之爭奪戰、雖爲德羅聯軍一大勝利、但春季攻勞第一期眞正戰爭、當在德羅聯軍渡過寇爾許海峽之後方能開始云、</p>
+<p>德軍用飛機重砲猛攻寇爾許半島</p>
+<p>柏林十四日海通社電據德意志新聞昨評南路之戰事稱、有史以來、從無如是衆多之飛機、在一小區域作戰者、德軍在寇爾許攻擊之特點、爲以大批飛機協助進攻云、</p>
+<p>倫敦十四日路透社電　據路透社駐莫斯科訪員來電稱、寇爾許牛島戰事、大致係飛機及重砲戰、德軍進攻之陣綫僅十五英里、大量戰車及步兵實無廻旋餘地、惟雙方所用兵力雖少、但戰鬬恰甚猛、德軍正用大批重砲及轟炸機轟擊蘇聯陣地、俾紅軍無法固守、蘇聯方面空軍亦不弱、查本年初、半島方面共有步兵三四師及戰車師、此次攻勢所用兵力、不致超過此數、克里米亞方面現已夏日炎炎髙加索　庶之區、農民業已播種、至於蘇聯軍隊在其他方面之牽制攻勢、聞有兩處、其一在卡柯夫方面、據莫斯科宣佈、該處兩軍會從事白刃戰、惟戰區究在何處則未說明、其一在加里寗方面、據紅軍機關報「紅星載稱、蘇聯軍隊已在該方面克復一地、並獲俘虜若干、德軍反攻已被擊退、該報並謂、某某地方正在惡戰、紅軍續在壓迫德軍後退、惟德軍人數較衆、且憑山佈防、在兵力及地理上佔有優勢、激戰兩日始將其擊退云、</p>
+<p>列寗城四週鏖戰蘇坦克發揮威力</p>
+<p>倫敦十四日路透社電　據莫斯科來訊、列寗格勒前綫蘇軍使用重坦克車作戰、德軍　用六吋平射砲轟擊企圖遏止之、此種平射砲彈爆裂時、發出三千度之熱度、蘇軍伏洛希洛夫式巨型坦克車已擊毀此種平射砲多尊、現世人注意力集中於克里米亞、惟列寗格勒四週亦已起激戰、該處蘇軍已佔新陣地數處、而列寗格勒城之食物情况、似已好轉、食物運輸隊現已按時駛抵該城、</p>
+<h3>德軍戰報</h3>
+<p>柏林十四日海通社電　德軍司令部今日宣稱、吾軍突破巴巴區之陣地後、現正在追擊脫逃中之蘇軍殘餘部隊、阿克蒙那伊方面之殘餘敵軍今已肅淸、敵軍現正沿寇爾許鐵路及沿海公路潰退、德軍繼續向東追擊、敵軍　抗力量極為薄弱、吾軍沿途截獲俘虜及戰利品甚夥云、</p>
+<p>柏林十四日海通社雷德軍在寇爾許半島發動攻勢後、戰地記者之首次報吿今已抵此、據稱、德軍係於星期五拂曉前發動、事前先由大砲向敵方猛轟、並由工兵淸除地面、以便步兵進攻、日出時大批德轟炸機及急降轟炸機即開始轟炸敵陣地、同時一部份德兵則乘小艇在費沃多西亞灣數點登陸、進襲敵軍側面、蘇軍在德方陸海空之猛攻下、顯已無力招架、德軍遂得迅速進展、又據其他隨軍記者之報吿稱、攻勢發動前、德軍大砲之怒吼、頗使蘇方措手不及、明天色未明、德工兵已為步兵佈就進攻之路綫、在烟幕之掩護下迅速將鐵絲網地雷等障碍物淸隊、査在半島最狹部份、蘇軍置有極堅強之防禦工事、如鐵絲網陷穽、地雷、噴火器、鋼骨碉堡等、故該處蘇軍之抵抗、亦最為激烈、德軍衝鋒前進與敵肉搏、越過數條敵人之壕溝、蘇　驚魂略定後、始命大砲還擊、黎明時、大隊德機亦來助戰、猛轟敵陣達數小時之久，三小時以內、德軍前進之區域內所有障碍、已由工兵淸除殆盡、戰事乃集中於進攻敵方重要防錢及堡壘、敵方之機關槍、手溜彈投擲器、髙射砲、坦克車一一爲德軍所摧毀、德軍砲火同時亦向敵方碉堡猛轟、不移時敵重要綫遂爲德軍完全佔領、蘇軍潰如潮退、而德軍則追踪挺進、</p>
+<h3>蘇聯極北部　發生猛烈空戰　德艦雲集挪北海面　企圖截斷英蘇航綫</h3>
+<p>柏林十四日哈瓦斯社電柏林廣播電臺　宣佈、我空軍昨在蘇聯北區上空、異常活躍、敵方輜重隊及茂曼斯克火車站兩所、均被轟炸、我方飛機與敵方驅逐機隊發生猛烈空戰、曾擊落其旋風式飛機六架、</p>
+<p>倫敦十四日哈瓦斯社電此間消息靈通人士頃談稱、挪威北部海面有發生大規模海戰之可能、德戰鬥艦「鐵爾畢資上將號「席爾上將」號及重巡洋艦「希潘」號均將參戰、目的在一舉而切斷蘇聯之重要軍需交通綫、英國護航隊經過之最危險區城、聞爲挪威德軍根據地附近之北角、盛傳最近已有大批「福克華夫」式四引擎飛機、自特隆漢·那維克·及特隆梭各港飛往該處、英國護航隊通過此項危險區、或須歷時四日、防禦空襲極爲困難云、</p>
+<h3>智利增設　航空學校　衆議院通過　統制運輸業</h3>
+<p>智利京城十三日哈瓦斯社電國防部在近郊埃爾波斯克軍用飛行塲附近、開辦新航空學校一所、頃已宣吿成立、不日即將開始訓練航空學員、</p>
+<p>智利京城十三日哈瓦斯社電政府曾向國會提出議案、主張統制全國汽車運輸、並規定每日中午辦公時間、僅許休息半小時、作爲用膳時間、以免職工乘車往返、此案頃由衆議院表決通過、此項辦法、他日實施結果、至少可節省汽油二十五萬加倫、</p>
+<h3>地震紀錄　地點非在華南　即在中美附近</h3>
+<p>倫敦十四日路透社電　著名地震學秀蕭氏今晨在此錄得劇烈之地震、而信地震非在緬甸與華南之間、即在中美洲附近之太平洋底、</p>
+<h3>日密切注視　東綫戰事</h3>
+<p>東京十四日同盟社電　此間各報均轉移其注意點至撳洲東錢、據「朝日新聞」今日載柏林無綫電話報吿、謂德軍此次進攻、注重利用新兵器及大量空軍、所謂新兵器者、其一種聞爲飛機所裝之噴火器、用以對付蘇聯戰車、蘇聯戰車之强、初非德方始料所及、因須發明制勝之衝云、</p>
+<h3>越南河內　初遇空襲</h3>
+<p>河內十四日同盟社電　星期二敵機圖向河內施開戰以來之初次襲擊、結果失敗、來襲之飛機五架、被猛烈之髙射砲火擊中兩架、起火墮落、河內居民初遇空襲、頗爲鎭靜、照舊工作、</p>
+<h3>太平洋軍事會議　在華盛頓召集　檢討應付今後戰局</h3>
+<p>里斯本十三日同盟社電　據華盛頓息、太平洋軍事會議本日在白宮舉行、美總統羅期福亦出席、開會達一小時、</p>
+<p>華盛頓十四日路透社電　太平洋軍事委員會昨在白宮會議一小時半、羅斯福總統主席宋子文事後代表該會宜稱、委員會曾　討軍火軍備生產數量、並討論西南太平洋戰事云、加拿大駐美公使麥卡梭則稱、委員會亦曾討論一部份人任意亂談、俾將重要情報資敵一事、羅斯福總統曾就此事之危險性發表髙見、又據美大使哈里法克斯勳爵談稱、總統之言、並非對某一部份人而發、僅爲一種普遍性之警吿、促使各方在戰爭進行之時、務須竭力審愼、彼不明各種實情者妄自揣測、危險殊甚云、</p>
+<h3>美貿易週　第一日　赫爾國務卿演說　重申大西洋憲章</h3>
+<p>華盛頓十三日電　今日爲美國貿易週第　日　國務卿赫爾特發表聲明、重申大西洋憲章中之原則、即戰後舉世各國俱可根據平等原則取得原料、戰後建造新世界之時、美國負有重責、將來戰事結東以後、苟國際貿易爲一般之經濟關係未能確立、則持久之和平與經濟之繁榮、俱無實現可能、吾美倘能明白說明我方作戰目的之一、爲建立一健全之經濟關係制度、則我方之作戰力收效必更宏大云、</p>
+<h3>澳洲海面　日艦活動　日船行駛南海　遭潛水艇擊沉</h3>
+<p>里斯本十四日海通社電　據美國某廣播電台接墨爾缽消息稱　日本海軍已再在澳洲海面活動　澳洲人士預料日軍即將再施攻擊云、</p>
+<p>東京十四日同盟社電陸海軍省今日午後六時聯合宣布、五月八日夜間南海東部有日商船一艘遭敵潛艇放魚雷擊沉、惟該潛艇諒亦被日海軍轟沉、沉失之日商船在軍艦衛護下行駛　載有旅客及在南洋各區從事經濟活動之人、被敵方魚雷擊中後、立即起火、迄今爲止已救出五百四十一人、</p>
+<h3>美機襲日　日方加以解釋</h3>
+<p>東京十四日同盟社電　陸海軍省今夜發表聯合文吿稱、四月十八日美機襲日本後、美機一架被迫降落蘇聯境內事、可解釋爲意在離間蘇日關係之行動、頗堪重視、日方必須注視敵方此種方式之行動、空襲日本不足削弱日本民氣、而北美B二五式美機進襲東京·橫濱·名古屋·神戶等區、乃企圖進行神經戰耳、一方面緩和美國國內不滿於敗績之與情、並增加重慶·印度及澳洲對美國作戰實力之信心、然此舉已充分表示美國之陷於窘境、及美國民衆對華盛頓政府之漸趨不滿云、</p>
+<h3>公庫支票　流通辦法</h3>
+<p>重慶十四日電　公庫法施行以來、已屆兩年、公庫支票、日漸推廣、最近財政部復擬訂公庫支票流通辦法、公吿施行、關於提示保證流通及防弊諸端、均各酌予規定、茲摘錄該辦法要點如次、（甲）執票人得將公庫支票向付款銀行爲付款之提示、（乙）付款銀行對於提示付款之公庫支票、査無不合法情事者、應即爲保付或同義字樣之記載、並負隨時先付之責、不受公庫年度結束之限制、經依此項規定簽證保付之公庫支票、應由付款銀行在原存款戶內照數提人保管金戶內另存備付·（丙）下列各種行爲、均得以付款銀行簽證保付之公庫支票於保付銀行所在地爲之、不得拒收、（子）人民徵納稅賦捐獻及一切依法征收之款項、（丑）政府事業機關及公有營業機關交或工商業交易之價款、（寅）公私行爲之保證金、（卯）繳付銀行存款、此項轉付行爲、非經執票人合法據書、不生效力、（丁）發票機關違反票據法第一三六條規定、簽發公庫支票、經發覺處罰者、其責任由發票機關之長官及主管人員連帶負者、（戊）付款銀行如遇淸理或破產時、山該銀行簽證保付之公庫支票有優先受償權、此項辦法實施後，對於人民給予種種便利與優待、今後公庫支票之流通、必更可推行順利、</p>
+<h2>Page 3</h2>
+<h3>馬丁尼克島問題　維希致美覆牒　內容如何未經透露　但談判之門仍未閉</h3>
+<p>維希十三日哈瓦斯社電關於法屬馬丁尼克島問題、頃據官方宣布、賴伐爾首長已於本月將法國政府之覆文、送達美國當局、但覆文內容、未經洩露、又據半官方面發表消息稱、本月十日美國政府曾以照會一件、經由法屬西印度羣島高級委員勞勃爾中將、轉呈法國政府、要求改變馬丁尼克島之法理地位、無如美國政府所引起之事件、牽連甚大、涉及若干嚴重問題。貝當元首遄返維希之後、即就各項問題、縝密加以硏究？連日政府首長亦迭與海陸空三軍總司令達蘭、海軍部長奧芳、殖民部長勃萊維埃諸氏、會商此事、故遲至本月、始將復文送達美國政府、</p>
+<p>日內瓦十二日　瓦斯社電維希半官方面本日發表文吿、宣布法國政府已就馬丁尼克島問題、向美國政府提出覆文、但覆文內容、並未透露、此間國際觀察家頃就此事加以評論、咸謂法力文吿、曾以美國所爲、業已引起「嚴重問題」焉言、由此可見決非單純的接受美國提議之謂、此中困難、不在問題本身、而在美國提出此一問題時之方式、顧法方覆文、雖未必完全與美國各項要求相符、却亦不致將繼續交換意見之門戶、遽而關閉、查關於西印度問題、法方發表半官性質之文告、前後已有兩次、第一次文告、說明西印度羣島法國各屬地、前經法美兩國政府互相提供保證之後、原已處於特殊地位、雙方就此項保證交換意見、曾歷時數月之久、最近美國政府、忽已提出若干「要求」、意欲改變現行地位、並於本月十日、知照法國政府云云、迨至本日又發表第二次文吿、說明法國政府已以覆文送達美國政府、同時馬丁尼克島事件、爲法國當前主要國際問題、亦係不可否認之事實、三日來維希方面所進行之種種磋商、意義自極重大、要之法國對於華盥頓方面之正式答覆、非經貝當元首親自裁可後、不得發出、故元首曾縮短假期、忽怱自蔚藍海岸返京參加會議也</p>
+<p>美國態度顯趨強硬</p>
+<p>華盛頓十四日路透社電　關於馬丁尼克島談判情形、此間態度昨晨顯趨强硬法國在該島所駐各艦、如不保證、此後決不調動、該島各瞭望根據地如不租與美國、則美國政府無意與法簽訂何種協定云、</p>
+<p>華盛頓十四日路透社電　截至昨日深夜爲止、美國務院尙未接獲賴伐爾交予美國駐維希代辦杜克關於馬丁尼克島之三頁牒文、國務院並證實美政府未在維希提出牒文、但由法駐馬丁尼克鳥高級委員勞勃爾海軍大將以全部或一部份經過、不斷報吿維希、</p>
+<p>維希政策基本原則</p>
+<p>日內瓦十三日哈瓦斯社電此間國際觀察家頃就法國國際關係、加以分析、略謂馬丁尼克事件、雖爲法國目前迫切之國際問題、但法國當前之難關不止一端、凡此難題、倘自前年六月停戰協定成立後法國所處特殊地位一點觀之、均極微妙、溯自彼時以還、法國當局所推行之政策、實為貝當元首及其閣僚公忠體國之明證、法　國政策之基本原則、乃欲在此次大戰中、不論交戰國任何一方提出何項條件、一面與美國維持邦交、另一面則與各軸心國維持正常關係、從而保持其中立、以馬丁尼克島事件而論、雙方避免使用武力不遺餘力、觀於雙方經由外交途徑進行談判、亦即由法駐美大使海亨利及美駐法代辦杜克分別折衝一層、可信雙方無意弄成僵局、惟是法國淪陷區方面、對於法美邦交前途表示悲觀、認爲雙方關係「緊張萬分」、此與維希方面始終期望圓滿解決之情形逈不相同、衆信馬丁尼克問題主要關鍵、乃在美國要求利用停泊該島之法國油船七艘、法國政府前已同意該島高級委員勞勃爾中將、保持該島之絕對中立、政府首長賴伐爾現似將更進一步、保證美國之敵人決不利用馬丁尼克島、俾美國無需派遣軍隊前往該島警衛、惟是美國徵用法國油船、非法國中立地位所許、亦與法德停戰協定不合、此則碍難接受耳、抑法國一方面與美國折衝、同時尙須與德國週旋、法德政府正就雙方關係問題舉行談判、絕無疑義、惟若干方面傳來消息似屬不確、例如謠傳法國政府首長賴伐爾與德國航空部長戈林上將曾在自由區淪陷區交界處摩稜鎭會面云云、絕難置信、戈林上將目下甚至不在法國境內、亦未可必、良以目前法德談判純係技術性質、此可於德國新仟軍需部長史庇爾之抵法一舉見之、大抵史氏所討論者、乃以統制人力原料及規定工作時間各項問題爲主、但値此德國展開春李攻勢之際、固不難想像所謂技術問題亦非尋常可比、同時巴黎方面、德國秘密警察局要員海特列區、方與法國警察當局舉行會議、法國政府駐淪陷區代表勃里濃亦參與其事、事後勃里濃曾遄返維希有所報吿、準是以觀、法德談話係多方面的接觸、問題旣多、性質輕重亦殊、特法德談判無論複雜錯綜至若何程度、其背景仍確定不易、質言之、其主旨爲雙方關係之根本調整、一切問題均以此爲歸宿者也、</p>
+<h3>自由法人　參加馬島行政</h3>
+<p>倫敦十四日路透社電外交部今晨正式宣布、自由法人將襄助馬達加斯加島之行政事宜</p>
+<h3>敎皇廣播　呼籲和平</h3>
+<p>梵蒂岡十三日哈瓦斯電　本日為敎皇庇護十二世榮膺主敎二十五週年紀念日、特向全世界天言敎徒、發表廣播演說、指出目下實無和平可能、）其言有曰、「吾今接獲乞援之呼籲、日必數起、現世界所觀望於敎會者、可於此見之、凡屬天主敎徒、莫不要求吾人、運用吾人之機力、務使現行戰爭、早日結束、時至此際、血淚成渠、遍及全球、應即設法覓取正義及永久和平、自問良心、吾人敢言自遵照上帝之意志、担任敎皇之困難工作以還、無時不在積極努力、俾盡厥職、以此次大戰而言、在戰爭爆發之前及在戰端旣開之後、普人奔走和平不遺餘力、可調巳竭盡吾人所有之能力與方法矣、各國人民渴望和平、如大旱之望雲霓、余博愛各國人民、對於各交戰國一視同仁、故特乘晋授主敎二十五週年紀念日之便普吿諸君、關於樹立正義與平等的和平一層、此際實難提出具體建議、苟將現行世界大戰才雙方實力作一比較、當知目下實無恢復和平希望、交戰國一方方以過去所獲若干勝利自詡、此在另一方面則對於未來之大戰抱有無限希望、是以雙方相持不下、而物質之毀減日積月累、不可勝計、余意凡能使現行戰爭早日結束之力量、務須聯合起來共同努力吾人對於雙方陣亡將士、戰爭俘虜暨離鄕背井之難民、無時不在繫念之中、目下情形慘不忍睹、家庭生活完全解體、經濟困難、民不聊生、苦不堪言、幾將構成危及全人類之浩刦、歷來世界各國莫不努力　設法解決社會問題、並欲改善貧苦大衆之命運、但至此際、竟將數十萬萬之鉅款、用於製造燬壞生命財產之工具、不寗唯是、在此次戰事之後面、父在醞釀更大之戰錢、無有巳時、是以吾人須向各大國呼籲、千萬勿忘家庭爲神聖的組繳、不可置之不顧、更不能將家庭與學校準備作未來戰塲、茲有大批平民流離失所、已向吾人呼籲、渠輩均願回鄉參加和平運動、惟吾人僅能將此意轉吿各國政治家、請其早日樹立光榮的和平、即不能符合各人之希望　但此項和平仍屬有益、各國政治家茍能接受此意、並首先倡導、則全人類對之、必將感激不盡、此在吾人亦必能繼續向上帝熱烈禱吿祈求和平、並當勸告人民從早覺醒、務以合作精神從事各項建設工作、俾能樹立和平世界、人人以愛為出發點、均能團結一致、基督敎在一二世紀時期、因其有深刻之信仰、故極成功、凡屬敎徒均能不惜犧牲及痛苦、從事各項工作、並造成一趁熱誠的精神生活、對於敎會的統一、有無上的貢獻、至於今日之敎會、亦應以曩　敎會爲榜樣、彼時之勝利、必能鼓勵吾人、並使吾人相信上帝之意旨、最後必能盛行全世界、敎會已成爲「眞理與自救之堡壘」、吾人應在敎會之後團結一致、</p>
+<h3>聖彼得　古墓發現</h3>
+<p>梵蒂岡十三日哈瓦斯社電敎皇庇護十二世、本日發表廣播演說時、除呼籲和平外、並向全世界敎友宜布、聖彼得大敎堂最近挖掘地穴時、發現一古跋、似爲聖彼得之墳墓云、敎廷方面對於此一發見、大爲興奮、其詳細情形、即將續有發表、</p>
+<h3>菲總統奎松　抵華盛頓　羅斯福親自歡迎</h3>
+<p>華盛頓十四日路透社電　菲列賓總統奎松偕其夫人　女兒及一子、昨抵此間、羅斯福總統·史汀生·赫爾·及馬歇爾將軍等人均赴車站迎迓、羅總統歡迎奎松之第一語爲、「今見閣下安返華盛頓「不勝歡忭」、兩氏旋在車站廣塲中之總統汽車旁作非正式之閒談、攝影記者畢集忙碌攝影、奎松及其眷屬昨夜寄居白宮、嗣後將他遷、</p>
+<h3>美駐挪代表　昇格大使</h3>
+<p>華盛頓十三日電美對挪威代表業已升格為大使、藉以喪示「美政府重視挪威政府及人民在戰事中之重要性」、一如國務院之所宜佈者也同時羅斯福總統並任命畢德爾為首任挪威大使、從此舉德爾將兼任挪威波蘭·荷蘭·比利時等國谷流亡政府之大使、並捷克·希臘·南斯拉夫·盧森堡等各流亡政府之公使云、</p>
+<h3>保加利亞征發　建築材料</h3>
+<p>保加利亞京城十三日哈瓦斯社電政府本日發表命令、自即日起徵發全國建築材料、並動員營造業員工、直至本年十月三十日為止、以便廣事建築、按保國各大城市、房屋不敷分配、尤以京城爲然、故有採取此項措置之必要、</p>
+<h3>英下議院　將辯論戰局</h3>
+<p>倫敦十四日路透社電　克里浦斯爵士今日在下院聲稱、下院下次集會之第一與第二日、將舉行前曾允諾的戰局與聯合籌劃之辯論、首相將否參與戰局之辯論、將由戰爭內閣及首相決定之、</p>
+<h3>德國發明　新式飛機　速率高度駕駛　凌駕英機之上</h3>
+<p>柏林十三日哈瓦斯社電　此間「民衆觀察報」頃以「福克烏爾夫對付噴火機」為標題、檢　德英兩國飛機之優劣、其言略謂、英美時常宣傳其空中優勢、實則自四月二十一日至三十日止、英國在杜佛海峽　地中海·及北菲一帶、共已喪失飛機二百零九架、而德國僅喪失四十五架、德國從不欲輕估英機之價値、颶風式及噴火式固為優良之飛機、但德國「梅塞斯密特」一九式及「福克烏爾夫」一九〇式、更有過之無不及、噴火機或較梅塞斯密特機易於駕駛、但速度較慢、蓋英國製造家欲顧及速度·髙度·及駕駛三方面、而德國梅塞斯密特一〇九式、則僅注重速度高度兩方、新出之福克烏爾夫式即為矯正梅塞斯密特式之微細缺點起見、此機具有速度高度及駕駛三方面之基本優點、堪稱各式飛機之翹楚云、</p>
+<h3>阿拉斯加公路（六）</h3>
+<p>讀者也許要問、這一帶地區旣是如此重要，美國為何不早日着手經營，必要等到事態危急，才臨時抱佛脚？這裏面當然有好幾重原因；最明顯的一點，乃因此處天氣太劣，地帶又冷僻而險惡，似乎不必那麽性急的準備起來。然而最要的一點，還是因為一九三六年的條約所限制，條文上載明了不得私自設防。話雖如此，美國的海軍，雖爲條文所阻，但二十年來，却沒有一天不在測量調查上努力。否則到了今日要想佈置，也沒有這等順手了。</p>
+<p>現在要問，這段工程，旣在一年之前，已經動手，究竟何日可以完工？關於這個問題的答案，我們只能在時間上猜測一番。從去歲二月到八月，因爲環境不怎樣乖劣，也許只是按預定的計劃進行着。可是八月之後，到十二月之間，猜想起來，也許有些停頓的模樣；否則今年春首，何以有建築阿拉斯加工路的傳聞呢？這種傳聞，無疑是由於時勢所逼，又在加緊工作了。</p>
+<p>性躁的朋友們，也許要說，這位美人何以這般辣的架子，人家望穿了秋水，何以仍不見她上塲？前文說過，她一者化裝還未竟，正忙着撲粉，打胭脂，等等工作；二者她的目光是在歐陸的攻勢問題上，因此還不能敷衍這　廂觀衆的渴望。</p>
+<p>再說，她也許始終不肯在這一邊露臉，道個理由也很簡單，因爲歐陸的大局一定，她似乎可以不必在這隻草台上親示色相了。語云「一了百了」，她又何犯着多此一舉呢？再說，無論你如何兇狠，在這打仗的玩意兒上，可說有一個規定的例子——殺人三千，自損八百」，何况也許不只八百哩！所以美人認爲最好莫如專在西方用力。</p>
+<p>然而阿拉斯加却不能不有相當的準備。自從夏威夷變成了美人國防的外圍綫路後，阿拉斯加也立時增加了戰略上的重要性。要是不將這一地帶設防起來，此處勢將變成防守鎖練上最弱的一環，豈不是一個大大的漏洞？</p>
+<p>所最可惜的，只有一點：像阿拉斯加這樣的一片原野，眞是一塊天眞米鎜的璞玉；髙山的積雪，悠韻的松籟，安閒的野鹿，純潔的冰川，古樸而有情緻的愛斯基摩，一切一切，都是大好的詩料；然而碰到了這種血雨腥風的時代，也弄得一片戰雲紛紛，殺氣騰騰，連數萬年前的冰河積物，都要遭一番刨掘；這是人性本惡的暴露呢，還是天予吾人以懲罰的浩刦？（全篇完）</p>
+<h2>Page 4</h2>
+<h3>法租界　將開辦「民警」　分為二百六十六區　民警定額共五千人</h3>
+<p>駐滬法總領車馬傑理、頒令授權法租界內設置民警隊、此項新制、不久將予實行、其辦法與公共租界之保甲制相似、</p>
+<p>分區單位</p>
+<p>關於此點、法警務處當局現已擬定特殊方法、將整個法租界分成多區、（以一簇房屋爲單位）而從各該區之有勢力居民或商人中選出一人爲區長、並由區長擇定助理兩人、均須年逾廿歲而有確定職業者、助理應襄助區長從事一般工作、並於區長染恙時替代其職務、該區之治安、即歸區長與助理負責、區長尙可選派其他輔助人員、其人數則視各區之大小而定、</p>
+<p>區長職權</p>
+<p>各區區長與助理、將由法警務處發給特殊身份證及臂章、以資識別、彼等若見本區內發生一切非法情事、或發現私藏軍火武器及秘密集會等、均當報吿就近之捕房或値岡巡捕、聞法租界內各區長、業經法警務處全數擇出、共二百六十六人、直接助理五百三十二人、亦已擇定、民警員共五千人、則不久即將挑選、各區長之職權將有明文規定、苟任何人於區長行使職權時加以阻礙、將被訴諸於法、法警務處若發覺某區區長之服務未能滿意、可派助理接替該區長之職務、而區長若未如囑咐者履行其任務、法警務處可將共撤職、凡居民拒不參加民警工作者、須向法警務處聲明理由、如所提理由遭拒絕、則其人必須參與民警工作，否則被逐出法租界、</p>
+<h3>某社撥款助學　用意深遠　盼望各界　予以共鳴</h3>
+<p>本報助學金捐款前承某社從基金撥出八千元、指定儘先補助敎師及新聞從業員子弟之無力求學者、昨　戰諸本報、其發起人某公所以將此款專指定為敎師及新聞從業員子北無力求學者之用、實具深意、以爲「一般民族之進化、以及學術道德品格等、均有不可分離之密切關係、敎師之良窳、足以影響文化之盛衰、是以吾人於敎師力謀其生活得有合理之安定、俾能專於所事、並於敎師地位、絕對加以尊重、一方面更使敎師明瞭共本身所負使命之重大、常懷自尊觀念、致力於所敎育之學子、成爲社會有用人才、能担負民族進化之重任、由一民族推而至於全人類、咸得優良之進化、此實爲一般敎師所應共求達到之最高目標、近代世界各國之敎育制度、是否適合、茲姑不論、僅就我國而言、自廢止科舉以後數十年來所倡之維新敎育、亦都因循敷衍、致學非所用、且一般學生、皆不明敎育之正眞作用、以爲畢業係獲得一種權利、藉此權利、以藐視一般未受敎育之人、每於不自覺中有目空一切之概、近百年來民氣頹唐、不能不謂爲敎育失敗所致、此種現象、不獨貽害靑年本身、抑且有損於民族全體、至於新聞事業、負有啟迪民智之任務、在我國不過數十年歷史、而其職責之重、亦無殊於敎師、惟默察近頃之新聞界、過於側重情感所、載新聞、類多含有刺激性及衝動性對於黃色新聞桃色新聞、往往因欲迎合一般人之心理、記載不厭其詳、雖然未可一概而論、但爲國家民族計、似有亟加糾正之必要、苟敎師與新聞界能共同致力、研求其最髙目標、以盡其最大責任、則國家與民挨必能獲致良好後果、而共躋於優良進化之途、該社肉鑒於上述關係之重要、爰特別訂定敎師與新聞從業員兩項補助基金、以所收益之子金、補助其生活、達到合理之安定、亦所以爲國家民族計也、惟基金有限、非集合全國人力、不易舉辦、徒以時事杌陧、未容急遽進行、擴大基金之募集，尙有待於局勢之好轉但於可能範圍內、亦無不盡力以赴云、想社會不乏與某公作共鳴、</p>
+<h3>英美僑下月離滬　約一千人</h3>
+<p>預定載英美僑民離滬之日輪龍田丸與義輪康脫凡第號、將於六月十日左右、從上海駛出、南京方面亦有英美僑民五十一人、將於六月七日左右來滬、俾與來自華南北各區者、同集滬埠、候輪遣返、按日政府已與美英政府商妥、在葡屬柬非之洛侖科馬貴斯交換僑民、據前所宣布者、中國各部及上海之英美僑民約有一千人、將搭遣返輪前往洛侖科馬貴斯、</p>
+<h3>單票確已够用　牟利囤積商民之交</h3>
+<p>銀行聯合準備委員會爲調劑市上一元單票起見、除停止收兌破損單票外、並籌妥善辦法、業已分別實施、今各行莊庫存單票已發出流通市面、並山發行行增發一元版新鈔、澈底消弭市上一元券缺乏之恐慌、惟一般小錢兌店之非法抬價操縱、以及出糶平米店之故意囤儲單票牟利、業經當局積極設法取締、聞銀錢業聯合會認爲市上流通之單票、於理而言、足能應付、決無驟吿缺乏恐慌之理、對操縱抬價牟利者深爲遺憾、期望顧全各業交易、以及市民便利計、切勿囤積單票、與抬價買賣牟利、</p>
+<h3>二房東執照　再增加延期費</h3>
+<p>工部周轉租房屋執照、仍分中西北東四區發給中、惟領照人數、大爲减少、最近兩天據工部局捐稅股之紀錄、五月十二日發出總計三五六張、十三日發出總計三四三張『工部局對轉租房屋執照之頒發、以今（十五）日起至五月　爲最後寬放　期、在此時期領照、則須加繳延期費五元（合計十元）、連同執照費九元、磁牌費一元、共需繳費二十元、如逾本月底仍未領、即將被提起控究、</p>
+<h3>虹橋路破匪窟　起出肉票</h3>
+<p>法租界霞飛路貝締鏖路八五三號大華百貨公司、係山東人未喜瑞所設、上月十九日下午四時、宋之七歲愛子、由所僱之女僕安微人鍾王氏帶領在附近閒逛、不料旋即同吿失踪、事後宋忽接得匪徒來函、勒索五萬元、至此宋始知乃子並非走失、實係被綁、當即據情報吿捕房查緝在案、迨至日前、匪忽又來信、約於前日下午二時、着人將該款至滬西哥倫比亞路泰山石廠門前、自有人來接洽、捕房知情後、即由督察長桂葆泉、正探目周步廣魏元生、探員閻金文王天佑邢紹光等、化裝馳往、當竟開槍拒捕、探等乃亦還擊、雙方共開二十餘槍、結果捕獲綁匪一名、經供名吳振、皖人、肉票藏匿於虹橋路楊家樓朱家巷十九號內、迨至昨晨五時、各探乃又馳往、當在匪巢內捕獲匪徒蔣志發許其發及胡王氏胡金妹等四名、並將肉票林寳女僕鍾王氏起出、一併押帶捕房、並聞該女僕對該案嫌疑重大、</p>
+<h3>無錫申新三廠　請求發還</h3>
+<p>無錫十四日同盟社電無錫申新紗廠等、以日軍管理工廠次第發還後、現已大部復業、故特請予以發還、近悉無錫茂新麵粉廠第一第二兩廠及申新第三紗廠主人榮鴻元、亦請求發還、以便復業、</p>
+<h3>銀錢業通告行莊　塡報存放款額</h3>
+<p>銀錢業聯合委員會昨通吿會員行莊、飭塡報各行存放款額、以及庫存現金、每月滙款等、　放款額分往來透支·信用放款·抵押放款·短期放款·長期放款儲券放款·其他放款·同業放款·放款英美荷比人·其他放款外國人·及一般放款華人、存款額分往來存款·短期存款·長期存款、其他存款、同業存款·存款英美荷比人·其他存款外國人·一般存款華人、　每月滙款分區名、滙出額·滙人額·差額、　庫存現金分上月及本月結存數、並附各項應塡表格式樣及說明、限五月二一十日以前塡竣送會、</p>
+<h3>法軍軍醫處針藥　被變價出賣</h3>
+<p>法租界馬浪路二百五十三號通惠小學、係上海水本業工會所立、該校創立已三十餘年、校長爲浦東人湯國勳、本月初、盧家灣法捕房得悉民國二十六年、法國駐滬陸軍曾借該校校舍爲南市撒退駐軍拘留處、二十七年五月、法駐軍他遷時、遺留軍翳處針藥數百匣、迨至今春、本市西藥價格髙漲數十倍、遂被變價出賣、因此法捕房常局派員往該校調查、　該校長聲稱、該項針藥、因已變質、已於去冬丟棄等語、現法捕房正在進行偵查中、</p>
+<h3>物品平均價格</h3>
+<p>下表所列、爲四月十六日至五月十三日平均零售物價，此項物價表、爲工部局工業社會處所編、以備僱主調整僱員津貼參考之用、</p>
+<h3>局米零售新規定　每人一升半售五元</h3>
+<p>工部局昨發佈吿「定自本年五月十七日星期日起、公共租界內之零售食米最髙限價爲每一升半新法幣三元八角、或舊法幣五元、得聽買主自擇、買主並得以一元或五元鈔幣付價、零售米店應以與所收米款同類之紙幣、將尾數找還買主、所找之輔幣、總數至多二角」、又據工部局米糧管理會宣布、自本年五月十四日星期四起、本局賣給零售米店之米、價爲每包出棧總重量二二叫磅、法幣四百元、</p>
+<h2>Page 5</h2>
+<h3>恢復滬菲匯兌通訊　僑商希望迫切　進口停頓後生計日蹙　佇候通訊匯結淸帳目</h3>
+<p>昨據本市菲島某華僑領袖對本報記者談稱、上海與菲列濱間貿易關係、素極密切、由滬輸往菲島之貨物、最多者爲棉紗布匹、其次爲五金、再次爲搪瓷品等、而由菲島運滬之貨物、以木材烟草椰子油·酒精·等爲大宗、</p>
+<p>交通停頓無法經商</p>
+<p>自八一三戰事爆發起至歐戰發生止、滬貨對菲輸出激增、其原因在法幣匯價跌落、對於輸出商頗爲有利之故、至進口貨則保持原狀、無大變動、自歐戰起至太平洋戰事發生之期間、滬菲貿易狀况、與以前並無顯著差異、惟自去年十二月八日以後、受戰事影響、本市對菲商業、完全入於停頓狀態、兩地間之電報、從去年聖誕節停止後、迄今尙未恢復、而船隻亦無往來、本市菲島華僑人數、殊屬不少、在工商界經營烟草染織化學工業者、頗不乏人、設立進出口商行者、亦極衆多、滬菲間貿易停頓後、莫不大受打擊、</p>
+<p>專銷貨品東之高閣</p>
+<p>蓋進口商因貨物來源斷絕、營業無法繼續、惟有閉歇、或裁减員工、以撙節開支、至出口商則大多因貨物無法運出、或貨巳運出、而賬款未能收到、經濟方面、損失甚巨、尤感困難者、爲旅滬菲島華僑所經營之工廠、其出品向以運往菲島為主要銷路、故其質地式樣顏色花紋等、均以迎合菲島人士之愛好爲目的、今雖存貨滯留滬上、而不能改供本地行銷、例如汗衫襯衫、菲人喜穿紅色綠色者頗多、而本地人士大多喜穿白色者、其他貨品、類此情形不乏其例、故本市菲島華僑所設之工廠、多數陷於停頓、或半停半做、營業上所受影響、殊非淺尠、</p>
+<p>僑商子弟暫獲接濟</p>
+<p>目前旅滬菲島華僑中最感困難者爲學生、在本市各大中學校求學之菲島華僑子弟、據已調査得者有三百八十九人、實際上當不止此數、若輩負笈遠歸祖國求學、所需款項、向多由留居菲島之家屬滙滬供給、從去年十二月迄今、匯款停止、且滬上物價飛漲、生活維艱、其境遇殊屬困苦、現由一部份旅滬之菲島華僑、以私人資格籌集　　、對經濟竭　之學生、予以接濟、規定大學生每人可申請貸款一百五十元、中學生每人可貸款一百元以上、當此米珠薪桂之際、略獲貸款、或不無小補、但欲澈底解除數百華僑子弟目前所遭遇之困難、尙談不到、現在本市菲島華僑所迫切希望者、　爲郵政之早日恢復、使分居滬菲兩地之華僑家屬、能互相報吿平安、以釋遠慮、　爲匯兌之早日恢復、使滬菲間商業上未了賬目、可以結算、而留滬之華僑學生、亦得救濟、至於航邋之復通、與繼續從事貿易、自更爲一般旅滬之菲島華僑所渴望、且與本市商業前途亦至有關係、</p>
+<h3>油漆工人　要求增加工飯資</h3>
+<p>本市油漆工人共有五千餘人、工資每日七元三角、近因物價飛漲、生活難以維持、集議致函同業公會要求增加工飯資六元七角、速前計每日十四元、公會方面接到工人請求書後、邀集勞資雙方談判、二度無進展、昨日第三次談判、資方缺席、公會當再約期談判、勞方則希望早日得圓滿解決、</p>
+<h3>唱片音樂會</h3>
+<p>Symposium　Club　主辦之唱片音樂會、合定本月十七日（星期日）下午四時在高乃依路二十一號現代體育館內舉行第四次音樂會、全郁節目爲WaItz王Johann　Strauss作品、凡會員請準時蒞臨、非會員入塲券可向現代體育館購取、券資一元、</p>
+<h3>大通銀行發還　結餘存款</h3>
+<p>本埠大通銀行、現復以去歲十二月六日結剩存款之十分之一、發給各存戶、其數不出二千元、如此間之其他協約國銀行然、英美荷比僑民祇許每週提款五百元、其他存戶則均可一次提盡什一之存款、</p>
+<h3>社會瑣聞</h3>
+<p>假名騙取米款、法捕房探目李玉源、迭接各店舖報吿、有人假冒名義、兜售食米、收取定洋、爲數殊鉅、請求査緝、李探目據報、率領三四五號與五〇四號兩探員着手偵査、於日前拘獲無錫人方坤寳（卅歲）一名、抄出綢製之臂章多隻、帶入捕房、予以羈押、</p>
+<p>游客跳樓殞命昨日下午三時許、南京路永安公司大韻樓游戲塲屋頂花園上、突有中年游客一名跳樓自殺、當塲跌傷甚重、經車送醫院、不及救治殞命、</p>
+<p>昨日本報發報時間六點十五分</p>
+<h3>解決一切問題的　工部局新機構（三）　綜合委員會的工作　對任何人都有關係</h3>
+<p>只爲着某幾種目標</p>
+<p>荷馬史詩「依里亞特」中有個氣蓋山河的英雄，亞且里斯。他的唯一是以致命的地方是脚跟。衣袋却是現代的亞且里斯的脚跟。特別在現時困苦的當兒。爲保衛我們的甲胄的最弱裂隙起見，工部局設立了一固十一人的委員會，抑制一般物價的卜騰。這便是物價統制委員會。他們的日夕努力着的工作，在該委員會首腦馮德克龍氏簡括明晰的話裏說得最淸楚，他說：「我們盡力之所能統制物價。」</p>
+<p>最初的起源</p>
+<p>若從頭說起，這委員會的成長過程是很有趣的。實際上它的光輝前途發軔於一個簡陋的形式，名稱是食米委員會。</p>
+<p>這是在黯淡了遙遠的過去，恰恰一年前的道一個月，那時工部局纔開始從香港運來食米。一個小委員會成立了　到了十一月，他的不時改訂上海米價成了他的日甚一日的痛苦的第一個佐證。那是他想衝破奸商的操縱網的第一次。</p>
+<p>之後，局勢劇變，給工部局帶來了許多更動。普遍漲價促使這委員會相當地擴大了它的範圍。它的活動圈中添入了麵粉，植物油與其他日用物品。並且計劃着與進口商製造商協會合作，制定某種管理一般物價的辦法。同時工部局並設法從外埠自運麵粉及植物油。芷在此時，太平洋上燃起了烽火，整個商運陷於完全停頓狀態。這樣便暫止結束了正在逐步實現中的辦法。</p>
+<p>物價統制委員會</p>
+<p>若說從十二月中決定命運的那大以後的事情，足以稱得一聲根本變動的話，那麽食米委員會的變遷也未許不是如此。從食米委員會這一名稱起，緊接着是糧食委員會，糧食管理委員會，最後才是物價統制委員會。</p>
+<p>十一個物價統制委員會的委員中有三個是董事，其中之二同時也便是綜合委員會的委員。父有一個是工部局副總董的代表。即此，已可窺見該委員會重要性的一斑。</p>
+<p>此外物價統制委員會中也包括了法租界，滬西特區，大上海市政府三方面來的代表。雖然委昌會的活動範圍並不超出公共租界以外各地區，然而其目的明顯地是在求整個上海的物價統制的一致——這當然是當前最急迫的要求。</p>
+<p>多方面的工作</p>
+<p>物價統制委員會的實際工作幾乎跟綜合委員會的一樣雜而多。後者是整僩複雜系統的神經中心而前者則是其心臟。在物品供給方面，物價統制委員會每一次總依賴日本當局。它與日本當局商洽輸入物資，吿訴他們需耍的是什麼。在這次訪問中，他們指出日本當局刻正極力與工部局合作，給予一切可能的幫助。</p>
+<p>組合成物價統制委員會的是下述諸人：馮德克龍（主席），葛樂泰，矢島安造（日本郵船株式會社上海經理），黃宣平，趙晉卿，刹多克，博芳杜（法租界代表），滬西特警署署長潘達，朱爾登博士（衛生處處長），貝德生博士與韋秘書。</p>
+<p>體育新聞</p>
+<h3>西靑排球乙組　蘇維埃今法決戰法捕　下午六時二十分在西靑健身房</h3>
+<p>十四屆西靑排球賽、日前乙組二塲、蘇維埃乙又擊敗震旦、法捕則以直落二輕取白隊、今晚有乙組兩塲、蘇維埃乙與法捕决奪本屆乙組錦標、蘇隊六戰皆捷、法捕爲六勝一負、雙方實力、均極雄厚、預料必有劇烈之競爭、另塲爲白隊對俄捕、中間並揷入女子表演一塲、結果及秩序如下、前賽結果今日秩序</p>
+<p>法捕——蘇維乙（乙決）六時廿分女子排球表演（表演）下午七時俄捕——白隊（乙組）七時三刻</p>
+<h3>震旦春運會昨閉幕　陳大業獲個人錦標</h3>
+<p>震旦大學春季運動會、分工科、法科、醫科、髙中、及特別班等五單位參與角逐、於昨日下午二時起在呂班路該校舉行九項決賽、百米巴氏以十一秒八之成續奪得首席、二百米第一亦屬諸巴氏、四百米商汝輯以六十二秒之成績首達終點、中距離跑雷以也竟予以包辦、一人獲得八百米、千五百米及三千米第一、千五百米上屆冠軍商汝輯屈居第四、三千米上屆錦標郁黎華亦退列第四、田賽方面鉛球及標槍兩項、爲鍾芝亭一人包辦、最後八百米接力跑、每單位四人參加、競逐結果法科曾文瑞、苪器先、哥諾頃谷、巴氏組以一分四十五秒首畢全程、第二工科、總結工科以一〇五分榮膺冠軍、法科則以八十一分屈居亞軍、特別班五十一分季軍、醫科四十分列第四、髙中十八分殿軍、個人方面陳大業以三十三分奪得錦標、雷以也三十三分屈居第二位、公維二十一分季軍、賽畢當塲由才不孟院長神父給獎而散、</p>
+<h2>Page 6</h2>
+<p>商業新聞</p>
+<h3>爲了避免紗業危險　雙馬漲跌限三百元</h3>
+<p>棉紗市况、現貨情形賡續良好、此因根子愈趨愈枯之故也、至於十支粗紗基礎尤固、而買者日增、蓋以價格廉宜之故、二十支紗價低廉一千五六百元之多、所以買進利益較旺而風險反輕、於是成交日見興盛、四二支藍鳳一萬四千三百元至八百五十元、四二支寳光一萬三千六百元、六十支彩球二萬五千九百元、四十支金橋一萬二千元、四十支金城一萬二千五百元、六十支五子二萬四千元、三二支仙桃一萬二千七百五十元、三二支藍鳳一萬二千七百五十元、二十支藍鳳七千六百元至八百五十元、二十支陽鶴七千三百元、二十支月琴七千元、二十支雙虎六千九百五十元、二十支豐年七千二百元、二十支水月七千三百元、二十支雙馬六千七百元至八百元、二十支變地球六千八百五十元、十支紅變馬五千一百六十元至三百五十元、十支童子軍五千一百三十元至三百元、十支紅寳彝五千一百元、十支織女五千百五十元、一六支紅寳　四千五百元、二十支雙馬廠單初開價爲五千六百元、此時賣空者及浮多羣爭吐出、檯面轉鬆至五千三百八十元、但多頭方面仍不放棄、父昂至五千六百三十元收盤、邇來雙馬狂升濫降、同業鑒於如斯悄况、未免太危險、經一度討論、漲跌程度、暫限三百元爲標準、不得超逾此限度也、</p>
+<h3>粗布無甚榮辱</h3>
+<p>廠布昨市始疲後堅、形勢轉穩、各磅粗布大致無榮辱、十六磅地球仍售二五八元、八磅振中一三五元、細布以大鵬爲缺佾、喊升至二四六元、富貴盤旋在二二五元左右、桃花女士林做髙至三五三元半、較漲二元、新家庭士林三四五元、繁華夢絲光洋紗二九五元、長壽府綢七元六角、俱有成交、</p>
+<p>東布　市氣賡續堅昂、十二磅龍頭細布新單晨開二八二元半、午收升至二八七元半、下午二八八元半、開盤小至六元五角、終又回升至二八七元、收市彩球細布二五六元五角、均較前日升起每疋一元半之譜、四君子嗶嘰晨開九元四角一分、晚收爲九元五角局勢平穩、</p>
+<h3>公債待價而沽　賣方售出昨見减</h3>
+<p>公債暗盤、昨市又見平疲、賣方雖出、但巳較少、買方胃量、因此亦不甚踴躍、成交數目、較之以前、减少一半以上、賣方雖已成公開之秘密、但餘貨尙有若干、是否係全部出脫、或尙欲留存幾何、其性質之緩急若何、當然爲任何人所欲知、而亦爲仟何人所不得而知、不過待價而沽、則巳爲無可諱言之事實、至少當仍爲逢髙必挫、但多方實力、確亦殊不可侮、未可臆測也、昨同利賣出約五十萬、順利亦多頭了結、五和·寳隆·益昌·聯益·公茂·同康·同源·均有了多或拋售、久豐·協康·及胡鶴記·補回或吸收甚湧、中一·大賚·中孚·新華·等、亦均係收進、鴻大·仁豐·仁昌·潤德·鴻興·同順·等均有買進、市價結果、除丙種未動外、餘則均回小二三角至一元、成交約八九十萬元、茲列簡明表於後、類別　最高　最低　收盤比前日統甲　六五·六　六四·六　六四·六　跌〇·四〇統乙　五九·〇　五七·六　五七·七　又一·〇〇統丙　五八·一　五七·四　五七·六　平統丁　五二·八　五三·〇　五三·一　跌〇·三〇統戊　五五·八　五五·二　五五·二　又〇·二〇</p>
+<p>（前日丙種最低價爲五十七元正誤爲七元一角、合行更正、）</p>
+<h3>股票升降互異</h3>
+<p>大戶售外股而進華股</p>
+<p>昨外股續見疲落、共成交四萬八千九百股、怡和紗廠三十九元二五、信和退至十七元、回升爲十八元八七角、中紡二十三元半、中營十八元八角、回升爲十九元一角、祥泰木行三十五元、鋼業二十元零五角、紙業十二元二角、毛羢十五元二角、英達區二十二元半、陳氏二元、加倫丹一元八角四分、志摩三元一角、克羅華二元七角半、里派二元六角、地傍二元四角半、橡皮三十三元二五、均為最後成交價、餘未做開云、</p>
+<p>昨華股續挺、文化股爲某大戶售外股來收進、尤爲生色、商務印書館二百十五元及二百二十元、升起十元、中華亦升爲一百二十元及一百二十五元、世界（新）七十六七元、升三元、大新公司五十一二元、永安六十三元、新新（除息）七十三元、中國內衣二十五元半、新亞藥廠（新）三＝十五元半、中法（新）六十元零七角半、新亞科學十八元、信誼五百十元、久大精鹽一百四五十元、華商電氣十丸元半、冠生園（老）二百三十元有買戶、廣勤紡織三百四十五元有成交云、</p>
+<h3>實貨吐出　烚赤再降</h3>
+<p>昨現金烚赤暗市、步見低落、已退至二萬一千元關口、良因市價平穩已久、一般藏戶委現金號來實貨吐售也、人心帶軟、自晨每條（十兩）首開二萬一千三百元、計低五十元、金號幫出入不一、價退至二萬一千二百五十元、又做升至二萬一千四百元、十點十分後、金號幫與銀號爭出、某幫亦吐售、價突下跌五百五十元、退入五千一百元內、最低寓零八百五十元、證券號買進、當見回上、最後成交價二萬一千元、比上日價軋小三百五十元、有五百五十元差度、成交不晞、</p>
+<p>銀樓飾金每兩大新同行均步掛小一百元、計二千一百五十元、（收進减二百元）、紋銀掛十八元、黑市十五元七八角、銀幣一枚九元四五角云、</p>
+<h3>劃頭貼水步昂</h3>
+<p>昨外幣市况、英美金鎊平穩如故、前者仍爲五百元、後者仍爲五百十元、美金票三十二元有成交、香港票退爲四元八九角、軍用票晨開七元三角三分、開後退爲二角七分、最後爲七元三角、比上日計升四分、</p>
+<p>昨劃頭票據貼現率、每千元做高五元、爲二十五元及三十元、錢業公會拆息仍掛一角四分、中儲券升水每元爲三角二分半及三角三分云、</p>
+<h3>亞洲銀行票據</h3>
+<p>銀準會代理交換</p>
+<p>本市銀行業聯合準備委員會、昨日通函各行略云、查未加人交換之同業公會會員銀行、現已陸續向會聲請加入交換、茲經本會票據交換所委員會議決、應一律依照本會代理會員銀行票據交換辦法、由會分別訂定日期、開始代理各該行票據交換等語、茲訂定於三十一年五月十八日（下星期一）由本會開始代理亞洲銀行票據交換、並編定亞洲銀行在交換所號次爲51一——云、</p>
+<h3>單鈔聚歙　賣米之一途已絕</h3>
+<p>米店欲假么濟私、聚戲單鈔、希圖每元一角零之升水利益、今已爲洋米出糶米價、要輳合五元爲一單位、遂將米每升加價四角三分、而歸於消滅、可恨投機囤積分子、仍是損人不利己、然而大衆已爲此受害匪淺、即其自己亦未嘗不同受影響、祇顧目前、不顧將來、井底蛙見、今之投機囤積之謂也、回頭猛省、亦將嘆所爲何來、</p>
+<h3>豆餅內運中止</h3>
+<p>豆類到銷皆稀、市勢閒散、價見參差、微有軒輊、計開崇明沙赤一百包價二百三十二元、送到、二百二十八元至二百三十元、自出、又沙蠶八十包、價一百三十八元、自出、一百四十一元現鈔、吳江揀靑三十包價一百七十元、浦東杜豆十包、價二百六十元、</p>
+<p>苞米交易零星、市呈平穗之勢、計開蕪湖苞米、百餘包、價爲一百八十元至一百八十二元、</p>
+<p>豆餅邇因受淸鄉影響、內運中止、交易銳减、市勞平靜、計開利字餅五月份打棧單一千五百片、價爲六十九元、又新法幣五十二元至五十二元半、</p>
+<h3>金菜大批成交</h3>
+<p>台幫獨採千担</p>
+<p>金針菜因市價過髙、各方去化少動、市象沉寂已久、查台灣幫本有大胃交易、但以市價難合、致少成交、茲乘市軟之際、乃起而大量收採、至昨日止已成交千担之譜、貨屬普通、貨在五百元一關、不日起運云、</p>
+<h3>海帶絲回鬆</h3>
+<p>海帶絲來源旣乏、市存亦缺、市價曾一度髙昂逾恒、但價髙銷呆、乃自然之趨勢、故近市已見回鬆、咋市行盤售四百五十元、市象平定、</p>
+<h3>囤香烟懊喪萬分</h3>
+<p>香烟市况、近來賣價疲乏、已有月餘、過去飛黃騰達、目前奄無生色、致經營者焦頭爛額、漲跌迅速、使人望塵莫及、大幫囤戶仍堅持不放、一般零星散戶逐漸脫手、懊喪萬狀、昨市轉好、如大英牌每箱價爲九千六百元、比上日升三百元、老刀牌七千三百元、品海牌五千六百元、五華牌五千元、小仙女牌五千四百元、亦皆升一百元、日烟勢轉佳境、計開金槍牌一千八百八十元、賣出較少、金大樓牌一千五百五十元、全祿牌二千五百五十元、指甫牌一千五百五十元、均升起五十元之譜、</p>
+<h3>肥皂氣勢復盛</h3>
+<p>日用品如肥皂賣價一再上漲、良以時屆當令、需要暢盛、廠方尙無派貨消息、市存之貨、日形衰减、貨主氣盛、勢趨堅持、故價再度髙翔、計做開固本皂每箱三百七十元、白祥茂皂三百十元、黃祥茂皂二百九十元、箭刀皂三百元、比上日升起五元至十元、火柴行市平穩、賣價無大上落、計鳳凰牌五千三百元、美麗脾五千四百元、雜牌四千五百元、站定原盤、洋燭白禮氏一百九十元、亦吿平平、</p>
+<h3>粉乾開價較鬆</h3>
+<p>綫粉乾近以去化見稀、而客貨開價較鬆、故行盤隨跌、前日龍口粉小一二十元、靑島粉小十元、市象平軟、</p>
+<p>春秋</p>
+<h3>颶風的信息</h3>
+<p>— 竹馬</p>
+<p>在海角一隅的城市，鄉鎮，每年是難以倖免一兩趟颶風的，來時是那麼的驟急，而宛如巨人伸出他雄偉的大掌，不過，也可以防備，像天文臺之類的設立便是做道種預測的工作，接送這種消息。往常，預先發出警吿，海關懸上黑球，以使船隻停泊，免去這種襲擊與摧殘，雖然，有時天文豪測得並不準確，可是「未雨綢繆」，總勝過「湯臨掘井」的一副慌張樣子。</p>
+<p>然而據報上消息，今年的天文臺於這工作做不下去了，原因是爲了太平洋戰事，各島嶼上的天文氣象臺都停止工作，而無從轉達颶風的信息，消息被阻隔了。這種「知天文」的繞有神秘與趣味的工作，現今也遭遇了」個苦悶的命運，只能每日紀錄本埠的氣象。</p>
+<p>據經騐者吿訴我們，每年夏末秋初，總常常要來到一兩次颶風的，現在旣然沒有預測報吿，那麽其來也急，是勢所必然的，如果招牌上現在就加些鐵絲，籬笆的根打打牢，雖是其來也急的颶風，倒可看出由風影饗出的大量，因爲颶風吹倒的大約定是脆弱怯小的建築物，——變也是事實。</p>
+<p>由了颶風的信息的阻隔，這些無關緊要的話，不知可能當做「黑球」否？</p>
+<h3>語錄</h3>
+<p>— 戈</p>
+<p>我的成功，苦工佔百分之九十九，天才佔百分之一。　——愛迪生</p>
+<p>爬梯子要從梯脚爬起的。　——意大利諺語</p>
+<p>一隻蒼蠅不能飛到一個人緊閉的嘴裏去。</p>
+<p>——意大利諺語</p>
+<p>經騐是最好的先生，祇是這位先生的學費太貴。　——黑格鑼</p>
+<p>一句謊話，好像一偭雪球，滾得愈遠，會變得愈大。　——廬若</p>
+<h3>上海街</h3>
+<p>— 班公</p>
+<p>如果說霞飛路是七海的俄國街，那麽我想虞洽卿路可稱爲最道地的上海街了。</p>
+<p>必也正名乎？所謂上海街者，當然是因爲牠形形色色，無論是美是醜，恰足以象徵今日的上海。譬如說，上海灘上多的是聞人，提起大名鼎鼎的阿德哥來，大概在道小巴黎中，總說得上一句「誰人不知，那個不曉一了罷。上海有一條愛文義路，可是我們知道外國也有愛文義路—你倒想想看，英國，美國會有一條虞洽卿路麼？天津北京會有一條阿德哥胡同嗎？這名字就取得巧！這還不是一條祗有上海才能有的路麽？</p>
+<p>又道是，「名者，實之賓也。」這路名果然像是有些上海氣的了，再看事實上又怎麼樣呢？</p>
+<p>還有比處洽卿路更能表顯今日的上海的嗎？</p>
+<p>白天，多的是癟三。，晚上，多的是雉妓；夜間—你看看這些旅館罷。每天，你能看見多少活劇！你能寫下多少悲天憫人的文章！街上幌來幌去的是數不淸的「人生的渣滓，飢餓，挨打，死亡。你想不見不聞麼，可是慘厲的哀嘶愈來愈多，醜惡的路屍天天擋着你的路！你討厭他們，他們偏偏死不完！</p>
+<p>同時，此地却又可謂集上海娛樂之大成了。有皇皇的大電影院；有舞廳；也有蘇州人出出進進的書塲，寗紹人趨之若鶩的「的篤班」；有歐美大菜，也有紅棗子湯—而且也有買米的一字長蛇陣。</p>
+<p>上海人喜歡發橫財，此地有的是發財獎券出售。上海人—從粗做娘姨直到銀行大亨，無不喜歡相面算命，此地便有什麽山人什麽子專等着來和你算算流年，看看氣色。</p>
+<p>在這條路上，無論那一種人都能碰到。看得見腦肥腸滿的闊人從餐館裹蹣跚而出，看得見三馬路四馬路的幾個小姐，坐着包車如飛而過，花枝招展，你只覺眼前發亮。你甚至於還看得見上海最稀少的風雅之士呢，他也許剛在大新畫廳或者寗波同鄕會看了書畫出來，不幸一轉彎便碰到了這條俗不可耐的馬路。至於馬路英雄，街頭豪傑之類，更是看也看不完，數也數不淸了。</p>
+<p>兩個截然不同的世界，在此地却祇有一牆之隔而已！就以這一點而論，　洽鄕路不是已經允稱爲上海街而無愧了麽？</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（五）拔來報往</p>
+<p>翠珍走了，維城坐着瞑想了一會，想翠珍姊不過長在貧賤人家，她的境遇又這麼惡劣，倘然和國芳易地以處，憑着她的靈心慧舌，怕還比國芳要高出一等。他熄了雙梅書屋的燈，越過空庭，回到寢室裏去。只覺得有個人影一閃，嚇的他毛髮悚然，問道：「是誰？」就有人答道：一是我，城弟，喜鵲運湯婆子的水凉了，她都不知道換，我才給你換了。」維城道：「你來。」維城先走進寢空裏去，翠珍只站在門內，不再把脚步移動。維城道：「我眞該謝謝你，我的事情都讓你當心。」翠珍道：「我就是怕城弟要謝謝我，所以忙不迭的閃出去，不想鬼鬼祟祟的，倒把城弟一嚇。」維城道：「現在我感謝的成份，勝過恐懼的成份了。翠珍姊，你坐一會兒再走吧。」翠珍道：「不。」維城道：「我還有好多的話耍問你，嬸娘睡了嗎？」翠珍道：「睡了。維城道：喜鵲呢？」翠珍道：「也睡了。」維城道：「何媽呢？」翠珍道：早睡了。」維城道：「翠珍姊一個人裏外外的摸索，夜深了倒不害怕？翠珍道：「這有什麼害怕的，大伯母生前待我好，我到現在還當她活着一樣，每天給她送菜送飯。維城道：「你的話對，本來沒有什麽害怕的。嬸娘睡了嗎？」翠珍道；「睡了。」維城又問道：「喜鵲睡了嗎？翠珍道；「城弟你問了兩遍了，明天見。」</p>
+<p>翠珍給維城拽上房門，脚聲在輕悠悠的遠去，維城想起翠珍說的，大伯母雖然死了，現在還當她活着，這話不錯：翠珍姊雖然走了，現在還當她站着：大眼睛；蓬蓬鬆鬆的頭髮；帶着胰子淸香的衣衫，一一如在面前。他躺下了，忽的有人來叫門，自己沒去開門，叫門的人已然進來了。他當是翠珍，不想倒是國芳，國芳後面還站着國器，國器苦着臉說；「你沒了母親，我們倒是沒了父親了。」維城吐出一聲來道；「啊！」這一聲，把自己弄醒了，原來是夢。　（七六）</p>
+<h3>悲劇與喜劇</h3>
+<p>— 金毅</p>
+<p>我的一個朋友忽然在這種時世這個年頭生了病，且是重病。說昌重病」，就是他的生命是在「生」與「死」的邊緣上了。一進醫院，更是使他的家屬啼笑皆非，因為醫師開出來的藥方，却沒有一家藥房不是回答「買完了」的。幸虧醫師在「治病」之外，還懂得藥品的来踪去跡，登了幾行「徵求」廣告，才從「勇夫」手中奪回了他的生命。</p>
+<p>不過，「治病」甚於「救火」，因爲徵求針藥的輾轉費時，我的朋友的這塲大病，竟是延長了三個月之久，到最近才能出院。當我到他家里去探訪他時，他的見面禮是：「不幸而生病，更不幸而不死！」－這兩句話，抵得一齣百萬言的悲劇。</p>
+<p>最近在報上忽然讀到了一則因囤藥而發生火災的新聞，却是「救火」爲了「治病」了。－這新聞倒又彷彿是一齣喜劇了。</p>
+<h3>人性的絕滅</h3>
+<p>— 許席珍</p>
+<p>照物理學上說起來，磁鐵在受了猛烈的震動或打擊之後，便會失去它的磁性。而今，經過這些艱苦的年頭之後，就我們所看到的形形色色而言，人性之於一部分劣質的人類，似乎也有着與磁性之於磁鐵相同的現象：在不斷的艱苦時代的鍛鍊之下，在物質的與精神的震撼與猛擊之下，失去了他們的原來僅僅是附着於浮面的一層薄薄的人性。在我們的汚地上，這些滅絕了人性的人類，正在用盡了平生的解數一，在我們面前作着種種驚心奪目，有時簡直是使人難以相信的表現。罰積物資，操縱市塲，及收單鈔，使多數人的生活陷入更甚的困難；而另一方面，則「經商獲利，蹂躪雛妓」，以致被虐弄的「不堪侮辱，香消玉殞」，或販賣少女，運往外埠」，……凡此種種，都說明了：凡喪失了最低限度的良心，喪失了最低限度的羞恥感與自尊心的一部分卑劣人類，不特自己滅絕了僅有的人性，並且還企圖滅絕他人的人生，滅絕他人的羞恥感與自尊心</p>
+<p>一面是時代的震動，一面是貨幣與利祿的魅力，人類在這髙溫度與眞空壓力的物理條件之下被鍛鍊着，以致一部分靈魂搆造不健全的人們便無法保持他們的人性。凡此種種無人性的表現是驚人的；但另一部分願意保持人性的人們，倒也無須爲這些非人的行徑嚇得口瞪目呆。在小時候，看過神怪小設的大槪都知道一些狐鬼化身的人形是都害怕風雨雷殛的；自然界的劇變往往會使他們難以保持虛幻的人形。在一陣雷電殛火之下，他們總不免「就地一滾，現出原形」。而等到　火過去之後，他們便永遠不能再變成人形了。這倒是眞正有一點恐怖」的。</p>
+<p>讓我們站在風雨里，像落湯鷄一樣狼狽的看着那些一次次的殛火吧。我們要看一看，在殛火過去之後，到底還有多少是能够依然保持着眞正的人形，保持着非震撼所能滅絕的人性的？</p>
+<p>這是一個偉大的悲喜劇，而我們，則不僅是風雨中的露天劇塲的觀衆，而且更是這一個精采節目中的演員。</p>
+<p>你看吧，你演吧——你！</p>
+<h3>單鈔加一</h3>
+<p>— 輔民</p>
+<p>自從市上缺乏單鈔後，五元十元票的使用，每感不便，昨日，筆者至某公司購物，見其牆上貼有紙條：單鈔出入，加一計算。</p>
+<p>這倒是一個很好的辦法，顧客不致因購物數量小，而買不着貨：店方也可以多做幾筆生意，買賣雙方都得便利。</p>
+<p>（編者按：現在有許多商店　已實行「加一」辦法了，雖不　能澈底解決單票荒，但也可　省却跑錢莊之勞，及看烟兌　店老闆及電車售票員的面孔了。）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.05.15</h1>
+<h3>Kharkov Front: Soviet Troops Launch Counteroffensive; Several Strongholds Recaptured in the Kalinin Region; Soviet Troops in Kerch Retreat to New Positions</h3>
+<p>A Soviet Border Region, 14th (Havas Agency) – Today marks the 326th day of the German-Soviet war. The current significant event is the renewed German advance, particularly noticeable in the Kerch Peninsula, which is crucial for advancing towards the Caucasus oil fields. The Soviet High Command appears to have adopted an offensive strategy as a diversionary tactic. Although the point of attack is a considerable distance from the Kerch Peninsula, there is a definite connection between the two. While the Soviet news agency has released information about the offensive, the exact location has not been announced. Military observers speculate that the Soviets intend to capture Belgorod, threatening German positions in Kharkov. This would aim to prevent the Germans from advancing on Rostov. If Soviet troops were to attack Kharkov, the German rear in the Donets region would be threatened, forcing them to move north. According to Soviet sources, Soviet troops in the Kalinin region, west of Moscow, have also launched a counteroffensive. After three days of fierce fighting, the Soviets have reportedly retaken several positions.</p>
+<p>London, 14th (Reuters) – General Timoshenko's elite Red Army troops are advancing toward Kharkov (the key to the Caucasus). Soviet forces on the Kerch Peninsula appear to be retreating. The Vichy News Agency reports that German mechanized and cavalry units occupied Kerch City at dawn today. Meanwhile, the Soviet midday communiqué stated that fierce fighting continued overnight on the Kerch Peninsula.</p>
+<p>Moscow, 13th (Havas) – The Soviet official communiqué released tonight stated that our troops on the Kerch Peninsula have retreated to new positions due to the enemy's numerical superiority. The German official report claiming that the battles in the area were favorable to the German side, with the capture of numerous prisoners and the destruction of many aircraft and tanks, is completely unfounded. Our troops retreated in an orderly manner and inflicted heavy casualties on the enemy. On the Kharkov front, our large-scale counteroffensive is proceeding smoothly. No noteworthy events occurred on other fronts.</p>
+<p>Stockholm, 14th (Havas) – Regarding the reports circulating this morning from Romania that the German-Romanian forces had occupied Kerch and other cities, the authorities have neither confirmed nor denied them. The German High Command's battle report also makes no mention of this.</p>
+<p>A Soviet Border Region, 13th (Havas Agency) – While some observers from neutral countries believe the importance of the battles on the Kerch Peninsula is somewhat exaggerated, the German advance there is sufficient to secure a crucial route to the Caucasus. Today, according to Romanian sources, it is confirmed that one of the three Soviet divisions surrounded on the Kerch Peninsula has been annihilated. Although the remaining troops are putting up resistance in several locations west of the Kerch Peninsula, their collapse is only a matter of time. As of now, the German-Romanian forces control both the northern and southern coasts of the Kerch Peninsula, except for a ten-mile stretch from the Sea of Azov to the Black Sea. Heavy fighting continues in the area along the Arabat Spit and the Black Sea coast, as well as the highway from Theodosia to the Kerch Strait. One unit of the German-Romanian forces reportedly reached a location four miles from the Kerch Strait yesterday. Neutral observers also believe that while the battle for the Kerch Peninsula is a major victory for the German-Romanian forces, the real first phase of the spring offensive will only begin after the German-Romanian forces cross the Kerch Strait.</p>
+<p>German Forces Heavily Bomb Kerch Peninsula with Aircraft and Artillery</p>
+<p>Berlin, 14th (Haitong Agency) – According to a German news report yesterday commenting on the southern front battles, never before have so many aircraft operated in such a small area. The German attack on Kerch is characterized by the extensive use of aircraft to support the advance.</p>
+<p>London, 14th (Reuters) – According to a Reuters correspondent in Moscow, the battles on the Kerch Peninsula are mainly fought with aircraft and heavy artillery. The German attack front is only fifteen miles wide, with little room for maneuver for large numbers of tanks and infantry. However, although the forces used by both sides are small, the fighting is extremely fierce. The Germans are using heavy artillery and bombers to bombard Soviet positions, making it impossible for the Red Army to hold. The Soviet Air Force is also not weak. Earlier this year, the peninsula was defended by three or four infantry divisions and a tank division. The forces used in this offensive are unlikely to exceed this number. Crimea is now experiencing hot summer weather, and in the Caucasus region, farmers have already begun planting crops. As for the Soviet Army's diversionary offensives on other fronts, there are reportedly two locations: one in the Kharkov area, where, according to Moscow, the two armies have engaged in hand-to-hand combat, although the location of the fighting has not been specified; and the other in the Kalinin area, where, according to the Red Army newspaper "Red Star," Soviet troops have retaken one area and captured some prisoners. The German counterattack has been repelled. The newspaper also stated that fierce battles are ongoing in a certain area, and the Red Army continues to push back the Germans, but the Germans have greater numbers and are defending from mountainous terrain, giving them an advantage in both manpower and geography. It took two days of intense fighting to drive them back.</p>
+<p>Fierce Battles Around Leningrad: Soviet Tanks Demonstrate Their Power</p>
+<p>London, 14th (Reuters) – According to news from Moscow, Soviet troops on the Leningrad front are using heavy tanks in combat. The German forces are attempting to stop them with six-inch anti-tank guns. When these anti-tank shells explode, they generate a heat of 3,000 degrees. Soviet Voroshilov-type giant tanks have destroyed many of these anti-tank guns. The world's attention is now focused on Crimea, but fierce battles have also broken out around Leningrad. Soviet troops there have captured several new positions, and the food situation in Leningrad appears to have improved. Food convoys are now arriving in the city on schedule.</p>
+<h3>German War Report</h3>
+<p>Berlin, 14th (Haitong Agency) – The German High Command announced today that after breaking through the enemy's defenses in the Baba region, our forces are now pursuing the fleeing remnants of the Soviet troops. The remaining enemy forces in the Ak-Monai area have been cleared. The enemy troops are now retreating along the Kerch railway and the coastal highway. German forces continue to pursue eastward. The enemy's resistance is extremely weak. Our forces have captured many prisoners and spoils along the way.</p>
+<p>Berlin, 14th (Haitong Agency) – The first reports from war correspondents after the German offensive on the Kerch Peninsula have arrived. According to reports, the German forces launched their attack before dawn on Friday, preceded by heavy artillery fire and ground clearing by engineers to allow infantry to advance. At sunrise, large numbers of German bombers and dive bombers began bombing enemy positions, while a portion of the German troops landed in small boats at several points in the Feodosia Bay, attacking the enemy's flanks. Under the fierce German land, sea, and air attacks, the Soviet forces were unable to resist, and the German forces were able to advance rapidly. According to other reports from war correspondents, the roar of German artillery before the offensive caught the Soviets off guard. Before dawn, German engineers had prepared the advance route for the infantry, quickly clearing obstacles such as barbed wire and mines under the cover of smoke. In the narrowest part of the peninsula, the Soviet forces had built extremely strong defensive fortifications, such as barbed wire entanglements, minefields, flamethrowers, and steel bunkers. Therefore, the Soviet resistance there was also the fiercest. German troops charged forward, engaging in hand-to-hand combat, and crossed several enemy trenches. The Soviets, after recovering from their shock, ordered artillery to retaliate. At dawn, large formations of German aircraft also arrived to assist in the battle, bombarding enemy positions for several hours. Within three hours, all obstacles within the area of German advance had been cleared by engineers. The battle then focused on attacking the enemy's key defensive lines and fortresses. The enemy's machine guns, grenade launchers, anti-aircraft guns, and tanks were destroyed one by one by German forces. German artillery fire also heavily bombarded enemy bunkers. Before long, the enemy's key lines were completely occupied by German forces. The Soviet troops collapsed like a receding tide, and the German forces pursued them.</p>
+<h3>Fierce Air Battles in the Far North of the Soviet Union; German Ships Gather in the North Sea of Norway, Attempting to Cut Off British-Soviet Shipping Lanes</h3>
+<p>Berlin, 14th (Havas Agency) – Berlin Radio announced that our air force was extremely active in the northern region of the Soviet Union yesterday. Enemy supply convoys and two railway stations in Murmansk were bombed. Our aircraft engaged in fierce air battles with enemy fighter squadrons, shooting down six Hurricane aircraft.</p>
+<p>London, 14th (Havas Agency) – Well-informed sources here recently stated that a large-scale naval battle may occur in the northern seas of Norway. The German battleships "Admiral Tirpitz," "Admiral Scheer," and the heavy cruiser "Hipper" will participate, aiming to cut off the Soviet Union's vital supply lines in one fell swoop. The most dangerous area through which British convoys pass is near the German bases in northern Norway, North Cape. It is rumored that large numbers of "Focke-Wulf" four-engine aircraft have recently flown to that area from the ports of Trondheim, Narvik, and Tromsø. It may take British convoys four days to pass through this dangerous area, making it extremely difficult to defend against air raids.</p>
+<h3>Chile Establishes More Aviation Schools; House of Representatives Passes Law to Control Transportation Industry</h3>
+<p>Santiago, Chile, 13th (Havas Agency) – A new aviation school established by the Ministry of National Defense near the El Bosque military airfield on the outskirts of the capital has been officially inaugurated and will soon begin training aviation cadets.</p>
+<p>Santiago, Chile, 13th (Havas Agency) – The government has submitted a bill to Congress proposing to control the national automobile transportation and limit the daily office lunch break to only half an hour to prevent employees from traveling back and forth by car. The bill has been passed by the House of Representatives. It is estimated that this measure, once implemented, will save at least 250,000 gallons of gasoline.</p>
+<h3>Earthquake Records; Location Either in Southern China or Near Central America</h3>
+<p>London, 14th (Reuters) – The renowned seismologist Shaw recorded a severe earthquake here this morning and believes that the earthquake occurred either between Burma and southern China or on the Pacific seabed near Central America.</p>
+<h3>Japan Closely Watches the Eastern Front Battles</h3>
+<p>Tokyo, 14th (Domei News Agency) – Newspapers here have shifted their attention to the Eastern Front of Europe. According to a Berlin wireless report carried by the "Asahi Shimbun" today, the German offensive focuses on the use of new weapons and a large air force. One of the so-called new weapons is reportedly a flamethrower mounted on aircraft, used to counter Soviet tanks. The strength of Soviet tanks was initially underestimated by the Germans, so it was necessary to invent a weapon to defeat them.</p>
+<h3>Hanoi, Vietnam, Experiences First Air Raid</h3>
+<p>Hanoi, 14th (Domei News Agency) – On Tuesday, enemy aircraft attempted the first air raid on Hanoi since the start of the war, but the attack failed. Of the five attacking aircraft, two were hit by intense anti-aircraft fire and crashed in flames. Hanoi residents remained calm during the first air raid and continued working as usual.</p>
+<h3>Pacific Military Conference Convened in Washington; Reviewing and Coping with Future War Situation</h3>
+<p>Lisbon, 13th (Domei News Agency) – According to news from Washington, a Pacific military conference was held at the White House today, attended by U.S. President Roosevelt, lasting for one hour.</p>
+<p>Washington, 14th (Reuters) – The Pacific Military Council met at the White House for an hour and a half yesterday, with President Roosevelt presiding. Song Ziwen, representing the council afterward, announced that the committee had discussed the quantity of production of military supplies and equipment and discussed the war in the Southwest Pacific. Canadian Minister to the U.S. McCarthy stated that the committee had also discussed the issue of some people arbitrarily talking nonsense, potentially providing important information to the enemy. President Roosevelt expressed strong views on the dangers of this matter. British Ambassador to the U.S. Lord Halifax stated that the President's remarks were not directed at any specific group of people, but were only a general warning, urging all parties to be extremely cautious during the war. It is very dangerous for those who do not understand the various facts to speculate arbitrarily.</p>
+<h3>U.S. Trade Week, Day One; Secretary of State Hull Speaks, Reaffirming the Atlantic Charter</h3>
+<p>Washington, 13th – Today is the first day of U.S. Trade Week. Secretary of State Hull issued a statement reaffirming the principles of the Atlantic Charter, namely, that after the war, all countries in the world should have access to raw materials on an equal basis. When building a new world after the war, the United States has a heavy responsibility. If a general economic relationship for international trade cannot be established after the war, lasting peace and economic prosperity will not be possible. If the U.S. can clearly state that one of our war aims is to establish a sound economic relationship system, then our war effort will be even more effective.</p>
+<h3>Japanese Ships Active in Australian Waters; Japanese Ship Sailing in South China Sea Sunk by Submarine</h3>
+<p>Lisbon, 14th (Haitong Agency) – According to a broadcast from a U.S. radio station in Melbourne, the Japanese Navy has again become active in Australian waters. Australians expect the Japanese to launch another attack soon.</p>
+<p>Tokyo, 14th (Domei News Agency) – The Army and Navy Ministries jointly announced at 6:00 PM today that on the night of May 8th, a Japanese merchant ship in the eastern part of the South China Sea was sunk by a torpedo fired by an enemy submarine. However, it is believed that the submarine was also sunk by the Japanese Navy. The sunken Japanese merchant ship was sailing under the protection of warships, carrying passengers and people engaged in economic activities in various regions of the South Seas. After being hit by the enemy torpedo, it immediately caught fire. To date, 541 people have been rescued.</p>
+<h3>Japan Explains the U.S. Air Raid on Japan</h3>
+<p>Tokyo, 14th (Domei News Agency) – The Army and Navy Ministries issued a joint statement tonight stating that the fact that one U.S. aircraft was forced to land in Soviet territory after the U.S. air raid on Japan on April 18th can be interpreted as an action intended to sow discord between Soviet-Japanese relations, which is quite noteworthy. The Japanese side must pay attention to this type of action by the enemy. The air raid on Japan is not enough to weaken Japanese morale, and the B-25 U.S. aircraft from North America attacking areas such as Tokyo, Yokohama, Nagoya, and Kobe are merely attempting to conduct psychological warfare. On the one hand, it is to alleviate the dissatisfaction within the United States with its defeats and to increase the confidence of Chongqing, India, and Australia in the U.S.'s war effort. However, this action fully demonstrates the predicament the United States is in and the growing dissatisfaction of the American people with the Washington government.</p>
+<h3>Methods for Circulating Public Treasury Checks</h3>
+<p>Chongqing, 14th – It has been two years since the implementation of the Public Treasury Law, and public treasury checks are becoming increasingly popular. Recently, the Ministry of Finance has revised and announced the methods for circulating public treasury checks, making provisions for presentation, guarantee of circulation, and fraud prevention. The key points of the methods are summarized as follows: (A) The bearer may present the public treasury check to the paying bank for payment. (B) The paying bank, upon examining the public treasury check presented for payment and finding no illegal circumstances, shall immediately endorse it with the word "guaranteed" or equivalent, and shall be responsible for making payment at any time, regardless of the closing of the public treasury year. Public treasury checks that have been endorsed in accordance with these provisions shall be set aside by the paying bank in a separate reserve account within the original deposit account. (C) The following actions may be performed at the location of the guaranteeing bank with a public treasury check guaranteed by the paying bank, and may not be refused: (1) Payment of taxes, donations, and all legally levied fees by the people. (2) Payment of prices for transactions by government institutions and publicly owned businesses and industries. (3) Security deposits for public and private actions. (4) Payment of bank deposits; this transfer action shall not be effective unless the bearer has provided legal documentation. (D) If the issuing agency violates the provisions of Article 136 of the Negotiable Instruments Law when issuing a public treasury check and is discovered and punished, the head of the issuing agency and the responsible personnel shall be jointly liable. (E) If the paying bank is liquidated or bankrupt, the public treasury checks guaranteed by the bank shall have priority in receiving compensation. The implementation of these methods will provide various conveniences and preferential treatment to the people, and the circulation of public treasury checks will undoubtedly be promoted more smoothly in the future.</p>
+<h2>Page 3</h2>
+<h3>Martinique Island Issue: Vichy's Reply to the U.S.; Contents Not Disclosed, But Door to Negotiations Remains Open</h3>
+<p>Vichy, 13th (Havas Agency) – Regarding the issue of French Martinique Island, it was recently officially announced that Chief Laval sent the French government's reply to the U.S. authorities this month. However, the content of the reply has not been disclosed. According to semi-official sources, on the 10th of this month, the U.S. government sent a note to the French government through Admiral Robert, High Commissioner of the French West Indies, requesting a change in the legal status of Martinique Island. However, the incident raised by the U.S. government is significant, involving several serious issues. After Marshal Pétain returned to Vichy, he carefully studied the issues. In recent days, government leaders have also repeatedly consulted with the commanders-in-chief of the army, navy, and air force, Darlan, Navy Minister Auphan, and Colonial Minister Brévié, regarding this matter. Therefore, the reply was not sent to the U.S. government until this month.</p>
+<p>Geneva, 12th (Havas Agency) – A Vichy semi-official announcement today stated that the French government has submitted a reply to the U.S. government on the Martinique Island issue, but the content of the reply has not been disclosed. International observers here recently commented on this matter, stating that the French document mentioned that the actions of the U.S. have raised "serious issues." This suggests that it is not simply accepting the U.S. proposal. The difficulty lies not in the issue itself, but in the manner in which the U.S. raised the issue. However, although the French reply may not fully comply with all U.S. demands, it will not abruptly close the door to continued exchange of views. Regarding the West Indies issue, the French side has issued semi-official announcements twice. The first announcement stated that the French territories in the West Indies were already in a special status after the governments of France and the U.S. had provided mutual guarantees. The exchange of views on these guarantees had lasted for several months. Recently, the U.S. government suddenly raised some "demands" intending to change the current status and notified the French government on the 10th of this month. Today, the second announcement was issued, stating that the French government had sent a reply to the U.S. government. At the same time, the Martinique Island incident is an undeniable fact as a major international issue facing France. The various consultations conducted in Vichy over the past three days are of great significance. In short, the official response from France to Washington cannot be issued without the personal approval of Marshal Pétain. Therefore, the Marshal shortened his vacation and hurriedly returned to the capital to attend the meeting.</p>
+<p>U.S. Attitude Apparently Becoming More Aggressive</p>
+<p>Washington, 14th (Reuters) – Regarding the Martinique Island negotiations, the attitude here appeared to become more aggressive yesterday morning. Unless France guarantees that the ships stationed on the island will not be moved in the future and that the island's lookout bases are leased to the U.S., the U.S. government has no intention of signing any agreement with France.</p>
+<p>Washington, 14th (Reuters) – As of late last night, the U.S. State Department had not yet received the three-page note regarding Martinique Island that Laval gave to U.S. Chargé d'Affaires Tuck in Vichy. The State Department also confirmed that the U.S. government did not submit a note in Vichy, but Admiral Robert, High Commissioner of French Martinique Island, continuously reported to Vichy in whole or in part.</p>
+<p>Basic Principles of Vichy Policy</p>
+<p>Geneva, 13th (Havas Agency) – International observers here recently analyzed France's international relations, stating that although the Martinique issue is France's most pressing international problem at present, France's current difficulties are not limited to one aspect. All these problems are extremely subtle when viewed from the special position France has been in since the armistice agreement was established in June of the year before last. Since then, the policy pursued by the French authorities has been a clear demonstration of Marshal Pétain and his cabinet's loyalty and patriotism. The basic principles of French policy are to maintain neutrality in this war, regardless of the conditions put forward by any of the belligerent countries, while maintaining diplomatic relations with the U.S. and maintaining normal relations with the Axis powers. In the Martinique Island incident, all efforts have been made to avoid the use of force. Judging from the fact that both sides are conducting negotiations through diplomatic channels, that is, through French Ambassador to the U.S. Henry Haye and U.S. Chargé d'Affaires to France Tuck, it is believable that neither side intends to create a deadlock. However, the occupied areas of France are pessimistic about the future of French-U.S. relations, believing that the relations are "extremely tense," which is quite different from Vichy's consistently hoping for a satisfactory solution. It is widely believed that the main key to the Martinique issue lies in the U.S. requesting to use the seven French oil tankers anchored on the island. The French government had previously agreed that Admiral Robert, High Commissioner of the island, should maintain the island's absolute neutrality. Chief Laval now seems to be going a step further, guaranteeing that the enemies of the U.S. will never use Martinique Island, so that the U.S. does not need to send troops to the island to guard it. However, the U.S.'s requisition of French oil tankers is not permitted under France's neutral status and is also inconsistent with the Franco-German armistice agreement, which is difficult to accept. At the same time as France is negotiating with the U.S., it must also deal with Germany. There is no doubt that the French and German governments are holding negotiations on the issue of bilateral relations. However, some news from various sources seems to be inaccurate, such as the rumor that Chief Laval and German Aviation Minister Goering met in Morain, on the border between the free zone and the occupied zone, which is difficult to believe. It is not certain whether Goering is even in France at present. This is because the current Franco-German negotiations are purely technical in nature, which can be seen from the arrival in France of the new German Armaments Minister Speer. Generally speaking, Speer's discussions focus on issues such as controlling manpower and raw materials and setting working hours. However, at a time when Germany is launching its spring offensive, it is not difficult to imagine that so-called technical issues are also not ordinary. At the same time, in Paris, Heydrich, a key member of the German Secret Police, is holding meetings with the French police authorities, and Brinon, the French government's representative in the occupied zone, is also participating. Afterwards, Brinon hurriedly returned to Vichy to report. Based on this, it can be seen that the Franco-German talks are multi-faceted contacts, with many issues and different levels of importance. However, no matter how complicated the Franco-German negotiations are, the background is still certain and not easy to change. In short, the main purpose is a fundamental adjustment of bilateral relations, with all issues leading to this end.</p>
+<h3>Free French to Participate in Administration of Madagascar</h3>
+<p>London, 14th (Reuters) – The Foreign Office officially announced this morning that the Free French will assist in the administrative affairs of Madagascar.</p>
+<h3>Papal Broadcast Appeals for Peace</h3>
+<p>Vatican City, 13th (Havas dispatch) - Today marks the 25th anniversary of Pope Pius XII's elevation to the episcopacy. He addressed Catholics worldwide in a radio broadcast, stating that there is currently no possibility of peace. He said, "I am constantly receiving appeals for help. From this, one can see what the world expects from the Church. All Catholics are asking us to use our influence to bring an early end to the current war. At this moment, blood and tears are flowing like rivers, spreading across the globe. We must find a way to achieve justice and lasting peace. In good conscience, I can say that since assuming the difficult task of Pope according to God's will, I have been actively striving to fulfill my duty. Regarding this great war, I have spared no effort in pursuing peace before it broke out and after it began, exhausting all my abilities and means. The people of all nations yearn for peace as much as a great drought yearns for rain clouds. I love the people of all nations impartially, and therefore, on the occasion of my 25th anniversary of consecration as a bishop, I appeal to you all. At this moment, it is difficult to offer concrete suggestions regarding the establishment of a just and equitable peace. If one compares the strengths of the two sides in the current world war, one will realize that there is no hope for restoring peace at present. One side in the war boasts of its past victories, while the other side holds unlimited hope for future battles. Therefore, the two sides are deadlocked, and the destruction of material resources is increasing daily, beyond calculation. I believe that all forces that can bring an early end to the current war must unite and work together. We are constantly concerned about the fallen soldiers, prisoners of war, and displaced refugees on both sides. The current situation is unbearable to witness. Family life is completely disintegrating, economic difficulties are rampant, and the people are suffering beyond description, almost constituting a catastrophe that endangers all of humanity. Throughout history, all countries have strived to solve social problems and improve the fate of the impoverished masses, but now, hundreds of millions of dollars are being used to manufacture tools for destroying life and property. Not only that, but behind this war, an even greater war is brewing, without end. Therefore, we must appeal to the major powers to never forget that the family is a sacred unit of organization, and it must not be ignored. Furthermore, families and schools must not be prepared as future battlefields. A large number of civilians have been displaced and have appealed to us, all of whom wish to return home and participate in the peace movement. However, we can only relay this message to the politicians of each nation, asking them to establish a glorious peace as soon as possible. Even if it cannot meet everyone's hopes, this peace would still be beneficial. If the politicians of each nation can accept this idea and take the lead, all of humanity will be endlessly grateful to them. We will also continue to earnestly pray to God for peace, and we should advise the people to awaken early and engage in various construction projects with a spirit of cooperation, so that a peaceful world can be established, where everyone can unite with love as the starting point. Christianity was extremely successful in the first and second centuries because of its deep faith. All believers were willing to sacrifice and endure suffering, engaging in various works and creating a fervent spiritual life, making unparalleled contributions to the unity of the Church. As for today's Church, it should also take the Church of the past as an example. Its victory will surely encourage us and make us believe that God's will will ultimately prevail throughout the world. The Church has become a "fortress of truth and self-salvation." We should unite behind the Church."</p>
+<h3>Ancient Tomb of St. Peter Discovered</h3>
+<p>Vatican City, 13th (Havas dispatch) - When Pope Pius XII delivered his radio address today, in addition to appealing for peace, he also announced to Catholics worldwide that an ancient tomb, resembling the tomb of St. Peter, was recently discovered during the excavation of underground vaults in St. Peter's Basilica. The Vatican is greatly excited about this discovery, and further details will be announced soon.</p>
+<h3>Philippine President Quezon Arrives in Washington, Welcomed Personally by Roosevelt</h3>
+<p>Washington, 14th (Reuters dispatch) - Philippine President Quezon, accompanied by his wife, daughter, and a son, arrived here yesterday. President Roosevelt, Stimson, Hull, and General Marshall, among others, went to the station to greet them. President Roosevelt's first words welcoming Quezon were, "I am immensely pleased to see you return safely to Washington." The two then engaged in informal conversation next to the President's car in the station square. Photographers gathered, busily taking pictures. Quezon and his family stayed at the White House last night and will move elsewhere later.</p>
+<h3>US Representative to Norway Promoted to Ambassador</h3>
+<p>Washington, 13th (dispatch) - The U.S. representative to Norway has been promoted to ambassador, in order to demonstrate "the U.S. government's emphasis on the importance of the Norwegian government and people in the war," as announced by the State Department. At the same time, President Roosevelt has appointed Biddle as the first U.S. ambassador to Norway. From now on, Biddle will also serve concurrently as the ambassador to the exiled governments of Norway, Poland, Holland, and Belgium, as well as the minister to the exiled governments of Czechoslovakia, Greece, Yugoslavia, and Luxembourg.</p>
+<h3>Bulgaria Requisitioning Building Materials</h3>
+<p>Sofia, Bulgaria, 13th (Havas dispatch) - The government issued an order today requisitioning building materials nationwide and mobilizing construction workers until October 30th of this year, in order to carry out extensive construction. In the major cities of Bulgaria, there is an insufficient supply of housing, especially in the capital, hence the necessity of taking these measures.</p>
+<h3>British House of Commons to Debate the War Situation</h3>
+<p>London, 14th (Reuters dispatch) - Sir Stafford Cripps stated in the House of Commons today that the House will hold a debate on the war situation and joint planning on the first and second days of its next session, as previously promised. Whether the Prime Minister will participate in the war situation debate will be decided by the War Cabinet and the Prime Minister.</p>
+<h3>Germany Invents New Type of Aircraft, Speed, Altitude, and Handling Surpass British Aircraft</h3>
+<p>Berlin, 13th (Havas dispatch) - The "Völkischer Beobachter" here recently published an article titled "Focke-Wulf Against Spitfire," comparing the strengths and weaknesses of German and British aircraft. It stated, in brief, that while the British and Americans often proclaim their air superiority, in reality, from April 21st to April 30th, Britain lost a total of 209 aircraft in the Strait of Dover, the Mediterranean Sea, and North Africa, while Germany lost only 45. Germany never wants to underestimate the value of British aircraft. The Hurricane and Spitfire are indeed excellent aircraft, but the German Messerschmitt 109 and Focke-Wulf 190 are even better. The Spitfire may be easier to handle than the Messerschmitt, but it is slower. British manufacturers try to take into account speed, altitude, and handling, while the German Messerschmitt 109 only focuses on speed and altitude. The newly released Focke-Wulf model is designed to correct the minor shortcomings of the Messerschmitt model. This aircraft has the basic advantages of speed, altitude, and handling, and can be considered the best of all types of aircraft.</p>
+<h3>The Alaska Highway (6)</h3>
+<p>Readers may ask, if this area is so important, why didn't the United States begin developing it earlier, and why did it wait until the situation became critical to take hasty action? There are, of course, several reasons for this. The most obvious one is that the weather here is too harsh, and the area is remote and dangerous, so there seemed to be no need to prepare so urgently. However, the most important reason was the restriction imposed by the 1936 treaty, which stipulated that no fortifications could be built without permission. Despite this, the U.S. Navy, although hindered by the treaty, has never ceased its efforts in surveying and investigating for the past twenty years. Otherwise, it would not be so convenient to make arrangements today.</p>
+<p>Now, the question is, since this project was started a year ago, when will it be completed? The answer to this question can only be speculated based on time. From February to August of last year, because the environment was not too harsh, perhaps it was proceeding according to the planned schedule. However, from August to December, it is likely that there was some stagnation; otherwise, why would there be rumors of building the Alaska Highway this spring? These rumors undoubtedly arose from the pressure of the times and the accelerated pace of work.</p>
+<p>Impatient friends may say, why is this beauty being so coy? People have been waiting eagerly, but why is she still not appearing on stage? As mentioned earlier, firstly, her makeup is not yet complete, and she is busy applying powder and rouge, and so on; secondly, her attention is focused on the offensive issues in Europe, so she cannot satisfy the desires of the audience here.</p>
+<p>Furthermore, she may never show her face on this side, and the reason is very simple: once the overall situation in Europe is settled, it seems that she does not need to personally appear on this small stage. As the saying goes, "one thing done, all things done," so why should she bother with this extra effort? Moreover, no matter how fierce you are, there is a set example in this war game - "kill three thousand, lose eight hundred." What if it's more than just eight hundred miles! Therefore, the beauty believes that it is best to focus her efforts on the West.</p>
+<p>However, Alaska cannot be without adequate preparation. Since Hawaii has become the outer perimeter of American national defense, Alaska has immediately increased in strategic importance. If this area is not fortified, it will become the weakest link in the defense chain, wouldn't it be a big loophole?</p>
+<p>The most regrettable thing is only this: such a vast wilderness as Alaska is truly a pure and unadulterated gem; the snow-capped mountains, the melodious pine winds, the leisurely deer, the pristine glaciers, the simple and charming Eskimos - everything is excellent poetic material. However, encountering this era of bloody storms, it is also filled with battle clouds and a murderous aura, even the glacial deposits of tens of thousands of years ago must be excavated. Is this an exposure of the inherent evil of human nature, or a catastrophe given to us by heaven as a punishment? (End of the article)</p>
+<h2>Page 4</h2>
+<h3>French Concession to Establish "Civil Police," Divided into 266 Districts, Civil Police Quota Totals 5,000 People</h3>
+<p>French Consul-General in Shanghai, M. Charles, has issued an order authorizing the establishment of a civil police force in the French Concession. This new system will be implemented soon, and its methods are similar to the Baоjia system in the International Settlement.</p>
+<p>District Unit</p>
+<p>Regarding this point, the French Police Department has now formulated special methods to divide the entire French Concession into multiple districts (using a cluster of houses as a unit), and one person is selected from the influential residents or merchants of each district as the district chief. The district chief then selects two assistants, both of whom must be over 20 years old and have a definite occupation. The assistants should assist the district chief in general work and replace him in case of illness. The security of the district is the responsibility of the district chief and his assistants. The district chief may also appoint other auxiliary personnel, the number of which depends on the size of each district.</p>
+<p>District Chief's Powers</p>
+<p>Each district chief and assistant will be issued special identification cards and armbands by the French Police Department for identification. If they see any illegal activities in their district, or discover privately hidden firearms and weapons, and secret gatherings, they should report them to the nearest police station or patrolling constables. It is heard that all district chiefs in the French Concession have already been selected by the French Police Department, totaling 266 people, and 532 direct assistants have also been selected. The 5,000 civil police officers will be selected soon. The powers of the district chiefs will be clearly defined. If anyone obstructs the district chief in the exercise of his powers, they will be prosecuted. If the French Police Department finds that a district chief's service is unsatisfactory, it can appoint an assistant to take over the district chief's position. If the district chief does not perform his duties as instructed, the French Police Department can dismiss him. Residents who refuse to participate in civil police work must state their reasons to the French Police Department. If the reasons given are rejected, the person must participate in civil police work, otherwise they will be expelled from the French Concession.</p>
+<h3>A Certain Society Allocates Funds for Education, Far-Reaching Intentions, Hoping for Resonance from All Sectors</h3>
+<p>Regarding the donation for educational aid from this newspaper, a certain society previously allocated 8,000 yuan from its funds, designated to prioritize subsidies for the children of teachers and journalists who are unable to afford education. Yesterday, it was entrusted to this newspaper. The reason why the initiator, Mr. So-and-so, specifically designated this fund for the children of teachers and journalists who are unable to afford education is of profound significance. It is believed that "the evolution of a nation, as well as its scholarship, morality, and character, are all inextricably linked. The quality of teachers is sufficient to influence the rise and fall of culture. Therefore, we must strive to ensure that teachers have a reasonable and stable life, so that they can focus on their work, and the status of teachers must be absolutely respected. On the one hand, we must also make teachers understand the importance of their own mission, constantly cherish a sense of self-respect, and devote themselves to the students they educate, so that they become useful talents for society, capable of shouldering the important task of national evolution. From one nation to the whole of humanity, all can achieve excellent evolution. This is indeed the highest goal that all teachers should strive to achieve together. Whether the education systems of various countries in the modern world are suitable or not is not discussed here. Only in China, since the abolition of the imperial examination system, the reform education advocated for decades has also been perfunctory, resulting in learning that is not used. Moreover, the general students do not understand the true function of education, thinking that graduation is to obtain a kind of right, and use this right to despise those who have not received education. They often have an air of superiority without realizing it. The decline of the national spirit in the past century cannot be said to be caused by the failure of education. This phenomenon not only harms the youth themselves, but also damages the entire nation. As for the news media, it has the task of enlightening the people. In our country, it has only a few decades of history, but the importance of its responsibility is no different from that of teachers. However, observing the news media recently, it is too focused on emotional reporting, and most of the news contains stimulation and impulsiveness. Regarding yellow news and erotic news, often in order to cater to the psychology of the general public, it records in exhaustive detail. Although it cannot be generalized, for the sake of the country and the nation, it seems necessary to correct it urgently. If teachers and the news media can work together to study their highest goals and fulfill their greatest responsibilities, then the country and the people will be able to achieve good results and embark on the path of excellent evolution. The society, in view of the importance of the above-mentioned relationship, has specially established two subsidy funds for teachers and journalists, using the income of the funds to subsidize their lives and achieve reasonable stability, which is also for the sake of the country and the nation. However, the funds are limited, and it is not easy to organize without gathering the manpower of the whole country. Due to the precariousness of the current situation, it is not possible to carry out the fundraising of expanded funds in a hurry, and it remains to be seen until the situation improves. However, within the possible range, we will do our best. I believe that there are many in the society who will resonate with Mr. So-and-so."</p>
+<h3>British and American Nationals to Leave Shanghai Next Month, Approximately 1,000 People</h3>
+<p>The Japanese ship Ryuta Maru and the Italian ship Conte Verde, scheduled to carry British and American nationals leaving Shanghai, will sail from Shanghai around June 10th. Fifty-one British and American nationals from Nanjing will also come to Shanghai around June 7th, to gather with those from various districts in South and North China in Shanghai, awaiting repatriation. According to the previous announcement, approximately 1,000 British and American nationals from various departments in China and Shanghai will take the repatriation ship to Lourenço Marques in Portuguese East Africa.</p>
+<h3>Single Dollar Notes Are Indeed Sufficient, Speculation by Profiteering Merchants Should Stop</h3>
+<p>In order to regulate the supply of one-yuan notes in the market, the Joint Reserve Committee of Banks has, in addition to ceasing the redemption of damaged one-yuan notes, also prepared thorough measures, which have been implemented separately. Now, the one-yuan notes stored in various banks and money shops have been issued to circulate in the market, and issuing banks have increased the issuance of new one-yuan banknotes, thoroughly eliminating the panic of a shortage of one-yuan notes in the market. However, the illegal price gouging and manipulation by general small money exchange shops, as well as the deliberate hoarding of one-yuan notes for profit by rice shops selling at fair prices, have been actively investigated and dealt with by the authorities. It is heard that the Silver Money Industry Association believes that the one-yuan notes circulating in the market are, in theory, sufficient to meet demand, and there is absolutely no reason for a sudden panic of shortage. It deeply regrets those who manipulate prices for profit and hopes that, for the sake of all industries' transactions and the convenience of the public, they will not hoard one-yuan notes or engage in price gouging and profiteering.</p>
+<h3>Subletting License: Another Extension Fee Added</h3>
+<p>The issuance of subletting licenses by the Public Works Department is still being carried out in the four districts of Central, Northwest, East, and West, but the number of people receiving licenses has greatly decreased. According to the records of the Revenue Department of the Public Works Department for the past two days, a total of 356 licenses were issued on May 12th, and a total of 343 licenses were issued on May 13th. "The Public Works Department has announced that the last grace period for the issuance of subletting licenses will be from today (May 15th) to the end of May. During this period, an additional extension fee of five yuan (totaling ten yuan) must be paid, along with the license fee of nine yuan and the plate fee of one yuan, for a total fee of twenty yuan. If the license is not obtained by the end of this month, legal action will be taken."</p>
+<h3>Bandit Den Broken Up on Hongqiao Road, Abducted Victim Rescued</h3>
+<p>The Dahua Department Store at 853 Avenue Joffre, in the French Concession, is owned by Wei Xirui, a native of Shandong. At 4 p.m. on the 19th of last month, Song's seven-year-old son was taken for a stroll nearby by his hired maid, Zhong Wangshi, a native of Anhui, but they both disappeared. Later, Song suddenly received a letter from bandits demanding 50,000 yuan. Only then did Song realize that his son was not lost, but kidnapped. He immediately reported the information to the police for investigation. Until recently, the bandits sent another letter, arranging for someone to bring the money to the front of the Taishan Stone Factory on Columbia Road, at 2 p.m. the day before yesterday, where someone would contact them. After learning of this, the police, led by Inspector-General Gui Baoquan, Detective Zhou Buguang, Wei Yuansheng, and Detectives Yan Jinwen, Wang Tianyou, and Xing Shaoguang, went in disguise. The bandits resisted arrest and opened fire, and the detectives returned fire. A total of more than 20 shots were fired. As a result, one bandit was captured. He confessed his name as Wu Zhen, a native of Anhui, and said that the abducted victim was hidden at 19 Zhujia Alley, Yangjia Building, Hongqiao Road. At 5 a.m. yesterday morning, the detectives went there again and captured four bandits in the den: Jiang Zhifa, Xu Qifa, Hu Wangshi, and Hu Jinmei. They also rescued the abducted victim, Lin Bao, and the maid, Zhong Wangshi, and took them all to the police station. It is said that the maid is highly suspected in the case.</p>
+<h3>Wuxi Shenxin No. 3 Factory Requests Return</h3>
+<p>Wuxi, 14th (Tongmen News Agency dispatch) - Wuxi Shenxin Yarn Factory, etc., have requested to be returned after the Japanese army has been gradually returning the management of factories, and most of them have now resumed operations. Recently, it has been learned that Rong Hongyuan, the owner of Wuxi Maoxin Flour Factory No. 1 and No. 2 and Shenxin No. 3 Yarn Factory, has also requested to be returned in order to resume operations.</p>
+<h3>Silver Money Industry Announces to Banks and Firms: Report Deposit and Loan Amounts</h3>
+<p>The Silver Money Industry Joint Committee yesterday announced to its member banks and firms, ordering them to report the deposit and loan amounts of each bank, as well as cash on hand, and monthly remittances. The loan amounts are divided into current overdraft, credit loans, mortgage loans, short-term loans, long-term loans, bond loans, other loans, interbank loans, loans to British, American, Dutch, and Belgian nationals, loans to other foreign nationals, and general loans to Chinese nationals. Deposit amounts are divided into current deposits, short-term deposits, long-term deposits, other deposits, interbank deposits, deposits from British, American, Dutch, and Belgian nationals, deposits from other foreign nationals, and general deposits from Chinese nationals. Monthly remittances are divided by district name, amount remitted out, amount remitted in, and difference. Cash on hand is divided into the remaining balance of the previous month and this month. The form templates and instructions are attached and must be completed and submitted by May 21st.</p>
+<h3>Needles and Medicine from the French Military Medical Department Sold Off at Bargain Prices</h3>
+<p>Tonghui Elementary School at 253 Rue Massenet in the French Concession was established by the Shanghai Waterfront Workers' Union. The school has been established for more than 30 years, and the principal is Tang Guoxun, a native of Pudong. At the beginning of this month, the French Police Station in Lukahwei learned that in 1937, the French army stationed in Shanghai had borrowed the school building as a detention center for the retreating troops in Nanshi. In May 1938, when the French troops moved elsewhere, they left behind hundreds of boxes of needles and medicine from the military medical department. This spring, the prices of Western medicine in the city soared dozens of times, so they were sold off at bargain prices. Therefore, the French Police Department sent personnel to the school to investigate. The principal claimed that the needles and medicine had deteriorated and were discarded last winter. The French Police Department is currently conducting an investigation.</p>
+<h3>Average Prices of Goods</h3>
+<p>The following table lists the average retail prices of goods from April 16th to May 13th. This price list was compiled by the Industrial and Social Affairs Department of the Public Works Department for employers to refer to when adjusting employee allowances.</p>
+<h3>New Regulations for the Retail Sale of Bureau Rice: 1.5 Sheng per Person for 5 Yuan</h3>
+<p>The Public Works Department issued a notice yesterday stating, "Effective Sunday, May 17th of this year, the maximum retail price of rice within the Public Concession is three yuan and eight jiao (3.80) in new legal tender or five yuan in old legal tender per one and a half sheng, at the buyer's choice. Buyers may pay with one-yuan or five-yuan banknotes, and retail rice shops should return the change in the same type of currency as the payment received, with the total amount of change not exceeding two jiao." Furthermore, according to the announcement of the Public Works Department Rice and Grain Management Committee, effective Thursday, May 14th of this year, the price of rice sold by the Bureau to retail rice shops is 400 yuan in legal tender per bag, with a total gross weight of 220 pounds leaving the warehouse.</p>
+<h2>Page 5</h2>
+<h3>Resumption of Shanghai-Philippines Remittance Communication: Overseas Chinese Businessmen's Urgent Hope; Livelihoods Worsening After Import Stoppage; Awaiting Communication and Remittance to Settle Accounts</h3>
+<p>Yesterday, a certain overseas Chinese leader from the Philippines in this city told our reporter that the trade relationship between Shanghai and the Philippines has always been extremely close. The goods exported from Shanghai to the Philippines are mainly cotton yarn and cloth, followed by hardware, and then enamelware, etc. The goods shipped from the Philippines to Shanghai are mainly timber, tobacco, coconut oil, alcohol, etc.</p>
+<p>Traffic Stoppage Prevents Commerce</p>
+<p>From the outbreak of the August 13th Incident to the occurrence of the European War, the export of Shanghai goods to the Philippines increased sharply. The reason was that the exchange rate of legal tender fell, which was quite beneficial to exporters. Imports remained unchanged, without major fluctuations. From the start of the European War to the outbreak of the Pacific War, the trade situation between Shanghai and the Philippines was not significantly different from before. However, since December 8th of last year, affected by the war, commerce between this city and the Philippines has completely come to a standstill. Telegrams between the two places stopped after last Christmas and have not yet been restored, and there is no shipping traffic either. There are quite a few overseas Chinese from the Philippines in this city. There are many engaged in tobacco, dyeing, weaving, and chemical industries in the business community. There are also many who have established import and export trading companies. After the suspension of trade between Shanghai and the Philippines, they have all been greatly affected.</p>
+<p>Goods Intended for Exclusive Sale Sit on Shelves</p>
+<p>Import merchants are unable to continue operations due to the disruption of goods' sources, so they have to close down or reduce staff to save expenses. Most exporters are suffering significant economic losses because goods cannot be shipped out, or goods have been shipped out but payments have not been received. What is particularly difficult are the factories operated by Filipino overseas Chinese in Shanghai, whose products were mainly sold to the Philippines. Therefore, the quality, style, color, and patterns were all designed to cater to the preferences of the people of the Philippines. Now, although the goods are滞留 in Shanghai, they cannot be modified for local sales. For example, Filipinos like to wear red and green undershirts and shirts, while most local people prefer to wear white. There are many examples of similar situations with other goods. Therefore, most of the factories established in this city by Filipino overseas Chinese have been forced to shut down or operate at half capacity. The impact on business is by no means small.</p>
+<p>Children of Overseas Chinese Businessmen Temporarily Receive Assistance</p>
+<p>Currently, the most difficult situation for Filipino overseas Chinese in Shanghai is for students. According to investigations, there are 389 Filipino overseas Chinese students studying in various middle schools and universities in this city, but the actual number is probably higher. These students who have traveled far to their ancestral homeland for education have always relied on remittances from their families in the Philippines. Since last December, remittances have stopped, and prices in Shanghai have soared, making life difficult. Their situation is very distressed. Currently, a group of Filipino overseas Chinese in Shanghai are raising funds in their private capacity to provide assistance to students with financial difficulties. University students can apply for loans of 150 yuan per person, and middle school students can apply for loans of 100 yuan or more per person. In these times of expensive rice and firewood, obtaining a loan, however small, may provide some relief. However, it is far from completely alleviating the difficulties currently encountered by hundreds of overseas Chinese students. What Filipino overseas Chinese in this city urgently hope for now is the early restoration of postal services, so that families of overseas Chinese living in Shanghai and the Philippines can report their safety to each other to alleviate anxieties; and the early restoration of remittances, so that outstanding business accounts between Shanghai and the Philippines can be settled, and overseas Chinese students in Shanghai can also receive assistance. As for the resumption of shipping and the continuation of trade, it is even more desired by the general Filipino overseas Chinese in Shanghai, and it is also closely related to the commercial future of this city.</p>
+<h3>Paint Workers Demand Increase in Meal Allowance</h3>
+<p>There are more than 5,000 paint workers in this city, with a daily wage of 7.30 yuan. Recently, due to soaring prices and the difficulty of maintaining a livelihood, they collectively sent a letter to the trade association requesting an increase in the meal allowance of 6.70 yuan, quickly raising the total to 14 yuan per day. After receiving the workers' request, the trade association invited both labor and management for negotiations, but there was no progress after two attempts. Yesterday was the third negotiation, but the management was absent. The trade association will schedule another negotiation, and the labor side hopes for a satisfactory resolution soon.</p>
+<h3>Record Concert</h3>
+<p>The record concert organized by the Symposium Club will hold its fourth concert on the 17th of this month (Sunday) at 4:00 PM at the Modern Gymnasium at 21 Route Corneille. The entire program will feature works by Johann Strauss. Members please arrive on time. Non-members can purchase tickets at the Modern Gymnasium for one yuan.</p>
+<h3>Chase Bank Returns Remaining Deposits</h3>
+<p>Chase Bank in this port is now returning one-tenth of the remaining deposits as of December 6th of last year to depositors, with the amount not exceeding 2,000 yuan. Similar to other Allied banks in this area, British, American, Dutch, and Belgian expatriates are only allowed to withdraw 500 yuan per week, while other depositors can withdraw one-tenth of their deposits all at once.</p>
+<h3>Social Tidbits</h3>
+<p>Using a False Name to Obtain Rice Money: Detective Li Yuyuan of the French Concession police station has received reports from various shops that someone is impersonating and selling rice, collecting deposits totaling a considerable amount, and requesting an investigation. Detective Li, based on the reports, led detectives No. 345 and No. 504 to start an investigation. They arrested Fang Kunbao (30 years old, from Wuxi) a few days ago and confiscated several silk armbands, bringing him to the police station for detention.</p>
+<p>Tourist Jumps from Building and Dies: Yesterday afternoon at about 3:00 PM, a middle-aged tourist suddenly jumped from the rooftop garden of the Wing On Company's Great Rhyme Building on Nanjing Road, sustaining severe injuries on the spot. He was taken to the hospital by car, but died before treatment could be given.</p>
+<p>Yesterday's newspaper was dispatched at 6:15 PM.</p>
+<h3>The New Municipal Council Organization for Solving All Problems (3): The Work of the Coordinating Committee Affects Everyone</h3>
+<p>Only for Certain Goals</p>
+<p>In Homer's epic poem "The Iliad," there is a hero who overshadows mountains and rivers, Achilles. His only vulnerable point is his heel. The pocketbook is the heel of the modern Achilles. Especially in these difficult times. To defend the weakest crack in our armor, the Municipal Council has established an eleven-member committee to suppress the general increase in prices. This is the Price Control Committee. Their day and night efforts are best described in the concise and clear words of the head of the committee, Mr. Fondekron: "We are doing our best to control prices."</p>
+<p>The Initial Origin</p>
+<p>To start from the beginning, the growth process of this committee is very interesting. In fact, its glorious future began in a simple form called the Rice Committee.</p>
+<p>This was in the dim and distant past, exactly one year ago this month, when the Municipal Council first started transporting rice from Hong Kong. A small committee was formed. By November, his frequent revisions to the price of rice in Shanghai became the first piece of evidence of his growing pain. That was his first attempt to break through the web of manipulation by unscrupulous merchants.</p>
+<p>After that, the situation changed dramatically, bringing many changes to the Municipal Council. The general increase in prices prompted the committee to significantly expand its scope. Flour, vegetable oil, and other daily necessities were added to its circle of activities. Plans were made to cooperate with the Importers and Manufacturers Association to formulate a method for managing general prices. At the same time, the Municipal Council also tried to transport flour and vegetable oil from other ports. It was at this time that the flames of war ignited in the Pacific, and the entire commercial transportation came to a complete standstill. This temporarily ended the gradually realized method.</p>
+<p>Price Control Committee</p>
+<p>If the events after the fateful decision in mid-December can be called a fundamental change, then the transformation of the Rice Committee is no less so. Starting with the name Rice Committee, it was followed by the Food Committee, the Food Management Committee, and finally the Price Control Committee.</p>
+<p>Three of the eleven members of the Price Control Committee are directors, two of whom are also members of the Coordinating Committee. One is a representative of the Deputy Chairman of the Municipal Council. From this, one can get a glimpse of the importance of the committee.</p>
+<p>In addition, the Price Control Committee also includes representatives from the French Concession, the Western District Special Zone, and the Greater Shanghai Municipal Government. Although the committee's scope of activities does not extend beyond the Public Concession and other areas, its purpose is clearly to seek consistency in price controls throughout Shanghai – which is certainly the most urgent requirement at present.</p>
+<p>Multifaceted Work</p>
+<p>The actual work of the Price Control Committee is almost as varied and numerous as that of the Coordinating Committee. The latter is the nerve center of the entire complex system, while the former is its heart. In terms of the supply of goods, the Price Control Committee always relies on the Japanese authorities. It negotiates with the Japanese authorities to import materials, telling them what is needed. During this visit, they pointed out that the Japanese authorities are making every effort to cooperate with the Municipal Council and provide all possible assistance.</p>
+<p>The following are the members of the Price Control Committee: Mr. Fondekron (Chairman), Mr. Grote, Mr. Yasuzo Yajima (Manager of Nippon Yusen Kaisha Shanghai), Mr. Xuanping Huang, Mr. Jinqing Zhao, Mr. Chaddock, Mr. Beaufort (Representative of the French Concession), Chief Pan Da of the Western District Special Police Department, Dr. Juerden (Director of the Health Department), Dr. Bederson, and Secretary Wei.</p>
+<p>Sports News</p>
+<h3>Western Youth Volleyball Group B: Soviet vs. French Concession Police Today to Determine Championship at 6:20 PM in the Western Youth Gym</h3>
+<p>In the 14th Western Youth Volleyball Tournament, in the two Group B matches the other day, Soviet B defeated Aurora again, while the French Concession Police easily defeated the White Team in straight sets. Tonight there are two Group B matches. Soviet B and the French Concession Police will compete to win this year's Group B championship. The Soviet team has won all six games, while the French Concession Police have six wins and one loss. Both sides are very strong, and a fierce competition is expected. The other match is between the White Team and the Russian Police. A women's performance will be inserted in between. The results and schedule are as follows. Previous Results Today's Schedule:</p>
+<p>French Concession Police vs. Soviet B (Group B Final) 6:20 PM</p>
+<p>Women's Volleyball Performance (Performance) 7:00 PM</p>
+<p>Russian Police vs. White Team (Group B) 7:45 PM</p>
+<h3>Aurora Sports Meet Closed Yesterday: Chen Daye Won Individual Championship</h3>
+<p>Aurora University's Spring Sports Meet was participated in by five units: Engineering, Law, Medicine, High School, and Special Classes. Nine finals were held at the school on Rue Luber yesterday afternoon, starting at 2:00 PM. In the 100-meter dash, Ba Shi won first place with a time of 11.8 seconds. Ba Shi also won first place in the 200-meter. In the 400-meter, Shang Ruji reached the finish line first with a time of 62 seconds. Lei Yiye swept the middle-distance races, winning first place in the 800-meter, 1500-meter, and 3000-meter. Shang Ruji, the champion in the 1500-meter last year, finished fourth. Yu Lihua, the champion in the 3000-meter last year, also finished fourth. In field events, Zhong Zhiting swept both the shot put and javelin events. Finally, in the 800-meter relay race, each unit participated with four people. As a result, the Law team consisting of Zeng Wenrui, Rui Qixian, Ge Nuo Qinggu, and Ba Shi finished the entire course first with a time of 1 minute and 45 seconds, followed by the Engineering team in second place. In summary, the Engineering team won the championship with 105 points, followed by the Law team with 81 points in second place, the Special Class with 51 points in third place, the Medicine team with 40 points in fourth place, and the High School with 18 points in last place. In terms of individuals, Chen Daye won the championship with 33 points, Lei Yiye finished second with 33 points, and Gong Wei finished third with 21 points. After the competition, the awards were presented on the spot by President and Father Cai Bu Meng and the event concluded.</p>
+<h2>Page 6</h2>
+<p>Commercial News</p>
+<h3>To Avoid Dangers in the Yarn Industry: Limit Fluctuations of "Double Horse" Brand to 300 Yuan</h3>
+<p>The cotton yarn market continues to be in good condition for spot goods, which is due to the increasingly depleted supply. As for 10-count coarse yarn, the foundation is particularly solid, and the number of buyers is increasing, because the price is cheap. The price of 20-count yarn is cheap by as much as 1,500 to 1,600 yuan, so buying it is more profitable and less risky. As a result, transactions are becoming more and more prosperous. 42-count "Blue Phoenix" yarn is priced at 14,300 yuan to 14,850 yuan, 42-count "Bao Guang" yarn at 13,600 yuan, 60-count "Colorful Ball" yarn at 25,900 yuan, 40-count "Golden Bridge" yarn at 12,000 yuan, 40-count "Golden City" yarn at 12,500 yuan, 60-count "Five Sons" yarn at 24,000 yuan, 32-count "Immortal Peach" yarn at 12,750 yuan, 32-count "Blue Phoenix" yarn at 12,750 yuan, 20-count "Blue Phoenix" yarn at 7,600 yuan to 7,850 yuan, 20-count "Yang He" yarn at 7,300 yuan, 20-count "Moon Qin" yarn at 7,000 yuan, 20-count "Double Tiger" yarn at 6,950 yuan, 20-count "Feng Nian" yarn at 7,200 yuan, 20-count "Water Moon" yarn at 7,300 yuan, 20-count "Double Horse" yarn at 6,700 yuan to 6,800 yuan, 20-count "Transformed Earth" yarn at 6,850 yuan, 10-count "Red Transformed Horse" yarn at 5,160 yuan to 5,350 yuan, 10-count "Boy Scout" yarn at 5,130 yuan to 5,300 yuan, 10-count "Red Bao Yi" yarn at 5,100 yuan, 10-count "Weaving Girl" yarn at 5,150 yuan, and 16-count "Red Bao" yarn at 4,500 yuan. The initial offering price of 20-count "Double Horse" factory singles was 5,600 yuan. At this time, short sellers and floating long positions rushed to sell, and the market eased to 5,380 yuan, but the bulls did not give up and pushed the price up to 5,630 yuan at the close. Recently, the price of "Double Horse" has been rising and falling wildly. Colleagues, in view of this situation, feel that it is too dangerous. After a discussion, the degree of rise and fall is temporarily limited to 300 yuan as the standard and may not exceed this limit.</p>
+<h3>Coarse Cloth Has Little Honor or Disgrace</h3>
+<p>The factory cloth market was weak at the beginning and strong later, and the situation turned stable. Most coarse cloths of various weights had little honor or disgrace. 16-pound "Earth" cloth was still sold at 258 yuan, and 8-pound "Zhen Zhong" cloth at 135 yuan. Fine cloth was short in supply, with the "Da Peng" brand calling for a price increase to 246 yuan. "Fu Gui" cloth fluctuated around 225 yuan, "Peach Blossom" Shilin cloth made a high of 353.5 yuan, up 2 yuan, "New Family" Shilin cloth at 345 yuan, and "Prosperous Dream" mercerized yarn at 295 yuan. Longevity crepe at 7.6 yuan, all with transactions.</p>
+<p>East cloth market continued to be firm and strong. 12-pound "Dragon Head" fine cloth new singles opened at 282.5 yuan in the morning, rose to 287.5 yuan at noon, and 288.5 yuan in the afternoon. The opening was as low as 6.5 yuan, but it eventually rose back to 287 yuan. The closing price of "Colorful Ball" fine cloth was 256.5 yuan, all rising by 1.5 yuan per bolt compared to the previous day. 4 Gentleman serge opened at 9.41 yuan in the morning and closed at 9.5 yuan in the evening. The situation was stable.</p>
+<h3>Government Bonds Awaiting Price and Selling, Seller Sales Decreased Yesterday</h3>
+<p>The government bond grey market was weak again yesterday. Although sellers appeared, they were fewer. Buyers' appetite was therefore not very enthusiastic. The number of transactions was reduced by more than half compared to before. Although the seller has become an open secret, there are still some remaining goods. Whether all of them will be sold or how much will be retained, and the urgency of their nature, is of course what anyone wants to know, and it is also what anyone cannot know. However, waiting for the price to sell is an undeniable fact, and at least it will still be a sell-off when the price is high, but the strength of the multiple parties is indeed not to be underestimated and cannot be speculated. Yesterday, Tongli sold about 500,000, and Shunli also closed out multiple positions. Wuhe, Baolong, Yichang, Lianyi, Gongmao, Tongkang, and Tongyuan all had long positions increased or sold off. Jiufeng, Xiekang, and Hu Heji replenished or absorbed a lot. Zhongyi, Dalai, Zhongfu, Xinhua, etc. were all buying in. Hongda, Renfeng, Renchang, Runde, Hongxing, and Tongshun all had buying in. As a result, except for Category C, the market price returned to a small 2-3 cents to 1 yuan. The transaction was about 800,000 to 900,000 yuan. A concise table is listed below: Category Highest Lowest Closing Compared to Previous Day</p>
+<p>Category A 65.6 64.6 64.6 Down 0.40</p>
+<p>Category B 59.0 57.6 57.7 Down 1.00</p>
+<p>Category C 58.1 57.4 57.6 Flat</p>
+<p>Category D 52.8 53.0 53.1 Down 0.30</p>
+<p>Category E 55.8 55.2 55.2 Down 0.20</p>
+<p>(The lowest price for Category C the day before was 57 yuan, which was mistakenly written as 7 yuan and 10 cents. This is hereby corrected.)</p>
+<h3>Stock Prices Rose and Fell Differently</h3>
+<p>Large Investors Sell Foreign Shares and Buy Chinese Shares</p>
+<p>Yesterday, foreign shares continued to weaken, with a total of 48,900 shares traded. Ewo Yarns at 39.25 yuan, Sincere retreated to 17 yuan, rebounded to 18.87 yuan, China Textiles at 23.5 yuan, China General at 18.8 yuan, rebounded to 19.1 yuan, Cheung Tai Timber at 35 yuan, Steel at 20.05 yuan, Paper at 12.2 yuan, Wool at 15.2 yuan, British American Tobacco at 22.5 yuan, Chen's at 2 yuan, Calendal at 1.84 yuan, Zhima at 3.1 yuan, Kroeber at 2.75 yuan, Lyceum at 2.6 yuan, Dibang at 2.45 yuan, Rubber at 33.25 yuan, all were the last transaction prices. No transactions were opened for the remaining shares.</p>
+<p>Yesterday, Chinese shares continued to rise, and cultural shares were particularly outstanding because a large investor sold foreign shares to buy them. Commercial Press at 215 yuan and 220 yuan, up 10 yuan, China also rose to 120 yuan and 125 yuan, World (New) at 76-77 yuan, up 3 yuan, Da Sun at 51-52 yuan, Wing On at 63 yuan, Sincere (ex-dividend) at 73 yuan, China Underwear at 25.5 yuan, New Asia Pharmaceutical (New) at 315.5 yuan, Sino-French (New) at 60.075 yuan, New Asia Science at 18 yuan, Sin Yi at 510 yuan, Jiuda Refined Salt at 1450 yuan, China Electric at 109 yuan, Guanshengyuan (Old) at 230 yuan with buyers, Guangqin Textile at 345 yuan with transactions, it is said.</p>
+<h3>Physical Goods Released, "Cooked Red" Further Declines</h3>
+<p>Yesterday, the spot price of "cooked red" in the grey market continued to fall, retreating to the 21,000 yuan mark, because the market price has been stable for a long time, and general depositors have entrusted cash shops to release physical goods. The market sentiment is soft. In the morning, each tael (10 liang) opened at 21,300 yuan, down 50 yuan. The gold shops had mixed actions, and the price retreated to 21,250 yuan, then rose to 21,400 yuan. After 10:10, the gold shops and silver shops competed to sell, and one shop also sold, and the price suddenly fell 550 yuan, retreating to within 5,100 yuan, with the lowest at 5,0850 yuan. Securities firms bought in, and the price saw a rebound. The last transaction price was 21,000 yuan, 350 yuan lower than the previous day, with a difference of 550 yuan. The transaction volume was not small.</p>
+<p>Silver shops' jewelry was priced down by 100 yuan by Da Sun and its peers, at 2,150 yuan per tael (200 yuan discount for buybacks), patterned silver was priced at 18 yuan, and black market silver coins were at 9.45 yuan each, it is said.</p>
+<h3>Discount on Postdated Checks Rises</h3>
+<p>The foreign currency market was stable yesterday. British and American gold pounds remained stable, with the former still at 500 yuan and the latter still at 510 yuan. US dollar notes were traded at 32 yuan, Hong Kong dollar notes retreated to 4.89 yuan, and military notes opened at 7.33 yuan in the morning, retreated to 0.27 yuan after opening, and finally closed at 7.3 yuan, up 4 cents compared to the previous day.</p>
+<p>The discount rate on postdated checks rose yesterday, with each 1,000 yuan making 5 yuan, at 25 yuan and 30 yuan. The interbank lending rate of the Money Trade Association was still at 1.4 cents. The premium on Central Reserve Bank notes was 32.5 cents and 33 cents per yuan, it is said.</p>
+<h3>Asia Bank Notes</h3>
+<p>Silver Preparation Council Acts as Agent for Exchange</p>
+<p>The Shanghai Banking Industry Joint Preparation Committee issued a circular to various banks yesterday, stating that member banks of the same industry association that have not joined the exchange have now successively applied to the association to join the exchange. The Notes Exchange Committee of the association has resolved that all banks should follow the association's method of acting as an agent for member banks' notes exchange and that the association will separately set the date to begin acting as an agent for the notes exchange of each bank. It is hereby decided that on May 18, 1942 (next Monday), the association will begin acting as an agent for the Asia Bank's notes exchange and that Asia Bank will be assigned the number 51 in the exchange, it is said.</p>
+<h3>Collecting Single Notes, the Route to Selling Rice is Cut Off</h3>
+<p>Rice shops want to take advantage of the situation to collect single notes, hoping to gain a profit of 1 dime per yuan in premium. Now that the price of foreign rice is out, 5 yuan must be pooled into one unit, and the price of rice is increased by 43 cents per liter, which is doomed to failure. It is hateful that the speculators are still harming others and themselves. However, the public has already suffered greatly from this, and they themselves have not been unaffected. Only caring about the present and not caring about the future is like a frog in a well, which is what today's speculation and hoarding are about. Looking back and reflecting, they will also sigh at what they have done.</p>
+<h3>Interprovincial Transportation of Soybean Cakes Stopped</h3>
+<p>The arrival and sale of beans are both scarce, the market is idle, and the prices vary, with slight differences. For example, 100 bags of Chongming sand red soybeans were priced at 232 yuan, delivered, 228 yuan to 230 yuan, self-pickup, and 80 bags of sand silkworm soybeans were priced at 138 yuan, self-pickup, 141 yuan cash. 30 bags of Wujiang selected green soybeans were priced at 170 yuan, and 10 bags of Pudong Du soybeans were priced at 260 yuan.</p>
+<p>Corn transactions were scattered, and the market showed a flat trend. For example, more than 100 bags of Wuhu corn were priced at 180 yuan to 182 yuan.</p>
+<p>Recently, due to the impact of rural pacification, the interprovincial transportation of soybean cakes has been stopped, the number of transactions has been sharply reduced, and the market is generally quiet. For example, 1,500 Li Zi brand soybean cakes for delivery in May were priced at 69 yuan, and 52 yuan to 52.5 yuan in new legal tender.</p>
+<h3>Daylily Largely Traded</h3>
+<p>Taiwanese Brokers Exclusively Buy 1,000 Dan</p>
+<p>The daylily market price is too high, and all parties have been slow to dispose of their stocks, and the market has been silent for a long time. The Taiwanese brokers originally had a large appetite for transactions, but the market price was difficult to match, resulting in few transactions. Taking advantage of the market softening, they have started to collect a large amount. As of yesterday, they have traded 1,000 dan. The goods are ordinary, and the price is at 500 yuan. They will be shipped out soon, it is said.</p>
+<h3>Dried Kelp Slips Back</h3>
+<p>The source of dried kelp is scarce, and the market stock is also lacking. The market price has once been high and constant, but high prices and sluggish sales are a natural trend, so the recent market has seen a slip back. Yesterday, the market price was 450 yuan, and the market was stable.</p>
+<h3>Hoarding Cigarettes is Extremely Regrettable</h3>
+<p>The cigarette market has been weak in recent sales for more than a month. In the past, it had been soaring, but now it is lackluster, causing operators to be burned out. The rapid rise and fall make people unable to keep up. The large hoarding gangs are still holding on, and the general scattered retail investors are gradually selling off, with great regret. Yesterday, the market turned better. For example, the price of each box of "Great Britain" brand cigarettes was 9,600 yuan, up 300 yuan from the previous day. "Old Knife" brand was 7,300 yuan, "Pinhai" brand was 5,600 yuan, "Wuhua" brand was 5,000 yuan, and "Little Fairy" brand was 5,400 yuan, all up 100 yuan. The Japanese cigarette market turned for the better. For example, "Golden Gun" brand was priced at 1,880 yuan, with fewer sales, "Golden Mansion" brand was priced at 1,550 yuan, "Quanlu" brand was 2,550 yuan, and "Zhipu" brand was 1,550 yuan, all up by 50 yuan, it is said.</p>
+<h3>Soap Market Regains Momentum</h3>
+<p>The selling price of daily necessities such as soap has risen again and again, because the season is right and the demand is strong. The factory has not yet announced any news of distribution, and the stock in the market is decreasing day by day. The owners are strong and tend to insist, so the price has soared again. For example, each box of "Gu Ben" soap was priced at 370 yuan, "Bai Xiangmao" soap at 310 yuan, "Huang Xiangmao" soap at 290 yuan, and "Arrow Knife" soap at 300 yuan, up 5 yuan to 10 yuan from the previous day. The match market is stable, and the selling price has not changed much. For example, "Phoenix" brand was 5,300 yuan, "Beauty" brand was 5,400 yuan, and miscellaneous brands were 4,500 yuan, all holding their original price. Western candles "White Li" were priced at 190 yuan, also flat.</p>
+<h3>Price of Vermicelli Looser</h3>
+<p>Recently, the price of vermicelli has been looser due to sparse sales and looser asking prices from customers and sellers, so the market has fallen accordingly. The day before, Longkou vermicelli was down 10-20 yuan, and Qingdao vermicelli was down 10 yuan, and the market was flat and soft.</p>
+<p>Spring Autumn</p>
+<h3>Information on Hurricanes</h3>
+<p>— Zhu Ma</p>
+<p>In coastal cities and towns, it's almost unavoidable to experience one or two hurricanes each year. They arrive suddenly, like a giant extending his mighty palm. However, preparation is possible; institutions like observatories exist to forecast and transmit such information. Usually, warnings are issued in advance, and customs houses hoist black balls to ensure ships dock, avoiding such attacks and devastation. Although observatory measurements are sometimes inaccurate, "being prepared is always better than frantically digging a well when thirsty."</p>
+<p>However, according to news reports, this year's observatory cannot continue this work. The reason is the Pacific War, which has caused meteorological observatories on various islands to cease operations, preventing the transmission of hurricane information; news is blocked. This work of "knowing the heavens," which is both mysterious and interesting, now faces a depressing fate, limited to recording local weather conditions daily.</p>
+<p>Experienced individuals tell us that late summer and early autumn are often the times for one or two hurricanes. Now that there are no forecasts, their sudden arrival is inevitable. If shop signs are reinforced with wire now, and fences are firmly rooted, even a sudden hurricane can be seen as revealing the quantity that is about to be swept away, because hurricanes primarily topple weak and small structures – this is also a fact.</p>
+<p>With the obstruction of hurricane information, are these insignificant words likely to serve as a "black ball"?</p>
+<h3>Quotations</h3>
+<p>— Ge</p>
+<p>My success is ninety-nine percent hard work and one percent talent. – Thomas Edison</p>
+<p>One must climb a ladder from the bottom rung. – Italian Proverb</p>
+<p>A fly cannot fly into a person's tightly closed mouth. – Italian Proverb</p>
+<p>Experience is the best teacher, but the tuition is too expensive. – Georg Hegel</p>
+<p>A lie is like a snowball; the further it rolls, the larger it becomes. – Lu Ruo</p>
+<h3>Shanghai Street</h3>
+<p>— Ban Gong</p>
+<p>If Avenue Joffre is the Russian street of the Seven Seas, then I think Yu Qiaqing Road can be called the most authentic Shanghai street.</p>
+<p>Is it necessary to rectify the name? What is called Shanghai Street is, of course, because its various aspects, whether beautiful or ugly, are sufficient to symbolize Shanghai today. For example, there are many celebrities on the Shanghai Bund. Mention the famous Ah De Ge, and probably in Little Paris, everyone would say, "Who doesn't know him? Everyone knows!" Shanghai has Avenue Edward VII, but we know that foreign countries also have Avenue Edward VII – but think about it, would England or the United States have a Yu Qiaqing Road? Would Tianjin or Beijing have an Ah De Ge Alley? This name is cleverly chosen! Isn't this a road that only Shanghai can have?</p>
+<p>It is also said, "The name is the guest of the reality." This road name indeed seems to have some Shanghai characteristics. Let's see what the reality is like.</p>
+<p>Is there anything that can better represent Shanghai today than Yu Qiaqing Road?</p>
+<p>During the day, there are many bums. At night, there are many prostitutes; at night – look at these hotels. Every day, you can see so many dramas! You can write so many compassionate articles! Wandering around the street are countless "scum of life," hungry, beaten, dying. You don't want to see or hear, but the tragic wails are increasing, and the ugly corpses are blocking your way every day! You hate them, but they just won't die!</p>
+<p>At the same time, this place can be said to be a collection of Shanghai entertainment. There are magnificent cinemas; there are dance halls; there are also Suzhou people entering and leaving bookstores, Ning Shao people flocking to the "Di Du Ban"; there is European and American cuisine, and there is also red date soup—and there is also a long queue for buying rice.</p>
+<p>Shanghainese like to make a fortune, and there are plenty of lottery tickets for sale here. Shanghainese—from rough maids to bank tycoons—all like fortune-telling, so there are mountains and children waiting here to calculate your fleeting years and look at your complexion.</p>
+<p>On this road, you can meet all kinds of people. You can see wealthy people with swollen heads and bulging intestines staggering out of restaurants, and you can see several young ladies from Third and Fourth Roads speeding by in chartered cars, dazzlingly dressed, making you feel bright-eyed. You can even see the rarest elegant scholars in Shanghai; perhaps they just came out of the Daxin Art Gallery or the Ningbo Fellow Association after seeing calligraphy and paintings, and unfortunately, they turned a corner and ran into this unbearably vulgar road. As for road heroes and street heroes, they are even more endless and countless.</p>
+<p>Two completely different worlds are separated by only a wall here! On this point alone, isn't Yu Qiaqing Road worthy of being called Shanghai Street?</p>
+<h3>Sharing the Storm</h3>
+<p>— He Jia Zhi</p>
+<p>(5) Repaying Favors</p>
+<p>Cui Zhen left, and Wei Cheng sat and meditated for a while, thinking that Cui Zhen was just born into a poor family, and her situation was so bad. If she were in Guo Fang's place, with her cleverness and eloquence, she might be even better than Guo Fang. He turned off the lights in the Shuangmei Study, crossed the empty courtyard, and returned to his bedroom. He only felt a shadow flash, which frightened him. He asked, "Who is it?" Someone answered: "It's me, Brother Cheng. Xi Que's hot water bottle's water has cooled, and she didn't even know to change it, so I changed it for you." Wei Cheng said, "Come here." Wei Cheng first walked into the bedroom, and Cui Zhen just stood inside the door, no longer moving her feet. Wei Cheng said, "I really should thank you; you take care of all my affairs." Cui Zhen said, "I was just afraid that Brother Cheng would thank me, so I hurriedly slipped out. I didn't expect that being sneaky would scare Brother Cheng." Wei Cheng said, "Now my gratitude outweighs my fear. Sister Cui Zhen, sit for a while before you leave." Cui Zhen said, "No." Wei Cheng said, "I have so much to ask you. Is Aunt asleep?" Cui Zhen said, "Yes." Wei Cheng said, "What about Xi Que?" Cui Zhen said, "She's asleep too." Wei Cheng said, "What about He Ma?" Cui Zhen said, "She went to bed early." Wei Cheng said, "Sister Cui Zhen gropes around alone inside and out; aren't you afraid at night?" Cui Zhen said, "What's there to be afraid of? Grandmother treated me well when she was alive. I still treat her as if she were alive, sending her food every day." Wei Cheng said, "You're right; there's really nothing to be afraid of. Is Aunt asleep?" Cui Zhen said, "She's asleep." Wei Cheng asked again, "Is Xi Que asleep?" Cui Zhen said, "Brother Cheng, you've asked twice. See you tomorrow."</p>
+<p>Cui Zhen pulled the door to Wei Cheng's room, and the sound of footsteps faded away gently. Wei Cheng thought of what Cui Zhen said, that although Grandmother was dead, she still treated her as if she were alive. That's right: although Sister Cui Zhen is gone, he still treats her as if she were standing there: big eyes; fluffy hair; clothes with the scent of soap, all as if they were in front of him. He lay down, and suddenly someone came to knock on the door. He didn't go to open it himself, but the person who knocked on the door had already come in. He thought it was Cui Zhen, but it turned out to be Guo Fang. Guo Fang was followed by Guo Qi, who said with a bitter face, "You've lost your mother, but we've lost our father." Wei Cheng let out a cry, "Ah!" This cry woke him up; it turned out to be a dream. (76)</p>
+<h3>Tragedy and Comedy</h3>
+<p>— Jin Yi</p>
+<p>A friend of mine suddenly fell ill in this era and this year, and it was a serious illness. To say "serious illness" means that his life was on the edge of "life" and "death." Entering the hospital made his family laugh and cry, because when the doctor wrote a prescription, no pharmacy didn't answer "sold out." Fortunately, in addition to "treating the disease," the doctor also knew the whereabouts of the medicines and posted a few lines of "seeking" advertisements before snatching his life back from the "brave men."</p>
+<p>However, "treating illness" is more difficult than "fighting fire" because the roundabout and time-consuming process of seeking medicines prolonged my friend's serious illness for three months, and he was only recently discharged from the hospital. When I went to visit him at his home, his greeting gift was: "Unfortunate to get sick, even more unfortunate not to die!" - These two sentences are worth a million-word tragedy.</p>
+<p>Recently, I suddenly read in the newspaper a news story about a fire caused by hoarding medicine, but "firefighting" was for "treating illness." - This news seems to be a comedy.</p>
+<h3>The Extinction of Humanity</h3>
+<p>— Xu Xi Zhen</p>
+<p>According to physics, a magnet will lose its magnetism after being subjected to violent vibrations or impacts. Now, after these difficult years, as far as we can see, humanity seems to have the same phenomenon as magnetism to magnets in some inferior humans: Under the constant training of difficult times, under the material and spiritual shocks and blows, they have lost their original thin layer of humanity that was only attached to the surface. In our filthy land, these humans who have extinguished their humanity are exhausting their life's tricks to make various shocking and eye-catching performances in front of us, sometimes simply unbelievable. Hoarding materials, manipulating the market, and collecting single notes, making the lives of most people fall into even greater difficulties; and on the other hand, "profiting from business, trampling on young prostitutes," so that the abused are "unable to bear the insult, and their fragrance disappears," or selling girls and transporting them to other places,"... All of this shows that all the despicable humans who have lost the minimum conscience, lost the minimum sense of shame and self-esteem, not only extinguish their own only humanity, but also try to extinguish the lives of others, extinguish the shame and self-esteem of others.</p>
+<p>On one side is the shock of the times, and on the other side is the charm of money and profit. Humans are being trained under these physical conditions of high temperature and vacuum pressure, so that some people with unhealthy souls cannot maintain their humanity. All these inhuman manifestations are astonishing; but the other part of the people who are willing to maintain humanity do not need to be frightened by these inhuman acts. When I was a child, I read some novels about gods and monsters, and I probably knew that some fox ghosts transformed into human forms were afraid of wind, rain, thunder, and lightning; the dramatic changes in nature often made it difficult for them to maintain their illusory human form. Under a burst of lightning, they always "roll on the spot and show their original form." And after the fire is over, they can never transform into human form again. This is really a bit "terrifying."</p>
+<p>Let us stand in the wind and rain, looking as embarrassed as drowned chickens at those fires one after another. We want to see how many are still able to maintain their true human form, maintaining a humanity that cannot be extinguished by shocks after the fire has passed?</p>
+<p>This is a great tragicomedy, and we are not only the audience of the open-air theater in the wind and rain, but also the actors in this wonderful show.</p>
+<p>Look, you play – you!</p>
+<h3>Single Notes Plus One</h3>
+<p>— Fu Min</p>
+<p>Since there has been a shortage of single notes in the market, the use of five-yuan and ten-yuan bills has been inconvenient. Yesterday, the author went to a certain company to shop and saw a sign posted on the wall: Single notes in and out, calculated plus one.</p>
+<p>This is a very good method. Customers are not unable to buy goods because the quantity of shopping is small; the store can also do more business, and both buyers and sellers are convenient.</p>
+<p>(Editor's note: Many stores have now implemented the "plus one" method, although it cannot completely solve the single note shortage, it can also save the trouble of running to the money shop, and looking at the faces of the cigarette exchange shop owners and tram conductors.)</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.05.14.html", "next": "1942.05.16.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

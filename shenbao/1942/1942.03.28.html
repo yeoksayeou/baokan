@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.03.28 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 429 - 4924432</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>聖雄甘地抵新德里　與克里浦斯晤談　宣稱不忘國家人民福利　國民黨要人研討英建議</h3>
+<p>新德里二十七日路透社電　英國掌璽大臣克里浦斯爵士與印度國民黨領袖甘地之會談、於今日午後二時十五分開始、歷時二小時十分鐘之久、甘地赴克里浦斯腐邸時、係一人獨往、克里浦斯降階相迓、親爲開啟車門、並致寒暄之意、甘地之答語爲「與君相見、甚覺愉快、」當兩人入屋時、擁有大批新聞記者與攝影員、</p>
+<p>新德里廿七日路透社電　聖雄甘地應邀已於今晨抵此、渠將於下午二時十五分（印度時間）會晤英國特使克里浦斯、據談稱、與克里浦斯晤談時、決不將國家及人民福利置諸腦後、</p>
+<p>阿拉哈巴城二十六日路透社電　國民大會領袖尼赫魯之女公子、頃在此舉行婚禮、國民大會各要人大多在此、國民大會主席阿沙德特利用此次機會、與各方就克里浦斯之計劃、非正式交換意見然後定於今晚前往新德里、與甘地會見、國民大會各要人定於本月三十日與克氏會見、孟買廿六日路透社電印度「貧苦階級」領袖安貝德卡爾博士與麥克拉査、定卅日與克里浦斯會晤、</p>
+<p>西貢二十七日海通社電　英掌璽大臣克里浦斯昨延見印度王公會議正副秘書長莎希勃及皮卡納、事前克氏會與英印總督政治顧問葛雷克爵士晤談是日下午克氏又與勞工代表商談、聞印度自由黨領袖莎普魯爵士、定於今日離阿拉哈城赴新德里晤克里浦斯、而米案爾國會議長亦表示願與克氏一談、同時英方正在印度全境發起民衆大會、高呼「印人應與民主國家站在同一陣綫」之口號、潘加勃財政部長蕭多倫爵士昨日發表演說稱、</p>
+<p>孟買二十七日路透社電　此間學生及勞工團體、今日曾舉行公開集會兩次、主張印度各派領袖應與英國進步派代表克利浦斯舉行談判、俾英印兩大國家可以基於平等自由之原則、協力策動兩國人力物力打擊法西斯反動勢力、兩方不應斤斤計較於細節、而應即下決心宣佈打擊法西斯、蓋今日之事足以牽涉人類命運之前途也、</p>
+<p>日佔領安達曼羣島　印度感受嚴重威脅</p>
+<p>華盛頓二十六日哈瓦期社電　日軍佔據孟加拉灣安達曼華島後、此間軍政各界人士極爲關切、大多數軍事觀察家咸認該華島可作爲日軍之優越海軍根據地、日軍可由此控制孟加拉灣之航運、並可威脅開浦亞登與澳洲間之海道、不寗唯是、安達曼華島並可作爲空襲加爾各答及印度其他重要城市之良好根據地、要而言言、日軍之佔據安達曼羣島、已予協約國以新的重大打擊、且爲攻擊印度之先聲、在此種情勢之下、協約國唯一希望、厥爲英國儘速利用目前地位、說服印度民族、果爾、則英國訪印特使克里浦斯現與印度當局進行之談話、亦可大感便利矣</p>
+<p>倫敦廿六日哈瓦斯社電　英外相艾登頃在下院宣稱、我國駐印度洋安達曼羣島守軍係於本月十二日撤退、又保守黨議員里德談稱、我人一日不能恢復遠東海上覇權、即一日不能在安達曼島實行抵抗縱欲抵抗亦不過徒然塗炭生靈而已云、</p>
+<p>印度加爾各答二十六日哈瓦斯社電　孟加拉邦政府、本日勸吿人民、凡非國防所需者、均須迅速離去云、</p>
+<p>瑞典京城二十七日海通社電　倫敦電訊、關於日軍佔領安達曼羣島一事、倫敦人士加以解釋曰、協約國海軍在地中海與太平洋已被他人先聲奪人、故在印度洋已無法完成決定性之任務、倫敦報章之軍事訪員亦承認日軍此次勝利、在戰略上之重耍意義故英國今應堅守已受直接威脅之錫蘭、倫敦人士並料日海軍在短期內即將出現在印度洋之上、「每日快報」軍事訪員評曰華維爾此次在印度洋所取之戰略、又蹈非洲戰略之覆轍、即保留其兵力留待後用、致坐失時機、此爲軍事上之大忌云、</p>
+<h3>麥克沃塞出席　澳洲軍事會議　澳陸軍總司令就職</h3>
+<p>康白拉二十七日路透社電　西南太平洋方面最高司令麥克沃塞將軍、昨日出席軍事會議之後、澳洲總理寇丁宣稱、所討論者爲澳洲方面聯軍編制佈防及增援事宜、</p>
+<p>康白拉二十七日路透社急電　勃萊梅將軍業已抵此、就任澳洲區盟國陸軍總司令、又捍衛社白布魯克之摩爾斯赫德少將、業被任為中東澳軍司令、</p>
+<p>海通社二十七日本埠特訊　新任澳軍總司令麥克沃塞將軍在康白拉向衆院發表演說、力言美澳間之密切關係、略謂、余雖初次蒞臨澳大利亞、抑如在本國無異、美澳間之密切關係、並非基於條約或外交、實有更堅强之原素促成之、余之蒞臨澳洲、將益顯彼此關船之密切云、</p>
+<p>康白拉二十七日路透社電　西南太平洋方面最高司令麥克沃塞將軍昨日自衆議院退出後、向報界宣稱、澳洲官兵作戰、若能爲此輩澳洲議員爭辯之猛烈、則戰事殆可謂已得勝矣、麥將軍昨應寇　總理及議長之邀請、在議塲就座時、全體議員均向之歡呼致敬、以不屬澳洲議員而出席澳洲議會者、麥氏實其第一人、將軍坐於議長席下面稍右、聆聽辯論狀頗自在、退出議會時聲稱、澳洲全國熱烈歡迎、余實銘感不忘、澳洲人好客、名聞全球、余所受歡迎情形、實非始料所及、余將初次履澳、已親如家居矣</p>
+<h3>澳洲北部全境　宣布戒嚴　英美對紐西蘭　決予廣大援助</h3>
+<p>康白拉二十七日路透社電　澳洲宣佈之緊急狀態區域、原限於若干沿海地帶、現當局公佈緊急狀態區域應予擴大、北部一帶悉在緊急狀態區域以內、達爾文港即在北部、</p>
+<p>康白拉廿七日路透社電　此間公報稱、美澳空軍轟炸機昨胃惡劣天氣、飛襲古邦、轟炸港內船隻及其他目標、</p>
+<p>惠黨頓二十七日路透社電　紐總理福來塞頃稱、日來曾接英首相邱吉爾美總統羅斯福電、電內曾述及紐西蘭在此次大戰中所擔任之任務、暨紐西蘭所需援助之性質、紐方對於兩電內俱表滿意、足證紐方即可獲重大之援助、</p>
+<h3>菲列濱總統　奎松抵澳</h3>
+<p>墨爾缽二十七日路透社電　據官方今日公布、菲列濱總統奎松偕戰時內閣人員、已安抵</p>
+<p>此舊金山二十七日路透社電　據此間收得墨爾缽廣播、菲總統奎松現在澳洲、一切安然無恙、按軸心方面前傳奎松已逝世、</p>
+<h3>美艦隊總司令　就職宣言</h3>
+<p>華盛頓二十六日合衆社電　美海軍史上兼任艦隊總司令　海軍作戰部長之第一人金氏、今日宣誓就職、金氏發表演說曰、今日已至停止談論防禦戰與防守思想之時、計劃在擬具中、吾人必將獲勝、來日必然艱苦、惟吾人必須期待若干重大之打擊、俾能予他人更重大之打擊、吾人必自新求奇蹟、而須隨時隨地攻擊他人、並將隨武器生產之增加、予他人以與日俱重之打擊云、</p>
+<h3>鮑利斯訪德結果　保國或將積極參戰　軸心國對土行施外交壓力　傳土耳其大軍開東陲增防</h3>
+<p>瑞士京城二十六日哈瓦斯社電　報載柏林電稱、保加利亞國王飽利斯之訪德、及德國駐土耳共大使巴本之返國　述職、結果所屆、保加利亞或將積極參加世界大戰、而德國可無進攻土耳其之必要、據柏林負責方面觀察、柏林談話結果、不出下列各項、　保加利亞立即放棄其以前對於世界大戰之消極態度、德軍當儘量利用保加利亞軍隊作爲佔領軍、　保加利亞之參加反布爾雪維克十宇軍、可使德軍在蘇聯兩錢作戰獲得便利、　德軍不必侵入土耳其、蓋攻擊土耳其需調動大批士兵、足以牽動其他戰塲、故就軍略立塲而論、進攻土耳其亦非善策、　柏林方面非但無侵略土耳其之意、且欲使士耳其與保加利亞兩國樹立充分諒解、保加利亞接近土耳其之邊界、如能獲得保障、則保加利亞現可調用之軍隊十萬人、即可增加一倍、　土耳其與德國現行友誼關係當加以促進、査蘇聯最近在伊朗境內野心勃勃、土耳其頗以爲慮、英國安慰無方、此與德土關係之促進自有裨益、要而言之、鮑利斯在德國之談判、與巴本之返國實具有密切關係云、</p>
+<p>土耳其斯丹埠廿六日哈瓦斯社電　據可靠消息、土耳其駐義大使即將抵此、携有義王愛麥虞限三世致伊斯美總統之函件、</p>
+<p>瑞士京城廿七日哈瓦斯社電　據羅馬消息、日本駐德大使大島將軍、日內將赴土耳其京城、聞携有重要建議、準備向土耳其政府提出、</p>
+<p>羅馬廿七日哈瓦斯社電　義大利日報駐土耳其斯丹埠訪員來電稱、土耳其大軍已集中東部邊境、前任參謀部長剛道爾將軍已被任爲第四軍長、率部開往伊朗邊境附近增防、</p>
+<p>柏林廿六日哈瓦斯社電　此間半宮方面消息稱、最近蘇聯在伊朗活動益趨積極、其地位巳駕凌英國之上、此在土耳其、自不能坐視不問、土國各報之愼重將事、正顯示時局之嚴重、而蘇聯對達達尼爾海峽之企圖、土國知之甚稔、並無錯覺云、</p>
+<h3>茂曼斯克前線　蘇軍發動攻勢</h3>
+<p>倫敦二十七日路透社電　據瑞典京城今日所接到之莫斯科電稱、蘇俄軍隊包括砲兵在內、爲使德軍所準備之春季攻勢遲緩進行起見、業已聯合紅軍海軍、在茂曼斯克前綫發動攻擊、德方則以大隊空軍向蘇軍轟炸云、</p>
+<p>倫敦二十六日合衆社電　此間若干方面預料、茂曼斯克北極海前綫、即將展開大戰、德方擬全力進攻、企圖切斷蘇聯北境之補給錢、蓋英美物資經由該錢運蘇者益見增加也、消息靈通方面稱、就目下跡象可見德方擬於海陸空三方進攻極北一綫、茂曼斯克方面德國空軍　形活躍、三日來日有空襲、死傷人民雖多、損失尙微、最近美國根據軍火租借法案運往茂曼斯克及亞爾日干爾之物資大見增加、致德國統帥部大爲不安、深以德國潛艇及水面艦隊不克截斷蘇聯北路補給綫爲慮、蘇方亦已擬有北極海一綫之攻勢計劃此可於下列一事見之、即蘇方陸海軍會聯合進攻北極海某港、海軍首先實行登陸、陸軍即繼之拊德軍之背、予以重創而擊潰云、</p>
+<p>蘇聯在北極海使用小型潛艇</p>
+<p>斯德哥爾摩二十六日路透社電　據此間發表之蘇方消息、蘇聯前在北極海內使用一種新式之小型潛艇、甚爲得手、據報最近在挪威北部海岸被擊沉之德國運輸艦、至少有十艘、其中一艘載有羊皮三萬張、對於德國尤屬一重大之損失云、</p>
+<p>瑞典京城廿六日哈瓦斯社電　頃據此間德國及中立國人士表示、目下東綫戰况雖呈膠着、但不久即當漸趨活躍、且機械化部隊及摩托化部隊將在未來大戰中、處於主要地位、殆無疑義、緣在冬季、德軍確感困難、德國軍事當局亦承認紅軍獲得局部進展、惟此項「冬季危機」已被德軍安然渡過、紅軍未能獲得重大成就、據東綫中路消息、維也慈瑪·加柴特斯克·爾齊夫·及逸爾尼亞等軍略重鎭、雖遭紅軍威脅、但德軍扼守原來陣地、屹然不動、又據英方消息、北路伊爾門湖岸之斯泰拉耶路薩城、刻正發生巷戰、但此說尙未能證實、所可知者紅軍大批援兵確已開到該區、此外唐納資河流域斯丹林諾區、聞日來亦已發生大戰云、</p>
+<h3>美願與蘇聯　訂新協定　俾續以物資運蘇</h3>
+<p>紐約二十七日路透社電「紐約時報」華府訊、總統羅斯福已函陸海長等負資當局、命令應將物資運蘇通道中之障碍一律肅淸、羅總統已向斯達林表示願與蘇聯缔結新協定、續以物資運蘇、庶幾舊協定於本年七月到期之時、物資之運輸不致中斷、</p>
+<p>華盛頓二十七日路透社電　據悉、羅斯福總統曾函陸長史汀生及海長諸克斯等高級官員、訓令渠等極力消除所有對履行蘇聯協定之障碍、函中措詞極爲嚴厲、</p>
+<h3>英王今日廣播</h3>
+<p>倫教二十六日哈瓦斯社電　本月二十九日爲全國祈禱日、國王喬治六世定於二十八日午後十時發表廣播演說、</p>
+<h3>日本廢止　外人土地永租權</h3>
+<p>東京二十七日同盟社電　外務今日宣稱、自一八五四年以來外國人在日本之地永租權、於三月二十八日之詔書中予以廢止、惟朝鮮與臺灣之外人土地永租權、不受此應響、因其土地並未免予徵稅者也、</p>
+<h3>唐寶衡上校　到達倫敦　任駐英軍事參贊</h3>
+<p>倫敦二十七日路透社電　唐寶衡上校已自重慶乘飛機取道南美及葡萄牙京城里斯本到此、任中國駐英大使館首任軍事參贊、</p>
+<h3>陳樹人歡宴　在昆僑領　商歸僑開發實業事宜</h3>
+<p>昆明二十六日電　僑委會陳委長樹人抵昆後、即晤漢主席龍雲、商歸僑在滇開發實業事宜、龍氏當表示決盡力協助、予以一切便利、陳氏並於二十六日午出席此間緊急救僑委會、對今後工作有詳細指示、定二十七日歡宴在昆僑領、宣達中樞眷念僑胞之至意、又昆市各界、定三十日舉行歡迎歸僑大會、屆時陳氏將親臨主持、</p>
+<h3>蔣兼代外長　接見土代辦</h3>
+<p>重慶二十七日電　蔣兼代外長二十七日下午五時、在外交部接見土代辦戴伯倫、</p>
+<h3>原判死刑監犯　减判無期徒刑</h3>
+<p>重慶廿七日電　國府三月廿七日令、司法院呈、爲准軍事委員會函、轉請將松潘縣監犯張晏淸减刑一案、經院詳加查核、該犯張晏淸以犯搶刦而故意殺人罪經松潘縣政府判處死刑、褫奪公權終身、上年六月間、縣城監所震燬、該犯經疏散城外、旋即目動回監、其情誠堪嘉許、擬請將共原判之死刑、减爲執行無期徒刑等情、茲依照中華民國訓政時期約法第六十八條之規定、宜告將該犯張晏淸原判之死刑、减爲執行無期徒刑、以昭激勸、此令、</p>
+<h3>教部甄選　品學俱優學生</h3>
+<p>重慶二十七日電　教部於上年七月、訂定專科以上學校、甄選學業操行體育成續俱優學生辦法、通飭各校遵辦、依照該項辦法甄選之學生、大學以三名爲限、獨立學院及敎科學校、以一名爲限、寗闕母濫、由各校依照規定名額加倍甄選、呈送敎部審核圈定、茲聞敎部據各校甄選二十九年度學業操行體育成績俱優、學生到部者計達六十八院校、經審核圈定一百十三名、已將該項學生名單公布、除分別發給榮譽獎狀外、並將其姓名記錄於榮譽學生名册</p>
+<h3>教育協會定期　召集代表大會</h3>
+<p>重慶二十七日電　中國敎育協會定廿九日上午十時在此間舉行第二屆全體會員代表大會</p>
+<h3>柯列基陀要塞　續遭空襲</h3>
+<p>華盛頓二十七日路透社電　據陸軍部宣布、馬尼刺灣口柯列基陀島要寒及附近各島、昨日又被日本重轟炸機數十架猛烈襲擊六小時以上、巴打半島全綫兩軍亦發生猛烈之斥堠戰</p>
+<h3>美船一艘　在印度洋中雷</h3>
+<p>華盛頓二十七日路透社電　美國海軍部宣佈、印度瑪特拉斯海外十哩之處、有美國貨輪一艘被魚雷擊沉、此爲日本潛艇在印度洋上活動最遠之處、</p>
+<h3>土保兩國　經濟淡話結束</h3>
+<p>斯丹埠二十六日哈瓦斯社電　土耳其與保加利亞兩國經濟談話、業已結束、雙方代表定於明日簽訂草約、新約實施後、雙方貿易範圍將大見擴展、</p>
+<h3>華中航空公司　客機九龍號失事　馬來印人使節團全數殞命</h3>
+<p>東京廿七日同盟社電　華中航空公司客機「九龍」號、載客十一人、包括馬來印人親善使節團四人在內、今日衆信已悉數殞命、蓋該機自廿四日起、即杳無消息、査該機係臨時充作軍用、據最後報吿、正飛往東京、航至Ise海灣之東、其末次致東京分公司之無綫電爲廿四日下午三時三十七分、現經證實、該機失事之日、Ise海灣爲颶風中心、風力每小時爲一〇至一二哩、事後雖經努力搜尋、但失機毫無跡象可得、四印人爲馬來之愛雅爾及穆罕謨德、及泰國之普尼與一辛姓者、此四人原擬於本月廿八廿九兩日來東京參與東亞印人會議、除印人外、罹難者尙有日人旅客三名及飛機駕駛員四人、</p>
+<h3>捷墨恢復　外交關係</h3>
+<p>倫敦二十六日路透社電　倫教及墨西哥城正式宣佈、墨捷之正式外交關係、自一九三九年德軍佔領布拉格後即吿斷絕、現已於今日恢復、並分別任命代辦駐在倫敦及墨西哥城、墨捷之聯合宜言、重申兩國正義制勝優略力量之信心、</p>
+<h3>皮佛勃魯克　與羅斯福會談</h3>
+<p>華盛頓二十六日哈瓦斯社電　前任英國軍需大臣皮佛勃魯克助爵現在此問、襄助英美兩國戰時生產調整局組織事宜、昨晚會與羅斯福總統共膳、旋與民治國援助法實施委員霍浦金會談、直至深夜始散、</p>
+<h3>蘇門答臘山地　續有游擊戰　日機散傳單勸降</h3>
+<p>蘇門答臘棉蘭二十六日同盟社電　日軍飛機今日向蘇門答臘北部山岳地帶負隅頑抗之荷蘭殘軍、散發傳單、勸吿停止無謂之抵抗、同時日軍已在蘇門答臘東北海岸一帶、肅淸荷蘭殘軍、</p>
+<h3>英全境將實施　强迫兵役</h3>
+<p>倫教二十六日路透社電　英陸軍部財務秘書桑德雅今日在下院宣佈、此後英國全境俱將實施强迫組織民防軍制、而不再限于南部之區域、</p>
+<h3>日本下年度預算案　提交內閣討論　總額逾二百萬萬圓</h3>
+<p>東京二十七日路透社電　日本下屆預算案、已提付內閣討論、包括特別軍事費在內、共達二百四十三萬萬圓、</p>
+<h3>舉世矚目之新德里</h3>
+<p>國掌　大臣克里浦斯　士到達印度後，世界各國的視綫，咸集中於印京新德里。連日各黨領袖和王公代表紛紛前來，而畢生為祖國爭取自由的聖雄甘地，亦於昨晨抵達，新德里會議的結果，影響於整個戰局者甚大，是不問可知了。（上圖）新德里市政廳之一部（下圖）印王漢　雲之墓，建築於一五六五年。</p>
+<h2>Page 3</h2>
+<h3>馬爾太島上空　英德空軍大戰　英機數百架炸魯爾區</h3>
+<p>英屬馬爾太島伐勒特港廿九日哈瓦斯社電　此間英國空軍司令部頃發表公報稱、德國容克八十七號式俯衝式轟炸機多架、由梅塞斯密特式戰鬥機九架保護、飛至馬爾泰島沿岸、襲擊我國商船、我國噴火式及颶風式飛機、當即昇空迎戰、達十五分鐘之久、大抵擊落德國梅塞斯密特一〇九號兩架、容克八十七號式四架、另有容克八十七號式十一架受有重創、迨至薄薯、又有德國機羣飛過發生空戰之處、尋覓失踪飛行員云、</p>
+<p>柏林二十七日海通社電　德機在星期三夜及星期四、繼續猛炸馬爾太、拉伐萊達港軍事設備均中彈起火、島上探照燈亦被破壊、　襲時港務設備中彈多枚、港中巡洋艦一艘中彈兩枚、船塢倉庫均被炸傷、</p>
+<p>柏林二十六日哈瓦斯社電　此間廣播電台頃發出消息稱、德國飛機昨在英屬馬爾太島上空、與英國飛機發生大規模空戰、擊落英國噴火式飛機二架、並毀二架、</p>
+<p>倫敦二十六日哈瓦斯社電　官方頃發表公報稱、「英機昨日大舉轟炸德國魯爾工業區域、參加飛機共有數百架之多」云、</p>
+<p>倫敦廿六日哈瓦斯社電　航空部頃宣佈、英國機羣本日越過英吉利海峽、轟炸停泊法國哈佛港之德國船隻、詳情尙無所知、惟空戰中擊落德機八架、英機二架失踪、今晚英國上空並無敵機活動云、</p>
+<p>維希廿七日哈瓦斯社電　頃悉、巴黎區域咋晚九時五十分起至午夜止、會發出空襲警報、聞有英機過境、投下宣傳品多種</p>
+<p>維希廿六日哈瓦斯社電　關於外傳法國淪陷區彭達里埃鎮、昨夜被英國飛機轟炸一事、此間負資人士頃已予以否認、</p>
+<h3>德政府下令　嚴禁囤積居奇　防止敗類投機牟利　案情重大者處死刑</h3>
+<p>柏林廿七日海通社電　德國國防內閣會議頒佈一項法令、凡毀壞或囤積原料及人民之日用必需品者、一經查獲、將處以勞役與徒刑、案情重大者將處以死刑、按此項法令、業經宣傳部長郭培爾在最近一期「德國週刋」上撰文加以討論、其言有謂、德國戰勝、今已不再成爲德國人民互相所討論之問題、今爲衆人所討論者、乃平均分擔戰爭負担一項問題也、前綫犧牲愈大、則後方人民之負擔將　重、故當局更應嚴厲執行秩序興公道、達法者應予嚴厲之制裁、倘英國認爲此係德國腐化之象徵、實屬大謬不然、要知此係德國整飭紀綱、防止敗類不顧民衆疾苦私謀巨利之策、易言之、即保護人民、嚴懲投機牟利之徒、以謀社會之安寗、免蹈英國之覆轍、吾人乃爲整個國家－前方與後方－之利益着想、故頒佈此項法令也、總之、吾人決不容少數人利用戰爭而獲巨利、深望全國人民在此次歷史戰爭中、能磨練其純潔之人格、以達到最後勝利、政府旣要求人民作戰爭之犧牲、自須使全國人民平均負擔之、並相信人民亦歡迎嚴厲制裁違法者之措施云、</p>
+<h3>原田調任　日駐教廷特使</h3>
+<p>東京二十七日同盟社電　日政府今晨宣布、任命日本駐法使館代辦原田、爲駐敎廷特使、</p>
+<p>本報特稿</p>
+<h3>印度半島巡禮記（五）</h3>
+<p>盛大燄火</p>
+<p>我們此次到印度諸邦來游歷，多承各首領盡力協助，予以參觀的特權，不得不表示由衷的感謝。招待旣竭盡豪華，在攝影方面復予以種種便利。如其有宗敎或其他隆重儀式舉行時，攝影決非一次即可成功－每一次需要把笨重的照相機對準，還要注意燈光和反光鏡，使各種角度的景物都能收入鏡頭。禮節過後因此只能重複表演一次，不但費去不少無謂的時間，且使王公個人亦感到甚大的不便利。</p>
+<p>可是從來沒有聽過怨言！我們應爲這許多王公的友人脫　致敬。因爲他們不但自居於王室中主人的地位而更其重要的，也是歡喜這類藝術的人。我們希望自己的工作能獲得歡迎。</p>
+<p>我們抵達王宮，即謁見豪氣縱橫的陸軍中將比加尼爾王公。繁複的訂婚禮節立即在覲見廳舉行，王公，太子，訂婚人王公的太孫，和另外一個幼子都來參加。</p>
+<p>禮節吿畢，都到廟中去祝禱。王公即在軍樂悠揚聲中接受軍隊的致敬，於是回到宮中休息。副官和電力公司首領來和我們商量，洛萊與鮑爾費了一個下午和他們決定怎樣供給電流，使六星期後的結婚儀式在夜問可以攝得淸晰的影片。</p>
+<p>專車回赴佐德浦耳預定在六時啟行。可是七時有盛大燄火燃放。王公特別關照火車遲開二小時。因爲燄火就在車站附近燃放，所以沒有什麼爭執。印度的火車不知怎樣有這樣的伸縮，明天朝晨，我們居然準時到佐德浦耳。雖然王官與鐵路上的設備非常華麗，但總是自己的家最好－就是一輛旅行車也是好的。我們很高興地又見到自己的大旅行車。</p>
+<p>吉麻哈爾塔</p>
+<p>自佐德浦耳倒行二百三十一哩，回返齊浦爾，再由一條新闢公路東行以達亞格剌。在這樣長距離的旅行中間，我們總是在車中進餐，以期節省時間。</p>
+<p>印度的人口特別衆多，我們在鄉野停車後，不消幾分鐘已有一大羣好奇的觀衆在我們汽車週圍騷動。他們想絕不猶豫地開一開車門，看看大汽車中有什麽東西·</p>
+<p>亞格刺當贊木納河右岸，我們見到世界美麗無比的建築物吉麻哈爾塔（Taj　Mabal），或稱王后塚，幽雅壯麗嘆爲觀止。一六二九年，香吉汗王的愛妻以難產故世，王痛悼殊深，於是建築此純白大理石墓穴，以爲永垂百世的紀念，遂使世界上多一樣誇耀的東西。千萬人來此後撰文記載，繪諸圖畫，攝成照片，可是吉麻哈爾塔永不會平凡陳舊。</p>
+<p>塔的外表有古典的純樸，可是雕刻與鑲嵌的裝飾，美麗無比，令人咋舌。三百年前香吉汗皇帝的靈感到今日仍令人覺得驚奇。</p>
+<p>我們由德加公路，依偉大的恒河流城緩緩行了三百公哩，經過阿拉哈巴以抵聖城貝拿勒斯。在印度合衆部攝取關於農民生活的照片。</p>
+<p>恒河奇僧</p>
+<p>貝拿勒期和神聖的恒河——三萬萬印度人的救主，生命和血液！雖然江水汚濁得可怕，但却是神聖的。在河流中洗澡了可使罪惡刷淸；屍體的骨灰如其葬入河底，可使他的靈魂躋登長春的天堂中。</p>
+<p>沿河岸綿互有數里之長的就是這種洗澡和焚燒屍骨的碼頭。富有的人家買了木柴，把屍體舉行火葬，常可在河邊見到烏烟冉冉堆起的就是。不十分富裕的僅把屍身燒焦就算，赤貧者把死者送到河中，並不火葬。我們見河中浮着一個孩屍，離此五十呎有一羣人正在沐浴，甚至在飲河中的「凈水」</p>
+<p>在河畔時可見信奉印度敎的托缽僧，把早已盲的眼睛向着太陽注視，保住着神聖的姿態以至使關節麻　，生活務使清苦，以期避免解脫的恐怖。</p>
+<p>在貝拿勒期，我們用事實來證明印度確有光怪陸離的傳說，且用照片紀錄下來！一個托缽僧予以相當酬金，竟常塲嚼碎以及呑下我們的大玻璃和一個電燈泡！吃完這碗特別大菜後，還拿一包保安剃刀片大嚼嚥下。</p>
+<p>我們還在疑心，他有什麽超人的內在的機械可以吃這種特別東西，他却關照助手拿出一條活的毒蛇來。他把蜿蜓的蛇弄死，很伶俐的咬去一頭，淸脆地嚼着一段一段蠕動着的蛇體，顯出非常得意的樣子！</p>
+<h2>Page 4</h2>
+<h3>工部局設股管理房　屋轉租事宜　轉租執照昨起開始申請</h3>
+<p>據大通社記者探悉、工部局已在江西路大厦、天井房子三樓八○一號室、設置房屋轉租管理股、並自昨日起、在下層五○六號室捐稅股、發給上海公共租界工部局塲所轉租執照申請書、</p>
+<p>二房東須逐項塡寫</p>
+<p>是種申請書之款式、列有下列各項、　申請人姓名、　申請人國籍、　地址、（包括某路某弄某號及房間某號）　　租租戶戶數、　申請人東　墨筆正楷字逐項塡寫、</p>
+<p>可向就近領取執照</p>
+<p>又是項申請書、由各二房東塡就后、即可送交工部局各發照分辦事處、隨繳執照費國幣九元、及號碼牌費一元、換領轉租執照、茲將工部局發給轉租執照之分辦事處地點重錄如下、（西區）　愛文義路三七八號至三八○號、　極司非而路一號、　麥根路一六○號、　勞勃生路四三五號、　新　路一四六　號、（北區）　海寗路一三○號、　北福建路二七○號、（東區）　齊物滿路五五八號、　舟山路一三三號、各分辦事處接到申書後、即可自四月一日起、挨次核發轉租執照、交各二房東收執、</p>
+<h3>各旅館旅客押包　處置辦法　限期提取　逾限拍賣</h3>
+<p>本市旅館業同業公會爲代表各旅社敬吿旅客、催　押包及寄存物件啟事云、「逕啟者、本會會員各旅社、（包括飯店旅館　棧公寓）遵照往年舊例、於結　期前、對於所有旅客結欠各旅社賬款、會將行李或物件、抵押於本會會員各旅社者、茲限於國歷三十一年四月十五日以前、前來付淸賬款、取去押包、如逾期不　、除將所有各物一律拍賣抵償外、若有不足、仍須向原人追繳、其有旅客臨行寄存物件、日久未取、霉爛　　、除由各會員酌訂收取寄費、以示限制外、如逾一年以上、仍未取去、過期不理、得由各會員拍賣處分、以免壓積不堪、務希注意盼勿自誤爲要、特此鄭重聲明、東方遠東大中華爵祿等旅館同啟」、</p>
+<h3>經營柳江煤　同業傾軋</h3>
+<p>民國二十五年間、柳江煤在市上行銷頗有問題、而秘密經營該項煤斤者仍不乏人、致同行間因而互相嫉妒、長沙路一四九弄二十號借義公煤號、亦因經銷柳江煤之嫌、致於是年一月六日下午二時、有被人投　手溜彈及　送恐嚇信清事、乃事隔多年、最近中央捕房華探目黃海如·張筱林等枸獲與此案有關之人犯馮南山·馮鼎耀·王文正三名、該三人均係煤業　客、經拘押偵査之下、經馮等供出、此次之投擲手溜彈與恐嚇信、係在逃之羅希三（亦屬煤商）所指使、其信稿由馮南山所起草、而另令他人書寫、因馮之筆跡、煤業均皆認識、故不能由其書寫也、現捕房正在繼續偵緝在逃各犯中、</p>
+<h3>大新公司屋頂　遊客跳樓自然</h3>
+<p>洽卿路大新公司屋頂花園、於昨日下午二時四十分、有一遊客、蹤身下躍、倒於勞合路馬路中、當塲折斷頭骨、立時斃命、死者年約三旬左右、身着灰色布珜襖珜褲、后經救護車异送仁濟醫院、轉入騐尸所候騐、</p>
+<h3>融五社講經</h3>
+<p>融五講經社第三十一次講經、仍在中華職業敎育社四樓、於二十九日午後新鐘三時開講、聽講者宜先時前往、</p>
+<h3>興亞院華中連絡部長官　發表統制物資方針</h3>
+<p>（同盟社本埠訉）上海方面日睦海軍最高指揮官業巳發出布吿、規定自四月一日起、凡一切重要物資之運用、指定由興亞院華中連絡部負統制運用之責二十七日興亞院華中連絡部長官太田發表統制方針、指明對於上海地區內之物資移動、應依照左列辦理、計開、</p>
+<p>移動物資應先塡報</p>
+<p>凡欲移動物資者、須以興亞院華中連絡部所規定之用紙、將所要事項塡入、各別經由物資公會提交興亞院華中速絡部、如無公會蓋印、原則上不能承認、　如公會尙未成立者、應速即組織公會、協力　行興亞院華中連絡部之方針、　重要物資之分別移動、其制限限度另附於后、　重要物資移動之辦事處、設在福州路漢彌登大厦、　關於重要物資之移動若有質疑、可向前記辦事處接洽、</p>
+<p>移動之限制與限度</p>
+<p>物資移動之限制限度如次　鋼鐵類、全部必須經過許可、惟鋼鐵製品項下、家庭消費品不在其例、　非鐵金屬類中銅、全部必須許可、但銅製品中家庭消費品不在其例、又焊錫除家庭消費品外、必須經過許可、　鑛石類中螢石滿一八○噸以上、須要許可、其他全部必須經過許可、　棉花及棉織品、於工廠倉庫搬運出太及對於批發商販賣時、全部必須許可、　羊毛及羊毛製品中、羊毛除家庭消品以外、其他須經許可、毛絨綫·絨毯·毛織物·於工廠倉庫搬運出入及對於批發商販賣時、必須全部經過許可、　麻及麻製品、除家庭消費品外、必須許可、　皮革（皮革製品不在其例）除家庭消費品外、其他一切必須許可、　橡膠及橡膠製品中、生橡膠全部必須許可、汽車及脚踏車用外裏胎及工業用品皮帶及管、於工廠倉庫搬運出入、並對於批發商販賣時、必須全部經過許可、　木材中、美國木料除家庭消費品外、必須許可、三夾板滿二十張以上、必須許可、　鑛油類全部必須經過許可、　　煤炭（煤球及炭結包括在內）、凡煤棧房進出煤炭時（包括送工廠及送棧或其他煤棧內）及對於批發商販賣時、必須全部經過許可、　　工業藥品類、顏料及油漆、於工廠倉庫搬運出入及對於批發商販賣時、必須全部經過許可、　　油脂及樹脂同上、　　醫藥品及醫藥材料同上、　　機械及其附屬品、除家庭消費品外、必須許可、　　米·小麥·雜糧·麵粉·及共他食糧品、於工廠倉庫搬運出入時、必須全部經過許可、　　鐵桶全部必須許可、　　紙類在一令以上、須要許可、戲槳全部必須經過許可、</p>
+<p>組織公會統制運用</p>
+<p>又訊、上海方面日陸海軍當局、爲適當且有效利用上海地區內在庫之有限物資、並抑制物價飛漲起見、關於在上海地區內物資之使用製造及零售等、自四月一日起、皆由興亞院華中連絡部長官任統制及運用之責、並統制一切重要物資在上海地區內移動、此項統制辦法、一俟指定各物資之使用製造及販賣之統制機構完備後、當於可能範圍內務必迅速予以解除、因之目下興亞院華中連絡部就各重要商品、進行組織各中日同業公會、二十八日興亞院發表此等中日同業公會、以下列之各要項指導運用各物資之移動、　節約消費、澈底强化防止　積居奇、　時時調査在庫物資、並防止物資之散逸、　澈底防止物資轉讓敵國或第三國人、轟推進確立經濟計劃、爲之完成以下之各項統制辦法、整備新體制、甲·整理工塲、乙·製品之規格化、圖製品規格化、並謀增進能率、丙·統制原料、準確調査上海地區內之原料物資而爲統制原料之基準、丁·統制配給、　抑壓物價高漲、以期安定民生、及圓滑對日供給物資、</p>
+<h3>申報讀者助學金　捐款報告</h3>
+<p>大光明內衣公司同人昨致函本報云、逕啟者、貴報所辦讀者助學金、造福人羣、社會共仰、同人深感貴報辦事熱忱、用將敝公司發給同人獎金國幣一百元送上、作爲助學金、雖區區之數、然聚沙可以成塔、同人等亦願追隨社會熱心人士之後略盡棉力也、大光明內衣兩合公司同人啟、</p>
+<p>昨收捐款計啟明書局三百二十元、大光明內衣兩合公司同人（附函）一百元、無名氏（收據號碼1137五十元、共計四百七十元、前存八萬七千三百九十四元八角八分、共結八萬七千八百六十四元八角八分、</p>
+<h3>漢密頓大厦　發生小火警</h3>
+<p>昨日下午六時五十分、漢口路江西路漢密頓大廈底層日商岩井洋行內、突發生火警、幸施救迅速、未肇巨災、僅焚燬排門一部份、</p>
+<p>匯山路火警虹口匯山路一二七號至二三一號兩幢洋房於昨晚七時二十七分　忽不戒於火、頓時延燒甚熾、烈焰飛騰、火勢不可收拾、後經救火會驅車趕到施救、約燒至于時餘始熄、該幢洋房焚燬迨盡、損失殊鉅、</p>
+<h2>Page 5</h2>
+<h3>局米今起加價　昨日出售苞米價格無變更</h3>
+<p>工部局米糧辦事處、昨日繼續指定三處堆棧、供米號出米、自今日起、洋米售價、每升增爲二元、每人仍以購　一升爲限、大通社記者茲分錄於後、</p>
+<p>堆棧提米</p>
+<p>工部局米糧管理會、昨日繼續指定法租界外灘太古棧、廣東路一三八弄十五號及華德路六六七弄祥豐棧、公平路五十六號華盛棧、江西路三十一弄二十號義興新記棧等五處堆棧、可於今日供米號出米、以應下星期一辦理門糶、</p>
+<p>昨售苞米</p>
+<p>工部局宣布零售洋米售價、爲每刋國幣二元、並定自今日起實行、至苞米售價、則並無變更、仍爲一升半售國幣一元七角、昨日即爲兩租界全數三百九十五家米號出　苞米之期、故購　羣衆、已較上兩次爲擁擠、</p>
+<p>領粉手續</p>
+<p>工部局統制麵粉辦事處、自更改申請手續、用卡片或麵粉派給證、於申請時核閱、殊爲便利、該處昨又通吿各麵粉登記用戶云、「尙未領申請麵粉供給證者、請於二十八日二十九日（星期六及星期日）全日來領取爲要</p>
+<h3>工部局獎勵　捕盜有功華捕</h3>
+<p>本年一月十六日上午七時十分、北河南路三○六弄發生持械匪徒四名、攔刧巨款一案、事後匪徒一名爲華捕三一九九號奮勇擊斃、並奪獲手槍一枝暨子彈若干、</p>
+<p>又二月十四日下午六時三十分、有歹徒叫名、前往愛幽近路三六三號某米店內、冒充工部局戶口調查部代表、複查戶口表、其時店內夥友一人、見而生疑、乃潛行外出、報吿附近華捕一四七三號、該捕據報以後、立即趕往米店、査詢其事、不意歹徒一名、袖出手槍、該華捕當即奮勇上前、將其推倒、一面出槍發射、命中歹徒腹部、當塲殞命、共餘匪黨三名、乘間逸去、</p>
+<p>工部局警務處叙獎委員會、以各該華捕捕匪有功、經呈准局方、各給二等特殊功積獎章一枚、以示獎勵、</p>
+<h3>德國情報局舉行　戰事照片展覽　自下星期一起展覽一星期在大西路七號德國情報局</h3>
+<p>德國駐華大使館情報局、定於下星期一起至星期六止、每日下午三時至五時、在大西路七號該局舉行德國戰事照片展覽會、會中陳列之照片、皆爲本埠從未發表過者、其內容皆屬蘇聯戰事發展之情形、猶如德軍司令部之戰報、　而作的單之叙述、此類照片、係山德軍宣傳部隊之敢死隊兵士、實地冒險攝成、故極爲名贵、本埠德國情報局乘此春光明媚之際、特將此項戰事照片、公之於本埠人士之前、機會實爲難得、</p>
+<h3>婦女圖充警探　運動費化烏有</h3>
+<p>無賴粵人楊政與甬人方林生二人、於上月問同至法租界來市路四八號友人苗姓家作方秘之戲、　稱彼等現在某機關任高級職員、如有人欲謀充內地營局採警職務、不分性別、可由彼等推　、不費吹灰之力、當時有同樣叉麻將之婦人丁朱氏·曹管氏徐管氏等、　言色喜、一致託楊方二人介紹推薦、充當女警或女探、　送酬　、且由朱氏等拉　小姊妹入局、共二十餘人、先后各送運動費及酬金自數十金至百金不等、　知　等携款去後、信息杳然、見面又一再；託推諉、朱氏等始知受愚被騙、乃報吿法捕房、請求緝案法辦、至前日午後、由探在　羣立路平原坊廿一號內將楊方二人拘獲、帶人捕房、訉據承認由騙不諱、捕頭飭令收押、應候詳加偵查後、依法訴究、</p>
+<h3>工部局提增　公園票價</h3>
+<p>工部局頃發布告略稱、自木年六月一日起至明年五月三十一日上、各公園之常年票價規定如下、各公園通用之常年票每份十元、通用於兆　公園以外各公關之常年票每份五元、再自四月一日起、各公園之臨時門票、每張概售五角、</p>
+<h3>米煤價提增後　離滬回鄉者甚衆　半價證可照常申請發給　由滬回甬日程已經縮短</h3>
+<p>兩租界當局自積極疏散人口以來、離滬返鄕人數、已有數十萬人、工部局簽發通行證辦事處、特將疏散範圍擴大、兩租界居民不分畛域、均得申請發證、故離滬人數益衆、至半價證、仍照常可以申請發給、以輕旅途負担、</p>
+<p>徽同鄉會協助疏散</p>
+<p>安徽旅滬同鄉會通告云、逕啟者、　因滬上生活用品、昂騰不已、米煤問題、尤爲嚴重、本會現已參加工部局華人疏散委員會、協助辦理人民疏散事宜、凡我同鄕、自問如無留滬之必要者、務盼前來登記、山本會發給車船半價證、予以回籍、庶得早日返鄉、幸無觀望自誤、</p>
+<p>寗屬同鄉返籍便利</p>
+<p>滬甬自復航後、兩地來往者、較斷航時須冒險繞道杭州灣來往、便捷何啻天壞、當時初因輪隻過少、每間隔四五日一班、旋木市當局、因租界糧食關係、着手疏散市民、滬甬間輪隻添增、往來更形便捷、如由滬返象山慈鶏奉化等地、途中只須三四日、以是日來返鄕者益衆、</p>
+<h3>證券交易所女經紀人　被嚇詐十萬元　其子一度被鄉以巨未贖出　主犯二名獲正在偵查中</h3>
+<p>寗波嬬婦沈企芳、現年三十四歲、住居巨籟遠路七七五弄穴號、擁有鉅產、係華商證劵交易所之經紀人曾於去年遭匪徒之覬視、將其子綁架、後以款贖票、遭此變故、故兪沈氏深居簡出、不料又於去年十一月六日起、迭接署名中華復興正義團名義之恐嚇信八封、索價十萬元、否則將置伊母子於死地極盡威嚇之能事、兪沈氏接信後、即據情報吿法捕房、請求拘捕嚇詐犯、經探捕之努力、已於日昨將主犯張國良·何傳善（均廣柬人）兩名逮捕、帶入捕房、據供、吿訴人近年來於投機事業、獲利不下一二百萬元、故僞造中華復興正義團之名義、以便恐嚇得利云、現法捕房正在偵査核辦中、</p>
+<h3>保險業前途發展</h3>
+<p>新創華商大南保險公司、係華僑暨滬工商界領袖所組織、董事長胡桂庚君、聞該公司資木雄厚、信用可靠、已定下月初開始營業、</p>
+<p>社會服務</p>
+<p>南京路失　者注意　本區第一聯保第四保自警團員魏永康、於二十日晚七時在南京路浙江路口値崗時、截獲搶帽匪所搶呢帽一頂、失主可將該帽牌子顏色說明、向先施公司後鬥對過香粉弄內第四保保甲辦事處合對領取、上海市公共租界老閘區保甲自治會啟、</p>
+<p>讀者何秉明君承詢對於遺失物件、未獲刋入社會服務原因、茲奉答：一、遺失具有法律性物件、揭載廣吿、方有法律上效力、二、遺失次要物件、如盼物歸故主、應登招尋廣吿、三、服務欄登載拾得物件之理由、爲獎揚社會大衆之路不拾遺、拾遺者旣恪守道德、本報自樂爲刊布、以便遺失者領取、服務攔啟、</p>
+<h3>黃鐘社廣播</h3>
+<p>據本埠天主敎方面消息、該敎會所設之黃鈍播音社、將於今晚七點鐘、假座法國電台（週率一四○○）敦請磐石小學校長張維屏司鐸、繼作該敎上海敎區百週紀念演講、題爲一天主敎爲人羣所獲致之現世福利」此外尙有上海慈幼會修士之宗敎名曲表演、及陳女士之鋼琴獨奏、與陳梨梨陳玫玫二重唱「定個計劃」</p>
+<h3>中國漁業銀行開幕</h3>
+<p>旅滬渔業鉅子黃振世、從事漁業、已有二十餘年、以開發漁區、調濟產銷爲已仟、　於三十年十月創辦組微中國漁業銀行、資本總額國幣一百二十萬元、黃氏擔任董事長、兼總經理、總號設於九江路二百五十號、分號設於小東門大街二十六號、茲以總分行房屋、先後工竣、擇於今日正式開幕、屆時九江路上、車水馬龍必盛况空前也、</p>
+<h3>盜刦併誌</h3>
+<p>西自來火街　十三號福興醃肉莊、於昨晚九時許、侵入盜匪四人、兩執槍械、感恫嚇、當被刦去國幣八千餘元、</p>
+<p>北浙江路　二七三弄第二七七號某布號、於昨晚八時五十五分、來有四匪、三人袖出手槍、當被刦去現鈔二千三百餘元、</p>
+<p>昨日本報發報時間六點卅分</p>
+<p>體育新聞</p>
+<h3>中葡足球義賽最後一幕　中華三遇葡萄牙　今日下午二時起在逸園</h3>
+<p>一年一度之中葡足球義賽最後一戰、定今日下午二時起在亞爾培路逸園舉行、中葡二軍前會二度會師、首戰中華出馬得利、以三比○全勝葡隊、次幕葡軍加强實力、混戰結果、各二演成和局、斯賽爲最後一次、中華諒能順利獲勝、比賽精彩可觀、賽畢仍拍賣義球、林炯庵主持閉幕禮、今日門票、分三元五元二種（連捐）茲將兩隊陣容錄卜</p>
+<p>中華隊</p>
+<p>范金鏞莊友仁張林招何家統張昭鵬韓龍海馮壽鵬袁錕田沈錦達江潮戴麟經賈幼良高保正費春華</p>
+<p>（預備員）陳效平·李垚·鄭通裕·閻廷富·趙永芳·岳仁孝·曹琴</p>
+<p>葡萄牙</p>
+<p>M蘇若馬山兒責山夫維克太奧列維拉羅列茲考司坦羅柴遼勃拉特V蘇若蓋恩柯拉沙法凡笑</p>
+<p>（預務員）A羅柴遠·雷米迪·鮑休脫·若維亞、</p>
+<h3>梅生盃小小足球　瑞龍今戰馬迪</h3>
+<p>梅生盃小小足球聯賽、今日自下午一時起、在光夏中學有六塲交鋒、生字組三塲、盃字組二塲、梅生組瑞龍則遇馬迪、瑞龍業已二度奏凱、今日不難擊潰馬迪、三造勝利、秩序如次、偉星—孟賢（盃）一時萬隆—永華（生）二時文靜—積　（盃）三時章元—堡壘（生）四時瑞龍—馬迪（梅）五時小龍—虎隊（生）六時</p>
+<h3>孟賢盃籃球　今日比賽秩序</h3>
+<p>蓉廬—維納斯　下午二時友隊—三　二　二時三刻華南—孟　賢　三時卅分</p>
+<h2>Page 6</h2>
+<p>商業新聞</p>
+<h3>業中猜測不一　烚赤大跌小回　軍票亦稍下降　拆息昂至九分</h3>
+<p>昨日現金炩赤暗市、狂跌後忽稍回、一萬七千元關、兩次退入後即回出、乃見銀樓業四起搜羅也、至登記消息、同業對於今後之經營猜測不一、各方人心迄在觀望待變中、自晨初某錢莊求售心切、雖僅十兩、時同業未多聚集、缺少進者、由一萬八千元空喊、小至一萬六千元、始由公和買進十兩、時進者活動、價亦空喊上升一千元、一萬七千元爲較正式開市價、而比上日收市已開低一千四百五十元、俄見一萬六千五百元、銀樓幫羣起收吸、宏慶永及證劵號來力進、在散戶抬風中、躍升爲一萬七千七百元低價、現金號四起吐售、永豐餘成記合發及證券幫亦來賣出、當見盤下九百元、叉入一萬七千元內、降爲一萬六千八百元、銀樓幫見低來進、成記及另一證券號收吸、十一對後、趨勢轉穩、升至一萬七千三百元、又爲套頭賣戶壓下、爲一萬七千○五十元、正午收市一萬七千二百五十元、比上日收價軋小一千二百元、當日行九百元差度、下午平定、</p>
+<p>銀樓首飾金、每兩大新同行均步掛小一百五十元、爲一千七百五十元、下午三時回上五十元、爲一千八百元、（收進减二百元）紋銀掛廿元、黑市十四元、銀幣一枚在八元五六角聞、價稍略低云、</p>
+<p>昨外幣市况、英美金鎊各降十元、前者爲四百元、後者爲四百十元、美金票爲二十五元半及二十六元、香港票亦降爲三元四角、大票减小一角、軍用票曾小至七元零八分、最後爲七元二角半、</p>
+<p>昨錢業公會拆息突躍爲九分匯劃票據貼現率每千元須貼五元云、</p>
+<h3>投機目光移轉　公債交易絕盛</h3>
+<p>股票因銀根驟緊而下落</p>
+<p>公債暗盤、昨市繼續趨漲、交易亦頗形旺盛、甲種穿出七十元大關、丁種穿出六十元、利多消息、傳聞漸盛、各幫人氣、頗形激昂、賣出雖多、吃進更旺、開盤即見高價、近兩日其他各種投機市塲行市均見低落、故各幫頗有返還者、買戶鴻興鴻大潤德大中同利和豐仁豐仁昌、或先或後、或多或少、纷紛買進、胡鶴記賣出較多、大康成公茂承泰同同康顺泰聯益永康益記等或斬多、或翻空，先後均有供出、市况竟堅定如故、不爲所動、結果續漲五角至一元不等、成交約一百五六十萬元、茲列簡明表於後、</p>
+<p>昨外股多見回下、成交復旺、共一萬四千三百股、計怡和紗廠僅做四百股、價山廿二元升爲廿六元半、後廿六元二五、軋小七角半五百股信和七元六角、二千股業廣十八元、公共汽車二百股爲九元三角、英聯一百股廿元○七五、怡和啤酒一千五百股六元三角、一千股　植廿七元、升爲廿七元二五、八百股自來火十三元半、一百股開平四十五元、一千股紙業六元二角及六元二角半、會德　一百股價五十四元半、王海毛絨一千股六元三角、五千股加倫丹八角五六分、蘭格志三百股爲十四元三角、其餘未聞做開、電力優先九十八元半有買戶、售出須一百　二元、電力公債出入價爲七十四元及七十九元、實業股求供不一、橡皮股售者較多、</p>
+<p>昨華股因銀根　緊、市務多見下低、金融股獨見上升、中國銀行一百四十五元與交通一百四十元、及大中華火柴二百二十四元、均升二元半、永安公司低三元、計七十元有賣戶薪新七十九元、大新五十五元、先施三十元、中國內衣（新）八元半、新亞酵素十九元半、華商雷氣十七元及十七元七五、世界書局（新）五十一元半、多見軋小、商務二百元、升二元五角云</p>
+<h3>紗市動盪　雙馬銳降</h3>
+<p>棉紗市况、因報載紗布亦在統制之例、人心不振、浮多大起惶恐矣、二十支雙馬廠單初開跌百元、爲二千三百元、繼以賣氣濃烈直瀉至三千一百零五元、但獲利者補空、又復升至三千二百三十元、收盤價爲一千一百八十元、四二支藍鳳八千一百元、八千三百五十元、四二支　光八千元、四十支日光七千七百元、六十支彩球二萬元、二十支月琴四千一百五十元至四千一百元、二十支雙馬三千七百元至三千八百五十元至九百元、二十支大女三千八百五十元、十六支紅雙馬二千七百元、十六支紅奎星三千九百元至四千零五十元、十六支金橋四千零五十元至四千二百元、</p>
+<h3>業外出籠　疋頭猛跌</h3>
+<p>廠布昨市跌後回堅、乃因四月一日必須打移動證、引起散多出籠、各價傾瀉甚銳、惟本街實銷戶績有乘低吸收、故後市止跌反漲、結果白貨跌二元至七元半、漂染布跌三五元、惟一部份缺檔貨堅定如故、富貴細布一六五元、大鵬細布一六七元、十六磅地球粗布一八○元、飛鴻粗布一七○元　二磅新字一二七元半、雛雞士林二六○元、桃花女士林二五五元、白貓花布一三○元、木街成交各布三百餘件、</p>
+<p>東布因紗布實行登記、業外囤戶人心浮動、晨盤吐售、跌勢甚猛、惟後市已見回風、漸趨穩定、龍頭細布新單初開二百元、降至一九八元、又升至二○四元、復下降至一九八元爲午收、後市由二百元升至二○四元、晚收爲二○二元、較前日跌落每疋六元、老棧單最小價見一七四元、後亦升至一八　元五角、彩球飛魚一八四元、陽鶴一八二元、喇叭八一元、寶貝細斜一五七元、五福雙魚一六五元、四君手嗶嘰十至十二月單六元角紅單新稅五元九角、晚收與午收比較升起每碼三角之放讚、</p>
+<h3>雜糧疲弱無神</h3>
+<p>昨日雜糧交易、續見减退、蓋以謠風不絕、人心皆形乏勁、囤戶祇吐不進、實銷戶進胃亦見轉淡、故市勢依然軟弱無神、豆類行情再見下挫三五元、豆餅等徘徊無大變動、計售開天津金元十包、價爲二百廿五元、又茶豆五十包、價二百元、山東黑豆五十包、價一百七十元、崇明沙赤二百餘包、價一百九十五元至一百八十五元、叉沙蠶百多包、價一百卅元至一百廿五元、父沙莞廿包、價二百十元、甡記豆餅一千五百片、五月份棧單價五十元○八角至五十元○二角、又六月份棧單五十一元半、利字豆餅三月份棧單五十元○五角、</p>
+<h3>日用品漲勢加厲</h3>
+<p>日用品市况、　勢仍厲、蓋存貨日趨稀少、貨主不肯廉脫、喊價重見新高價、尙不能大量搜集、故交易淸稀做開計固本皂三百七十元、黃祥茂三百二十元、白祥茂皂三百四十元、帆船牌洋燭每箱二百四十五元、鳳凰牌火柴七千二百元、上等雜牌六千二百元、中等雜牌五千八百元、觀各方人心、仍覺恐慌、市價難望回跌、</p>
+<h3>蘋菓（五）</h3>
+<p>— 高劍農</p>
+<p>總觀以上論證：就是蘋果，而我國從漢朝以來，就逐漸的把這種果樹普及起來。然而我還不能不在道裏添上一個蛇足的，就是奈又有「揪子」之名，而這種揪樹在我國的種植，却遠在漢武帝以前哩！現在先論揪子的名稱：　明李時珍在本草網目上說：「林擒，即奈之小而圓者，其味酢者「揪子」也」。　淸初人黎士宏在所作西陲聞見錄上說：「甘州，……果之屬多杏，多白擒，多「揪子」。白擒類蘋果而小，味亦差减。揪花如海棠，子酸，土人取其肉爲「果單」，—此食物之形性待考。——糜泥澄濾。薄如油紙，南人不多識也。」從那裏知道揪樹在漢武帝以前就栽增的很多呢？和武帝同時人的司馬遷，在史記貨殖傳上說：「淮北，常山以南，河濟之間千樹「萩」。……此其人與千戶侯等。」歷來註釋家說「萩」字同「揪」是對的，不過把它釋作就是只能製造揪枰的那種其材不甚貴重的「　木」，却不無令人可疑：因爲司馬遷在這句以前所歷歷舉出的樹名如千樹「棗」千樹「栗」，以至千樹「橘」，沒有一種不是能結「果子」的植物的，怎麼惟獨「揪」字要發生例外？况說要標舉美木良材的樹木的話，則這一帶地方比揪樹更好的東西其多無數，爲什麽單舉這不材之揪呢？所以我以爲這揪」也就是能結「揪子」其形態性質和柰同種的那一種果樹！信如此說，則這樹在漢武帝時已竟成千成萬了，它的培植不是當然要叟在前麽？</p>
+<p>現在借生物世界的話以作折衷：在歐洲的蘋果樹分爲造酒蘋果類和普通蘋果類；在亞洲的則叫Pirus　malus　baccata是亞洲的一種和歐洲的普通蘋果類結爲夫婦血統混合了，纔生出來種類繁多的各種子孫。至於蘋果隨從人類的足跡也移植在美洲，非洲，和澳洲的經過情形，只好略而不談以省篇幅。最後借用明人文震亨長物志的話，以證明奈，林擒，和蘋果，只是一種或至少是血統最近的植物吧：「花紅，西北稱奈，家以爲脯，即今之「蘋婆果是也。生者較勝，不特味美，亦有淸香。吳中稱花紅亦名林擒，又名來禽，似奈而小，花亦可觀一。（完）參考書　古今圖書集成草木典，　筆記小說大觀，　史記，　舊約，　法國百科全書，　生物世界等</p>
+<h2>Page 7</h2>
+<p>游藝界</p>
+<h3>嘉寶與醫生結婚</h3>
+<p>— 新影</p>
+<p>－大槪是別有苦衷－</p>
+<p>瑞典籍女明星葛萊泰嘉賓，一向被人稱爲神秘女郞，尤其是她的婚姻問題，最是神秘。過去，我們知道好萊塢時常有關於嘉賓的婚姻傳說，散播到整個世界上面。但每一次傳出之後，嘉賓便照例每一次向人表示否認，而結果所謂有情人者，經事實證明，並不成爲眷屬。十幾年來使崇拜嘉賓的影迷，每一個都關心着她的婚事。</p>
+<p>然而這一次竟突如其來，本月二十四日那天，瑞京傳出了嘉賓的喜訊。說是她最近已和美國醫師霍基正式結婚了。想必這一次她不再否認了吧？過去，嘉賓的婚事，爲何不決，而時常訛傳，但這次良緣的締結，又爲何如此迅速。這裏面，當然不無原因呢！也許在美國，當嘉賓結婚之前，照例曾有佳話，但爲了戰爭，我們就得不到消息吧？不過，這無論如何，一種猜測而已。</p>
+<p>事實上，年華的流去，是這樣的迅速，紅顏的變成白髮，當然也是一瞬間的事。神秘女郞嘉賓，而今已是三十八歲的人了，靑春時代，過去已久，這樣年齡再過獨居生的活，畢是太枯燥了呀！何况嘉賓呢，總是一個多情的女郞。所以她的擇偶條件，雖然苛刻，到了今日，已不容她選一個十全十美的丈夫了。這原因，至少也是促成她在迅速中和那醫師結婚吧？</p>
+<h3>銀壇四大明星的成功史</h3>
+<p>— 景毅</p>
+<p>（三）陳燕燕</p>
+<p>陳燕燕，在　影界近十年的歷史，她是北平人，在學校讀書的時候就愛看電影。那時聯羣公司在北平設立第五分廠，並附帶創辦了一個演員訓練班，陳燕燕就去投考，　倖是錄取了。現在的胖子殷秀岑就是和他同學，畢業後却被派在洗印間服務，常拍攝「故都春夢一的時候，片中缺少一位少女的角色，導演卜萬蒼臨時就請她担任，因此發掘了她演戲的天才，而升爲正式演員，以後便和阮玲玉合演了一部「一剪梅」，公演後遂被影迷們注意起來，公司當局立刻又請她單獨主演了一部「南國之春」，這時美麗的小鳥的頭銜就加上了她的身上，一般靑年學生更瘋狂起來，當時各學校中間着二陳燕燕迷「的眞不知其數，然而道時她却和同事攝影師黃紹芬朝夕厮磨，相　起來，之後每攝一片，必能大大的叫座，居然一躍爲大明星了，三年前，和黃紹芬正式結婚，她平時以演悲劇爲多，最近自完成一鐵窗紅淚」後，已向公司要求以後不再演悲角，道自然也有她的苦衷，聽說當局已經答應了，最近公演的「標準夫人」，便是她第一部的喜劇作品。</p>
+<h3>唐若青打入蘭心</h3>
+<p>— 文正</p>
+<p>近來舞豪劇很呈蓬勃的氣象，幾家夠舞臺劇條件的剷院都　租賃一空，假使上海國片公司下月實行結東的話，那末今後一部分影院勢將改演話劇，而話劇的前途，更是樂觀了。聽說中旅最近有了兩個組織，一個長駐天宮，除唐槐孫景路主持外，現由邀請了古寒譚容王路西等大批舞臺明星。另一個便是由唐若靑領銜，打入了蘭心，將在蘭心先演「水仙花」一劇，編劇爲金父，導演爲卜萬蒼。我們知道蘭心是一座最理想的舞臺劇院，以唐若靑的號召，這戲院當可擁有廣大的新觀衆。天宮下期即將上演新劇「歸去來兮」，由孫景路古寒沙利文等會串，也是値得注意的。</p>
+<h3>拾畫叫畫開篇</h3>
+<p>— 健帆</p>
+<p>最近在某書塲聽女彈詞家汪梅韻獨唱拾畫叫畫開篇，又聽徐雪花唱花字開篇，這二闋開篇，都是鄭心史繼「葛嫩娘」後手編的佳作。寄慨深遠，音在絃外，頗有離騷之意。拾畫叫畫原是崑劇牡丹亭中的一齣獨脚戲，述柳夢梅病後獨游杜氏花園，拾到杜麗娘一幅造像：畫裏眞眞，呼之欲出，如癡似醉的頻頻叫喚，充分表現出古時　跌子的頭巾氣來。開篇中　加說白，梅韻奏唱時，好像伶人演嚴般，有眼風手勢，傳神阿堵，聲容並茂！如揷摹刦後的杜氏花園，敗井頹垣，東倒西歪，那幾句篇子是：「想見當年風月好，無邊風月暗消磨。春風處處吹芳草，秋月年年照玉波。無奈寒花空繞砌，誰憐荒草又成窠！園林冷落春無主，埋沒玲瓏一幅圖」眞是幽懷難寫，不勝感慨花字開篇是從唐人詩句編集而成的，每句有一花字，前後意思連貫，渾成自然。雖是風花雪月，芳草美人，却也令人迥腸盪氣，不盡低個！雪花的兪調，昌導良好更覺得這開篇，越發生動而耐人尋味了！</p>
+<h3>歌塲風月</h3>
+<p>— 蒄紅</p>
+<p>某小型劇塲之淸唱歌女，座客興來時可以招之侍坐，其代價祇需點戲半打（每齣一元）。鐙紅茶」綠之境，與　　女兒斯摩耳　，情味之美，正坐椌子」也、而所費之廉，則適成十與一之比。（招舞人「坐檯」，以半百以下之數購票，舞人雖未必譏之曰一省省罷！」，我人則不免自覺寒酸也！）當些時値非常，一切從儉」之秋，一部份舞叢倦遊之客，遂有視此中爲消閑勝境者。</p>
+<p>顧時至今日，風尙亦漸就奢靡；甲客以爲常人點半打，我輩至少當點一打，庶能獲美人靑眼！乙客則以旣有甲客之「一打」在前，自非「兩打」不足以言「豪舉」！於是「孝常竭力，忠必盡命」，點至五打十打者有之，則侍坐片刻，所費亦初不在舞榭以下矣。</p>
+<h3>梨園人物小誌</h3>
+<p>— 鄭過宜作傳　坤伶之部　張義璋製圖</p>
+<p>（一〇）金素琴</p>
+<p>金素琴，是個高呼「改良京戲」口號的南方坤角。現在凡屬馳騁歌台這許多唱旦的，無論其爲男爲女，差不多沒一個不列入王瑤卿門牆，借以標榜，增重身價，金素琴獨用改良京戲來建設壁壘，自樹旗幟，却不曾靠傍瑤卿的餘蔭，道也見出她的志趣之高。她具有端麗的儀態，美秀的扮相，苗條的身段，寬甜的嗓音，以這佳質來唱旦角，天然是個極選人　。就有一二工力未至之處，無形便遮飾過去，她想成名，比較別人，事半功倍，要容易得多，然而她竟芳　虛度，到今日還徘徊岐途，始終不能　慶耀菊部，有一天伸眉吐氣，原因亦未始不是沒先立定基礎，操之過急，亟亟於喊出「改良京戲」來，故而失敗的，這是歐陽予倩害了她了。予倩便是鐵研京戲未深，即圖改良，而得到進退失據結果的，他不鑒自己的前車，又躬引金素琴去蹈道覆轍，使她蹉跎年華，出不得人頭地，這塊美玉雕刻得不成個器，令人對之，豈能無憾？</p>
+<h3>平劇名詞的綴句</h3>
+<p>— 宏勳</p>
+<p>平劇的劇名頗多，今試以聯綴的方法，使若干劇名發生關係，以啟發劇迷們的趣味。摩登伽女女起解　六部大審審潘洪探親相駡駡閻羅　英維比武武文華大審潘洪洪桐縣　黛玉葬花花田錯武松起解解珠寳　割髪代首首陽山跨海征東東皇莊　盤腸大戰戰太平遊龍戲鳳鳳凰山　雪梅吊孝孝義節雷峯塔塔子溝　祭長江江都縣英傑烈烈女傳　描金鳳鳳還巢鐵蓮花花蝴蝶　拾黃金金馬門嫦娥奔月月下追韓信　失印救火火燒連營寨秋胡戲妻妻黨同惡報　刀劈三關關公走麥城</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（二）悲與喜</p>
+<p>衛雲卿點點頭，把閒着的一隻手，握了握他幾根鬍鬚，又笑道：「是啊！我想大嫂子年紀還不大，不會得早就預備後事的。好就好在我家裏，有幾口上好的棺木，柏木的，楠木的，建木的，都有，你們可以來看看。像葉大嫂是書香人家的太太，她的公公有過前淸的功名，她又生了進洋學堂念書的少爺，這最後的一次，哈哈哈，是要豐盛一些的。」厲又榭想：衛雲卿這人，腦筋不能不稱是敏捷的了，聽見人家有喪事，他使上鬥來兜攬壽器。</p>
+<p>葉二太太和厲又榭商量，就問一問衛雲卿，現在建木圓心上下閣退光漆的一口壽器，大概是什麼價綫。葉二太太的主意，因爲業大先生從前殯殮，是這樣，暗會着後喪不能踰於前喪。衛雲卿忖度一下，豎起一個食指來道：「道就不折不扣，要九百九十九塊錢，比一條辮子便宜一些。」葉二太太和厲又榭，都愕然說，「便是貴，也貴不到這個價錢，前回才二百幾十塊錢。」衛雲卿笑道：「這不能和以前比，現在的米，差不多要十塊錢一擔了。木料貴，漆也貴，人工也貴，什麼都貴，就只我賣你九百九十九塊，是不貴。」他說的高興一站，可把兜的碎瓦片和斷磚，一齊倒在地下還打痛了他的脚背。「三五」</p>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.03.28</h1>
+<h3>Mahatma Gandhi Arrives in New Delhi, Meets with Cripps, Declares He Will Not Forget National and People's Welfare, Kuomintang Figures Discuss British Proposals</h3>
+<p>New Delhi, 27th, Reuters – Sir Stafford Cripps, the British Lord Privy Seal, met with Indian National Congress leader Gandhi today, starting at 2:15 PM and lasting for two hours and ten minutes. Gandhi went to Cripps' residence alone. Cripps greeted him at the steps, personally opening the car door and exchanging pleasantries. Gandhi responded, "It is a pleasure to see you." A large number of journalists and photographers were present as the two entered the house.</p>
+<p>New Delhi, 27th, Reuters – Mahatma Gandhi, upon invitation, arrived here this morning. He will meet with British envoy Cripps at 2:15 PM (Indian time). It is said that during the meeting with Cripps, he will never put the welfare of the nation and its people out of his mind.</p>
+<p>Allahabad, 26th, Reuters – The daughter of Nehru, a leader of the National Congress, recently held her wedding here. Most of the important figures of the National Congress are here. The chairman of the National Congress, Azad, is taking this opportunity to informally exchange views with various parties on Cripps' plan and will then go to New Delhi tonight to meet with Gandhi. Key figures of the National Congress are scheduled to meet with Cripps on the 30th of this month. Bombay, 26th, Reuters – Dr. Ambedkar, leader of the "lower classes" in India, and McLartchy are scheduled to meet with Cripps on the 30th.</p>
+<p>Saigon, 27th, Haitong News Agency – British Lord Privy Seal Cripps yesterday received Sahihebu and Pikana, the secretary-general and deputy secretary-general of the Indian Princes' Conference. Before that, Cripps met with Sir Craik, the political advisor to the British Indian Governor-General. In the afternoon, Cripps also discussed matters with labor representatives. It is reported that Sir Sapru, leader of the Indian Liberal Party, is scheduled to leave Allahabad today for New Delhi to meet with Cripps, and Mir, the speaker of the National Assembly, has also expressed his willingness to talk with Cripps. At the same time, the British are launching mass rallies throughout India, chanting the slogan "Indians should stand on the same front as democratic countries." Punjab Finance Minister Sir Chhotu Ram delivered a speech yesterday, stating:</p>
+<p>Bombay, 27th, Reuters – Student and labor groups here held two public rallies today, advocating that leaders of all factions in India should hold negotiations with Cripps, the representative of the British progressive faction, so that the two major nations of Britain and India can cooperate on the principles of equality and freedom to jointly mobilize the human and material resources of the two countries to combat fascist reactionary forces. The two sides should not haggle over details, but should immediately resolve to declare war on fascism, because today's events are enough to involve the future of human destiny.</p>
+<h3>Japan Occupies the Andaman Islands, India Feels a Serious Threat</h3>
+<p>Washington, 26th, Havas – Following the Japanese army's occupation of the Andaman Islands in the Bay of Bengal, military and political circles here are extremely concerned. Most military observers believe that the islands can be used as a superior naval base for the Japanese army. From there, the Japanese army can control shipping in the Bay of Bengal and threaten the sea route between Cape Town, Aden, and Australia. Moreover, the Andaman Islands can also serve as an excellent base for air raids on Calcutta and other important cities in India. In short, the Japanese army's occupation of the Andaman Islands has dealt a new and significant blow to the Allies and is a prelude to an attack on India. Under these circumstances, the only hope for the Allies is that Britain will make use of its current position as soon as possible to persuade the Indian nation. If this happens, the talks currently being conducted by British envoy Cripps with the Indian authorities can also be greatly facilitated.</p>
+<p>London, 26th, Havas – British Foreign Secretary Eden recently declared in the House of Commons that our garrison stationed in the Andaman Islands in the Indian Ocean withdrew on the 12th of this month. Conservative Party Member of Parliament Reid stated that we cannot restore maritime hegemony in the Far East in a single day, and even if we resist on the Andaman Islands, it will only be in vain and will lead to the destruction of lives.</p>
+<p>Calcutta, India, 26th, Havas – The Bengal government today advised the people that all those who are not needed for national defense should leave quickly.</p>
+<p>Stockholm, Sweden, 27th, Haitong News Agency – A London dispatch explained the Japanese army's occupation of the Andaman Islands by saying that the Allied navies in the Mediterranean and the Pacific have already been preempted, so it is impossible to complete decisive tasks in the Indian Ocean. Military correspondents for London newspapers also admit the strategic importance of the Japanese army's victory. Therefore, Britain should now firmly defend Ceylon, which is under direct threat. Londoners also expect the Japanese navy to appear in the Indian Ocean in the short term. A military correspondent for the "Daily Express" commented that Wavell's strategy in the Indian Ocean this time has repeated the mistakes of the African strategy, that is, retaining his forces for later use, resulting in missed opportunities, which is a major military taboo.</p>
+<h3>McWalters Attends Australian Military Conference, Australian Army Commander-in-Chief Takes Office</h3>
+<p>Canberra, 27th, Reuters – Following the military conference attended by General McWalters, the Supreme Commander of the Southwest Pacific, Australian Prime Minister Curtin declared that the discussions concerned the organization, deployment, and reinforcement of Allied forces in Australia.</p>
+<p>Canberra, 27th, Reuters Urgent Dispatch – General Blamey has arrived here to take office as Commander-in-Chief of the Allied Land Forces in the Australian region. In addition, Major General Morshead, who defended Tobruk, has been appointed Commander of the Australian forces in the Middle East.</p>
+<p>Haitong News Agency, 27th, Special Dispatch from This Port – The newly appointed Australian Army Commander-in-Chief, General McWalters, delivered a speech to the House of Representatives in Canberra, emphasizing the close relationship between the United States and Australia. He stated, in brief: "Although I am visiting Australia for the first time, it is no different from being in my own country. The close relationship between the United States and Australia is not based on treaties or diplomacy, but is actually promoted by stronger elements. My visit to Australia will further highlight the closeness of our relationship."</p>
+<p>Canberra, 27th, Reuters – After General McWalters, the Supreme Commander of the Southwest Pacific, left the House of Representatives yesterday, he declared to the press that if Australian officers and soldiers fought as fiercely as these Australian members of parliament debated, then the war could almost be said to be won. When General McWalters was invited by Prime Minister Curtin and the Speaker to take a seat in the parliament yesterday, all the members cheered and paid their respects to him. McWalters is the first person who is not an Australian member of parliament to attend the Australian parliament. The general sat to the right and slightly below the Speaker's seat, listening to the debate in a relaxed manner. When he left the parliament, he stated that he was deeply grateful for the warm welcome from the entire Australian nation. The hospitality of Australians is world-renowned, and the welcome I received was beyond my expectations. My first visit to Australia has been like being at home.</p>
+<h3>Martial Law Declared Throughout Northern Australia, Britain and the United States Decide to Provide Extensive Assistance to New Zealand</h3>
+<p>Canberra, 27th, Reuters – The areas of emergency in Australia, originally limited to certain coastal areas, are now being expanded according to the authorities' announcement. All of the northern areas are within the area of emergency. Darwin is in the north.</p>
+<p>Canberra, 27th, Reuters – According to a local gazette, US and Australian Air Force bombers attacked Kupang yesterday despite bad weather, bombing ships and other targets in the harbor.</p>
+<p>Wellington, 27th, Reuters – New Zealand Prime Minister Fraser recently stated that he had received telegrams from British Prime Minister Churchill and US President Roosevelt. The telegrams mentioned New Zealand's role in this war and the nature of the assistance New Zealand needs. New Zealand is satisfied with the contents of the two telegrams, which proves that New Zealand will receive significant assistance.</p>
+<h3>Philippine President Quezon Arrives in Australia</h3>
+<p>Melbourne, 27th, Reuters – According to an official announcement today, Philippine President Quezon and members of his wartime cabinet have arrived safely.</p>
+<p>San Francisco, 27th, Reuters – According to a Melbourne broadcast received here, Philippine President Quezon is now in Australia and is safe and sound. According to previous reports from the Axis powers, Quezon had passed away.</p>
+<h3>US Fleet Commander-in-Chief's Inaugural Declaration</h3>
+<p>Washington, 26th, United Press – Admiral King, the first person in US naval history to simultaneously hold the positions of Commander-in-Chief of the Fleet and Chief of Naval Operations, was sworn in today. King delivered a speech, saying, "Today, the time has come to stop talking about defensive warfare and defensive thinking. Plans are being drawn up, and we will certainly win. The days ahead will be difficult, but we must expect some major blows in order to inflict even greater blows on others. We must seek miracles from the new, and we must attack others anytime, anywhere, and as weapon production increases, we will inflict increasingly heavy blows on others."</p>
+<h3>Results of Boris's Visit to Germany, Bulgaria May Actively Participate in the War, Axis Powers Exert Diplomatic Pressure on Turkey, Rumors of Turkish Troops Moving to Eastern Borders to Increase Defense</h3>
+<p>Bern, Switzerland, 26th, Havas – Reports from Berlin state that as a result of Bulgarian King Boris's visit to Germany and German Ambassador to Turkey Papen's return home to report on his duties, Bulgaria may actively participate in World War II, and Germany may not need to attack Turkey. According to observations from responsible parties in Berlin, the results of the Berlin talks do not go beyond the following: Bulgaria will immediately abandon its previous passive attitude towards World War II, and German troops will make the most of Bulgarian troops as occupying forces. Bulgaria's participation in the anti-Bolshevik crusade will facilitate German operations on both fronts in the Soviet Union. German troops do not need to invade Turkey, because attacking Turkey would require mobilizing a large number of soldiers, which would affect other battlefields. Therefore, from a military strategic point of view, attacking Turkey is not a good strategy. Not only does Berlin have no intention of invading Turkey, but it also wants to establish full understanding between Turkey and Bulgaria. If Bulgaria's border with Turkey can be guaranteed, then the 100,000 troops that Bulgaria can currently mobilize can be doubled. The current friendly relations between Turkey and Germany should be promoted. Turkey is quite concerned about the Soviet Union's recent ambitious activities in Iran, and Britain has not been able to provide any comfort. This is conducive to promoting German-Turkish relations. In short, Boris's negotiations in Germany and Papen's return home are closely related.</p>
+<p>Istanbul, Turkey, 26th, Havas – According to reliable sources, the Turkish ambassador to Italy will arrive here soon, carrying a letter from Italian King Emmanuel III to President Ismet.</p>
+<p>Bern, Switzerland, 27th, Havas – According to news from Rome, Japanese Ambassador to Germany General Oshima will go to the capital of Turkey in the coming days, reportedly carrying important proposals to present to the Turkish government.</p>
+<p>Rome, 27th, Havas – A correspondent for an Italian newspaper in Istanbul, Turkey, reports that the Turkish army has concentrated on the eastern border. Former Chief of Staff General Gunduz has been appointed commander of the Fourth Army and has led his troops to increase defense near the Iranian border.</p>
+<p>Berlin, 26th, Havas – Sources from semi-official circles here say that the Soviet Union's activities in Iran have recently become more active, and its position has surpassed that of Britain. This is something that Turkey cannot ignore. The cautious handling of the matter by Turkish newspapers shows the seriousness of the situation, and Turkey is well aware of the Soviet Union's intentions regarding the Dardanelles Strait and has no illusions.</p>
+<h3>Soviet Forces Launch Offensive on Murmansk Front</h3>
+<p>London, 27th, Reuters – According to a Moscow dispatch received in Stockholm today, Soviet troops, including artillery, have launched an attack on the Murmansk front in conjunction with the Red Army Navy in order to delay the spring offensive prepared by the German army. The German side has responded with a large air force to bomb the Soviet army.</p>
+<p>London, 26th, United Press – Some circles here predict that a major battle will soon unfold on the Murmansk Arctic Sea front. The German side intends to launch a full-scale offensive in an attempt to cut off the Soviet Union's northern supply line, as the amount of British and American materials being transported to the Soviet Union via this line is increasing. Well-informed sources say that the current indications suggest that the German side intends to attack the far north line by sea, land, and air. The German air force is very active in the Murmansk area, with air raids occurring daily for the past three days. Although there have been many casualties among the people, the losses are still minor. Recently, the amount of materials shipped to Murmansk and Archangel from the United States under the Lend-Lease Act has greatly increased, which has caused great concern to the German high command, which is deeply worried that German submarines and surface fleets will not be able to cut off the Soviet Union's northern supply line. The Soviet side has also drawn up plans for an offensive on the Arctic Sea line. This can be seen from the following: the Soviet army and navy will jointly attack a certain port on the Arctic Sea. The navy will first carry out a landing, and the army will then attack the German army's back, inflicting heavy damage and defeating it.</p>
+<p>Soviet Union Uses Small Submarines in the Arctic Sea</p>
+<p>Stockholm, 26th, Reuters – According to Soviet sources published here, the Soviet Union has been using a new type of small submarine in the Arctic Sea and has been very successful. It is reported that at least ten German transport ships have recently been sunk off the northern coast of Norway, including one carrying 30,000 sheepskins, which is a major loss for Germany.</p>
+<p>Stockholm, 26th, Havas – According to German and neutral figures here, although the situation on the Eastern Front is currently deadlocked, it will soon become more active, and mechanized and motorized units will undoubtedly play a major role in future battles. In winter, the German army did face difficulties, and the German military authorities also admitted that the Red Army had made some local progress. However, this "winter crisis" has been safely overcome by the German army, and the Red Army has failed to achieve any major successes. According to news from the central sector of the Eastern Front, strategic strongholds such as Vyazma, Gzhatsk, Rzhev, and Velikiye Luki are under threat from the Red Army, but the German army is holding its original positions and remaining unmoved. According to British news, street fighting is currently taking place in Staraya Russa on the shore of Lake Ilmen, but this has not been confirmed. What is known is that a large number of Red Army reinforcements have arrived in the area. In addition, there have been reports of major battles in the Stanichno district of the Donets River basin recently.</p>
+<h3>United States Willing to Conclude New Agreement with Soviet Union to Continue Shipping Supplies to Soviet Union</h3>
+<p>New York, 27th, Reuters – According to the "New York Times" Washington dispatch, President Roosevelt has sent letters to the Secretaries of War and the Navy and other responsible authorities, ordering them to eliminate all obstacles in the supply line to the Soviet Union. President Roosevelt has expressed to Stalin his willingness to conclude a new agreement with the Soviet Union to continue shipping supplies to the Soviet Union, so that the transportation of supplies will not be interrupted when the old agreement expires in July of this year.</p>
+<p>Washington, 27th, Reuters – It is reported that President Roosevelt has sent letters to senior officials such as Secretary of War Stimson and Secretary of the Navy Knox, instructing them to do their utmost to eliminate all obstacles to the implementation of the Soviet agreement. The wording in the letters is extremely strong.</p>
+<h3>British King Broadcasts Today</h3>
+<p>London, 26th, Havas – The 29th of this month is a national day of prayer. King George VI is scheduled to deliver a broadcast speech at 10 PM on the 28th.</p>
+<h3>Japan Abolishes Foreigners' Perpetual Land Lease Rights</h3>
+<p>Tokyo, 27th, Domei News Agency – The Foreign Ministry announced today that the perpetual land lease rights of foreigners in Japan since 1854 have been abolished in a decree issued on March 28. However, the perpetual land lease rights of foreigners in Korea and Taiwan are not affected by this, as their land is not exempt from taxation.</p>
+<h3>Colonel Tang Baohang Arrives in London, Appointed Military Attaché to Britain</h3>
+<p>London, 27th, Reuters – Colonel Tang Baohang has arrived here from Chongqing by plane via South America and Lisbon, the capital of Portugal, to serve as the first military attaché at the Chinese Embassy in Britain.</p>
+<h3>Chen Shuren Hosts Banquet for Overseas Chinese Leaders in Kunming to Discuss Matters Concerning the Development of Industries by Returned Overseas Chinese</h3>
+<p>Kunming, 26th – After arriving in Kunming, Overseas Chinese Affairs Commission Chairman Chen Shuren immediately met with Yunnan Chairman Long Yun to discuss matters concerning the development of industries in Yunnan by returned overseas Chinese. Long Yun stated that he would do his best to assist and provide all conveniences. Chen Shuren also attended the local Emergency Overseas Chinese Relief Committee on the 26th and gave detailed instructions on future work. He is scheduled to host a banquet for overseas Chinese leaders in Kunming on the 27th to convey the central government's concern for overseas Chinese. In addition, all circles in Kunming are scheduled to hold a welcome rally for returned overseas Chinese on the 30th, which Chen Shuren will personally preside over.</p>
+<h3>Acting Foreign Minister Chiang Kai-shek Receives Turkish Chargé d'Affaires</h3>
+<p>Chongqing, 27th – Acting Foreign Minister Chiang Kai-shek received Turkish Chargé d'Affaires Deperon at the Ministry of Foreign Affairs at 5 PM on the 27th.</p>
+<h3>Originally Sentenced to Death, Prisoner Has Sentence Reduced to Life Imprisonment</h3>
+<p>Chongqing, 27th – A decree issued by the National Government on March 27 stated: "The Judicial Yuan presents a letter from the Military Affairs Commission requesting that the sentence of prisoner Zhang Yanqing in Songpan County be reduced. The Yuan has carefully reviewed the case. The prisoner Zhang Yanqing was sentenced to death by the Songpan County government for the crime of robbery and intentional homicide and deprived of his civil rights for life. During the earthquake that destroyed the county jail in June of last year, the prisoner was evacuated outside the city and immediately returned to the jail, which is truly commendable. It is proposed that the original death sentence be reduced to life imprisonment." In accordance with Article 68 of the Provisional Constitution of the Republic of China, it is hereby declared that the original death sentence of prisoner Zhang Yanqing shall be reduced to life imprisonment to encourage and commend him. This decree.</p>
+<h3>Ministry of Education Selects Students Who Excel in Both Academics and Conduct</h3>
+<p>Chongqing, 27th – In July of last year, the Ministry of Education formulated measures for selecting students who excel in academics, conduct, and physical education from schools above the vocational college level and circulated them to all schools for compliance. The number of students selected in accordance with these measures is limited to three for universities and one for independent colleges and vocational schools. Preference should be given to quality over quantity. Each school should select twice the number of students in accordance with the prescribed quota and submit them to the Ministry of Education for review and final selection. It is reported that the Ministry of Education has received submissions from 68 colleges and universities for the selection of students who excelled in academics, conduct, and physical education in the 29th academic year. After review and final selection, 113 students have been selected. The list of these students has been announced, and in addition to issuing certificates of honor, their names will be recorded in the register of honorary students.</p>
+<h3>Education Association Schedules Representative Assembly</h3>
+<p>Chongqing, 27th – The Chinese Education Association is scheduled to hold its second general assembly of members' representatives here at 10 AM on the 29th.</p>
+<h3>Corregidor Fortress Continues to Be Air Raided</h3>
+<p>Washington, 27th, Reuters – According to an announcement by the Department of the Army, the fortress of Corregidor Island at the mouth of Manila Bay and the surrounding islands were again heavily attacked yesterday for more than six hours by dozens of Japanese heavy bombers. Fierce skirmishes also took place between the two armies along the entire Bataan Peninsula.</p>
+<h3>American Ship Mined in Indian Ocean</h3>
+<p>Washington, 27th, Reuters – The US Navy Department announced that an American cargo ship was sunk by a torpedo ten miles off the coast of Madras, India. This is the farthest point at which Japanese submarines have been active in the Indian Ocean.</p>
+<h3>Economic Talks Between Turkey and Bulgaria End</h3>
+<p>Istanbul, 26th, Havas – The economic talks between Turkey and Bulgaria have ended, and representatives from both sides are scheduled to sign a draft agreement tomorrow. After the new agreement is implemented, the scope of trade between the two sides will be greatly expanded.</p>
+<h3>China National Aviation Corporation Passenger Plane "Kowloon" Crashes, All Members of the Malayan Indian Delegation Killed</h3>
+<p>Tokyo, 27th, Domei News Agency – All eleven passengers on the China National Aviation Corporation passenger plane "Kowloon," including four members of the Malayan Indian Goodwill Delegation, are now confirmed dead. The plane has been missing since the 24th. The plane was temporarily used for military purposes. According to the last report, it was flying to Tokyo, heading east over Ise Bay. Its last radio message to the Tokyo branch was at 3:37 PM on the 24th. It has now been confirmed that Ise Bay was the center of a hurricane on the day of the crash, with winds of 10 to 12 miles per hour. Although efforts have been made to search for it, there are no signs of the crashed plane. The four Indians were Iyer and Mohammed from Malaya, Puni from Thailand, and a man surnamed Xin. These four were originally scheduled to come to Tokyo on the 28th and 29th of this month to participate in the East Asia Indian Conference. In addition to the Indians, there were also three Japanese passengers and four pilots who died.</p>
+<h3>Czechoslovakia and Mexico Restore Diplomatic Relations</h3>
+<p>London, 26th, Reuters – London and Mexico City officially announced that the formal diplomatic relations between Mexico and Czechoslovakia, which were severed after the German army occupied Prague in 1939, have been restored today, and chargés d'affaires have been appointed to reside in London and Mexico City respectively. The joint declaration of Mexico and Czechoslovakia reaffirms the two countries' confidence in the triumph of justice over the forces of evil.</p>
+<h3>Beaverbrook Meets with Roosevelt</h3>
+<p>Washington, 26th, Havas – Former British Minister of Supply Lord Beaverbrook is now here to assist in the organization of the War Production Adjustment Board of the United States and Britain. He dined with President Roosevelt last night and then held talks with Harry Hopkins, Chairman of the Civil Governance and Aid Act Implementation Committee, until late at night before dispersing.</p>
+<h3>Guerrilla Warfare Continues in the Mountains of Sumatra, Japanese Planes Drop Leaflets Urging Surrender</h3>
+<p>Medan, Sumatra, 26th, Domei News Agency – Japanese military aircraft today dropped leaflets on the remnants of the Dutch army, who are stubbornly resisting in the mountainous areas of northern Sumatra, urging them to stop their futile resistance. At the same time, the Japanese army has been clearing out the remnants of the Dutch army along the northeastern coast of Sumatra.</p>
+<h3>Compulsory Military Service to Be Implemented Throughout Britain</h3>
+<p>London, 26th, Reuters – British Under-Secretary of State for War Sandys announced in the House of Commons today that compulsory organization of the Home Guard will be implemented throughout Britain from now on, and will no longer be limited to the southern region.</p>
+<h3>Japanese Next Year's Budget Submitted to Cabinet for Discussion, Totaling Over 200 Billion Yen</h3>
+<p>Tokyo, 27th, Reuters – Japan's next budget has been submitted to the cabinet for discussion. Including special military expenses, it totals 243 billion yen.</p>
+<h3>New Delhi, the Focus of World Attention</h3>
+<p>Since the arrival of Lord Privy Seal Sir Stafford Cripps in India, the eyes of the world have been focused on the Indian capital, New Delhi. Leaders of various parties and representatives of princes have flocked there in recent days, and Mahatma Gandhi, who has devoted his life to fighting for the freedom of his country, also arrived yesterday morning. The outcome of the New Delhi conference will have a significant impact on the entire war situation, which is well known. (Top picture) Part of the New Delhi City Hall (Bottom picture) Tomb of the Indian King Humayun, built in 1565.</p>
+<h2>Page 3</h2>
+<h3>空 Battle Over Malta: British and German Air Forces Clash; British Planes Bomb Ruhr District in Hundreds</h3>
+<p>Havas Agency, Valletta, Malta (British Territory), 29th – The British Air Force Command here has just issued a communiqué stating that several German Junkers 87 dive bombers, protected by nine Messerschmitt fighters, flew to the coast of Malta to attack our merchant ships. Our Spitfire and Hurricane aircraft immediately took off to engage them in a battle that lasted fifteen minutes. It is estimated that two German Messerschmitt 109s and four Junkers 87s were shot down, and another eleven Junkers 87s were severely damaged. Later, another group of German aircraft flew over the scene of the air battle, searching for missing pilots.</p>
+<p>Haitong Agency, Berlin, 27th – German aircraft continued to bomb Malta heavily on Wednesday night and Thursday. Military facilities in the port of La Valetta were hit and caught fire, and the island's searchlights were also destroyed. Several port facilities were hit during the attacks, and a cruiser in the harbor was hit twice. Dock warehouses were also damaged.</p>
+<p>Havas Agency, Berlin, 26th – The local radio station has just announced that German aircraft engaged in a large-scale air battle with British aircraft over British Malta yesterday, shooting down two British Spitfires and destroying two more.</p>
+<p>Havas Agency, London, 26th – The authorities have just issued a communiqué stating, "British aircraft carried out a large-scale bombing of the Ruhr industrial area of Germany yesterday. Hundreds of aircraft participated in the operation."</p>
+<p>Havas Agency, London, 26th – The Aviation Ministry has just announced that British aircraft formations crossed the English Channel today to bomb German ships anchored in the French port of Le Havre. Details are not yet known, but eight German aircraft were shot down in aerial combat, and two British aircraft are missing. There was no enemy aircraft activity over Britain tonight.</p>
+<p>Havas Agency, Vichy, 27th – It has been learned that air raid sirens sounded in the Paris area last night from 9:50 PM to midnight. It is reported that British aircraft flew over the area, dropping various propaganda materials.</p>
+<p>Havas Agency, Vichy, 26th – Regarding rumors that the town of Pontarlier in the occupied zone of France was bombed by British aircraft last night, responsible sources here have denied the report.</p>
+<h3>German Government Orders Strict Prohibition of Hoarding and Profiteering; Severe Punishment, Including Death, for Major Cases to Prevent Scoundrels from Speculating</h3>
+<p>Haitong Agency, Berlin, 27th – The German National Defense Cabinet has issued a decree stipulating that anyone found destroying or hoarding raw materials and daily necessities will be subject to forced labor and imprisonment. In severe cases, the death penalty will be imposed. This decree has been discussed by Propaganda Minister Goebbels in a recent issue of "German Weekly." He stated that German victory is no longer a topic of debate among the German people. The current issue being discussed by everyone is the equal distribution of the burden of war. The greater the sacrifices on the front lines, the heavier the burden on the people at the rear. Therefore, the authorities should more strictly enforce order and justice, and those who violate the law should be severely punished. If Britain believes that this is a sign of German corruption, they are greatly mistaken. This is Germany rectifying discipline and preventing scoundrels from seeking huge profits at the expense of the people. In other words, it is to protect the people and severely punish speculators and profiteers to ensure social stability and avoid following in Britain's footsteps. We are considering the interests of the entire nation—the front and the rear—and therefore, we have promulgated this decree. In short, we will never allow a few people to profit from the war. We deeply hope that the people of the entire country can refine their pure character in this historical war to achieve final victory. Since the government requires the people to make sacrifices for the war, it must ensure that the entire nation bears the burden equally, and it believes that the people will welcome strict punishment for those who violate the law.</p>
+<h3>Harada Appointed Japanese Special Envoy to the Vatican</h3>
+<p>Domei News Agency, Tokyo, 27th – The Japanese government announced this morning the appointment of Harada, the Chargé d'Affaires of the Japanese Embassy in France, as the Special Envoy to the Vatican.</p>
+<p>Special Article of This Newspaper</p>
+<h3>Pilgrimage to the Indian Peninsula (V)</h3>
+<p>Magnificent Fireworks</p>
+<p>We are deeply grateful to the leaders of the various states of India for their assistance and for granting us special privileges to visit. They have been extremely hospitable, providing every convenience for photography. When religious or other solemn ceremonies are held, it is often impossible to capture the event in a single photograph. Each time, the heavy camera must be set up, and attention must be paid to lighting and reflectors to ensure that all angles of the scene are captured. As a result, the ceremonies often have to be re-enacted, which is not only a waste of time but also a great inconvenience to the princes.</p>
+<p>However, we have never heard a word of complaint! We would like to express our respect for these princely friends. Because they not only occupy the position of hosts in their royal palaces but, more importantly, they are also lovers of art. We hope that our work will be well received.</p>
+<p>Upon arriving at the palace, we were received by the dashing Lieutenant General, the Maharaja of Bikaner. The elaborate engagement ceremony was immediately held in the audience hall. The Maharaja, the Crown Prince, the betrothed grandson of the Maharaja, and another young son all participated.</p>
+<p>After the ceremony, everyone went to the temple to pray. The Maharaja then received the salute of the troops to the sound of military music before returning to the palace to rest. Aides-de-camp and the head of the electricity company came to discuss with us. Rollae and Powell spent an afternoon deciding how to supply electricity so that the wedding ceremony six weeks later could be filmed clearly at night.</p>
+<p>The special train back to Jodhpur was scheduled to depart at 6:00 PM. However, there was a grand fireworks display at 7:00 PM. The Maharaja specially instructed the train to be delayed by two hours. Because the fireworks were set off near the station, there was no objection. Indian trains somehow have such flexibility. The next morning, we actually arrived in Jodhpur on time. Although the palaces and railway facilities are very luxurious, there is no place like home—even a travel car is good. We were very happy to see our big travel car again.</p>
+<p>The Taj Mahal</p>
+<p>Traveling back 231 miles from Jodhpur to Jaipur, we then took a newly built road east to Agra. During such long-distance travel, we always eat in the car to save time.</p>
+<p>India has a particularly large population. After we stopped in the countryside, a large crowd of curious onlookers would gather around our car within minutes. They would not hesitate to open the car doors to see what was inside.</p>
+<p>Agra is located on the right bank of the Yamuna River. There, we saw the world's most beautiful building, the Taj Mahal, or the Queen's Tomb, which is so elegant and magnificent that it takes one's breath away. In 1629, Shah Jahan's beloved wife died in childbirth. The king was deeply grieved and built this pure white marble mausoleum as a memorial for all eternity, thus adding another wonder to the world. Millions of people have written about it, painted it, and photographed it, but the Taj Mahal will never be ordinary or outdated.</p>
+<p>The exterior of the tomb has a classical simplicity, but the carvings and inlays are incredibly beautiful and breathtaking. The inspiration of Emperor Shah Jahan three hundred years ago still amazes people today.</p>
+<p>We traveled 300 kilometers along the Grand Trunk Road, slowly following the Ganges River basin, passing through Allahabad to reach the holy city of Benares. We took pictures of peasant life in the United Provinces.</p>
+<p>The Benares Ascetics of the Ganges</p>
+<p>Benares and the sacred Ganges River—the savior, life, and blood of 300 million Indians! Although the river water is terribly dirty, it is sacred. Bathing in the river can cleanse sins; if the ashes of a corpse are buried at the bottom of the river, the soul can ascend to the paradise of eternal life.</p>
+<p>Along the riverbank for several miles are ghats for bathing and burning corpses. Wealthy families buy firewood to cremate the corpses, and piles of smoke can often be seen rising from the riverside. Those who are not very wealthy only scorch the bodies, while the very poor send the dead into the river without cremation. We saw a baby's corpse floating in the river, fifty feet away from a group of people bathing, even drinking the "pure water" of the river.</p>
+<p>On the riverbank, one can see Hindu mendicant monks staring at the sun with their long-blinded eyes, maintaining a sacred posture until their joints are numb. They live in extreme austerity to avoid the horror of liberation.</p>
+<p>In Benares, we used facts to prove that India does have bizarre legends, and we recorded them in photographs! For a considerable fee, one mendicant monk often chewed up and swallowed our large glass and a light bulb! After eating this special dish, he even took a pack of Wilkinson Sword razor blades and chewed and swallowed them.</p>
+<p>While we were wondering what kind of superhuman internal mechanism he had that allowed him to eat such special things, he instructed his assistant to bring out a live poisonous snake. He killed the writhing snake, skillfully bit off its head, and chewed the writhing body segment by segment, looking very pleased!</p>
+<h2>Page 4</h2>
+<h3>Shanghai Municipal Council Establishes Sub-department to Manage Housing Subleases; Applications for Sublease Licenses Begin Yesterday</h3>
+<p>According to a reporter from the Datong News Agency, the Shanghai Municipal Council has established a Housing Sublease Management Sub-department in Room 801, 3rd Floor, Courtyard Building, Jiangxi Road Mansion, and starting yesterday, is issuing application forms for Shanghai Municipal Council Land Sublease Licenses in the Lower Level Room 506, Taxation Department.</p>
+<p>Sublessors Must Fill in Each Item</p>
+<p>The format of the application form lists the following items: Applicant's name, applicant's nationality, address (including road number, lane number, house number, and room number), number of subtenants. Applicants must fill in each item in regular script with black ink.</p>
+<p>Licenses Can Be Obtained Near Nearest Office</p>
+<p>After the application form is completed by the sublessors, it can be submitted to the Shanghai Municipal Council's license issuing sub-offices, along with a license fee of 9 yuan and a number plate fee of 1 yuan, in exchange for a sublease license. The locations of the Shanghai Municipal Council's sub-offices for issuing sublease licenses are re-listed below: (Western District) 378-380 Avenue Haig, 1 Jessfield Road, 160 Macgregor Road, 435 Robison Road, 146 Newchwang Road; (Northern District) 130 Haining Road, 270 North Fukien Road; (Eastern District) 558 Chihwum Road, 133 Choushan Road. After receiving the application forms, each sub-office will issue sublease licenses sequentially starting from April 1st, and hand them over to the sublessors.</p>
+<h3>Handling of Luggage Pledged by Guests at Various Hotels; Deadline for Collection; Auction After Deadline</h3>
+<p>The Shanghai Hotel Industry Association, representing various hotels, respectfully informs guests and urges them to claim pledged luggage and deposited items. The announcement states: "To Whom It May Concern: In accordance with past practice, member hotels of this association (including hotels, inns, and apartments) will pledge the luggage or items of all guests who owe the member hotels of this association money before the end of the payment period. We hereby set a deadline of April 15, 1942, to pay off the debts and retrieve the pledged luggage. If the deadline is missed, all items will be auctioned off to compensate for the debt. If there is still a shortfall, the original debtor will be pursued for the remainder. For guests who have deposited items before departure and have not collected them for a long time, resulting in mold and damage, member hotels will charge a deposit fee at their discretion to limit this practice. If the items are still not collected after more than one year, they will be disregarded after the deadline and may be disposed of by auction by the member hotels to avoid accumulation. Please take note and do not delay, as this is important. Sincerely, Eastern, Far Eastern, Great China, Chevalier, and other hotels."</p>
+<h3>Internal Strife Among Dealers in Liujiang Coal</h3>
+<p>In 1936, the sale of Liujiang coal in the market was quite problematic, but there were still many people secretly dealing in it, leading to jealousy among competitors. The Jieyi Public Coal Company at No. 20, Lane 149, Changsha Road, was also suspected of dealing in Liujiang coal, resulting in an incident on January 6th of that year at 2:00 PM when someone threw a hand grenade and sent a threatening letter. After many years, detectives Huang Hairu and Zhang Xiaolin of the Central Police Station arrested Feng Nanshan, Feng Dingyao, and Wang Wenzheng, who were involved in the case. All three are coal merchants. Under interrogation, Feng and others confessed that the throwing of the hand grenade and the threatening letter were instigated by Luo Xisan (also a coal merchant), who is now at large. Feng Nanshan drafted the letter, but had someone else write it because his handwriting was known to everyone in the coal industry. The police station is continuing to investigate the remaining fugitives.</p>
+<h3>Tourist Jumps to Death from Rooftop of Sincere Company</h3>
+<p>At 2:40 PM yesterday, a tourist jumped from the rooftop garden of the Sincere Company on Nanking Road, landing on the road in Rue Lloyd. He broke his skull on the spot and died immediately. The deceased was about thirty years old, wearing a gray cloth Chinese jacket and pants. The ambulance transported the body to Renji Hospital for autopsy.</p>
+<h3>Rongwu Buddhist Lecture Society</h3>
+<p>The 31st lecture of the Rongwu Buddhist Lecture Society will still be held on the fourth floor of the China Vocational Education Society at 3:00 PM this afternoon. Listeners should arrive early.</p>
+<h3>Director of the Hsing Ya Yuan's Central China Liaison Department Announces Policy on Controlled Materials</h3>
+<p>(Domei News Agency, Local Dispatch) The Supreme Commander of the Japanese Navy in Shanghai has issued a proclamation stipulating that starting April 1st, the Hsing Ya Yuan's Central China Liaison Department will be responsible for the control and utilization of all important materials. On the 27th, Ota, the Director of the Hsing Ya Yuan's Central China Liaison Department, announced the control policy, specifying that the movement of materials within the Shanghai area should be handled in accordance with the following:</p>
+<p>Reporting Required Before Moving Materials</p>
+<p>Anyone wishing to move materials must fill in the required information on the forms prescribed by the Hsing Ya Yuan's Central China Liaison Department and submit them to the Hsing Ya Yuan's Central China Liaison Department through the Materials Association. Applications without the seal of the association will not be recognized in principle. If the association has not yet been established, it should be organized as soon as possible to cooperate with the Hsing Ya Yuan's Central China Liaison Department's policy. The restrictions and limits on the separate movement of important materials are attached below. The office for the movement of important materials is located in Hamilton House on Fuzhou Road. If there are any questions regarding the movement of important materials, please contact the aforementioned office.</p>
+<p>Restrictions and Limits on Movement</p>
+<p>The restrictions and limits on the movement of materials are as follows: Iron and steel: All must be permitted, except for household consumer goods made of iron and steel. Non-ferrous metals: All copper must be permitted, except for household consumer goods made of copper. Solder, except for household consumer goods, must be permitted. Minerals: Fluorspar over 180 tons requires permission; all others require permission. Cotton and cotton textiles: All must be permitted when moving from factories and warehouses and when selling to wholesalers. Wool and wool products: Wool, except for household consumer goods, requires permission. Wool yarn, rugs, and wool textiles must all be permitted when moving from factories and warehouses and when selling to wholesalers. Hemp and hemp products: Except for household consumer goods, permission is required. Leather (excluding leather products): Except for household consumer goods, all require permission. Rubber and rubber products: All raw rubber requires permission. Tires and tubes for cars and bicycles, as well as industrial belts and tubes, must all be permitted when moving from factories and warehouses and when selling to wholesalers. Wood: American lumber, except for household consumer goods, requires permission. Plywood over twenty sheets requires permission. Mineral oil: All must be permitted. Coal (including coal briquettes and charcoal): All coal movements into and out of coal yards (including deliveries to factories and other coal yards) and sales to wholesalers must be permitted. Industrial chemicals: Pigments and paints must all be permitted when moving from factories and warehouses and when selling to wholesalers. Oils and resins: Same as above. Pharmaceuticals and pharmaceutical materials: Same as above. Machinery and its accessories: Except for household consumer goods, permission is required. Rice, wheat, miscellaneous grains, flour, and other foodstuffs: All must be permitted when moving into and out of factories and warehouses. Iron drums: All must be permitted. Paper: Over one ream requires permission. Pulp: All must be permitted.</p>
+<p>Organizing Associations to Control and Utilize</p>
+<p>Furthermore, the Japanese military and naval authorities in Shanghai, in order to properly and effectively utilize the limited materials in stock within the Shanghai area and to curb rising prices, will, starting April 1st, have the Director of the Hsing Ya Yuan's Central China Liaison Department responsible for the control and utilization of the use, manufacture, and retail of materials within the Shanghai area, as well as controlling all movements of important materials within the Shanghai area. This control measure will be lifted as soon as possible within the feasible range after the control mechanisms for the use, manufacture, and sale of each designated material are completed. Therefore, the Hsing Ya Yuan is currently proceeding with the organization of Sino-Japanese trade associations for each important commodity. The Hsing Ya Yuan announced on the 28th that these Sino-Japanese trade associations will guide and utilize the movement of materials based on the following key points: Conserve consumption and thoroughly strengthen the prevention of hoarding and speculation. Constantly investigate materials in stock and prevent the dissipation of materials. Thoroughly prevent the transfer of materials to enemy countries or third-country nationals. Push forward the establishment of economic plans to complete the following control measures and improve the new system: A. Reorganize factories. B. Standardize products. Strive to standardize products and improve efficiency. C. Control raw materials. Accurately survey the raw material resources within the Shanghai area to establish a basis for controlling raw materials. D. Control allocation. Suppress rising prices in order to stabilize the people's livelihood and smoothly supply materials to Japan.</p>
+<h3>Donation Report for the Shen Bao Readers' Scholarship Fund</h3>
+<p>The staff of the Da Guangming Underwear Company wrote to this newspaper yesterday, stating: "To Whom It May Concern: The Readers' Scholarship Fund run by your newspaper benefits the people and is admired by society. We are deeply impressed by your newspaper's enthusiasm for doing good. We are sending you the bonus of 100 yuan that our company has given to our staff as a scholarship fund. Although it is a small amount, every little bit helps. We would like to follow in the footsteps of enthusiastic people in society and do our best. Sincerely, the staff of the Da Guangming Underwear Company."</p>
+<p>Yesterday's donations totaled 470 yuan: 320 yuan from the Qiming Bookstore, 100 yuan from the staff of the Da Guangming Underwear Company (attached letter), and 50 yuan from an anonymous donor (receipt number 1137). Previously, there was 87,394.88 yuan in savings, bringing the total to 87,864.88 yuan.</p>
+<h3>Minor Fire in Hamilton House</h3>
+<p>At 6:50 PM yesterday, a fire suddenly broke out in the Iwai &amp; Co., Ltd., a Japanese company on the ground floor of the Hamilton House on Hankou Road and Jiangxi Road. Fortunately, the fire was quickly extinguished, and no major disaster occurred. Only a part of the row of doors was burned.</p>
+<p>Fire on Huishan Road: At 7:27 PM last night, a fire suddenly broke out in two Western-style houses at Nos. 127-231 Huishan Road, Hongkou. The fire spread rapidly, and the flames were out of control. The fire department arrived and extinguished the fire after about an hour. The houses were completely destroyed, resulting in a huge loss.</p>
+<h2>Page 5</h2>
+<h3>Bureau Rice Prices Increase Today; Price of Corn Sold Yesterday Remains Unchanged</h3>
+<p>The Shanghai Municipal Council's Rice Office continued to designate three warehouses yesterday to supply rice to rice shops. Starting today, the price of foreign rice will increase to two yuan per liter. The limit remains at one liter per person. The Datong News Agency reporter has recorded the details below.</p>
+<p>Rice Pick-Up at Warehouses</p>
+<p>The Shanghai Municipal Council's Rice Management Committee continued to designate five warehouses yesterday where rice shops can pick up rice today to prepare for Monday's sale: Taikoo Warehouse on the Bund in the French Concession, No. 15, Lane 138, Guangdong Road, Xiangfeng Warehouse at No. 667 Huade Road, Huasheng Warehouse at No. 56 Gongping Road, and Yixing Xinji Warehouse at No. 20, Lane 31, Jiangxi Road.</p>
+<p>Corn Sold Yesterday</p>
+<p>The Shanghai Municipal Council announced that the retail price of foreign rice would be two yuan per 'kan' and that it would take effect today. The price of corn remained unchanged at 1.7 yuan per 1.5 liters. Yesterday was the day for all 395 rice shops in the two concessions to pick up corn, so the crowds of buyers were more congested than the previous two times.</p>
+<p>Flour Collection Procedures</p>
+<p>The Shanghai Municipal Council's Flour Control Office has changed the application procedures, making it more convenient to review cards or flour distribution certificates at the time of application. The office also notified all registered flour users yesterday: "Those who have not yet received their flour supply certificates should come to collect them on the 28th and 29th (Saturday and Sunday)."</p>
+<h3>Shanghai Municipal Council Rewards Chinese Detectives for Successfully Arresting Thieves</h3>
+<p>On the morning of January 16th of this year at 7:10 AM, four armed bandits robbed a large sum of money at No. 306, Lane, 306 North Honan Road. Afterwards, one of the bandits was bravely shot dead by Chinese detective No. 3199, who also seized a pistol and some bullets.</p>
+<p>Also, on February 14th at 6:30 PM, a gangster called out a name and went to a rice shop at No. 363 Yu Yuen Road, posing as a representative of the Shanghai Municipal Council's Population Census Department to review the household registration form. At that time, one of the shop assistants became suspicious and secretly went out to report to Chinese detective No. 1473 nearby. After receiving the report, the detective immediately rushed to the rice shop to investigate. Unexpectedly, one of the gangsters pulled out a pistol. The Chinese detective bravely stepped forward, knocked him down, and fired his gun, hitting the gangster in the abdomen. He died on the spot. The remaining three members of the gang took the opportunity to escape.</p>
+<p>The Shanghai Municipal Council's Police Department Awards Committee, recognizing the Chinese detectives' meritorious service in arresting the bandits, has presented each of them with a Second-Class Special Merit Medal with the approval of the Council to show their appreciation.</p>
+<h3>German Information Bureau Holds War Photography Exhibition; Exhibition Will Be Held for One Week at No. 7 Great Western Road, German Information Bureau, Starting Next Week</h3>
+<p>The German Information Bureau of the German Embassy in China will hold a German war photography exhibition at its bureau at No. 7 Great Western Road from 3:00 PM to 5:00 PM daily, starting next week and ending on Saturday. The photos on display are all unpublished in the city and depict the development of the war in the Soviet Union, similar to the battle reports of the German High Command. These photos were taken by the daredevil soldiers of the German Propaganda Troops at the risk of their lives, so they are extremely valuable. The German Information Bureau in Shanghai is taking this opportunity during this beautiful spring season to present these war photos to the people of Shanghai. The opportunity is truly rare.</p>
+<h3>Women Trying to Become Police Detectives; Exercise Funds Wasted</h3>
+<p>Two scoundrels from Guangdong, Yang Zheng, and from Ningbo, Fang Linsheng, arrived together at the home of a friend named Miao at No. 48 Route des Soeurs, French Concession, last month. They claimed they were high-ranking officials in a certain agency and could recommend anyone, regardless of gender, who wanted to become a patrol officer in the inland bureau. They said it would be effortless. At the time, several women were playing mahjong together, including Ding Zhu, Cao Guan, and Xu Guan. They were delighted and unanimously asked Yang and Fang to recommend them as policewomen or detectives. They offered rewards, and Zhu and others brought in more than twenty young ladies. Each of them gave exercise funds and rewards ranging from dozens to hundreds of gold coins. After Yang and Fang took the money, they disappeared without a trace. When the women repeatedly sought them out, they made excuses and dodged them. Zhu and the others realized they had been fooled and reported it to the French police station, requesting the arrest and prosecution of the culprits. The afternoon before yesterday, detectives apprehended Yang and Fang at No. 21, Pingyuan Fang, Qunli Road. They were taken to the police station, where they confessed to the fraud without denying it. The chief ordered them to be detained and thoroughly investigated before being prosecuted according to the law.</p>
+<h3>Public Works Department Raises Park Ticket Prices</h3>
+<p>The Public Works Department recently issued a notice stating that the annual ticket prices for all parks from June 1 of this year to May 31 of next year are as follows: an annual ticket valid for all parks costs ten yuan per ticket, and an annual ticket valid for all parks except Zhaofeng Park costs five yuan per ticket. Furthermore, from April 1, temporary admission tickets for all parks will be sold for five jiao each.</p>
+<h3>Many Leave Shanghai for Their Hometowns After Rice and Coal Prices Rise; Half-Price Tickets Can Still Be Applied For; Journey from Shanghai to Ningbo Shortened</h3>
+<p>Since the authorities of the two concessions actively began evacuating the population, the number of people leaving Shanghai to return to their hometowns has reached hundreds of thousands. The Public Works Department's office for issuing passes has expanded the scope of evacuation. Residents of both concessions, regardless of their origin, can apply for passes, which has increased the number of people leaving Shanghai. Half-price tickets can still be applied for as usual to ease the burden of travel.</p>
+<p>Anhui Native Place Association Assists with Evacuation</p>
+<p>The Anhui Native Place Association in Shanghai issued a notice saying, "Dear Sirs, the cost of living in Shanghai has risen drastically, especially the price of rice and coal. Our association has joined the Public Works Department's Chinese Evacuation Committee to assist with the evacuation of people. All our fellow villagers who do not need to stay in Shanghai are urged to register. Our association will issue half-price train and boat tickets to help you return to your hometown as soon as possible. Please do not hesitate and delay, or you will regret it."</p>
+<p>Convenience for Ningbo Natives Returning Home</p>
+<p>Since the resumption of shipping between Shanghai and Ningbo, travel between the two places is much more convenient than during the suspension when one had to risk a detour through Hangzhou Bay. Initially, there were too few ships, with only one sailing every four or five days. However, the municipal authorities in Shanghai, due to concerns about food supplies in the concessions, began to evacuate citizens. The number of ships between Shanghai and Ningbo has increased, making travel even more convenient. For example, the journey from Shanghai to Xiangshan, Cixi, Fenghua, and other places only takes three or four days. As a result, more and more people are returning to their hometowns every day.</p>
+<h3>Female Stockbroker Extorted for 100,000 Yuan; Son Once Kidnapped and Redeemed for a Large Sum; Two Main Culprits Arrested and Under Investigation</h3>
+<p>Shen Qifang, a woman from Ningbo, is 34 years old and resides at No. 775 Lane, Julaiyuan Road. She owns a large fortune and is a broker at the Chinese Stock Exchange. Last year, she was targeted by bandits who kidnapped her son, whom she later redeemed with money. Because of this incident, Mrs. Yu Shen lived a secluded life. Unexpectedly, starting from November 6th last year, she received eight threatening letters in a row signed by the "Chinese Restoration Righteousness Group," demanding 100,000 yuan or they would kill her and her son. Mrs. Yu Shen immediately reported the case to the French police station, requesting the arrest of the extortionists. Through the efforts of the detectives, the two main culprits, Zhang Guoliang and He Chuanshan (both from Guangdong), were arrested yesterday and taken to the police station. They confessed that the plaintiff had made at least one to two million yuan in speculative ventures in recent years, so they fabricated the name of the "Chinese Restoration Righteousness Group" to extort money. The French police station is currently investigating and verifying the case.</p>
+<h3>Future Development of the Insurance Industry</h3>
+<p>The newly established China National Insurance Company, organized by overseas Chinese and Shanghai business leaders, with Mr. Hu Guigeng as Chairman of the Board, is said to have strong capital and reliable credit. It is scheduled to open for business at the beginning of next month.</p>
+<p>Social Services</p>
+<p>Notice to Those Who Lost Hats on Nanjing Road: Wei Yongkang, a member of the Fourth Bao Self-Defense Corps of the First Joint Defense District, intercepted a hat snatcher at the intersection of Nanjing Road and Zhejiang Road at 7:00 PM on the 20th and recovered a woolen hat. The owner can describe the hat's brand and color and claim it from the Fourth Bao Baojia Office in Xiangfen Lane, behind the Xianshi Company. Issued by the Lao Zha District Baojia Self-Government Association of the Shanghai Public Concession.</p>
+<p>Mr. He Bingming's Inquiry Regarding Reasons for Not Publishing Lost Items in Social Services, Reply: 1. Publishing advertisements for legally significant lost items has legal effect. 2. For lost minor items, if you wish to return them to their owners, you should place a lost-and-found advertisement. 3. The reason for publishing found items in the service column is to commend the public for not pocketing lost items. Since the finder has upheld morality, this newspaper is happy to publish it so that the loser can claim it. Service Column</p>
+<h3>Radio Broadcast by the Huangzhong Society</h3>
+<p>According to sources from the Catholic Church in Shanghai, the Huangzhong Broadcasting Society established by the church will, at 7:00 PM tonight, at the French Radio Station (frequency 1400), invite Father Zhang Weiping, Principal of Pan Shi Primary School, to continue his lecture commemorating the 100th anniversary of the Shanghai Diocese of the Catholic Church, titled "The Temporal Benefits Brought to the Community by Catholicism." In addition, there will be a performance of religious songs by monks from the Shanghai Juvenile Association, a piano solo by Ms. Chen, and a duet "Make a Plan" by Chen Lili and Chen Meimei.</p>
+<h3>Opening of the China Fisheries Bank</h3>
+<p>Huang Zhenshi, a prominent figure in the fisheries industry in Shanghai, has been engaged in the fisheries business for more than 20 years. He aims to develop fishing areas and regulate production and sales. In October of the 30th year, he founded the China Fisheries Bank with a total capital of 1.2 million national currency. Mr. Huang serves as Chairman and General Manager. The head office is located at No. 250 Jiujiang Road, and the branch office is located at No. 26 Xiaodongmen Street. The buildings of the head and branch offices have been completed one after another, and they will officially open today. At that time, Jiujiang Road will be bustling with traffic and unprecedentedly prosperous.</p>
+<h3>Robbery Records</h3>
+<p>Fuxing Pickled Meat Shop at No. 13 West Zilaihuo Street was broken into by four robbers around 9:00 PM last night. Two of them were armed with guns. They intimidated and robbed the store of more than 8,000 yuan in national currency.</p>
+<p>A certain cloth store at No. 277 Lane 273, North Zhejiang Road, was visited by four robbers at 8:55 PM last night. Three of them drew pistols and robbed the store of more than 2,300 yuan in cash.</p>
+<p>Yesterday's Newspaper Broadcast Time: 6:30 PM</p>
+<p>Sports News</p>
+<h3>The Final Act of the Sino-Portuguese Charity Football Match: China Meets Portugal for the Third Time, Starting at 2:00 PM Today at Yiyuan</h3>
+<p>The final match of the annual Sino-Portuguese charity football game is scheduled to take place today at 2:00 PM at Yiyuan on Avenue Albert. The Chinese and Portuguese teams have met twice before. In the first match, the Chinese team emerged victorious with a score of 3-0. In the second match, the Portuguese team strengthened their lineup, and the chaotic battle ended in a 2-2 draw. This match is the final one, and China hopes to win smoothly. The match will be exciting and worth watching. After the match, there will be a charity ball auction. Lin Jiongan will preside over the closing ceremony. Tickets for today's match are priced at 3 yuan and 5 yuan (including donations). The lineups of the two teams are listed below:</p>
+<p>Chinese Team:</p>
+<p>Fan Jinyong, Zhuang Youren, Zhang Linzhao, He Jiatong, Zhang Zhaopeng, Han Longhai, Feng Shoupeng, Yuan Kun, Tian Shen, Jin Dada, Jiang Chao, Dai Linjing, Jia Youliang, Gao Baozheng, Fei Chunhua</p>
+<p>(Reserves) Chen Xiaoping, Li Yao, Zheng Tongyu, Yan Tingfu, Zhao Yongfang, Yue Renxiao, Cao Qin</p>
+<p>Portuguese Team:</p>
+<p>M. Su Ruo, Ma Shanjie, Ze Shifu, Weike, Tai Aolie, Waila Luolizi, Kaositan Luo Chailiao, Bolate V. Su Ruo, Gaien Ke Lasha, Fafan Xiao</p>
+<p>(Reserves) A. Luochaiyuan, Leimidi, Baoxiu Tuo, Ruoweiya,</p>
+<h3>Meisheng Cup Little League Football: Ruilong Plays Madi Today</h3>
+<p>The Meisheng Cup Little League Football League will have six matches at Guangxia Middle School today, starting at 1:00 PM. There will be three matches in the Sheng Group, two matches in the Bei Group, and Ruilong will meet Madi in the Meisheng Group. Ruilong has already won twice and should be able to defeat Madi today, achieving their third victory. The schedule is as follows: Weixing vs. Mengxian (Bei) at 1:00 PM, Wanlong vs. Yonghua (Sheng) at 2:00 PM, Wenjing vs. Ji (Bei) at 3:00 PM, Zhangyuan vs. Fort (Sheng) at 4:00 PM, Ruilong vs. Madi (Mei) at 5:00 PM, Xiaolong vs. Tiger Team (Sheng) at 6:00 PM.</p>
+<h3>Mengxian Cup Basketball: Today's Match Schedule</h3>
+<p>Ronglu vs. Venus at 2:00 PM, Friends Team vs. San at 2:45 PM, Huanan vs. Mengxian at 3:30 PM.</p>
+<h2>Page 6</h2>
+<p>Commercial News</p>
+<h3>Uncertain Speculation in the Industry; Silver Prices Plummet and Then Slightly Recover; Military Notes Also Slightly Decline; Overnight Interest Rates Rise to Nine Points</h3>
+<p>Yesterday, the unofficial market for spot silver plummeted and then recovered slightly. It twice dropped below 17,000 yuan, then rose again, indicating that silversmiths were actively searching for it. Regarding the registration news, industry insiders have differing speculations about future operations. People are waiting and seeing what happens. In the early morning, a certain money shop was eager to sell, but since only ten taels were offered, and few in the industry had gathered, there were few buyers. The price was shouted down from 18,000 yuan to 16,000 yuan before Gonghe bought ten taels. Then, buyers became active, and the price was shouted up by 1,000 yuan. 17,000 yuan was the more formal opening price, which was already 1,450 yuan lower than the previous day's closing price. The price then fell to 16,500 yuan, and silversmiths rushed to buy. Hongqingyong and securities firms entered the market, pushing the price up to 17,700 yuan amid speculation by retail investors. Spot cash shops rushed to sell, and Yongfengyu, Chengji, Hefafa, and securities firms also sold. The price then fell by 900 yuan, back into the 17,000 yuan range, dropping to 16,800 yuan. Silversmiths saw the low price and came in to buy, while Chengji and another securities firm absorbed the supply. After eleven pairs of trades, the trend stabilized, rising to 17,300 yuan, only to be pushed down again by hedgers to 17,050 yuan. The noon closing price was 17,250 yuan, which was 1,200 yuan lower than the previous day's closing price. The daily range was 900 yuan. The afternoon was calm.</p>
+<p>The prices of gold jewelry and ornaments were uniformly lowered by 150 yuan per tael by Daxin and its counterparts, to 1,750 yuan. At 3:00 PM, the price rebounded by 50 yuan, to 1,800 yuan (buy-in price reduced by 200 yuan). Fine silver was listed at 20 yuan, 14 yuan on the black market. Silver coins were reportedly slightly lower, at 8.56 yuan each.</p>
+<p>Yesterday, the foreign currency market saw the British pound and the US dollar each decline by 10 yuan. The former was 400 yuan, and the latter was 410 yuan. US dollar notes were 25.50 yuan and 26 yuan. Hong Kong notes also declined to 3.40 yuan, with larger denominations decreasing by one jiao. Military notes once fell to 7.08 yuan, eventually reaching 7.25 yuan.</p>
+<p>Yesterday, the Shanghai Money Dealers Association suddenly increased overnight interest rates to nine points. The discount rate for drafts was reportedly 5 yuan per thousand yuan.</p>
+<h3>Speculative Attention Shifts; Public Bonds Trade Briskly</h3>
+<p>Stock Prices Decline Due to Sudden Tightening of Credit</p>
+<p>The unofficial market for public bonds continued to rise yesterday, and trading was quite active. Class A bonds broke through the 70 yuan mark, and Class D bonds broke through the 60 yuan mark. Positive news was reportedly spreading, and market sentiment was quite enthusiastic. Although there were many sellers, buyers were even more eager. The market opened at a high price. In recent days, the prices of other speculative markets have declined, so many speculators have reportedly returned to the bond market. Buyers such as Hongxing, Hongda, Runde, Dazhong, Tongli, Hefeng, Renfeng, and Renchang bought in varying amounts and at different times. Hu Heji sold more, while Dakang, Cheng Gong, Chengtai, Tongkang, Shuntai, Lianyi, Yongkang, and Yiji either cut losses or shorted, selling in varying amounts and at different times. Despite this, the market remained strong and unmoved. As a result, prices continued to rise by 0.50 to 1 yuan. The total turnover was about 1.5 to 1.6 million yuan. A summary table is listed below:</p>
+<p>Foreign shares mostly declined yesterday, and trading was active again, with a total of 14,300 shares traded. Jardine Spinning only saw 400 shares traded, with the price rising from 22 yuan to 26.50 yuan, then 26.25 yuan, a small decline of 0.75 yuan. 500 shares of Xinyi at 7.60 yuan, 2,000 shares of Yep Guang at 18 yuan, 200 shares of Public Bus at 9.30 yuan, 100 shares of British Union at 20.075 yuan, 1,500 shares of Jardine Brewery at 6.30 yuan, 1,000 shares of Weizhi at 27 yuan, rising to 27.25 yuan, 800 shares of Zilaihuo at 13.50 yuan, 100 shares of Kaiping at 45 yuan, 1,000 shares of Paper at 6.20 yuan and 6.25 yuan, Huide 100 shares at 54.50 yuan, Wanghai Wool 1,000 shares at 6.30 yuan, 5,000 shares of Galentam at 0.856 yuan, and Langerzhi 300 shares at 14.30 yuan. No other trades were reported. Electric Power Preferred had buyers at 98.50 yuan, but sellers wanted 102 yuan. Electric Power Bonds had bid and ask prices of 74 yuan and 79 yuan. Demand for industrial shares varied, and there were more sellers of rubber shares.</p>
+<p>Yesterday, Chinese shares mostly declined due to the tightening of credit. Financial shares were the only ones to rise. Bank of China at 145 yuan, Bank of Communications at 140 yuan, and Great China Match at 224 yuan all rose by 2.50 yuan. Wing On Company declined by 3 yuan, to 70 yuan with sellers, Sincere at 79 yuan, Great China at 55 yuan, Sincere at 30 yuan, China Underwear (New) at 8.50 yuan, Xin Ya Enzyme at 19.50 yuan, China Electricity at 17 yuan and 17.75 yuan, World Bookstore (New) at 51.50 yuan, mostly declining. Commercial Press rose by 2.50 yuan to 200 yuan.</p>
+<h3>Turmoil in the Yarn Market; Shuangma Sharply Declines</h3>
+<p>Cotton yarn prices declined because news reports said that yarn and cloth would also be under control. Market sentiment was depressed, and many were fearful. The opening price of 20-count Shuangma yarn initially fell by 100 yuan, to 2,300 yuan. Then, as selling pressure intensified, it plunged to 3,105 yuan. However, profit-takers covered shorts, and the price rebounded to 3,230 yuan. The closing price was 1,180 yuan. 42-count Lanfeng at 8,100 yuan to 8,350 yuan, 42-count Guang at 8,000 yuan, 40-count Riguang at 7,700 yuan, 60-count Caiqiu at 20,000 yuan, 20-count Yueqin at 4,150 yuan to 4,100 yuan, 20-count Shuangma at 3,700 yuan to 3,850 yuan to 900 yuan, 20-count Danu at 3,850 yuan, 16-count Hongshuangma at 2,700 yuan, 16-count Hongkuixing at 3,900 yuan to 4,050 yuan, 16-count Jinqiao at 4,050 yuan to 4,200 yuan.</p>
+<h3>Unlicensed Traders Dump Goods; Piece Goods Plunge</h3>
+<p>The cloth market yesterday saw prices fall and then rebound. The requirement to obtain transfer certificates by April 1 caused many unlicensed traders to dump goods, leading to a sharp decline in prices. However, retail buyers took advantage of the low prices to absorb the supply, so the market stopped falling and rebounded. As a result, white goods fell by 2 yuan to 7.50 yuan, and bleached and dyed cloth fell by 3 to 5 yuan. However, some scarce goods remained firm. Fugui fine cloth at 165 yuan, Dapeng fine cloth at 167 yuan, 16-pound Diqiu coarse cloth at 180 yuan, Feihong coarse cloth at 170 yuan, 12-pound Xinzi at 127.50 yuan, Chuji Shilin at 260 yuan, Taohua Shilin at 255 yuan, White Cat floral cloth at 130 yuan. Over 300 pieces of various cloths were traded on Mujie.</p>
+<p>Due to the implementation of yarn and cloth registration, unlicensed traders in Dongbu became anxious and sold off their holdings in the morning session, causing a sharp decline in prices. However, the market rebounded in the afternoon and gradually stabilized. Longtou fine cloth opened at 200 yuan, fell to 198 yuan, rose again to 204 yuan, and then fell back to 198 yuan at noon. In the afternoon, it rose from 200 yuan to 204 yuan, and the evening closing price was 202 yuan, a decline of 6 yuan per piece compared to the previous day. The lowest price for old stock was 174 yuan, which also rose to 185 yuan. Caiqiu Feiyu at 184 yuan, Yanghe at 182 yuan, Laba at 81 yuan, Baobei fine twill at 157 yuan, Wufu Shuangyu at 165 yuan, Sijunzi Serge at 10 to 12 yuan, Red Single New Tax at 5.90 yuan. The evening closing price was 3 jiao higher per yard compared to the noon closing price, which was commendable.</p>
+<h3>Coarse Grains Weak and Listless</h3>
+<p>Yesterday's coarse grain trading continued to decline. Rumors persisted, and market sentiment was weak. Speculators only sold and did not buy, and retail buyers also became less interested. As a result, the market remained weak and listless. Bean prices fell again by 3 to 5 yuan, while bean cakes hovered without much change. Reportedly, 10 packages of Tianjin Jinyuan were sold at 225 yuan, 50 packages of tea beans at 200 yuan, 50 packages of Shandong black beans at 170 yuan, over 200 packages of Chongming Shachi at 195 yuan to 185 yuan, over 100 packages of Cha Sha Can at 130 yuan to 125 yuan, 20 packages of Sha Wan at 210 yuan. Shengji bean cake May orders at 50.08 yuan to 50.02 yuan, June orders at 51.50 yuan. Lizi bean cake March orders at 50.05 yuan.</p>
+<h3>Daily Necessities' Price Increases Intensify</h3>
+<p>The daily necessities market continues to see rising prices. Inventories are becoming increasingly scarce, and sellers are unwilling to sell cheaply. Asking prices have reached new highs, and it is still difficult to find large quantities. Therefore, trading is sparse. Solid soap at 370 yuan, Huang Xiangmao at 320 yuan, Bai Xiangmao soap at 340 yuan, Sailing Brand foreign candles at 245 yuan per box, Phoenix Brand matches at 7,200 yuan, upper-grade miscellaneous brands at 6,200 yuan, medium-grade miscellaneous brands at 5,800 yuan. Looking at market sentiment, people are still panicking, and prices are unlikely to fall back.</p>
+<h3>Apples (5)</h3>
+<p>— Gao Jiannong</p>
+<p>In conclusion, the above arguments are about apples. Since the Han Dynasty, our country has gradually popularized this kind of fruit tree. However, I must add a superfluous note, which is that the *nai* also has the name "qiuzi," and this kind of *qiu* tree was planted in our country long before Emperor Wu of the Han Dynasty! Now let's discuss the name *qiuzi*: Li Shizhen of the Ming Dynasty said in the Compendium of Materia Medica: "Linqin is the small and round *nai*, and the sour one is 'qiuzi'." Li Shihong, who lived in the early Qing Dynasty, said in his Records of the Western Frontier: "Ganzhou... has many fruits of the apricot family, many white *qin*, and many 'qiuzi'. The white *qin* is like a small apple, but the taste is slightly reduced. The flower of the *qiu* is like a begonia, and the fruit is sour. The locals take the flesh to make 'guodan' [fruit sheet] — the shape and nature of this food remains to be studied — a thin, oily sheet. People in the south do not recognize it much." How do we know that the *qiu* tree was planted in large quantities before Emperor Wu of the Han Dynasty? Sima Qian, a contemporary of Emperor Wu, said in his Biography of the Money-Makers in the Records of the Grand Historian: "North of the Huai River, south of Changshan, between the Yellow and Ji Rivers, there are 1,000 *qiu* trees... such people are equal to marquises of 1,000 households." Commentators throughout history have correctly said that the character *qiu* is the same as *qiu*, but it is doubtful that they interpret it as the kind of *qiu* tree that can only be used to make *qiu ping*, which is not a very valuable material. Because all the names of trees that Sima Qian listed before this sentence, such as 1,000 jujube trees, 1,000 chestnut trees, and even 1,000 orange trees, are all plants that can bear fruit. Why should the word *qiu* be an exception? Moreover, if he wanted to highlight trees with beautiful wood and good timber, there would be countless things better than the *qiu* tree in this area. Why mention this useless *qiu*? Therefore, I believe that this *qiu* is the kind of fruit tree that can bear *qiuzi*, whose shape and nature are the same as the *nai*! If this is true, then there were already tens of thousands of these trees in the time of Emperor Wu of the Han Dynasty. Wouldn't its cultivation naturally have been earlier?</p>
+<p>Now, let's use the language of the biological world as a compromise: In Europe, apple trees are divided into cider apple varieties and common apple varieties. In Asia, they are called Pirus malus baccata, an Asian species that interbred with the common European apple varieties, resulting in a variety of descendants. As for the story of apples being transplanted with human footsteps in the Americas, Africa, and Australia, I will have to omit it to save space. Finally, let's borrow the words of Wen Zhenheng of the Ming Dynasty in his Treatise on Superfluous Things to prove that *nai*, *linqin*, and apples are the same, or at least closely related, plants: "Crabapples are called *nai* in the Northwest. Families use them to make dried fruit, which is now called *ping po guo*. The fresh ones are better, not only because they taste good, but also because they have a delicate fragrance. In Wu, crabapples are also called *linqin*, also called *laiqin*, which are similar to *nai* but smaller, and the flowers are also pleasing to the eye. (End) References: Complete Collection of Illustrations and Writings of Ancient and Modern Times, Compendium of Plant Studies, Grand View of Notes and Novels, Records of the Grand Historian, Old Testament, French Encyclopedia, Biological World, etc.</p>
+<h2>Page 7</h2>
+<p>Entertainment World</p>
+<h3>Garbo Marries a Doctor</h3>
+<p>— New Shadow</p>
+<p>— Probably Has Special Difficulties —</p>
+<p>Swedish actress Greta Garbo has always been called a mysterious woman, especially her marriage, which is the most mysterious. In the past, we knew that Hollywood often had marriage rumors about Garbo, which spread all over the world. But every time after it came out, Garbo would always deny it, and as a result, the so-called lovers did not become family members. For more than ten years, fans who worshiped Garbo have been concerned about her marriage.</p>
+<p>But this time, it suddenly happened. On the 24th of this month, Stockholm sent out the good news of Garbo's marriage. It is said that she recently officially married American doctor Hoki. Surely this time she will not deny it, right? In the past, why was Garbo's marriage not decided and often rumored, but why this time the good relationship was formed so quickly? Of course, there is a reason for this! Perhaps in the United States, there was a good story before Garbo got married, but because of the war, we couldn't get the news? But this is just speculation.</p>
+<p>In fact, the passage of time is so rapid, and the transformation of beauty into white hair is certainly a matter of an instant. The mysterious woman Garbo is now 38 years old, and her youth has long passed. Living alone at this age is too boring! What's more, Garbo is always an affectionate woman. Therefore, although her conditions for choosing a spouse are harsh, she can no longer choose a perfect husband today. This reason, at least, is also the reason that prompted her to marry the doctor quickly, right?</p>
+<h3>The Success Stories of the Four Major Movie Stars</h3>
+<p>— Jing Yi</p>
+<p>(3) Chen YanYan</p>
+<p>Chen YanYan, in the film industry for nearly ten years, is from Beijing. When she was in school, she loved to watch movies. At that time, Lianqun Company established its fifth branch factory in Beijing and also founded an actor training class. Chen YanYan went to apply and was lucky enough to be admitted. The current fat man Yin Xiucen was her classmate, but after graduation, he was assigned to work in the printing room. When filming "Spring Dreams of the Ancient Capital," the film lacked a young girl's role, and director Bu Wancang temporarily asked her to take on the role, thus discovering her talent for acting and being promoted to a formal actor. Later, she co-starred with Ruan Lingyu in "A Plum Blossom," and after the public performance, she was noticed by fans. The company immediately asked her to star alone in a "Spring of the South Country." At this time, the title of beautiful bird was added to her, and young students became even more crazy. At that time, there were really countless "Chen YanYan fans" in schools. However, she and her colleague, photographer Huang Shaofen, spent time together and got along well. After that, every film she made was a great hit, and she suddenly became a big star. Three years ago, she officially married Huang Shaofen. She usually plays tragedies, and recently, after completing "Red Tears in a Iron Window," she has asked the company not to play tragic roles in the future, which naturally has her own difficulties. It is said that the authorities have already agreed. The recently released "Standard Lady" is her first comedy work.</p>
+<h3>Tang Ruoqing Takes Over the Lyceum Theatre</h3>
+<p>— Wenzheng</p>
+<p>Recently, spoken drama has shown a very prosperous trend. Several theaters with sufficient stage drama conditions have been rented out completely. If the Shanghai Guopian Film Company were to cease operations next month, then a portion of the cinemas would inevitably switch to performing spoken drama, and the future of spoken drama would be even more optimistic. It is said that Zhonglv (China Travel Service) recently formed two organizations. One is stationed permanently at the Tiangong Theatre, headed by Tang Huaisun and Jing Lu, and has now invited a large group of stage stars such as Gu Han and Tan Rong Wang Luxi. The other is led by Tang Ruoqing, who will take over the Lyceum Theatre, where they will first perform the play "Narcissus," written by Jin Fu and directed by Bu Wancang. We know that the Lyceum Theatre is the most ideal stage theater, and with Tang Ruoqing's appeal, this theater should be able to attract a large new audience. The Tiangong Theatre will soon stage the new play "Gui Qu Lai Xi" (Homeward Bound), featuring Sun Jinglu, Gu Han, and Sally Vaughan, which is also worth noting.</p>
+<h3>Picking Up the Painting and Calling Out the Painting: An Opening</h3>
+<p>— Jianfan</p>
+<p>Recently, I heard the female ballad singer Wang Meiyun sing "Picking Up the Painting and Calling Out the Painting: An Opening" at a certain bookstore, and also heard Xu Xuehua sing "Flower Character Opening." Both of these openings are excellent works written by Zheng Xinshi after "Ge Nenniang." The sentiments are profound and far-reaching, with meanings beyond the words, quite in the spirit of the "Li Sao." "Picking Up the Painting and Calling Out the Painting" was originally a solo scene from the Kunqu opera "The Peony Pavilion," describing Liu Mengmei wandering alone in the Du family garden after falling ill, and picking up a portrait of Du Liniang: the person in the painting is so real, it seems as if she is about to come out, and he calls out repeatedly, infatuated and intoxicated, fully expressing the foolishness of the ancient playboy. The opening adds spoken parts. When Meiyun performs, she seems to be an actor, with glances and gestures, vividly portraying the character, with both voice and expression! For example, the description of the Du family garden after the catastrophe, with broken wells and dilapidated walls, leaning this way and that, the lines go: "Thinking of the good times of the past, the boundless beauty has faded away. The spring breeze blows fragrant grass everywhere, and the autumn moon shines on jade waves every year. Alas, cold flowers vainly surround the steps, who pities the weeds that have become nests! The garden is deserted and spring has no master, burying a delicate painting." It is truly difficult to express the melancholy, and one cannot help but sigh. The "Flower Character Opening" is compiled from Tang dynasty poems, with each sentence containing the character "flower," and the meaning is coherent and natural. Although it is about wind, flowers, snow, and moon, fragrant grass and beautiful women, it still makes people feel melancholic and endlessly sighing! Xuehua's Yu-style singing, with proper guidance, makes this opening even more vivid and thought-provoking!</p>
+<h3>Scenery and Sentiments in the Singing Houses</h3>
+<p>— Guan Hong</p>
+<p>In a certain small theater, the female singers who perform Qingchang (pure singing) can be invited to sit with the patrons when they are in high spirits, and the price is only half a dozen plays (one yuan per play). The "tea and red lamps" are like the scene in "Green Realm," and the "daughter of the Small," the beauty of the sentiments is just like "sitting on a mat," but the cost is only one-tenth. (Inviting dancers to "sit at the table" requires purchasing tickets for less than half a hundred, and the dancers may even mock them saying, "Save if you can!" But we can't help but feel poor!) At this time of emergency, when everything should be frugal, some weary travelers in the dance world regard this place as a resort for leisure.</p>
+<p>But as time goes on, the customs have gradually become extravagant; Patron A thinks that ordinary people order half a dozen, but we should order at least a dozen to win the favor of the beauties! Patron B thinks that since Patron A has already ordered "a dozen," then it is not enough to call it a "grand gesture" unless one orders "two dozens"! Therefore, "exhausting their efforts and devoting their lives," some even order five or ten dozens, and the cost of sitting for a moment is no less than that in the dance hall.</p>
+<h3>Short Biographies of Figures in the Pear Garden</h3>
+<p>— Written by Zheng Guoyi, Illustrated by Zhang Yizhang, Section on Female Performers</p>
+<p>(10) Jin Suqin</p>
+<p>Jin Suqin is a female performer from the South who loudly shouts the slogan "reform of Peking opera." Nowadays, almost all the Dan (female role) performers who are active on the stage, whether male or female, are affiliated with the school of Wang Yaoqing, using it to promote themselves and increase their value. Jin Suqin uniquely uses the reform of Peking opera to build her own fortress and establish her own banner, without relying on the influence of Yaoqing, which shows her high aspirations. She has elegant manners, beautiful appearance, a slender figure, and a sweet voice. With these good qualities, she is naturally an excellent candidate to play Dan roles. Even if there are one or two areas where her skills are not perfect, they are invisibly covered up. It is much easier for her to become famous than for others, with half the effort and twice the result. However, she has spent her youth in vain, still wandering on the wrong path, and has never been able to shine in the opera world. One day, she will finally be able to raise her eyebrows and exhale. The reason may not be that she did not lay a solid foundation first, and was too hasty and eager to shout out "reform of Peking opera," which led to her failure. It was Ouyang Yuqian who harmed her. Yuqian tried to reform Peking opera without deeply studying it, which led to a result of being at a loss. He did not learn from his own mistakes, and personally led Jin Suqin to repeat the same mistakes, causing her to waste her youth and fail to stand out. This beautiful jade was carved into something useless, and one cannot help but feel regret when looking at it.</p>
+<h3>Collocation of Peking Opera Play Titles</h3>
+<p>— Hongxun</p>
+<p>There are many Peking opera play titles. Now, let's try to connect some play titles to create relationships, in order to stimulate the interest of opera fans. The Modern Girl and the Buddhist Monk • Taking a Female Prisoner under Escort • The Six Ministries Hold a Major Trial • Trial of Pan Hong • Visiting Relatives • Scolding • Scolding Yama • Yingwei's Martial Arts Competition • Wu Wenhua Holds a Major Trial • Trial of Pan Hong • Hongtong County • Daiyu Buries Flowers • The Floral Marriage • Wu Song's Escort • Escorting the Jewel • Cutting Off Hair Instead of Head • Shouyang Mountain • Crossing the Sea to Conquer the East • The Eastern Emperor's Village • Disembowelment Battle • Battle of Taiping • The Dragon Plays with the Phoenix • Phoenix Mountain • Xue Mei Mourns • Filial Piety and Righteousness • Leifeng Pagoda • Tazigou • Offering Sacrifices to the Yangtze River • Jiangdu County • Outstanding Heroes • The Story of Heroic Women • Painting the Golden Phoenix • The Phoenix Returns to Its Nest • The Iron Lotus Flower • The Butterfly • Picking Up Gold • Golden Horse Gate • Chang'e Flies to the Moon • Chasing Han Xin Under the Moon • Losing the Seal and Rescuing from Fire • Burning the Barracks • Qiu Hu Teases His Wife • Wife's Complicity in Evil Punishment • Splitting the Three Passes with a Knife • Guan Yu Flees to Maicheng</p>
+<h3>Sharing the Same Boat in Stormy Weather</h3>
+<p>— He Jia Zhi</p>
+<p>(2) Sorrow and Joy</p>
+<p>Wei Yunqing nodded, held his few whiskers with his idle hand, and smiled again: "Yes! I think Mrs. Ye is not very old, and she would not have prepared for her funeral so early. It's good that I have some good coffins at home, cypress, Phoebe, and Jianmu, all of which you can come and see. Like Mrs. Ye, she is the wife of a scholarly family, her father-in-law had a Qīng dynasty title, and she gave birth to a young master who studies in a foreign school. This last time, hahaha, should be more lavish." Li Youxie thought: Wei Yunqing is undeniably quick-witted. When he hears that someone has a funeral, he immediately tries to solicit business for coffins.</p>
+<p>Mrs. Ye and Li Youxie discussed and asked Wei Yunqing what the approximate price of a Jianmu coffin with a round heart and a faded lacquer finish would be. Mrs. Ye's idea was that Mr. Ye's funeral was like this before, implying that the later funeral should not exceed the previous one. Wei Yunqing pondered for a moment and raised an index finger, saying: "The price is exactly nine hundred and ninety-nine yuan, which is cheaper than a braid." Mrs. Ye and Li Youxie were both surprised and said, "Even if it's expensive, it shouldn't be this price. Last time it was only two hundred and something yuan." Wei Yunqing smiled and said, "This can't be compared to before. Now rice is almost ten yuan a load. Wood is expensive, paint is expensive, labor is expensive, everything is expensive. It's only me selling it to you for nine hundred and ninety-nine yuan, which is not expensive." He stood up happily, but the broken tiles and bricks in his pocket all fell to the ground and hurt the back of his foot. "35"</p>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.03.27.html", "next": "1942.03.29.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

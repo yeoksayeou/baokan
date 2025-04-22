@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.02.10 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 389 - 4924392</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日軍渡柔佛海峽　在新加坡島登陸　飛機大砲猛轟助戰現距新市僅十餘哩</h3>
+<p>新山九日同盟社電　本日上午零時十六分、日軍自新山正面向新加坡島登陸成功、</p>
+<p>東京九日同盟社電　日本帝國大本營今日午後五時零五分宣布、柔佛海峽北岸日軍、昨夜今晨對新加坡開始作戰後、已渡過海峽、正在猛攻英國「東方直布羅陀」要塞、</p>
+<p>東京九日同盟社電　據最近消息、昨日深夜在新加島登陸之日軍、於佔領新島極西部之頓加飛機塲後、已進抵距新加坡市十哩以內、日軍係於今日午後一時三十分佔領頓加飛機塲　今日侵晨渡柔佛海峽在新島西北部登陸之日軍、已向保衛海堤道與克蘭奇海對岸西萊泰海軍站之英方要塞、展開猛烈攻擊、輕坦克車隊隨後助戰、日俯衝轟炸機不斷襲擊、而隔海峽之日方砲隊亦猛轟助戰、向克蘭奇河防禦陣地疾進之日軍、聞已擊破英方砲位與堡壘、另有日軍部隊亦迅速開抵前綫、</p>
+<p>新山九日同盟社電　日軍昨日午夜以砲火網掩護、波過柔佛海峽、新加坡島外圍英軍聞已退却、日軍觸及新加坡島係在午夜後十六分鐘、當時即有綠色信號彈射入空中、四分鐘後、叉有紅色信號彈繼之而起、表明敵前登陸業已完成、登陸部隊旋向某地高地進攻、此外、另有日軍一隊、亦已於午夜後二十五分鐘在新加坡島另一處登陸、</p>
+<p>新山九日同盟社電　日軍砲隊從五日晨起爆擊新加坡、愈趨愈烈、日機亦飛往轟炸、新加坡東部欽琪要塞之巨砲已開始轟擊、新坡西萊泰區之三十八處油槽中、已有二十八處起火、烈燄與濃烟衝天、估計新島駐軍約二萬名、內有英軍第十八師、澳軍第九師、與混合義勇軍約二十三營</p>
+<p>倫敦九日路透社電　關於新加坡登陸日軍之數、倫敦負資人士尙無情報、日軍登陸之區、起伏不平、且有芒果沼與橡皮波羅蜜園、傳有日軍登陸之森幾克蘭奇與巴西拉拜兩地、相去約十哩、</p>
+<p>倫敦九日路透社電　據新加坡來訊、今日黎明前，大隊日軍在猛烈之砲火網掩護下、渡狹窄之柔佛海峽、在新加坡島登陸、以圖衝過英方堡壘、英澳印軍力阻日軍擴大其立足點、遂在沿海灘展開激烈之白刃戰、大約日軍係乘平底船渡海峽、在多處地點登陸、此海峽之闊度、在若干地點不足一哩、日軍登陸前之砲轟、係昨日拂曉時開始、日夜未已、英軍遠東指揮部今日公報稱、星期日午後十時與星期一午前一時之間、日軍在新加坡島西北海岸登陸、若干地點之英軍先頭隊被迫後退、而若干日軍已向東潛入、英軍已向日軍展開攻擊行動、惟結果現尙未悉云、據倫敦方面聲稱、日軍所以擇新島西北面登陸者、因該處海峽最狹、而日軍登陸地、乃澳軍新南威爾斯與昆士蘭部隊所扼守、又據路透社新加坡訪員來電稱、新加坡北部前綫日機、今晨益形活動、日方迫擊砲與大砲則隔海峽不斷轟擊，顯望以砲火擊毀英軍防務、而日機亦投彈助戰、日方砲火係轟新島西北至東北角區域、但無瞭望汽球、今日新加坡城雖發數次警報、然未被炸、曾見日機數犬隊飛行極高、但未向城區近處投彈、當係忙於飛新島北部助戰無疑、日軍登陸前、其砲隊曾密集猛轟不已、所發砲彈、盈千纍萬、然後在海峽東端之烏瓶島登陸、以便主力進攻新島西部、烏瓶島距新島雖僅約半哩、然日軍並無從該島進攻新島之微象、</p>
+<p>日軍採用潛入戰術</p>
+<p>倫敦九日哈瓦期社電　日軍在新加坡島登陸事、頃由此間軍界人士加以評論稱、日軍仍在利用「潛入」戰術、此與馬來戰役如出一轍、日軍此後攻擊方向何在、雖尙難推測、但其登陸處距離要塞海陸軍根據地最遠、似此日軍似有直趨新加坡市模樣、同時且擬截斷海軍根據地及飛行港、預料日軍當繼續在新加坡登陸、並當以猛烈砲火作爲掩護、據此間官方相信、日軍係在新加坡島西岸登陸、或因該處柔佛峽最狹之故、至於戰事發展詳情如何、此間尙無所知云、</p>
+<p>荷印各地續遭空襲</p>
+<p>東京九日同盟社電　日帝國大本營今日午後十二時二十分宣布、日本陸軍機於本月七八兩日襲擊蘇門答臘及緬甸各地</p>
+<p>日軍某處基地九日同盟社電　日本海軍機昨在蘇門答臘東南海岸附近擊沉巨大敵船一艘、</p>
+<p>巴達維亞八日哈瓦斯社電　此間廣播電台發出消息、日本空軍本日又復轟炸荷印重要海軍根據地泗水港、參加空襲者共有俯衝式轟炸機多架、按日機轟炸泗水、前後已達四次、</p>
+<p>巴達維亞九日路透社電　荷印軍司令部今日公報稱、今晨日機復襲巴達維亞及近郊、詳情尙未獲悉、婆羅洲東部峇里巴板以南日軍續有局部活動、該處日軍巡邏小隊刻正南進、顯擬循陸地進抵馬辰、蘇門答臘之巨港附近飛機塲一處遭日機襲擊、蘇門答臘北部仍有偵察活動、</p>
+<p>澳洲感受嚴重威脅</p>
+<p>雪梨九日哈瓦斯社電　澳洲聯邦陸長福特今日宣稱、日軍果爾、則澳洲即當遭受嚴重威脅、荷印若能久守、則吾人即可乘機使澳洲爲聯軍作戰根據地、惟恐時機迫切、吾人務須加緊趕成軍備云、</p>
+<p>新加坡九日路透社電　澳軍指揮官彭納特少將今晨在美師團司令部中接見新聞記者時聲稱、吾人刻正籌備攻擊、其結果可望儘可能範圍、收復失土、日軍在西北海岸登陸所乘之船、顯係在馬來半島南運之特種船隻、而非零星集於柔佛海峽之舢舨云、</p>
+<h3>緬甸前綫　戰事沉寂　日機隊仍不斷活動華維爾曾抵緬視察</h3>
+<p>日軍某處基地八日同盟社電　日本陸軍機今日三次大舉襲擊緬甸敵軍基地、</p>
+<p>仰光九日路透社電　陸軍司令部昨夜宣布、怒江（即薩爾溫江）方面昨日沉寂無戰事、日軍機曾於上星期六夜作第五次夜襲仰光北面飛行塲、規模較以前數次爲小、擲下炸彈僅十二枚、物質稍有損失、但無死傷、英軍夜戰機會飛起迎擊、此外、英機並曾於星期六全日在前哨陣地上空巡邏不息、</p>
+<p>西貢九日海通社電　仰光消息、華維爾將軍現復至緬甸訪問詳細地點未予說明、僅謂至摩爾門前綫視察、但摩爾門已於一週前落入日軍手，故衆信華維雨視察之期、當在若干時之前、</p>
+<p>仰光九日路透社電　緬督咋夜廣播駁斥謠諑稱、吾人決意扼守仰光、軍事當局並未接管仰光、而民事行政將繼續進行、惟本市易受空襲、政府之方針爲不必要之市民、應疏散至較安全區域、故政府各部與商店能在仰光市外經營者、咸應遷出、此於戰爭努力實有具體裨助云、</p>
+<h3>菲島戰訉</h3>
+<p>華盛頓九日路透社電　陸軍部昨日宣布、馬尼刺灣東南岸日軍砲隊叉復轟擊柯列基陀鳥要塞、砲火集中密爾斯·休斯·及弗倫克三處砲台、約二小時之久、八打雁半島方面、日軍侵入我軍右翼、我軍即予以反攻、左翼戰事益烈、二十四小時以來、日機且轟炸不息、</p>
+<p>華盛頓九日路透社電　美陸軍部今日公報稱、菲列濱方面轟擊美方港口防務之加維特沿岸日方隱蔽砲隊、已有若干被美方發現、而遭美砲台還擊、美軍陣錢上空日俯衝轟炸機活躍</p>
+<h3>美國訓練　空軍員二百萬　史汀生陸長正式宣稱本年內可達半數目標</h3>
+<p>華盛頓八日電　陸長史汀生昨日宣稱、美國訓練二百萬駕駛員計劃、將爲世界最偉大之空軍計劃、今年以內可達到半數目標、此項數字殆可與納粹一百萬至一百十五萬及英國一百萬之總和相比、空軍人數視戰前陸軍人數尤多、珍珠港戰役以前、史汀生曾宣佈訓練空軍人員之數額、不過四十萬人、今已大爲增加矣、羅斯福總統最近發佈命令、授權陸軍部動員較多之步兵師團、連同史汀生前已宣佈微用之兵士在內、今年美國陸軍總數將達三百六十萬人、現在各師幹部組織業已形成、即可迅速發展而爲完備之師團、蓋美國動員優秀之預備軍官入伍、並在各大城市組織預備隊已早有時日矣、美國參謀總長馬歇爾將軍宣稱、美國西點軍事學校即將有一批海軍士官畢業、彼等同時亦爲優秀之航空駕駛員、此後美國海軍士官畢業後、在正式加入空軍服務以前、尙應受三年航空訓練、</p>
+<h3>美考慮任命　駐蘇大使　赫爾史丹萊有望</h3>
+<p>紐約九日路透社電　美政府正考慮任命國務卿赫爾爲駐蘇大使、蓋蘇聯曾派該國極有聲望之外交家李維諾夫爲駐美大使也、</p>
+<p>華盛頓八日哈瓦斯電　「紐約民聲講壇報」頃載稱、羅斯福總統徇斯達林之請、或將任命年已古稀之史丹萊海軍上將爲駐蘇聯大使、以繼斯坦哈特之後任、按史丹萊雖年已七旬、但仍極健康、會於一九三三年任海軍參謀長、在外交方面、曾爲美國代表、出席倫敦軍縮會議、羅斯福對於駐蘇聯大使之人選甚爲重視、須對於軍事外交問題均有硏究者、在現行戰爭爆發之初、史丹萊上將即主張對軸心國採取强硬政策、甚至要求政府於一九四〇年十月間、向軸心國宣戰、至少亦須宣布緊急狀態、俾能應付非常局勢云、</p>
+<h3>阿根廷陸軍員額　將增至九萬名</h3>
+<p>阿根廷京城九日海通社電　阿根廷陸長昨晚宣稱、阿根廷陸軍實力原爲七萬九千人、將增加至九萬五千人、</p>
+<h3>澳國防部長　朂勉將士　應效法中蘇精神達港發空襲警報</h3>
+<p>雪梨九日路透社電　澳洲陸長福特七日演說謂、勝利實現以前、必難免迭次之頓挫、澳洲陸軍應效法中蘇同盟國之精神、負起責任、切忌淸談誤國、關於澳軍之行動、日方電台屢有報吿、殊屬可異、政府決心以全力制止洩漏機密之情事，</p>
+<p>澳洲達爾文港八日哈瓦斯電　本日午後、此間發出空襲警報、歷時九十分鐘、太平洋戰事爆發以來、此係第三次警報、</p>
+<h3>德軍需部長　墮機殞命　著名齊格菲防線係爲渠一手策劃</h3>
+<p>柏林八日哈瓦斯社電　官方宜佈、德國軍需部長暨第三德國元勳陶德博士、本日乘坐飛機失事、因公殉職、按陶德爲舉世稀有之組織天才、曾任公路總監、德國全國公路網、在渠指導之下、建築完成、著名之齊格菲防錢、（一名西部長城）及大西洋沿岸各種防禦工程、亦爲渠一手策劃、氏於一八九一年生於波森、在慕尼克及凱斯爾羅黑兩地技術學校畢業、得工程師學位、而以建築公路擅長、第一次大戰期內、參加砲兵團在西綫作戰、旋加入空軍服務、一九一六年八月、會一度在空戰中受傷、</p>
+<h3>美將派使命才　訪伐勒拉　由前菲督墨飛率領期改善對南愛關係</h3>
+<p>紐約九日路透社電　據新聞員播音、羅斯福總統或將派美籍愛爾蘭要人組使命團委員、訪南愛總理伐勒拉、以期改善美國與南愛之關係、該團將由前菲島總督墨飛率領、又據預測、上次世界大戰中曾率著名美軍第六十九隊之杜諾文上校、將担任編練「神勇」軍、</p>
+<h3>丹吉爾港　宣布戒備狀態　因炸案民衆反英示威法屬摩洛哥增强警力</h3>
+<p>瑪德里九日海通社電　丹吉爾西班牙當局鑒於人民對英國外交官行李中定時炸彈最近發生爆炸一事、大表憤激、故已宣佈戰爭狀態、此項措施目的乃在避免發生粉擾事件、據稱因爆炸致死者現已自十二人增至十西人、尙有重傷多人，恐難望生還、丹吉爾居民昨且舉示威遊行、以洩憤怒、數千阿刺伯人與西班牙人手持摩洛哥與西班牙旗、沿途歡呼弗朗哥將軍、並賣駡英人、市政當局特派代表領導遊行、至高級委員官署前始散、乃派代表謁見烏魯阿特將軍、要求嚴辦嫌疑人犯云、</p>
+<p>倫敦八日哈瓦斯社電　據路透社消息、英國拖輪「救護」號、於駛抵北非國際中立地丹吉爾港時、曾發生爆炸、雖無死傷、但英方之物質損失甚重、此事發生後、該港之軸心份子即鼓動人民舉行反英遊行、該港警察至英總領事向西班牙當局提出强硬抗議之後、始出而干涉、此間英國各界人士聞訊之餘、極爲憤慨、</p>
+<p>維希九日海通社電　據拉巴特消息、法屬摩洛哥各大城市、現將增强警察力量、藉以鎮壓夜間之路刦案件、今後凡在夜間犯武裝盜案者、將處以死刑、</p>
+<p>柏林方面重視炸案</p>
+<p>柏林九日海通社電　德報昨日均發表長篇論文、評丹吉爾英外交人員行李中之爆炸案、稱之爲英國之犯罪行爲、柏林地方報稱、丹吉爾事件、暴露英國對西班牙之居心、西班牙政府關於直布羅陀之給養、曾予英國以種種便利、不料英國竟藉此在丹吉爾及西屬摩洛哥從事反西宜傳、關於路透社所稱此次爆炸案係軸心份子所爲一節、柏林「星期一報」稱、路透社之言、可稱不打自招、因無人能信丹吉爾之德人、能自英國船上搬下一儲有炸彈之箱篋也、蓋此藏有炸彈之英外交人員之行李、係來自英海軍之拖駁也、</p>
+<p>法西談話親善表徵</p>
+<p>摩洛拉已特港八日哈瓦斯社電　法屬摩洛哥總監諾蓋斯將軍、與西班牙駐西屬摩洛哥高級委員奧茄慈將軍、本日在西屬拉勞許港、舉行會議、討論有關而保護地雙方之各項重要問題、其尤爲重要者、計有　一般商業及金融問題、　頒佈新關稅條例問題、　穆羅雅江建築大水閘問題、該項計劃實施後、法屬摩洛哥及西屬摩洛哥兩地、廣大的未開墾土地、均可因此獲得灌溉、兩氏談話係在諒解與友誼的氣氛中進行、此爲法西兩國邦交之特徵、</p>
+<p>駐西美使返國述職</p>
+<p>葡京八日哈瓦斯社電　美國駐西班牙大使魏台爾、本日抵此、即當乘坐飛剪號飛機、返國述職、預料不久即將遄返任所、</p>
+<h3>葡萄牙總統　當選連任</h3>
+<p>葡京八日哈瓦斯社電　葡萄牙總統卡蒙那將軍、本日又復當選連任、投票全部結果、此際尙不可知、但據此間政界人士所知、至少能在全體選票中佔百分之八十、並認爲此次大選、匪特足以表示民意向背、且可從而窺知人民對於總理薩拉柴所推行之政策、是否贊同、</p>
+<h3>德蘇軍隊　冰湖血戰　中區蘇軍獲捷</h3>
+<p>柏林九日海通社電　此間權威方面昨夜宣稱、蘇軍兵力約一萬人、近欲渡過冰凍之拉杜加湖、襲擊德軍陣地、戰事即在冰湖上展開、歷數小時之久、蘇軍一小隊利用黑暗、曾偷渡至德軍所守之一岸、結果被德軍猛烈砲火完全加以殲滅、</p>
+<p>莫斯科九日路透社電　據蘇方前錢戰訊、蘇軍已於斯摩倫斯克東北之加里寗綫突破德軍陣地、毀小堡壘六所及大批機關槍陣地、</p>
+<p>芬京八日哈瓦斯社電　芬蘭與蘇聯接連發生兩次戰爭後、國內各大學學生人數已大爲减少、過去三年中、在各技術學校畢業之工程師僅一百六十人、且大半已在前綫陣亡、</p>
+<h3>各地戰報</h3>
+<p>皖南某地八日電　東流靑山之日軍、六日拂曉分路向灰山進攻、河山日軍亦發砲助戰、華軍沉着應戰、一小時許始吿平息、又靑山日軍一部於四日晨亦攻火山、</p>
+<p>樊城八日電　二日信陽·羅山·日軍千餘、分三路向羅山以東進攻、</p>
+<p>吉安七日電　　南昌日軍此次向華用兵、數約三千五百餘人、現戰事已吿中止、　贛北豐城現已安謐、秩序恢復、</p>
+<h2>Page 3</h2>
+<h3>物品供應勢須減少鼓勵各業整批疏散　各團體領回鄉證予以種種便利</h3>
+<p>工部局情報處正式公吿云、丁茲戰時、縱以各當局之種種努力、但供給之應予限制與夫工業活動範團之宜乎縮小、勢所難免、因此上海行見遭遇嚴重之貧困問題、已屬彰彰明甚、本局對於私人慈善機關、極願在本局指導之下、予以鼓勵與援助、但限於財力、即使獲有日本當道之充分合作、亦屬無法計劃任何公共救濟事業、故本局所設救濟委員會之工作、暫告停止、在此種情形之下、不得不再向各有關係方面發出呼籲、請竭其全力、從事于疏散人口之鼓勵與協助不特裨助當局、抑且有利于各個市民、</p>
+<p>獎勵市民離滬回鄉</p>
+<p>各有關係　局、現正盡力獎勵市民離滬回鄉、本局方面業已設置辦事處九所、簽發回鄉通行證暨舟車半價券、各該辦事處之地址如次、</p>
+<p>本局商團司令部</p>
+<p>本局商團操塲</p>
+<p>新加坡路膠州路本局小學</p>
+<p>克能海路一九丸號本局小學</p>
+<p>馬白路二十五號本局學校</p>
+<p>山海關路育才公學</p>
+<p>荊州路聶中丞公學</p>
+<p>戈登路七五三號工務處工塲</p>
+<p>厦門路二零六號工塲</p>
+<p>設流動隊發團體證</p>
+<p>上述各辦事處、在星期六下午及星期日、亦照常辦公、此外、本局業經設置流動隊、準備分赴各工廠（有工人三十名以上離滬者）簽發通行證件、各工廠廠主、倘其工人已吿解雇、應在廠房門首張貼通吿、通知工人凡願意回鄉者、可　由廠方代領通行證、暨半價券、然後幷向工業社會處給領、或用電話通知亦可（電話一五三四九、）</p>
+<p>本局承各華董暨各同鄉會之贊助、已組織一委員會、並設立辦事處於木局三摟第二七七號辦公室（電話一四零三六號、）辦理整批回鄉通行證暨半價券之簽發事宜、同時、日木常道、備就專輪兩艘、直放寗波、便利用籍市民回鄉、此外本局警務處人員、當予派駐車站及輪船碼頭、招料回鄕之市民、</p>
+<p>茲有鄭重聲明者一點、即個人方面倘有需要救濟情事、請勿向本局大厦請求、</p>
+<p>疏散工作逐步緊張</p>
+<p>工部局爲積極疏散人口起見、特於本月六日組織華人疏散委員會、辦理整批回鄉通行證件之簽發事宜、並設立辦事處於福州路一八零號工部局三樓二七七號寫字間、自成立以來、雖僅數日、但前往請領通行證暨舟車半價券者、已有寗波·紹興七縣·江淮·福建·河北·奉化·等旅滬同鄉會暨餅饅業同業公會等等、均經該辦事處分別派員調查屬實、愼重簽發、計已發出通行證與半價券共一萬餘張、叉該辦事處每日辦公時間爲上午九時至十二時、下午二時至四時（日光節約時間）、歡迎本市各職業團體各同鄕會以及各工廠前往接洽領證手續、或以電話洽詢亦可、（電話四〇三六號）</p>
+<h3>散發粥票</h3>
+<p>慈聯救災會鑒於舊歷年關在邇、各處隱貧紛紛函懇該會設法救濟、會方爰於昨日起、分派職員陸德紳王立民等、携帶粥票、分赴各處散放、今日續發</p>
+<h3>申報讀者助學金　錄取名單</h3>
+<p>補習組</p>
+<p>譚振球　同進日文專校　三〇</p>
+<p>諸光逵　明信會計補校　十六</p>
+<p>高文康　慕時英文補校　二八</p>
+<p>顧錦發　第一中華職校　二八</p>
+<p>屠寳壎　明信會計補校　三〇</p>
+<p>陳忠讓　冠羣業餘補校　二六</p>
+<p>周其芳　冠羣業餘補校　二六</p>
+<p>朱友仁　第四中華職校　十三</p>
+<p>沙傳祥　慕時英文補校　三二</p>
+<p>舒光偉　慕時英文補校　二八</p>
+<p>王思駿　第一中藥職校　二九</p>
+<p>吳松泉　文生氏英專　十八</p>
+<p>趙夙寅　第一中華職校　三〇</p>
+<p>譚康鑾　上海商業學院　四二</p>
+<p>余廷錦　慕時英文補校　二八</p>
+<p>沈仲彥　明信會計補校　三〇</p>
+<p>葉聲　明信會計補校　三〇</p>
+<p>陳仁祿　進修業餘補校　十二</p>
+<p>楊金培　明信會計補校　二〇</p>
+<p>樂亦成　同進日文專校　廿二</p>
+<p>薛安生　進修業餘補校　十二</p>
+<p>方玉振　第四中華職校　二六</p>
+<p>黃德成　第二中國職校　二八</p>
+<p>韓鴻世　慕時英文補校　二八</p>
+<p>沈慧敏　明信會計補校　三〇</p>
+<p>任新錩　進修業餘補校　十二</p>
+<p>郁永壽　第四中華職校　二五</p>
+<p>朱良富　慕時英文補校　二八</p>
+<p>李世琨　慕時英文補校　二八</p>
+<p>楊熙培　慕時英文補校　二八</p>
+<p>馮顯祚　進修業餘補校　十五</p>
+<p>吳甲第　第四中華職校　二五</p>
+<p>謝滋生　第四中華職校　十二</p>
+<p>趙嘯嶽　明信會計補校　三二</p>
+<p>張宗江　冠羣業餘補校　二八</p>
+<p>隆武能　三極無綫電校　五〇</p>
+<p>陳貞　　明信會計補校　二四</p>
+<p>鄭芳鏞　進修業餘補校　十五</p>
+<p>李宏伋　明信會計補校　二四</p>
+<p>林瀛海　進修業餘補校　二七</p>
+<p>沈金釗　第四中華職校　二六</p>
+<p>朱育南　進修業餘補校　二七</p>
+<p>張季學　明信會計補校　二四</p>
+<p>陳堯明　滬江英文專校　三二</p>
+<p>周美義　慕時英文補校　二八</p>
+<p>蕭增煒　第二中國職校　二八</p>
+<p>倪金泉　同進日文專校　廿二</p>
+<p>賀賢相　明信會計補校　廿二</p>
+<p>孫荷泉　第三中華職校　廿一</p>
+<p>管達人　華美無綫電校　三六</p>
+<p>潘保康　上海中醫專校　四八</p>
+<p>吳畏雋　第二中華職校　二八</p>
+<p>陸祖丹　第二中華職校　一九</p>
+<p>周寳善　滬江英文專校　二二</p>
+<p>居福林　亞洲工程學院　四〇</p>
+<p>蓋伯如　明信會計補校　三〇</p>
+<p>李本海　第二中國職校　一五</p>
+<p>李繼福　第二中國職校　一五</p>
+<p>謝瑞熾　讚臣英文專校　三〇</p>
+<p>李昭順　滬江英文專校　二四</p>
+<p>陳英立　慕時英文補校二八</p>
+<p>江繼開　進修業餘補校　二七</p>
+<p>蕭振中　第二中華職校　二三</p>
+<p>李樹英　慕時英文學校　三二</p>
+<p>顧元初　明信會計補校　二四</p>
+<p>吳寳麟　滬江英文專校　二二</p>
+<p>陶公壽　滬江英文專校　二四</p>
+<p>孫才樟　滬江英文專校　二二</p>
+<p>鄧鶴年　滬江英文專校　三五</p>
+<p>陳仁壽　進修業餘補校　一二</p>
+<p>黃石坪　寰球打字傳習所　一二</p>
+<p>周燮生　進修業餘補校　一五</p>
+<p>張文富　第二中華職校　二四</p>
+<p>李俊德　明信會計補校　二四</p>
+<p>高子偉　明信會計補校　二四</p>
+<p>施祖德　進修業餘補校　一五</p>
+<p>陳文儀　明信會計補校　一六</p>
+<p>朱聲萬　進修業餘補校　一五</p>
+<p>徐祥豐　滬江英文專校　二〇</p>
+<p>姚人傑　上海工程學校　二四</p>
+<p>金國相　明信會計補校　二四</p>
+<p>沈秉康　滬江英文專校　二四</p>
+<p>鐘授臣　綢業補習學校　二〇</p>
+<p>朱震初　明信會計補校　二四</p>
+<p>陳成章　進修業餘補校　二四</p>
+<p>包大成　進修業餘補校　二四</p>
+<p>陳詠標　第二中華職校　二五</p>
+<p>魏士剛　民生補習夜校　一〇</p>
+<p>徐復興　第二中國職校　三四</p>
+<p>屠紹彭　進修業餘補校　一五</p>
+<p>蕭傳芳　進修業餘補校　二五</p>
+<p>張麒芳　明信會計補校　一六</p>
+<p>邵喜祥　第四中華職校　一一</p>
+<p>朱繼和　進修業餘補校　三〇</p>
+<p>羅紹鈞　第四中華職校　二五</p>
+<p>張若雁　進修業餘補校　三〇</p>
+<p>汪賡銘　明信會計補校　三〇</p>
+<h2>Page 4</h2>
+<h3>有婦之夫重婚　嘉禮甫成被捕</h3>
+<p>本地人張桂松、年二十五歲、本屬紈袴子弟、於民二十八年與同鄉女子沈桂如結婚、同居於梅白格路祥康里十一號、乃張性極好遊、歌舞塲所、時有其踪跡、當二十九年春、張遊於大輩舞廳、與上海女子楊五瑛（二十三歲爲某師範女學高材生）相遇、竟一見生情、從此互相往返、進而發生肉體關係、賃屋同居於蒲柏路蒲柏坊一五零號、曾育一女、旋即夭亡、但楊女毫不知張已屬有婦之夫、故堅持張補行婚禮、張亦尤之、遂於前日在九江路樂鄕飯店舉行結婚儀式、不料事機不密、爲沈桂如所偵悉、報吿中央捕房、由華探目宋元善、探員毛雲龍馳往拘捕、適張楊之婚禮甫吿完成、送入洞房之際、乃將張楊一併帶入捕房、經調查楊確屬以前未知張已有婦、遂予開釋、張則收押、聽候核辦、</p>
+<h3>卡車猛撞塌車　塌車夫殞命</h3>
+<p>卡車夫通州人江漢岐、八日上午八時、駕駛二三六零九號運貨汽車、行經天潼路北山西路附近、不愼將前面同鄕人劉來元所駛之一七四六二號卡車猛撞一下、致前面塌車一輛、立時翻倒、車夫江北人張炳鰲、腹部受傷甚重、一息奄奄、經一八五七號華捕到來、電吿滙司捕房、派救護車將傷者車送難民醫院、延至下午六時斃命、屍送騐屍所、兩車夫得悉後、自投捕房、由捕房律師蔣保廉依過失殺人罪起訴、押候解究、</p>
+<h3>刧案併誌</h3>
+<p>昨日下午五時二十五分、公共租界成都路斯文里四十五號、突被盜匪兩名侵入、當被刦去現鈔等四百八十元、逃逸無踪、</p>
+<p>昨午十二時左右、有男子一名、在福煦路愛多亞路接壤處步行時、突由道旁竄出匪徒一名、持槍一枝、百般威嚇、結果將該男子身畔所帶之現鈔一千元刦去圖逃、該男子不甘心、遂呼喊强盜、致觸盜怒、向其開放一槍、幸未擊中、迨附近崗捕趕到、則盜已遠遁、</p>
+<p>昨日下午零時半、四川路三十三衖四百二十一號內、被四盜闖入、三盜袖出手槍、嚇禁聲張、當被刦去現鈔及錶約計三千八百元奪門逃逸、</p>
+<p>昨日下午二時五十五分、有　僑一名、乘坐自由車、途經虹口嘉興路附近、突被四名刦匪攔住去路、兩匪出槍示戚、當被刦去現款一萬元、事後由事主報捕請緝、</p>
+<p>梅白格路四四一衖三號、於昨日下午四時許突來盜匪五名、均執手槍、結果被翻箱倒篋、刦去現鈔八百元、</p>
+<h3>社會雜訊</h3>
+<p>靑年百貨商店　聖母院路CD二號靑年百貨商店、近因新年將屆、自今日起、將各貨一律削碼舉行特價五天、並贈送精美壓歲錢紅封袋、西號開設古拔新邨口、亦同時舉行特價、</p>
+<p>識眞塑繪學社　藝術家胡筠秋金季言吳仲熊贊助之識眞塑繪專門學社、即將開學、該社社長爲范文照、主持人爲羅馬女彫塑家畢菲烈夫人及俄國名畫家伊菲莫夫、該社得此二位名藝術家之主持、在滬藝壇上將放一異彩、故前往就學者必極踴躍、社設四川路二〇號三樓范文照建築師事務所內、並定於本月九日至十四日舉行畢氏及伊氏最近作品展覽歡迎參觀</p>
+<h3>廣肇公所　推行集團炊飯</h3>
+<p>工部局爲提倡集團炊飯、曾致函廣肇公所推行、該所發表勸吿同鄉書云、（公共租界工部局鑒於本市燃料缺乏、特倡集團炊版制、集合多數小家庭、共同煮飯、以省燃料、法意良美、凡我同鄉、如家口不多、可及時採行）、同時並復函工部局表示樂予贊助、</p>
+<h3>光中銀行舉辦　兒童節約存款</h3>
+<p>中上社會之兒童、每年耗於糖菓玩具者其數可觀、而於歲尾年首爲尤甚、光中銀行有鑒于斯、爲使兒童養成節約美德計、爰有兒童節約存款之舉辦、國幣十元、即可開戶、並備華麗存摺、用紅緞爲面、燙印金字、藉以引起兒童儲蓄興趣、</p>
+<h3>體育新聞　大中校足球賽本週閉幕　表演賽星期六舉行</h3>
+<p>震旦大中校小型足球賽、業已公德圓滿、閉幕賽藍隊、對梵皇之表演、因雨疊告展延、茲定本週六下午三時交鋒、賽前下午二時起並增震旦對徐滙之表演一塲、又該賽保證金業於昨日起發還、未領各隊希於今日下午二時至六時、憑收據向該校化學室梁綺山處領取、逾期概不發還、</p>
+<h3>美國創室內　竿跳世界紀錄　成績十五呎八分之三吋</h3>
+<p>紐約八日訊、美加州運動健將華曼盾於今日在曼迪森花園舉行之密爾羅斯運動會中、創室內撑竿跳世界新紀錄、成績爲十五呎八分之三吋、</p>
+<h3>孟賢盃籃球聯賽　明日截止報名</h3>
+<p>孟賢職業夜校主辦之孟賢盃籃球聯賽、參加者已有綠萍·華南·夏光·樹德·孟賢·百聯·小龍等十餘隊、報名定明日截止、凡欲加入者、希速至大通路夏光中學陳中接洽、</p>
+<h3>小小足球友誼賽　小龍昨勝國華</h3>
+<p>小小足球友誼賽、昨日小龍與國華交鋒、踢來甚爲客氣、結果二比一小龍僅以一球勝國華、</p>
+<p>商業新聞</p>
+<h3>有錢難買得</h3>
+<p>今日之米</p>
+<p>連日國米疾速飛騰、在三數日間、每担漲起了四五十元、再要高漲下去、三百元大關、馬上要逼近了、否則年底正是農民糶米時間、照往年情形、米價祗會降落、不會高漲、今年所以高漲、自有特殊原因、</p>
+<p>據人說、這幾天米價所以飛騰、原因很多、　洋米的由四元一角三升漲到三元兩升、乃至一元六角一升、當然可影響到杜米看高、　連日天氣不佳、雨雪接連、使四郊的到米不暢是使杜米高漲的一因、　因爲要過年了、傳說工部局洋米將停售多天、一般市民、就不得不先行購藏、洋米無法購到、祗有忍痛買杜米、杜米銷數一多、自然也要漲價了、　至於交通不便、來源稀少、當然一向是主因</p>
+<p>昨日雖尙有局米一升可買、空手而返以及被擠軋落伍的依然不少、因是各米店杜米交易大盛、薄稻售二百六十元一石、就是不易買得、有許多米店回說派司沒有難出米、亦有專賣糯米、每斗二十三元、亦是奇貨可居、遂使人心惶惶、以爲斷糧在不久的將來、（呆）</p>
+<h3>公債投資　多日不衰　—年內暗盤祇餘今日—</h3>
+<p>公債暗盤、昨市頗見平穩、市價先漲後疲、參差不過一角左右而已、蓋以銀根寬裕、多日來投資者甚衆、市塲籌碼、大感缺乏、故縱有賣出、浮空抵補、尙感不足、加以零星投資者、隨時可見、故市價極難低落、今日已爲暗盤市塲年內最後一日、浮戶或有了結交易、當稍有呼吸也、昨開盤丙種見七十一元四角新高價、甲種見七十五元三角新高價、後以同康賣出極湧、稍見回風、低落五六角、但以同益忽有大批需要、市價又賴以維持不墜、成交約七十餘萬元、茲列簡明表於後、</p>
+<p>外股步漲未已、實業與公用股成交增至一萬七千五百股、揚子十一元五四角、業廣十五元九角、怡和紗廠二十七元半、中紡十元零二角、電車三十六元、電話二十三元半、自來火十一元、英聯升至二十一元七角半、航業九元、紙業六元七角、鋼業十五元七九角、繁殖二十四元、橡皮做開九千七百股、英達區十四元半、蘭格志十六元、陳時一元、加倫丹亦一元、會德豐五十六元有買戶、售出須五十九元、恒業十元有賣戶、中營十元、信和紗廠六元半、上海毛絨六元四角、怡和啤酒六元三角、開平三十一元、電力優先八十元、英楂華二十一元半、克羅華一元九角、均有買戶、</p>
+<h3>搜求四起　烚赤重漲</h3>
+<p>昨日現金烚赤暗市、漲勢重振、在廢曆年關聲中、擁資者突四起搜購、雖有津幫吐出、而寗幫再進不止、金號幫與證券號力進、人心重向上、自晨每條（十兩）初由某銀樓和記售予、成記及德成各十兩、價爲一萬二千二百元、計漲八十元、後見某金號內客戶互做十兩、最低一萬二千一百八十元、德成同康永與某金號代客幫力進、頓被買升三百二十元、達一萬二千五百元、合發成記與另一金號吐售、津幫少出、曾回退至一萬二千三百五十元、某錢莊與金號再起收吸、十一點半後、上升更速、一哄二百餘元、昂達一萬二千五百八十元、散多出籠、始稍回下、收市一萬二千五百元、比上週六復漲二百二十元、當日有四百元高低、交易做開益稀、飾金大新同行仍掛一千三百元、（收進减一百五十元）紋銀掛十四元、黑市十元半有買戶云、</p>
+<p>昨外幣市况、英美金鎊略軟、前者爲三百零五元？後者爲三百十五元、惟以上均爲收進市價、美金票則高至十七元、香港票亦昂至二元九角半、大票仍須减小五分、軍用票亦高至三元九角七分六厘、</p>
+<h3>紗市平凡　成交難暢</h3>
+<p>棉紗市况依然安穩、日紗情形頗昻、但成交未見十分暢旺、二十支雙馬廠單初做一千六百四十五元、最後價爲一千六百五十元、與上日之價、不相上下、四二支藍鳳廠單價爲四千一百八十元至二百十元、三十二仙桃現貨價爲三千八百元、二十支月琴廠單價爲二千四百十元至二千三百八十五元、二十支藍鳳廠單價爲二千五百五十元、二十支水月廠單價爲二千五百九十五元、二十支雙地球廠單價爲一千八百元、十六支紅奎星價爲一千元、十支童子軍一千四百五十元云、</p>
+<h3>布業從事結束　東疋細斜最堅</h3>
+<p>廠布　昨市平穩、成交甚稀、同業客幫均在結束狀態中、售盤一部份軋缺微升、十六磅花蝶粗布一百二十元、一六磅飛鴻粗斜八十七元半、一四磅永字粗布九十元、、一三磅飛熊九十元、八磅振中五十六元、大鵬細布九十五元、一九零雛鷄士林布一百五十五元、本街成交五十餘件、甬幫辦十餘件、</p>
+<p>東布　交易已淸、售盤因洋行無開貨意故貨根殊緊、惟以散額獲利轉賣、龍頭廠單自九十五元下挫至九十三元、旋又回升至九十四元、較跌一元、嗶嘰收盤價三元二角、較跌二三分、中擋細布染廠吸收甚力、飛魚九十二元半、彩球九十二元、喇叭童九十一元、較跌五角至七角半、成交一百餘件、細斜價最挺、蓋雙魚五福喊盤八十五元、</p>
+<h3>紅棗粉絲續漲</h3>
+<p>杜生紅棗、昨津幫開出一批、計棗王爲二百元、棗頭一百八十元、頭戶一百六十元、均升一二十元、</p>
+<p>綫粉干現値冬銷轉旺、兼之行方吸收甚力、價乃續漲、龍口粉三百三十元、廣幫亦有預先辦入、後市尙須看好、</p>
+<h3>薄货呢稍有做開</h3>
+<p>呢羢近已轉堅、同業大批發戶、對手貨中不齊花色、紛紛購進、成交均係春夏兩季薄貨、冬令厚貨落令、故雖賤亦無交易、</p>
+<h3>全國行名錄出版</h3>
+<p>許編「全國行名錄」上編上海、中編國內各埠、下編香港南洋各埠、列載商行萬餘戶、一巨厚冊特價二十一元、北京路鹽業大樓龍文書店發行、</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>末路窮途壯行色</h3>
+<p>— 之滄</p>
+<p>環境凋零，企業困疲，各公司商行自在風雨飄搖之中。有的實在沒辦法，早已解散的解散，停頓的停頓，有的呢，還縮小範圍，勉爲支撑，以維持同人們唯一的生計，以後如何；眞使職員們不寒而慄。</p>
+<p>一般勞力者食於人之徒，一聽到「遣散」的命令，眞比什麼都害怕，誠然各公司商行當局，自有其不得已的苦衷，但被遣散者的以後度日爲難，也値得注意和同情。各公司商行要是在營業上尙能維持，當然對於職員們沒有什麼；退一步，還能勉强支持，對職員們也不至於不會多多顧到，不幸而日趨零落，營業狀况有减無已，則如果還能稍稍週轉十之一二，也未嘗不可以給職員們想個善後的好方法。本有粥喝勝於無粥喝的原則下來彼此諒解，共渡困難。普天之下的「朋友」，舟車跋涉，爲的是想法維持生計，聊供饘粥云爾。在市面景氣之時，職員們快快活活，巴巴結結，所爲何來？到了現在戰戰慄慄，小小心心，也是太悽切的事。</p>
+<p>萬一而眞出於毫無辦法，「遣散」令下，當局也應體味職員們的境遇——自然這也須彼此諒解，然而假使不善爲遣之，職員們是眞會走頭無路的。職負們平日在此生活程度下也不過餬口而已，今日危難，不得已要求略壯行色，聊慰苦悶，也在人情之內。如僅足供納履之資，則終難免捉襟之苦，誠無廻旋之餘地。</p>
+<p>法捕房對工廠仲裁解雇的良好處置，原是簽發回鄉證優待行旅的一種必要補充，行途遙遠，生活煎迫，眞已至末路窮途之時，留固不能，去亦艱難，「聒碎鄕心夢不成」，如願免得餓莩載道，則攸賴當局更善處置。河北旅滬同鄕會通吿援助回籍同鄕，亦是給予很好的參考。「萍水相逢，盡是他鄉之客；關山難越，誰悲失路之人」？同是有情感的人，不妨多多給予溫暖的實質同情。</p>
+<h3>殃及池魚</h3>
+<p>— 艾樵</p>
+<p>甲：噲！現在年終歲底，老兄的雜貨店，生意一定忙得很囉！</p>
+<p>乙：唉：不談，本來呢，今年倒大可賺它一筆，媽的，偏偏隔壁是爿米店，軋平米的人一天到晚在門口打着一道牆似的，還有誰來買東西呢？</p>
+<h3>舞臺與銀幕</h3>
+<p>皇后大戲院之開幕第一片，映「貴婦風流」，業載日前本刊。聞華納亦有二片將於明春在皇后開映。其一爲卡潑拉一年一度的傑作「會見瓊杜」Meet　John　Doo，加萊古柏，白蓓蘭史丹妃合演：故事異常新頴。另一片亦加萊古柏主演，名「約克軍曹」　ergentYork，女主角爲年輕小姑娘瓊李紋蓮。</p>
+<p>— 多寳</p>
+<p>（編者按：華納與亞洲影院公司原訂有常年演映合同，此二片或係不在合同之內，故有轉入皇后之舉。）</p>
+<p>演本戲的各戲院對武生一行是頗爲重視的，良以上海人愛觀「殺搏」故也。更新舞台除有趙松樵，小趙松樵，王其昌外，並新聘擅演猴戲之郭玉崑。郭爲小楊月樓之東床，乃岳亦同時加入。據聞郭楊將於明日（十一日）首途來申。</p>
+<p>共舞台因王少樓辭班，特聘王桂卿抵缺。小王桂卿，小小王桂卿等當然『父打子隨」，一羣小辮子又將見於舞台上了</p>
+<p>「楊貴妃一的萬歲唐明皇一角，已證實劉瓊客串，屠光啟周等亦參加演高力士陳元禮云。</p>
+<p>— 太虛</p>
+<p>徐立·陈雲裳·陈娟娟盲歌女（重见光明）</p>
+<h3>秋海棠</h3>
+<p>— 秦瘦鷗</p>
+<p>十七　歸宿</p>
+<p>湘綺的話一說出來，梅寳的臉色是變得列難看了，她的口腔已失去了活動的力量，不能再說什麼話，只能含着滿眶淸淚，對湘綺連連搖頭。</p>
+<p>「那末你一定是姓吳了！」湘綺已無法冉控制自己了，立刻打座位上跳將起來，一眼不閃的看定着梅寳的慘白的臉龐。</p>
+<p>屋子裹其餘四個人也都發生了一種異樣的感覺，大家莫名其妙的呆看着。</p>
+<p>梅寳根本也沒有聽親楚湘綺的話，僅僅在靈感上覺得這是一句好話，便不山主的向發話的人點了點頭。</p>
+<p>一秒鐘之後，她已經被湘綺緊緊地摟住了，少華的母親透着極度詫異的神氣，向她兒子看了一眼，正打算回頭去詢問伴同梅寳一起來的那個老頭兒和另一個女孩子，可是瞧他們的神氣也跟自己一樣的駭愕驚奇，便知道問他們也決不曾知道。</p>
+<p>直到湘綺和梅寳互相緊緊摟抱，痛哭了十數分鐘以後，近玉才記起了她丈夫有一次偷偷地所吿訴她的一番話，心裏突然醒悟起來。</p>
+<p>「二妹，這是喜事，快不要哭了！給館子裏的人聽見了不大方便。」她便第一個走過去，撫着湘綺的肩膀，輕輕地說。</p>
+<p>但直到再過了三四分鐘之後，湘綺和梅寳才能竭力止住哭泣。</p>
+<p>「少華，你先到門口邊去把那幾個探頭探腦的茶房打發走。」近玉很幹練地先向他兄子命令着。「吿訴他們這兒沒有什麼事，我們不叫不許再來多望！」</p>
+<p>少華當然很興奮地依着去做了。（三三九）</p>
+<h3>蓓蒂黛維絲　榮膺影后</h3>
+<p>美國藝術科學研究院本日宣布蓓蒂黛維絲爲電影皇后，以其主演「小狐狸」一片，演技成功。（蓓蒂榮膺電影皇后，此爲第三次。）其次則爲主演「深閨疑雲」之瓊芬黛妮，「慈母心腸」之葛麗亞嘉蓀，「小樓春曉」之奧麗薇哈佛蘭，及「火球」之白蓓蘭史丹妃。此外該院又宜布賈萊古柏爲電影皇帝，以其主演「約克軍曹」一片，最爲成功。其次則爲「Penny　Serenade」之加萊葛倫，「黃金復活」之赫斯登，「太虛道人」之勞勃蒙高茂萊及「大國民」之威雨士。</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.02.10</h1>
+<h3>Japanese Troops Cross the Johor Strait and Land on Singapore Island; Airplanes and Heavy Artillery Fiercely Support the Battle, Now Only Ten Miles from Singapore City</h3>
+<p>Nesan, 9th (Domei News Agency) – At 0:16 AM today, Japanese troops successfully landed on Singapore Island from the front of Nesan.</p>
+<p>Tokyo, 9th (Domei News Agency) – The Japanese Imperial General Headquarters announced at 5:05 PM today that after Japanese troops on the north shore of the Johor Strait commenced operations against Singapore last night and this morning, they have crossed the Strait and are fiercely attacking the British "Gibraltar of the East" fortress.</p>
+<p>Tokyo, 9th (Domei News Agency) – According to the latest news, the Japanese troops who landed on Singapore Island late last night, after occupying the Tengah Airfield in the far west of Singapore Island, have advanced to within ten miles of Singapore City. The Japanese troops occupied the Tengah Airfield at 1:30 PM today. The Japanese troops who crossed the Johor Strait and landed on the northwest of Singapore Island this morning have launched fierce attacks on the British fortresses guarding the seawall and the Seletar Naval Station on the opposite side of the Kranji Strait. Light tank units followed to assist the battle. Japanese dive bombers continuously attacked, and the Japanese artillery across the Strait also fiercely bombarded in support. The Japanese troops advancing rapidly towards the Kranji River defensive positions have reportedly broken through British artillery positions and bunkers. Other Japanese units have also quickly arrived at the front line.</p>
+<p>Nesan, 9th (Domei News Agency) – Under the cover of a barrage of artillery fire, Japanese troops crossed the Johor Strait last midnight. The British troops on the periphery of Singapore Island have reportedly retreated. Japanese troops made contact with Singapore Island sixteen minutes after midnight. At that time, green signal flares were fired into the air, followed by red signal flares four minutes later, indicating that the enemy landing had been completed. The landing troops then attacked a high ground in a certain location. In addition, another Japanese unit also landed at another location on Singapore Island twenty-five minutes after midnight.</p>
+<p>Nesan, 9th (Domei News Agency) – Japanese artillery has been bombarding Singapore since the morning of the 5th, with increasing intensity. Japanese aircraft also flew to bomb the island. The giant guns of the Changi Fortress in eastern Singapore have begun to bombard. Of the thirty-eight oil tanks in the Seletar district of Singapore, twenty-eight have caught fire, with flames and thick smoke soaring into the sky. It is estimated that there are about 20,000 troops stationed on Singapore Island, including the British 18th Division, the Australian 9th Division, and about 23 battalions of mixed volunteer forces.</p>
+<p>London, 9th (Reuters) – London financiers have no information regarding the number of Japanese troops landing on Singapore. The area where the Japanese landed is undulating and has mango swamps and jackfruit orchards. It is rumored that the Japanese landed in Senikkranji and Pasir Laba, about ten miles apart.</p>
+<p>London, 9th (Reuters) – According to news from Singapore, before dawn today, a large number of Japanese troops, under the cover of a fierce artillery barrage, crossed the narrow Johor Strait and landed on Singapore Island, attempting to break through British fortresses. British, Australian, and Indian troops are trying to prevent the Japanese from expanding their foothold, and fierce bayonet fighting is taking place along the beaches. It is believed that the Japanese troops crossed the Strait in flat-bottomed boats and landed at multiple locations. The width of the Strait is less than a mile at some locations. The artillery bombardment before the Japanese landing began at dawn yesterday and continued day and night. The British Far East Command announced today that between 10:00 PM on Sunday and 1:00 AM on Monday, Japanese troops landed on the northwest coast of Singapore Island. The forward detachments of British troops at some locations were forced to retreat, and some Japanese troops have infiltrated eastward. British troops have launched attacks against the Japanese troops, but the outcome is currently unknown. According to sources in London, the reason the Japanese chose to land on the northwest side of Singapore Island is because the Strait is the narrowest there, and the Japanese landing area is guarded by the New South Wales and Queensland units of the Australian Army. According to a Reuters correspondent in Singapore, Japanese aircraft were even more active on the northern front of Singapore this morning. Japanese mortars and heavy artillery constantly bombarded from across the Strait, apparently hoping to destroy British defenses with artillery fire, and Japanese aircraft also dropped bombs to assist the battle. Japanese artillery fire was directed at the northwest to northeast corner of Singapore Island, but there were no observation balloons. Although several air raid alarms were issued in Singapore City today, it was not bombed. Several squadrons of Japanese aircraft were seen flying very high, but they did not drop bombs near the city area, apparently busy flying to the northern part of Singapore Island to assist the battle. Before the Japanese landing, their artillery intensively and fiercely bombarded, firing countless shells, and then landed on Pulau Ubin at the eastern end of the Strait, in order to launch a main attack on the western part of Singapore Island. Although Pulau Ubin is only about half a mile from Singapore Island, there is no sign that the Japanese troops are attacking Singapore Island from that island.</p>
+<p>Japanese Troops Adopt Infiltration Tactics</p>
+<p>London, 9th (Havas) – The Japanese landing on Singapore Island has just been commented on by military figures here, saying that the Japanese troops are still using "infiltration" tactics, which are the same as in the Malayan campaign. Although it is still difficult to predict the direction of the Japanese attack in the future, the landing site is the furthest from the fortress's naval and military base, so it seems that the Japanese are heading straight for Singapore City, and at the same time, they are planning to cut off the naval base and the airfield. It is expected that the Japanese will continue to land in Singapore and will use fierce artillery fire as cover. According to officials here, the Japanese landed on the west coast of Singapore Island, probably because the Johor Strait is the narrowest there. As for the details of the development of the war, nothing is known here.</p>
+<p>Continued Air Raids on Various Parts of the Dutch East Indies</p>
+<p>Tokyo, 9th (Domei News Agency) – The Japanese Imperial General Headquarters announced at 12:20 PM today that Japanese army aircraft attacked various parts of Sumatra and Burma on the 7th and 8th of this month.</p>
+<p>Somewhere in a Japanese Base, 9th (Domei News Agency) – Japanese naval aircraft sank a huge enemy ship near the southeast coast of Sumatra yesterday.</p>
+<p>Batavia, 8th (Havas) – A message was broadcast by a local radio station that the Japanese Air Force again bombed Surabaya, an important naval base in the Dutch East Indies, today. Many dive bombers participated in the air raid. Japanese aircraft have now bombed Surabaya four times.</p>
+<p>Batavia, 9th (Reuters) – The Dutch East Indies Military Headquarters announced today that Japanese aircraft attacked Batavia and its suburbs again this morning. Details are not yet known. Local Japanese activities continue south of Balikpapan in eastern Borneo. Japanese patrol teams are now advancing south, apparently intending to reach Banjarmasin by land. An airfield near Palembang in Sumatra was attacked by Japanese aircraft. Reconnaissance activities continue in northern Sumatra.</p>
+<p>Australia Feels a Serious Threat</p>
+<p>Sydney, 9th (Havas) – Australian Federal Minister for the Army Forde declared today that if the Japanese succeed, Australia will be under serious threat. If the Dutch East Indies can hold out for a long time, we can take the opportunity to make Australia a base for Allied operations. However, fearing that time is running out, we must step up our military preparations.</p>
+<p>Singapore, 9th (Reuters) – Australian Commander Brigadier General Bennett told reporters at the US Divisional Headquarters this morning that we are now preparing to attack and hope to recover as much lost territory as possible. The ships used by the Japanese troops to land on the northwest coast were apparently special vessels transported from southern Malaya, not sporadic sampans gathered in the Johor Strait.</p>
+<h3>Burmese Front: War is Quiet; Japanese Air Force Continues to be Active; Wavell Visited Burma for Inspection</h3>
+<p>Somewhere in a Japanese Base, 8th (Domei News Agency) – Japanese army aircraft launched three large-scale attacks on enemy bases in Burma today.</p>
+<p>Rangoon, 9th (Reuters) – The Army Headquarters announced last night that the Salween River (Nu River) was quiet yesterday and there was no fighting. Japanese aircraft made a fifth night raid on the airfield north of Rangoon on Saturday night, smaller in scale than the previous ones, dropping only twelve bombs, with minor material damage but no casualties. British night fighters took off to intercept them. In addition, British aircraft patrolled the forward outposts throughout Saturday.</p>
+<p>Saigon, 9th (Haitong) – News from Rangoon says that General Wavell has returned to visit Burma. The exact location was not specified, only that he visited the front line of Moulmein. However, Moulmein fell into the hands of the Japanese troops a week ago, so it is believed that Wavell's visit was some time ago.</p>
+<p>Rangoon, 9th (Reuters) – The Governor of Burma broadcast last night refuting rumors, saying that we are determined to defend Rangoon. The military authorities have not taken over Rangoon, and civil administration will continue. However, the city is vulnerable to air raids, and the government's policy is that unnecessary citizens should be evacuated to safer areas. Therefore, government departments and shops that can operate outside Rangoon City should move out, which will be a concrete contribution to the war effort.</p>
+<h3>Philippine Battle Report</h3>
+<p>Washington, 9th (Reuters) – The Department of the Army announced yesterday that Japanese artillery on the southeast coast of Manila Bay again bombarded the fortress of Corregidor Island, concentrating its fire on the Mills, Hughes, and Frank batteries for about two hours. On the Bataan Peninsula, Japanese troops invaded our right wing, and our troops counterattacked. The fighting on the left wing was even more fierce. Japanese aircraft have been bombing continuously for the past twenty-four hours.</p>
+<p>Washington, 9th (Reuters) – The US Department of the Army announced today that some of the Japanese concealed artillery positions along the Cavite coast, which were bombarding American port defenses in the Philippines, have been discovered by the Americans and retaliated against by American artillery batteries. Japanese dive bombers are active over the American front lines.</p>
+<h3>The United States Trains Two Million Air Force Personnel; Secretary of the Army Stimson Formally Declares that Half of the Goal Can be Reached This Year</h3>
+<p>Washington, 8th – Secretary of the Army Stimson declared yesterday that the US plan to train two million pilots will be the world's greatest air force plan. Half of the goal can be achieved within this year. This number is almost comparable to the sum of the Nazis' one million to one million one hundred and fifty thousand and the British one million. The number of Air Force personnel is even greater than the pre-war number of Army personnel. Before the Pearl Harbor battle, Stimson had announced that the number of Air Force personnel to be trained was only 400,000, but now it has greatly increased. President Roosevelt recently issued an order authorizing the Department of the Army to mobilize more infantry divisions. Including the soldiers that Stimson had previously announced were to be slightly employed, the total number of the US Army this year will reach 3.6 million. The organizational structure of the cadres of each division has now been formed, and it can be quickly developed into a complete division. The United States has long been mobilizing outstanding reserve officers into the army and organizing reserve teams in major cities. US Chief of Staff General Marshall declared that the US West Point Military Academy will soon have a batch of naval officers graduating, and they are also excellent aircraft pilots. After graduating, US naval officers should receive three years of aviation training before formally joining the Air Force.</p>
+<h3>The United States Considers Appointing an Ambassador to the Soviet Union; Hull and Standley are Expected</h3>
+<p>New York, 9th (Reuters) – The US government is considering appointing Secretary of State Hull as Ambassador to the Soviet Union, as the Soviet Union has sent Litvinov, a very respected diplomat of that country, as Ambassador to the United States.</p>
+<p>Washington, 8th (Havas) – The "New York Volkszeitung" recently published that President Roosevelt, at Stalin's request, may appoint Admiral Standley, who is in his late seventies, as Ambassador to the Soviet Union, to succeed Steinhardt. Although Standley is seventy years old, he is still in good health. He served as Chief of Naval Operations in 1933. In diplomacy, he was the American representative at the London Disarmament Conference. Roosevelt attaches great importance to the selection of an ambassador to the Soviet Union, and the person must have studied both military and diplomatic issues. At the beginning of the current war, Admiral Standley advocated a tough policy towards the Axis powers, and even asked the government to declare war on the Axis powers in October 1940, or at least declare a state of emergency in order to cope with the extraordinary situation.</p>
+<h3>The Number of Argentine Army Personnel Will Increase to 90,000</h3>
+<p>Argentine Capital, 9th (Haitong) – The Argentine Minister of the Army announced last night that the strength of the Argentine Army was originally 79,000, but will be increased to 95,000.</p>
+<h3>The Australian Minister of Defence Encourages Soldiers; They Should Emulate the Spirit of China and the Soviet Union; Darwin Harbor Issues Air Raid Alert</h3>
+<p>Sydney, 9th (Reuters) – Australian Minister for the Army Forde said in a speech on the 7th that before victory is achieved, setbacks are inevitable. The Australian Army should emulate the spirit of the Allied countries of China and the Soviet Union, take responsibility, and refrain from empty talk that will mislead the country. The Japanese radio station has repeatedly reported on the actions of the Australian Army, which is very strange. The government is determined to use all its strength to stop the disclosure of confidential information.</p>
+<p>Darwin Harbor, Australia, 8th (Havas) – An air raid alert was issued here this afternoon, lasting ninety minutes. This is the third alert since the outbreak of the Pacific War.</p>
+<h3>The German Minister of Munitions Died in a Plane Crash; The Famous Siegfried Line Was Planned by Him</h3>
+<p>Berlin, 8th (Havas) – It was officially announced that the German Minister of Munitions and Founder of the Third Reich, Dr. Todt, died in a plane crash today while on duty. Todt was a rare organizational genius in the world. He served as Director-General of Highways. Under his guidance, the German national highway network was completed. The famous Siegfried Line (also known as the Western Wall) and various defensive projects along the Atlantic coast were also planned by him. He was born in Posen in 1891, graduated from technical schools in Munich and Karlsruhe, obtained an engineering degree, and was good at building highways. During the First World War, he participated in the artillery regiment on the Western Front and then joined the Air Force. In August 1916, he was once injured in an air battle.</p>
+<h3>The United States Will Send a Mission to Visit de Valera; Led by Former Governor of the Philippines Murphy, Hoping to Improve Relations with Southern Ireland</h3>
+<p>New York, 9th (Reuters) – According to news reports, President Roosevelt may send a mission composed of prominent Irish-Americans to visit de Valera, the Prime Minister of Southern Ireland, in order to improve relations between the United States and Southern Ireland. The mission will be led by former Governor of the Philippines Murphy. It is also predicted that Colonel Donovan, who led the famous 69th American Regiment in the last World War, will be responsible for compiling the "Daredevil" Army.</p>
+<h3>The Port of Tangier Declares a State of Alert; Demonstrations by the Public Against Britain Because of Bombing; French Morocco Strengthens Security</h3>
+<p>Madrid, 9th (Haitong) – The Spanish authorities in Tangier, in view of the great anger of the people over the recent explosion of a time bomb in the luggage of a British diplomat, have declared a state of war. The purpose of this measure is to avoid disturbances. It is said that the number of deaths from the explosion has now increased from twelve to sixteen, and there are still many serious injuries, and it is feared that they will not survive. Tangier residents held demonstrations yesterday to vent their anger. Thousands of Arabs and Spaniards held Moroccan and Spanish flags, cheered for General Franco along the way, and scolded the British. The municipal authorities specially sent representatives to lead the march to the front of the High Commissioner's Office before dispersing. Representatives were sent to visit General Urrutia, demanding that the suspects be severely punished.</p>
+<p>London, 8th (Havas) – According to a Reuters report, when the British tugboat "Rescue" arrived at the international neutral port of Tangier in North Africa, an explosion occurred. Although there were no deaths or injuries, the British suffered heavy material losses. After this incident, Axis elements in the port incited the people to hold anti-British demonstrations. The port police only intervened after the British Consul General lodged a strong protest with the Spanish authorities. All sectors of British society are extremely indignant upon hearing the news.</p>
+<p>Vichy, 9th (Haitong) – According to news from Rabat, the major cities of French Morocco will now strengthen police forces to suppress night robbery cases. In the future, anyone who commits armed robbery at night will be sentenced to death.</p>
+<p>Berlin Attaches Importance to the Bombing Case</p>
+<p>Berlin, 9th (Haitong) – German newspapers yesterday published lengthy articles commenting on the bombing case in the luggage of British diplomats in Tangier, calling it a criminal act by Britain. The Berlin local newspaper said that the Tangier incident exposed Britain's intentions towards Spain. The Spanish government has given Britain various conveniences regarding supplies to Gibraltar, but Britain has taken the opportunity to engage in anti-Spanish propaganda in Tangier and Spanish Morocco. Regarding Reuters' claim that the explosion was caused by Axis elements, the Berlin "Monday News" said that Reuters' words can be called an admission, because no one can believe that the Germans in Tangier can move a box containing bombs from a British ship. After all, the luggage of the British diplomat containing the bomb came from a British naval tugboat.</p>
+<p>Franco-Spanish Dialogue is a Sign of Goodwill</p>
+<p>Mora, 8th (Havas) – General Noguès, Governor-General of French Morocco, and General Ortega, High Commissioner of Spanish Morocco, held a meeting today in Spanish Larache to discuss important issues related to the two protectorates. Of particular importance are: general commercial and financial issues, the issue of promulgating new tariff regulations, and the issue of building a large floodgate on the Moulouya River. After the implementation of this plan, vast undeveloped lands in both French Morocco and Spanish Morocco can be irrigated. The two men's talks were conducted in an atmosphere of understanding and friendship, which is a characteristic of Franco-Spanish relations.</p>
+<p>The US Ambassador to Spain Returns Home to Report</p>
+<p>Lisbon, 8th (Havas) – The US Ambassador to Spain, Weddell, arrived here today and will take a clipper plane to return home to report. It is expected that he will soon return to his post.</p>
+<h3>The President of Portugal is Reelected</h3>
+<p>Lisbon, 8th (Havas) – Portuguese President General Carmona was reelected today. The full results of the voting are not yet known at this time, but according to local political figures, he will be able to win at least 80% of the total votes, and it is believed that this election not only shows the direction of public opinion, but also allows us to see whether the people agree with the policies promoted by Prime Minister Salazar.</p>
+<h3>German and Soviet Troops Battle on the Icy Lake; Soviet Troops in the Central District Gain a Victory</h3>
+<p>Berlin, 9th (Haitong) – Authoritative sources here announced last night that a Soviet force of about 10,000 men recently attempted to cross the frozen Lake Ladoga to attack German positions. The battle unfolded on the icy lake for several hours. A small team of Soviet troops took advantage of the darkness to sneak across to the German-held shore, but were completely annihilated by intense German artillery fire.</p>
+<p>Moscow, 9th (Reuters) – According to Soviet front-line news, Soviet troops have broken through German positions on the Garin Line northeast of Smolensk, destroying six small bunkers and a large number of machine gun positions.</p>
+<p>Helsinki, 8th (Havas) – After two consecutive wars between Finland and the Soviet Union, the number of students in domestic universities has greatly decreased. In the past three years, only 160 engineers have graduated from various technical schools, and most of them have died on the front lines.</p>
+<h3>Local War Reports</h3>
+<p>Somewhere in southern Anhui, 8th – The Japanese troops in Dongliu Qingshan launched an attack on Huishan in several directions at dawn on the 6th. The Japanese troops in Heshan also fired artillery to assist the battle. The Chinese army responded calmly, and the fighting subsided after about an hour. A part of the Japanese troops in Qingshan also attacked Huoshan on the morning of the 4th.</p>
+<p>Fancheng, 8th – On the 2nd, more than a thousand Japanese troops from Xinyang and Luoshan attacked eastward of Luoshan in three directions.</p>
+<p>Ji'an, 7th – This time, the Japanese troops in Nanchang used about 3,500 troops against the Chinese. The war has now ended. Fengcheng in northern Jiangxi is now peaceful and order has been restored.</p>
+<h2>Page 3</h2>
+<h3>Goods Supply Inevitably To Decrease; Encouraging Wholesale Evacuation of All Industries; Various Groups to Collect Return-Home Permits and Be Granted All Kinds of Convenience</h3>
+<p>The Public Works Department Information Office officially announced: "Given the wartime situation, despite the various efforts of all authorities, the restriction of supplies and the shrinking of the scope of industrial activities are inevitable. Therefore, Shanghai is seeing a serious poverty problem, which is already very obvious. This bureau is extremely willing to encourage and assist private charitable organizations under its guidance, but limited by financial resources, even with the full cooperation of the Japanese authorities, it is impossible to plan any public relief undertakings. Therefore, the work of the Relief Committee established by this bureau has been temporarily suspended. Under these circumstances, it is necessary to reiterate the appeal to all relevant parties, requesting them to do their utmost to encourage and assist in the evacuation of the population, which will not only help the authorities but also benefit every citizen.</p>
+<p>Rewarding Citizens for Leaving Shanghai and Returning to Their Hometowns</p>
+<p>Each relevant department is now making every effort to encourage citizens to leave Shanghai and return to their hometowns. This bureau has already set up nine offices to issue return-home permits and half-price train and boat tickets. The addresses of each office are as follows:</p>
+<p>This Bureau's Business Corps Headquarters</p>
+<p>This Bureau's Business Corps Training Ground</p>
+<p>This Bureau's Elementary School at Singapore Road and Jiaozhou Road</p>
+<p>This Bureau's Elementary School at 19 Maru Road, Keneng Road</p>
+<p>This Bureau's School at 25 Mabai Road</p>
+<p>Yucai Public School at Shanhai Pass Road</p>
+<p>Nie Zhongcheng Public School at Jingzhou Road</p>
+<p>Public Works Department Workshop at 753 Gordon Road</p>
+<p>Workshop at 206 Xiamen Road</p>
+<p>Setting Up Mobile Teams to Issue Group Permits</p>
+<p>The above-mentioned offices are also open as usual on Saturday afternoons and Sundays. In addition, this bureau has set up a mobile team, ready to go to various factories (with more than 30 workers leaving Shanghai) to issue permits. Factory owners, if their workers have been dismissed, should post a notice at the factory gate, informing workers who are willing to return to their hometowns that they can have the factory collect the permits and half-price tickets on their behalf, and then apply to the Industrial Social Affairs Department, or notify them by telephone (telephone 15349).</p>
+<p>This bureau, with the support of various Chinese directors and fellow-provincial associations, has organized a committee and set up an office in Room 277, 3rd Floor of the Wood Bureau (telephone 14036), to handle the issuance of return-home permits and half-price tickets for entire groups. At the same time, the Japanese authorities have prepared two special ships to go directly to Ningbo, to facilitate the return of Ningbo citizens to their hometowns. In addition, personnel from the police department of this bureau will be dispatched to train stations and ship wharves to recruit citizens returning to their hometowns.</p>
+<p>There is one point to solemnly declare, that is, individuals who need relief should not request it at this bureau's building.</p>
+<p>Evacuation Work Gradually Intensifying</p>
+<p>In order to actively evacuate the population, the Public Works Department specially organized the Chinese Evacuation Committee on the 6th of this month to handle the issuance of return-home permits for entire groups, and set up an office in Room 277, 3rd Floor, 180 Fuzhou Road, Public Works Department. Although it has only been a few days since its establishment, fellow-provincial associations from Ningbo, Shaoxing, seven counties, Jianghuai, Fujian, Hebei, Fenghua, and others in Shanghai, as well as the cake and steamed bun trade association, etc., have already gone to apply for permits and half-price train and boat tickets. The office has dispatched personnel to investigate and verify each case and issued permits with great care, totaling more than 10,000 permits and half-price tickets. The daily office hours of the office are from 9:00 AM to 12:00 PM and from 2:00 PM to 4:00 PM (daylight saving time). Various trade associations, fellow-provincial associations, and factories in the city are welcome to contact us to handle the permit application procedures, or inquire by telephone (telephone 4036).</p>
+<h3>Distributing Congee Tickets</h3>
+<p>The Cilian Relief Association, in view of the approaching end of the old lunar year and the urgent requests from hidden poor people in various places asking the association to find ways to provide relief, yesterday dispatched staff members Lu Deshen and Wang Limin, etc., to carry congee tickets and distribute them in various places. Distribution will continue today.</p>
+<h3>Shen Bao Readers' Scholarship List of Admitted Students</h3>
+<p>Tutoring Group</p>
+<p>Tan Zhenqiu, Tongjin Japanese Language School, 30</p>
+<p>Zhu Guangkui, Mingxin Accounting Tutoring School, 16</p>
+<p>Gao Wenkang, Mushi English Tutoring School, 28</p>
+<p>Gu Jinfafa, First Chinese Vocational School, 28</p>
+<p>Tu Baoxun, Mingxin Accounting Tutoring School, 30</p>
+<p>Chen Zhongrang, Guanqun Amateur Tutoring School, 26</p>
+<p>Zhou Qifang, Guanqun Amateur Tutoring School, 26</p>
+<p>Zhu Youren, Fourth Chinese Vocational School, 13</p>
+<p>Sha Chuanxiang, Mushi English Tutoring School, 32</p>
+<p>Shu Guangwei, Mushi English Tutoring School, 28</p>
+<p>Wang Sijun, First Chinese Traditional Medicine Vocational School, 29</p>
+<p>Wu Songquan, Wensheng English College, 18</p>
+<p>Zhao Suyin, First Chinese Vocational School, 30</p>
+<p>Tan Kangluan, Shanghai Business College, 42</p>
+<p>Yu Tingjin, Mushi English Tutoring School, 28</p>
+<p>Shen Zhongyan, Mingxin Accounting Tutoring School, 30</p>
+<p>Ye Sheng, Mingxin Accounting Tutoring School, 30</p>
+<p>Chen Renlu, Jinxiu Amateur Tutoring School, 12</p>
+<p>Yang Jinpei, Mingxin Accounting Tutoring School, 20</p>
+<p>Le Yicheng, Tongjin Japanese Language School, 22</p>
+<p>Xue Ansheng, Jinxiu Amateur Tutoring School, 12</p>
+<p>Fang Yuzhen, Fourth Chinese Vocational School, 26</p>
+<p>Huang Decheng, Second Chinese Vocational School, 28</p>
+<p>Han Hongshi, Mushi English Tutoring School, 28</p>
+<p>Shen Huimin, Mingxin Accounting Tutoring School, 30</p>
+<p>Ren Xinchang, Jinxiu Amateur Tutoring School, 12</p>
+<p>Yu Yongshou, Fourth Chinese Vocational School, 25</p>
+<p>Zhu Liangfu, Mushi English Tutoring School, 28</p>
+<p>Li Shikun, Mushi English Tutoring School, 28</p>
+<p>Yang Xipei, Mushi English Tutoring School, 28</p>
+<p>Feng Xianzhuo, Jinxiu Amateur Tutoring School, 15</p>
+<p>Wu Jiadi, Fourth Chinese Vocational School, 25</p>
+<p>Xie Zisheng, Fourth Chinese Vocational School, 12</p>
+<p>Zhao Xiaoyue, Mingxin Accounting Tutoring School, 32</p>
+<p>Zhang Zongjiang, Guanqun Amateur Tutoring School, 28</p>
+<p>Long Wuneng, Sanji Wireless Radio School, 50</p>
+<p>Chen Zhen, Mingxin Accounting Tutoring School, 24</p>
+<p>Zheng Fangyong, Jinxiu Amateur Tutoring School, 15</p>
+<p>Li Hongji, Mingxin Accounting Tutoring School, 24</p>
+<p>Lin Yinghai, Jinxiu Amateur Tutoring School, 27</p>
+<p>Shen Jinzhao, Fourth Chinese Vocational School, 26</p>
+<p>Zhu Yunan, Jinxiu Amateur Tutoring School, 27</p>
+<p>Zhang Jixue, Mingxin Accounting Tutoring School, 24</p>
+<p>Chen Yaoming, Shanghai Hujiang English College, 32</p>
+<p>Zhou Meiyi, Mushi English Tutoring School, 28</p>
+<p>Xiao Zengwei, Second Chinese Vocational School, 28</p>
+<p>Ni Jinquan, Tongjin Japanese Language School, 22</p>
+<p>He Xianxiang, Mingxin Accounting Tutoring School, 22</p>
+<p>Sun Hequan, Third Chinese Vocational School, 21</p>
+<p>Guan Daren, Huamei Wireless Radio School, 36</p>
+<p>Pan Baokang, Shanghai Chinese Medicine College, 48</p>
+<p>Wu Weijun, Second Chinese Vocational School, 28</p>
+<p>Lu Zudan, Second Chinese Vocational School, 19</p>
+<p>Zhou Baoshan, Shanghai Hujiang English College, 22</p>
+<p>Ju Fulin, Asia Engineering College, 40</p>
+<p>Gai Boru, Mingxin Accounting Tutoring School, 30</p>
+<p>Li Benhai, Second Chinese Vocational School, 15</p>
+<p>Li Jifu, Second Chinese Vocational School, 15</p>
+<p>Xie Ruichi, Zan Chen English College, 30</p>
+<p>Li Zhaoshun, Shanghai Hujiang English College, 24</p>
+<p>Chen Yingli, Mushi English Tutoring School, 28</p>
+<p>Jiang Jikai, Jinxiu Amateur Tutoring School, 27</p>
+<p>Xiao Zhenzhong, Second Chinese Vocational School, 23</p>
+<p>Li Shuying, Mushi English School, 32</p>
+<p>Gu Yuanchu, Mingxin Accounting Tutoring School, 24</p>
+<p>Wu Baolin, Shanghai Hujiang English College, 22</p>
+<p>Tao Gongshou, Shanghai Hujiang English College, 24</p>
+<p>Sun Caizhang, Shanghai Hujiang English College, 22</p>
+<p>Deng Henian, Shanghai Hujiang English College, 35</p>
+<p>Chen Renshou, Jinxiu Amateur Tutoring School, 12</p>
+<p>Huang Shiping, Global Typing Training Institute, 12</p>
+<p>Zhou Xiesheng, Jinxiu Amateur Tutoring School, 15</p>
+<p>Zhang Wenfu, Second Chinese Vocational School, 24</p>
+<p>Li Junde, Mingxin Accounting Tutoring School, 24</p>
+<p>Gao Ziwei, Mingxin Accounting Tutoring School, 24</p>
+<p>Shi Zude, Jinxiu Amateur Tutoring School, 15</p>
+<p>Chen Wenyi, Mingxin Accounting Tutoring School, 16</p>
+<p>Zhu Shengwan, Jinxiu Amateur Tutoring School, 15</p>
+<p>Xu Xiangfeng, Shanghai Hujiang English College, 20</p>
+<p>Yao Renjie, Shanghai Engineering School, 24</p>
+<p>Jin Guoxiang, Mingxin Accounting Tutoring School, 24</p>
+<p>Shen Bingkang, Shanghai Hujiang English College, 24</p>
+<p>Zhong Shuchen, Silk Industry Tutoring School, 20</p>
+<p>Zhu Zhenchu, Mingxin Accounting Tutoring School, 24</p>
+<p>Chen Chengzhang, Jinxiu Amateur Tutoring School, 24</p>
+<p>Bao Dacheng, Jinxiu Amateur Tutoring School, 24</p>
+<p>Chen Yongbiao, Second Chinese Vocational School, 25</p>
+<p>Wei Shigang, Minsheng Tutoring Night School, 10</p>
+<p>Xu Fuxing, Second Chinese Vocational School, 34</p>
+<p>Tu Shaopeng, Jinxiu Amateur Tutoring School, 15</p>
+<p>Xiao Chuanfang, Jinxiu Amateur Tutoring School, 25</p>
+<p>Zhang Qifang, Mingxin Accounting Tutoring School, 16</p>
+<p>Shao Xixiang, Fourth Chinese Vocational School, 11</p>
+<p>Zhu Jihe, Jinxiu Amateur Tutoring School, 30</p>
+<p>Luo Shaojun, Fourth Chinese Vocational School, 25</p>
+<p>Zhang Ruoyan, Jinxiu Amateur Tutoring School, 30</p>
+<p>Wang Gengming, Mingxin Accounting Tutoring School, 30</p>
+<h2>Page 4</h2>
+<h3>A Married Man Commits Bigamy; Arrested After Wedding Completed</h3>
+<p>Zhang Guisong, a local of this city, 25 years old, originally belonged to a wealthy family. In the 28th year of the Republic, he married Shen Guiru, a woman from his hometown, and lived together at 11 Xiangkang Lane, Meibaige Road. Zhang's nature is extremely fond of wandering, and he is often seen in dance halls. In the spring of the 29th year, Zhang wandered to the Dabeiyu Dance Hall and met Yang Wu Ying, a Shanghai woman (23 years old, a top student at a certain normal girls' school). They fell in love at first sight, and from then on they went back and forth to each other, and then developed a physical relationship. They rented a house and lived together at 150 Pubei Lane, Pubei Road, and had a daughter, who soon died. However, Ms. Yang did not know that Zhang was already a married man, so she insisted that Zhang hold a wedding ceremony. Zhang also complied, and held a wedding ceremony at the Lixiang Hotel on Jiujiang Road the day before yesterday. Unexpectedly, the matter was not kept secret, and Shen Guiru found out and reported it to the Central Police Station. Chinese Detective Song Yuanshan and detective Mao Yunlong rushed to arrest him. Just as Zhang and Yang's wedding ceremony had just been completed and they were being sent to the bridal chamber, they took Zhang and Yang to the police station together. After investigation, Yang was indeed previously unaware that Zhang was already married, so she was released. Zhang was detained pending investigation.</p>
+<h3>A Truck Crashes Violently into a Cart; Cart Driver Dies</h3>
+<p>Jiang Hanqi, a truck driver from Tongzhou, was driving a No. 23609 freight truck at 8 a.m. on the 8th when he carelessly rear-ended a No. 17462 cart driven by Liu Laiyuan, also from his hometown, near Tiantong Road and Beishan West Road, causing the cart in front to overturn immediately. The cart driver, Zhang Bing'ao, from Jiangbei, suffered severe abdominal injuries and was dying. Chinese Constable No. 1857 arrived and telegraphed the Huisi Police Station, which sent an ambulance to take the injured cart to the refugee hospital. He died at 6 p.m. The body was sent to the coroner's office. After learning of the incident, both truck drivers surrendered to the police station. Police lawyer Jiang Baolian prosecuted them for negligent homicide and detained them pending trial.</p>
+<h3>Additional Notes on Robbery Cases</h3>
+<p>At 5:25 p.m. yesterday, two robbers broke into No. 45 Siwen Lane, Chengdu Road, Public Concession, and robbed 480 yuan in cash, fleeing without a trace.</p>
+<p>At around 12:00 p.m. yesterday, when a man was walking at the junction of Fuxu Road and Aiduya Road, a bandit suddenly jumped out from the side of the road, threatening him with a gun. As a result, he robbed the man of 1,000 yuan in cash and tried to escape. The man was unwilling and shouted "robber!", angering the robber, who fired a shot at him. Fortunately, he was not hit. By the time nearby constables arrived, the robber had already fled far away.</p>
+<p>At 12:30 p.m. yesterday, four thieves broke into No. 421, Lane 33, Sichuan Road. Three of the thieves took out pistols and threatened them to keep quiet. They robbed approximately 3,800 yuan in cash and watches and fled.</p>
+<p>At 2:55 p.m. yesterday, an overseas Chinese was riding a bicycle when he was suddenly stopped by four robbers near Jiaxing Road, Hongkou. Two robbers showed their weapons. They robbed 10,000 yuan in cash. Afterwards, the victim reported the incident to the police and asked them to arrest the robbers.</p>
+<p>At around 4:00 p.m. yesterday, five robbers armed with handguns suddenly came to No. 3, Lane 441, Meibaige Road. As a result, they ransacked the house and robbed 800 yuan in cash.</p>
+<h3>Social Miscellany</h3>
+<p>Qingnian Department Store The Qingnian Department Store at CD2, Avenue Foch, will hold a special five-day sale with all goods reduced in price starting today due to the approaching New Year. Exquisite red envelopes with New Year's money will also be given away. The branch store at the intersection of Guba New Village will also hold a special sale at the same time.</p>
+<p>Shizhen Plastic Arts School The Shizhen Plastic Arts Specialized School, sponsored by artists Hu Yunqiu, Jin Jiyan, and Wu Zhongxiong, is about to open. The president of the school is Fan Wenzhao, and the hosts are Mrs. Bifeilie, a female sculptor from Rome, and Efimov, a famous Russian painter. With these two famous artists in charge, the school will shine a different light on the Shanghai art scene, so those who go to study will be very enthusiastic. The school is located in Fan Wenzhao Architect's Office on the third floor of 20 Sichuan Road, and will hold an exhibition of Mr. and Mrs. Bi's and Mr. Efimov's recent works from the 9th to the 14th of this month. Visitors are welcome.</p>
+<h3>Guangzhao Public Association Promotes Group Cooking</h3>
+<p>The Public Works Department wrote to the Guangzhao Public Association to promote group cooking. The association issued a letter of advice to fellow villagers, saying, "(The Public Works Department of the Public Concession, in view of the lack of fuel in the city, has specially advocated a group cooking system, in which many small families cook together to save fuel. The method is good and beautiful. All my fellow villagers, if the number of family members is not large, can adopt it in time.)" At the same time, it replied to the Public Works Department, expressing its willingness to support it.</p>
+<h3>Guangzhong Bank Holds Children's Savings for Thrift</h3>
+<p>The amount of money that children in upper and middle-class society spend on candy and toys every year is considerable, and this is especially true at the end of the year and the beginning of the new year. In view of this, Guangzhong Bank has launched children's savings for thrift in order to cultivate children's virtues of thrift. An account can be opened with 10 national currency yuan, and gorgeous passbooks are prepared, with red satin as the cover and gold lettering, in order to arouse children's interest in saving.</p>
+<h3>Sports News Greater Shanghai School Football Tournament to Close This Week; Exhibition Match to Be Held on Saturday</h3>
+<p>The Zhen Dan Greater Shanghai School Mini Football Tournament has been successfully concluded. The exhibition of the Blue Team against the Vatican Royal has been repeatedly postponed due to rain. It is now scheduled to kick off at 3 p.m. this Saturday. Before the match, starting at 2 p.m., there will be an additional exhibition match between Zhen Dan and Xu Hui. In addition, the security deposit for the competition was refunded yesterday. Teams that have not yet received their refunds are requested to bring their receipts to Liang Qishan in the Chemistry Room of the school from 2 p.m. to 6 p.m. today. Refunds will not be issued after the deadline.</p>
+<h3>American Sets Indoor Pole Vault World Record; Result is 15 Feet 8 3/8 Inches</h3>
+<p>New York, 8th- American Californian athlete Warren Hutton set a new indoor pole vault world record at the Millrose Games held in Madison Square Garden today. The result was 15 feet 8 3/8 inches.</p>
+<h3>Mengxian Cup Basketball League Registration Closes Tomorrow</h3>
+<p>The registration for the Mengxian Cup Basketball League, sponsored by Mengxian Vocational Night School, will close tomorrow. More than ten teams, including Lvping, Huanan, Xiaguang, Shude, Mengxian, Bailian, and Xiaolong, have participated. Those who wish to join should contact Chen Zhong at Xiaguang Middle School on Datong Road as soon as possible.</p>
+<h3>Minor Football Friendly Match Xiaolong Beat Guohua Yesterday</h3>
+<p>In the minor football friendly match, Xiaolong and Guohua faced off yesterday. The match was very polite. As a result, Xiaolong beat Guohua by only one goal with a score of 2-1.</p>
+<p>Commercial News</p>
+<h3>Money Cannot Buy It Today's Rice</h3>
+<p>In recent days, the price of domestic rice has soared rapidly. In a matter of days, it has risen by 40 to 50 yuan per dan. If it continues to rise, the 300-yuan mark will soon be approached. Otherwise, the end of the year is the time for farmers to sell rice. According to the situation in previous years, the price of rice would only fall, not rise. There are special reasons for this year's rise.</p>
+<p>According to people, there are many reasons for the rise in rice prices these days. The price of foreign rice has risen from 4 yuan 1 jiao 3 sheng to 3 yuan 2 sheng, and even 1 yuan 6 jiao 1 sheng, which of course can affect the increase in the price of domestic rice. The recent bad weather, with continuous rain and snow, has made the delivery of rice from the suburbs difficult, which is one reason for the rise in the price of domestic rice. Because it is almost the New Year, it is rumored that the Public Works Department's foreign rice will stop selling for many days, so the general public has to buy and store it in advance. Foreign rice cannot be bought, so they have to buy domestic rice with pain. When the sales of domestic rice increase, the price will naturally rise. As for the inconvenience of transportation and the scarcity of sources, they have always been the main reasons.</p>
+<p>Although there was still Public Works Department rice that could be bought for one sheng yesterday, there were still many people who returned empty-handed and were crowded out. As a result, the trading of domestic rice in various rice shops was booming. Bo Dao was selling for 260 yuan per stone, but it was not easy to buy. Many rice shops replied that they did not have a pass to issue rice, and some only sold glutinous rice for 23 yuan per dou, which was also a rare commodity, making people panic, thinking that food shortages were coming soon. (Stay)</p>
+<h3>Investment in Public Bonds Unabated for Many Days the Last Day of Grey Market Trading Within the Year Is Today</h3>
+<p>The public bond grey market was quite stable yesterday. The market price rose first and then weakened, with fluctuations of no more than about one jiao. This is because there is ample money, and there have been many investors in recent days. There is a great lack of chips in the market, so even if there are sales, it is still not enough to offset the floating positions. In addition, retail investors can be seen at any time, so the market price is extremely difficult to fall. Today is the last day of grey market trading within the year. Floating accounts may settle transactions, and there should be a slight breath. At the opening yesterday, Type C saw a new high of 71 yuan 4 jiao, and Type A saw a new high of 75 yuan 3 jiao. Later, the sales of Tongkang were extremely turbulent, and there was a slight pullback, falling by 5 or 6 jiao. However, because Tongyi suddenly had a large need, the market price was able to maintain its position. The turnover was about 700,000 yuan. A brief table is listed below.</p>
+<p>Foreign stocks continue to rise, and the turnover of industrial and public utility stocks has increased to 17,500 shares. Yangtze 11 yuan 54 jiao, Yeguang 15 yuan 9 jiao, Jardine Spinning Mill 27 yuan 5 jiao, Zhongfang 10 yuan 02 jiao, Tram 36 yuan, Telephone 23 yuan 5 jiao, Water and Fire 11 yuan, British Federation rose to 21 yuan 7 jiao 5 fen, Shipping 9 yuan, Paper Industry 6 yuan 7 jiao, Steel Industry 15 yuan 79 jiao, Reproduction 24 yuan, Rubber opened at 9,700 shares, Inda District 14 yuan 5 jiao, Langerzhi 16 yuan, Chen Shi 1 yuan, Galendan also 1 yuan, Jardine Matheson 56 yuan has buyers, sales need 59 yuan, Hengye 10 yuan has sellers, Zhongying 10 yuan, Xinnuo Spinning Mill 6 yuan 5 jiao, Shanghai Plush 6 yuan 4 jiao, Jardine Brewery 6 yuan 3 jiao, Kaiping 31 yuan, Electric Power Priority 80 yuan, British Zhaohua 21 yuan 5 jiao, Keluo Hua 1 yuan 9 jiao, all have buyers.</p>
+<h3>Searches Started Everywhere; Raw Gold Rises Again</h3>
+<p>Yesterday, the grey market for spot raw gold rebounded strongly. Amidst the atmosphere of the end of the lunar year, investors suddenly searched for purchases. Although the Tianjin Gang sold some, the Ningbo Gang continued to buy. The gold shops and securities firms stepped up their efforts, and the sentiment was strongly upward. In the morning, each bar (ten taels) was initially sold by a certain silver building, Heji, to Chengji and Decheng for ten taels each, at a price of 12,200 yuan, an increase of 80 yuan. Later, customers in a certain gold shop were seen trading ten taels with each other, at a minimum of 12,180 yuan. Decheng, Tongkang, Yongyu and a certain gold shop helped customers to buy strongly, and were immediately bought up by 320 yuan, reaching 12,500 yuan. Hefachengji and another gold shop sold, and the Tianjin Gang sold less, and it once fell back to 12,350 yuan. A certain money house and gold shop rose up again to absorb it, and after 11:30, the rise was even faster, soaring by more than 200 yuan, reaching 12,580 yuan. Many retail investors released it, and it began to fall back slightly, closing at 12,500 yuan, an increase of 220 yuan compared to last Saturday. There was a high and low of 400 yuan on the same day, and the trading became increasingly rare. The big shops in the jewelry business still hung up 1,300 yuan (purchases were reduced by 150 yuan), patterned silver was hung up at 14 yuan, and the black market had buyers at 10 yuan and a half yuan.</p>
+<p>Yesterday, the foreign exchange market saw the British and American gold pounds slightly weaker, with the former being 305 yuan? and the latter being 315 yuan. However, the above are all purchase prices. The US dollar bill was as high as 17 yuan, and the Hong Kong bill was also as high as 2 yuan 9 jiao and a half. Large bills still need to be reduced by 5 fen, and military bills are also as high as 3 yuan 9 jiao 7 fen and 6 li.</p>
+<h3>Yarn Market Ordinary Transactions Difficult to Unblock</h3>
+<p>The cotton yarn market situation is still stable. The situation of Japanese yarn is quite expensive, but transactions are not very prosperous. 20-count Double Horse Mill singles initially traded at 1,645 yuan, and the final price was 1,650 yuan, which is about the same as the price on the previous day. 42-count Blue Phoenix Mill singles were priced at 4,180 yuan to 210 yuan, 32-count Fairy Peach spot price was 3,800 yuan, 20-count Yueqin Mill singles were priced at 2,410 yuan to 2,385 yuan, 20-count Blue Phoenix Mill singles were priced at 2,550 yuan, 20-count Shuiyue Mill singles were priced at 2,595 yuan, 20-count Double Globe Mill singles were priced at 1,800 yuan, 16-count Red Kui Xing was priced at 1,000 yuan, and 10-count Boy Scout was 1,450 yuan.</p>
+<h3>Fabric Industry Concluding Business Dongbi Fine Twill the Most Firm</h3>
+<p>Factory Cloth Yesterday's market was stable, and transactions were very rare. Fellow traders and helpers were all in the process of concluding business. Some of the sales orders rose slightly due to shortages. 16-pound Flower Butterfly coarse cloth was 120 yuan, 16-pound Flying Goose coarse twill was 87 yuan and a half, 14-pound Yongzi coarse cloth was 90 yuan, 13-pound Flying Bear was 90 yuan, 8-pound Zhenzhong was 56 yuan, Dapeng fine cloth was 95 yuan, and 190 Chick Schillin cloth was 155 yuan. The street made more than 50 transactions, and the Ningbo Gang made more than 10 transactions.</p>
+<p>Dongbu The transaction has been cleared. The sales orders are tight because the foreign firms have no intention of opening goods. Only scattered amounts are resold for profit. Longtou Mill singles fell from 95 yuan to 93 yuan, and then rose back to 94 yuan, a drop of 1 yuan. Serge closed at 3 yuan 2 jiao, a drop of 2-3 fen. Medium-grade fine cloth dyeing factories absorbed it very strongly. Flying Fish was 92 yuan and a half, Colored Ball was 92 yuan, Trumpet Boy was 91 yuan, a drop of 5 jiao to 7 jiao and a half. More than 100 transactions were made. The price of fine twill was the firmest, with Double Fish Five Blessings calling for 85 yuan.</p>
+<h3>Red Dates and Vermicelli Continue to Rise</h3>
+<p>Du Sheng red dates A batch was released by the Tianjin Gang yesterday, with Date King at 200 yuan, Date Head at 180 yuan, and Top Account at 160 yuan, all rising by 10 to 20 yuan.</p>
+<p>The current value of vermicelli is booming in winter sales, and the price continues to rise due to strong absorption by the industry. Longkou vermicelli is 330 yuan, and the Guang Gang also handles it in advance. The future market still needs to be optimistic.</p>
+<h3>Thin Woolen Fabrics A Little Trade</h3>
+<p>Woolen cloth has recently become firmer. Wholesale traders in the industry are buying up incomplete colors of opposing goods. Transactions are all thin goods for spring and summer. Thick goods for winter have been dropped, so even if they are cheap, there is no transaction.</p>
+<h3>National Business Directory Published</h3>
+<p>Xu edited the "National Business Directory", with the first part being Shanghai, the middle part being domestic ports, and the lower part being Hong Kong and Nanyang ports, listing more than 10,000 merchants. A thick book is priced at 21 yuan. Longwen Bookstore, Salt Industry Building, Beijing Road, is the distributor.</p>
+<h2>Page 5</h2>
+<p>Chunqiu</p>
+<h3>A Heroic Demeanor at the End of the Road</h3>
+<p>— Zhi Cang</p>
+<p>The environment is withering, businesses are struggling, and various companies and merchants are adrift in the wind and rain. Some, having truly exhausted all options, have already dissolved or ceased operations. Others are scaling back, struggling to survive, just to maintain the only livelihood of their employees. What the future holds? It truly makes the employees shudder.</p>
+<p>For laborers who rely on others for their livelihood, the order for "layoffs" is more frightening than anything else. Of course, the authorities of various companies and merchants have their own unavoidable difficulties, but the hardship of those who are laid off deserves attention and sympathy. If various companies and merchants can still maintain operations, of course, there is nothing to worry about for the employees. Even if they can barely support themselves, they would not fail to take care of the employees as much as possible. Unfortunately, if they are declining day by day, and the business situation continues to deteriorate, then if they can still manage to scrape together ten or twenty percent, it might not be impossible to come up with a good way to help the employees settle their affairs. With the principle of "better to have thin gruel than no gruel at all," they can understand each other and overcome difficulties together. All "friends" under heaven travel far and wide to find ways to make a living, just to have some sustenance. In times of prosperity, employees are happy and eager, but for what? Now, being constantly trembling and cautious is too miserable.</p>
+<p>If it truly comes to a point where there is absolutely no other way, and the "layoff" order is issued, the authorities should also understand the situation of the employees—naturally, this requires mutual understanding. However, if they are not properly laid off, the employees will truly have nowhere to turn. The employees usually barely make a living at their current standard of living. In times of crisis, it is only human nature to ask for some compensation to alleviate their suffering. If it is only enough to pay for shoes, it will inevitably lead to a situation where they cannot make ends meet, leaving no room for maneuver.</p>
+<p>The good handling of factory arbitration and dismissal by the French Concession police, originally issuing return-home certificates as a necessary supplement to facilitate travel, is commendable. With long journeys and difficult living conditions, truly at the end of the road, staying is impossible, and leaving is difficult. "The sound of insects shatters the heart, making dreams impossible." If we want to avoid people starving on the roads, then it depends on the authorities to handle things better. The Shanghai Hebei Natives Association's notice to assist natives returning home is also a good reference. "Meeting by chance, all are travelers in a foreign land; the mountains and passes are difficult to cross, who will lament for those who have lost their way?" Since we are all emotional beings, we should give more warm and substantial sympathy.</p>
+<h3>Innocent Bystanders Affected</h3>
+<p>— Ai Qiao</p>
+<p>A: Hey! Now that it's the end of the year, your general store must be very busy!</p>
+<p>B: Sigh! Don't even mention it. Originally, I could have made a good profit this year. Damn it, the store next door is a rice shop, and the rice milling people block the door all day long like a wall, who else would come to buy things?</p>
+<h3>Stage and Screen</h3>
+<p>The opening film of the Queen's Theater, "The Elegant Woman," was previously reported in this publication. It is said that Warner also has two films scheduled to open at the Queen's next spring. One is Capra's annual masterpiece, "Meet John Doe," starring Gary Cooper and Barbara Stanwyck: the story is exceptionally novel. The other, also starring Gary Cooper, is called "Sergeant York," with the young actress Joan Leslie as the female lead.</p>
+<p>— Duo Bao</p>
+<p>(Editor's Note: Warner and Asia Cinema Company originally had a year-round screening contract. These two films may not be included in the contract, hence the move to the Queen's.)</p>
+<p>The theaters performing this play attach great importance to the martial arts actors, because Shanghainese love to watch "fighting." In addition to Zhao Songqiao, Xiao Zhao Songqiao, and Wang Qichang, the Xinguang Stage has also newly hired Guo Yukun, who specializes in monkey operas. Guo is the son-in-law of Xiao Yang Yuelou, and his father-in-law has also joined the troupe. It is said that Guo and Yang will leave for Shanghai tomorrow (the 11th).</p>
+<p>Because Wang Shaolou resigned from the Gong Stage, Wang Guiqing has been specially hired to fill the vacancy. Xiao Wang Guiqing, Xiao Xiao Wang Guiqing, etc. will naturally "father leads, son follows," and a group of little braids will be seen on the stage again.</p>
+<p>It has been confirmed that Liu Qiong will make a guest appearance as Emperor Ming of Tang in "Yang Guifei." Tu Guangqi and Zhou will also participate in the performance as Gao Lishi and Chen Yuanli.</p>
+<p>— Tai Xu</p>
+<p>Xu Li, Chen Yunshang, Chen Juanjuan: Blind Singing Girl (Sees the Light Again)</p>
+<h3>Begonia</h3>
+<p>— Qin Shou Ou</p>
+<p>17. Homecoming</p>
+<p>As soon as Xiangqi said those words, Meibao's face turned terribly pale. Her mouth had lost its power to move and she could not say anything more, she could only shake her head repeatedly at Xiangqi with a full of tears.</p>
+<p>"Then you must be surnamed Wu!" Xiangqi could no longer control herself. She immediately jumped up from her seat, staring fixedly at Meibao's pale face without blinking.</p>
+<p>The other four people in the room also felt something strange. Everyone stared blankly, bewildered.</p>
+<p>Meibao did not hear Xiangqi's words clearly at all, but felt instinctively that it was a good thing, and nodded involuntarily to the speaker.</p>
+<p>A second later, she was tightly embraced by Xiangqi. Shaohua's mother, looking extremely surprised, glanced at her son, and was about to turn around to ask the old man and the other girl who had come with Meibao, but seeing their expressions just as astonished as her own, she knew that asking them would not reveal anything.</p>
+<p>It was not until Xiangqi and Meibao hugged each other tightly and cried for ten minutes that Jinyu remembered the words that her husband had secretly told her once, and she suddenly understood.</p>
+<p>"Second Sister, this is a happy occasion, don't cry anymore! It's not convenient for the people in the restaurant to hear." She was the first to walk over, stroked Xiangqi's shoulder, and said softly.</p>
+<p>But it was not until three or four more minutes had passed that Xiangqi and Meibao could finally stop crying.</p>
+<p>"Shaohua, go to the door first and send away those nosy waiters." Jinyu ordered her nephew very competently. "Tell them there's nothing going on here, and they're not allowed to come again unless we call them!"</p>
+<p>Shaohua, of course, happily went to do as he was told. (339)</p>
+<h3>Bette Davis Wins Best Actress Award</h3>
+<p>The American Academy of Arts and Sciences announced today that Bette Davis is the Movie Queen, for her successful acting in "The Little Foxes." (This is the third time that Bette has won the Movie Queen award.) The runners-up are Joan Fontaine for "Suspicion," Greer Garson for "Blossoms in the Dust," Olivia de Havilland for "Hold Back the Dawn," and Barbara Stanwyck for "Ball of Fire." In addition, the Academy also announced Gary Cooper as the Movie</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.02.09.html", "next": "1942.02.11.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.06.19 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 376 - 4924515</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>日方繼續公布　襲擊荷蘭港戰績　澳總理寇丁廣播演說</h3>
+<p>東京十八日同盟社電　日本帝國大木營今日午後三時三十分宣布、據證實詳報、日本海軍於本月四五兩日、攻擊阿留申羣島之荷蘭港、曾擊落敵機二十一架、並炸毀大部份軍事設備、</p>
+<p>里斯本十八日同盟社電　據康白拉消息、澳洲聯邦總理寇丁昨夜向澳洲人民廣播悲觀演說、略謂、余敢直言澳洲有失陷之可能、澳洲現正遭遇被攻之危險、蘇聯現所經歷之可怖情况、或可見之於澳洲、里比亞力面戰訊不利、該處戰事　臻勝負關頭、協約國如在中東一敗塗地、則軸心國勢將控制蘇彝士運河此於澳洲必有重大影響　至於協約國船隻被軸心國潛艇擊沉者爲數極鉅、目下每年造船數量、勢靴彌補損失、</p>
+<p>里斯本十七日同盟社電　據倫敦消息、澳洲聯邦總理寇丁昨向澳洲人民之廣播演說、倫敦各晚報均以顯著地位加以登載、寇－演說曾謂、珊瑚海中途島及阿留申羣島諸戰役、並無決定性質、澳洲仍未度過危機、日軍如果佔領澳洲、則夏威夷及自阿拉斯加經加拿大、美國而至墨西哥、全部太平洋海岸均有被攻之虞、</p>
+<p>里斯本十七日同盟社電　日軍壓制太平洋及印度洋後、對反軸心聯軍唯一據點澳洲之威脅、頓行增大、加以日機不斷轟炸澳洲北岸要地、澳洲國民更感不安、據墨爾缽電稱、澳首相寇丁、十七日與聯軍司令官麥克沃塞、協議戰時對策後、即向全國國民發表廣播演說、吿以澳洲今已遭逢重大危機、促國民團結、其言有曰、澳洲漏嚐潛艇戰術之苦惱、（按此即指日本特殊潛航艇奇襲雪梨而言）澳洲船舶被擊於海底、船舶損失率凌駕造船能力之上、然聯合國保護澳洲、實爲有關戰局最重要之事件也、</p>
+<p>里斯本十七日同盟社電　據路透社墨爾缽電、西南太平洋聯合軍司令部、十七日發表、日空軍十六日再度空襲達爾文港及摩勒斯比港軍事設施、轟炸達爾文情形極爲猛烈、該港數處發生火災、黑烟蔽天、日機對該港自十三日來、以大編隊機連續轟炸達四日、澳洲當局已承認此乃爲空前之大規模空襲</p>
+<h3>粵日軍政攻佔三水　先在西江沿岸獲得據點</h3>
+<p>東京十八日同盟社電　此間朝日新聞載中國前綫來報、日軍於上禮拜二在廣東西江下游冉事進攻、昨日下午二時入三水、該處爲西江西北等之要地、該路日軍於本月上旬陷從化銀盞坳等處、藉飛機及生力軍之助、始再進攻、聞在西江沿岸奪得要點多處、始達三水、該處係三十五軍第一五五師所守地方、</p>
+<h3>太平洋軍委會　召開會議</h3>
+<p>阿根廷京城十八日同盟社電　據華盛頓消息、太平洋軍事委員會、昨晨在白宮開會、討論太平洋戰局、午後、美國軍事當局亦舉行會議、羅斯福總統、史汀生陸長、諾克斯海長、及陸軍參謀長馬歇爾將軍、副參謀長安諾德少將及海軍總司令金上將、均出席、</p>
+<p>里斯本十七日同盟社電　據路透社　爾缽電、澳洲政府爲檢討太平洋今後戰略、於十七日召開西南太平洋軍事會議、反軸心聯合軍總司令官麥克沃一塞亦出席參加、事前麥克沃塞一並與澳首相寇了舉行協議、</p>
+<h3>日機襲擊　摩勒斯比</h3>
+<p>里斯本十八日同盟社電　據墨爾缽來訊、澳洲協約軍司令部宣布、日方重轟炸由戰鬥機衛護、今日襲擊新幾內亞之摩勒斯比港、予以重創、</p>
+<h3>巴西港灣　張設防潛艇網</h3>
+<p>阿根廷京城十七日同盟社電　據巴西京城電稱、受軸心國潛艇威脅之巴西政府、刻正進行準備、在里約熱內盧灣口、張設防潛艇網、</p>
+<h3>阿根廷船被繫沉事　德允道歉賠償</h3>
+<p>阿根廷京城十八日海通社電　阿根廷外交部露佈、德政府爲阿根廷運油船「維多利亞號」、被魚雷擊沉事、表示道歉之覆文、德政府除道歉外、並允賠慣損失、</p>
+<h3>各地貨輸沉沒</h3>
+<p>華盛頓十七日哈瓦斯社電　海軍部頃　表公報稱、巴拿馬國中型貨船一艘及洪都拉斯小型商船一艘、先後存加勒比安海沉失、所有獲救船員、均巳在東部沿海某港登陸、</p>
+<p>紐約十七日哈瓦斯社電　瑞典「大西洋航運公司」所屬三千四百　輪船「卡倍林」號、業已被撞沉失、獲救水手、昨在加拿大某港登陸、</p>
+<p>倫敦十七日哈瓦斯社電　據葡屬東菲莫三鼻給首府消息稱、英國輪船「塞貝泰」號、於本月十二日晨、在莫三鼻給海峽離貝拉港一百英里處、中魚雷沉沒、</p>
+<p>瑞典京城十八日海通社電　倫敦昨日宣佈、南斯拉夫輪蘇潑達號一（三七四八噸）已於上星期六晨、在莫三鼻給運河中、巴拉地方南約一百哩處沉沒、該船係經英國租用、</p>
+<p>阿根廷京城十八日海通社電　據此間昨夜接哈伐那消息、尼加拉瓜貨船一艘在加勒比安海被擊沉之後、其脫險船員二十名、業乘某美船在古巴某港登陸、其他詳情則未發表、</p>
+<h3>日泰成立　貸款協定</h3>
+<p>東京十八日同盟社電　大藏省宣布、日本銀行總裁結城豐太郎與泰國訪日經濟使命團長潘那南達、（泰國不管部大臣）今日簽訂以日金二萬萬元貸予泰國之協定、爲期五年、年息三厘半、以泰國財部名義、存於日本銀行、泰國財部可提此款向日本銀行購買黃金、此項協定、可由日本銀行與泰財部磋商展長之、</p>
+<p>東京十八日同盟社電　據淸報局宜布、日本銀行今日與泰國財部簽訂協定、由日本以二萬萬圓貸與泰國、作爲加强泰國財政經濟地位之用、</p>
+<h3>西商船接潛艇　赫爾不加表示</h3>
+<p>華盛頓十七日哈瓦斯社電　一赫爾國務卿本日招待記者時某記者詢以巴西寰球報」所載、近有西班牙商船多艘、行駛西國及南美航綫、專以接濟軸心國潛艇為事一項消息、是否屬實、赫爾答以請質諸海軍部、但事後海軍部發言人仍拒絕發表何項情報、</p>
+<h3>美商長輪戰事　尚無結束徵象</h3>
+<p>里斯本十八日海通社電　美商務部長瓊斯昨發表演說稱、戰事將較許多人所預料者爲長久、現尙無早日結束之微象、</p>
+<h3>伊拉克外長辭職</h3>
+<p>斯丹埠十八日海通社電　開羅來電、伊拉克外長特烏魯齊、因健康關係而辭職遺職由總理薩特暫攝、</p>
+<h3>北非天氣酷熱　惡戰將近頂點　防守杜白魯克區英軍自阿丹及里齊夫撤退</h3>
+<p>德元首行營十八日海通社電　一　今午德軍戰報稱、北非境內英第八路軍被分爲一、一部已向杜白魯克撤退、德·義鐵甲車一勁旅、方追擊向巴迪亞撤退之英兵、杜白魯克南英要塞數處被攻陷、德馬達魚雷艦在里比亞海岸附近、擊沉驅逐艦及護船各一艘、另有潛艇驅逐艦」艘及敵船運載之給養品一萬五千噸、亦被擊沉、</p>
+<p>里斯本十八日同盟社電　里比亞東部西列內加沙漠地中惡戰已歷三週、今日將近頂點、蓋李契將軍所部英軍、被迫從亞丹向埃及邊陲退却後德將羅美爾之鐵甲軍已將杜白魯克加以包圍、今日所接開羅來訊述德軍對杜白魯克之威脅頗嚴重、而德方沙漠軍團有瞬即衝抵地中海沿海英軍防禦陣地之虞、聞德軍對杜白魯克防務週圍之包圍、尙待完成、故仍有一路通達杜白魯克、即沿海向東之公路是也、聞羅傳來英方消息謂協約軍流動部隊現仍力阻德軍進攻杜白魯克之企圖、但此消息對里比亞英軍所遇局勢之嚴重、並不諱言、今日開羅發表之英方公報宣布英軍已被迫從阿丹與里齊夫退却、但對退却路綫未言其詳、軸心國方面消息謂、義·德飛機活躍於戰區、更番轟炸退却之英軍縱隊、而加薩拉區之肅淸戰、即將吿終</p>
+<p>里斯本十八日同盟社電　據開雜來訊、官方宣布、防守里比亞杜白魯克區之英軍、已被迫從阿丹與里齊夫兩處陣地撤退</p>
+<p>瑞士京城十七日哈瓦斯社電　各報載柏林　據德國軍界人士稱、北非方面夏季將臨、天氣酷熱、將使雙方軍隊咸感困難、預料戰事將超於沉寂、同時據倫敦消息、各報對局勢之嚴重、並不諱言、惟德軍倘不能攻入髙加索、從而威脅近東、則中東英軍總司令歐慶萊將軍、匪特力能保衛埃及、且能在仲夏或初秋大舉反攻、</p>
+<p>里比亞邊境某地十七日哈瓦一斯社電　前綫最後消息、昨今兩日戰况轉趨沉寂·昨日主要戰塲似在杜勃魯克港以南之埃爾阿丹區、羅美爾將軍夕戰略似欲切斷英軍與杜勃魯克港之交通綫、俾將英軍完全加以包圍、至於軸心國鐵甲車隊、昨今兩日中未見活躍、戰事稍趨和緩、推其原故、殆因其在發動大規模攻勢之前、有待援兵開到之必要、英軍防終自沿海某一點起、至亞克洛馬城西北轉向南方、以達埃爾阿丹與哥比、全綫長五十英里、惟英軍在埃爾阿丹區亦築有堅强之防禦工程耳、此外、德軍一大隊、在坦克車及大砲掩護之下、進攻里齊夫城、同時軸心國軍隊復佔領該城西面之泰馬爾鎭、英軍事專家力言、德軍總司令部今後苟欲取得飲水充分接濟、其事非易、惟在坦克車方面、其數量仍遠在英軍之上、最近在騎士橋與亞克洛馬兩區作戰、　被英軍擊毀三百輛、刻在修理之中、李契將軍部隊、自東源源開往協助八路軍、抵抗强敵、觀於地中海最近發生海戰、可知英方不惜何代價、努力自海上運輸軍用品前往北非、要之、英軍）　令部是否派遣生力軍前往增援、俾使英軍力能扼守亞克洛馬與埃爾阿丹一綫、而使杜白魯克港不致爲敵軍所完全包圍、今後戰局之發展、將完全以此爲轉移、瑞士將派員同行</p>
+<h3>交戰國呼喚　外交人員　瑞士將派員同行</h3>
+<p>華盛頓十七日日瓦斯社電　赫　國務卿本日談稱、日·美兩國關於互相交還外交官問題所進行之談判、頗爲順利、</p>
+<p>瑞士京城十七日哈瓦斯社電　頃據此間官方宣布、各交戰國互相交還外交人員時、將由瑞士派員同行、藉以監視是否履行交換協定、瑞士聯邦政府頃已指派韋納巾校負責監視歐洲與美洲各國人員之交換事宜、史－格中校負責監視英國與遠東之交換、史特拉佛勒、開勒及德根等負責監視美洲與遠東之交換、</p>
+<h3>日駐蘇大使　飛莫斯科</h3>
+<p>庫比希夫午七日同盟社電　日本駐蘇聯大使佐藤昨日午後父與蘇聯外交副員長費欣斯基討論、現行國際局勢、佐藤並定於今日偕使　職員六人乘飛機赴莫斯科一行、</p>
+<p>柏林十八日海通社電　施密特公使昨在情報會議中對英、美報紙所傳日、蘇關係緊張之訊、表示緘默、僅稱、據同盟社息、日本對蘇政策业無改變、蘇聯籍被吿上訴</p>
+<h3>行刺巴本案　宣告判決　蘇聯籍被告上訴</h3>
+<p>安加十八日海日社電　　行刺德大使巴本案、昨經安加拉法院宣判、審判長於下午五時半宣讀判決書、蘇聯籍被吿巴夫洛甫及柯尼洛夫、各處有期徒刑　十年、土籍被吿阿勃杜拉許曼及蘇萊曼、各處有期徒刑十年、均送反省院施以感化、據審判長解釋稱、法院經審査證人及檢察官所提出之證據後、認爲各該被吿確會參於行刺之準備、而犯刑法殺人未遂罪、是以按其情節之輕重、分別判以應得之刑、</p>
+<p>安加拉十八日海通社電　據今日公布、巴本被刺案宣判後蘇籍被吿二人已提起上訢、</p>
+<p>賈理德談德土關係</p>
+<p>柏林十八日海通社電</p>
+<p>土耳其駐　大使賈理德於德、土友好協定簽訂一週紀念日、發表談話稱、德土友好協定簽訂後、兩國關係日趨密切、尤以經濟及文化生活上更爲顯著、土斗其政策在求保衛獨立與其他國家和平合作、以及國內各方面之建設工作、戰　雖不足以改變土耳其之目的、但其建設工作已受戰事之影響矣、</p>
+<h3>瑞典兩院通過　增強國防</h3>
+<p>瑞典京城十八日海通社電　瑞典上下兩院昨夜經過熱烈之辯論、可決增强國防之建議、上院贊成者七十八票、反對者五十一票、下院贊成者一百四十九票、反對者五十五票、</p>
+<h3>泛美大會　月底開會</h3>
+<p>華盛頓十八日哈瓦斯社電　泛美大會定三十日開會、討論財政統制問題、屆時國務副卿威爾斯常以泛美洲經濟財政委員會顧團主席資格担仟主席</p>
+<h3>英下院通過　新戰費支出案</h3>
+<p>里斯本十七日同盟社電　據路透社倫敦電英國之十萬萬鎊新戰費支出案、十七日業經英下院通過、英財長伍特並發表談話稱、英國戰費之支出、每週約達八千叫百二十五萬鎊、前在　月通過之十萬萬鎊戰費、下週中即將用罄此次之支出額、最多僅足維持至化月、總計開戰以來，經議會通過之戰費、已達一百萬萬五千萬鎊、就最近戰費支出額計算平均每日約需一千二百萬鎊、</p>
+<h3>巴西南部　風雹成災</h3>
+<p>巴西京城十七日哈瓦斯社電　　巴西南部塞爾省、暴風及冰雹成災、爲害之烈、為從來所未有、死居民十人、傷多人、房屋五十餘幢被毀、家畜損失亦大、</p>
+<h3>塞伐斯托波爾　外圍戰況慘烈　德在高崗布置巨炮炮彈每枚重逾六噸</h3>
+<p>德元首行營十八日海通社電　今午德軍戰報稱、在塞伐斯托波爾區內作戰之德軍步兵與工兵、獲得大砲、飛機之援助、猛撲北部之主要防禦工程、其中最新式堅固之工程、爲馬克西姆戈基砲台、德軍今距塞伐斯托波爾港口僅三公里、該港砲台南面之蘇軍、雖頑强抗戰、經被擊退至山頭陣地、港中之糧台及運糧船被德機擊毀、東歐中路之戰事、在繼續中、</p>
+<p>柏林十八日海通社急電德軍司令部文吿稱、德軍已衝破塞伐斯托波爾北部之防衛綫、奪佔要塞數處、</p>
+<p>烏克蘭前綫某地十八日哈瓦期社電　塞伐斯托波爾港外圍戰、仍在膠着狀態中、但戰况之慘烈絕未稍殺、聞德軍已在城東北隅新近佔領之髙崗布置開山巨砲、其口徑較第一次歐戰時、德軍用以轟擊巴黎之著名」裴爾達」式大砲尤大、所用砲彈、每枚通達六噸以上惟城中烟霧瀰漫、烈燄騰天、視綫受障、砲兵活動不易、德機轟炸工作、進行亦頗困難、德機已於數日的開始投擲空中降落地雷、紅軍以塞港附近飛行塲已被德軍破壞、不堪復用、乃派遣史丹林級航空母艦一艘、駛往該港助戰、該艦所載飛機、數目雖少、但亦足予守軍以一臂之助、至於以突擊姿態在德軍後方埃伐巴都里亞以南、巴德尼伐加以北、塔根洛格以東及巴拉克拉伐各地登陸之紅軍部隊、現正與德軍發生肉搏戰、卡柯夫以東區域戰事德軍於渡越唐納資河後、繼續向東北方面推進、戰事刻芷在該河及另一支流間進行、他如凱爾斯克區最近一十四小時來戰况轉劇、紅軍在數處地點進攻、沃巴盎區村莊數處、得而復失者數次、雙方均有生力軍開到增援、德軍暫時雖保持主動地位、但整個局勢、尙難分曉、蓋以兩軍兵力柏等、且均處優越陣地故也、</p>
+<p>卡柯夫戰繼續進行</p>
+<p>熊城十一日同盟社電</p>
+<p>德方向黑海西岸之蘇方最後口岸塞伐期托波爾與巴拉克賴伐所施極龐大之攻勢、於星期三夜並米轉弛、德軍向此兩地之蘇軍防禦地陣猛撲者、共達十一次之多、迄今德軍在塞伐斯托波爾區推進、已將兩週、柏林廣播且傳、德軍已佔該港前之西伯里亞砲臺、據最後戰訊、德軍猛撲該　軍根據地北面之重要公路凡六次、並對該地北部防務作同樣兇猛之攻擊凡五次、戰況之慘烈、較去歲十一月與十二月尤甚、今日午後消息謂、蘇方宜稱現仍扼守通往塞伐斯托波爾與巴拉克賴伐兩埠之公路、蘇方今日中午公報僅謂、前綫無重大變化、同時卡柯夫第二次戰役、刻仍樅續巡行、該地德軍附有大批鐵甲車、得步兵與砲隊之助、不斷攻擊、保持主動、並遂退紅軍多次反攻、</p>
+<h3>蘇駐南非總領　呈遞到任狀</h3>
+<p>里斯本十八日同盟社電　據普勒托利亞消息、蘇聯首任總領事狄米諾夫昨向南非聯邦總理斯末治上將呈遲到狀、按南非聯邦與蘇聯最近始決定樹立外交關係……</p>
+<h3>尼赫魯支持甘地　促英交還政治權　弗雷族反英潮益擴大辛特州陷亂狀態中</h3>
+<p>東京十八日同盟社電　日日新聞載里斯本特常稱、印度國民會議派領袖尼赫魯、十七日曾在孟買發言、抨擊英國之要求英·印協力、據路透　孟買來電、尼赫魯於十七日夕言論中、首對甘地之英軍完全退出印度表示完全支持、並提出要求謂、英政府當以政治權力交還印度、同時叉再加說明稱、如英國能容納印度之上述要求、則印度當以自力解決印度之國防問題、故印度若小能得到完全之獨立、則英·印間之各種問題、終難有和半解之希望</p>
+<p>里斯本十七同盟社電　印度反央運動、以爭取祖國獨立爲目的、自國民會議派元老甘地與尼赫魯在華特哈會談後、二人間意見一完全一致、更增加其實現之可能性、甘地十七日在（哈里疆）報又發表論文一篇、再度要求英人退出印度、則印度將成立以國民會議派回敎徒聯盟等代表組成之印度政府、然若此政府採取余之主張　則將不冉援助聯合國、英國退出印度時、印度軍亦應立即解散、然英·美若不收回過去侵略印度之魔手、則人類之自由論、無價値可言、</p>
+<p>東京十八日同盟社電　據說賣新聞載瑞士蘇黎世特　稱、印度西北部辛特州弗雷族之起義反　、現在回敎徒之熱烈支持下、益　擴人、如切斷電話、破壞公路等事、均不斷發生、全州處於無政府之混亂狀態中、事態極為嚴重甘地亦要求州政府立即辭職、俾山其出而幹旋設法解決、然英印政府已拒絕此項調停、開始嚴軍彈壓、且將多數之弗雷族人加以逮捕、然以印度人民大衆反英情緒之根深蒂固、英當局欲澈底壓服弗雷族、事實上全不可能、</p>
+<h3>南非發生炸案</h3>
+<p>南非聯邦勃降封登十七日哈瓦斯社電　今晨此間發生恐怖案數起、有人在某印刷所鬥前、投擲炸彈一枚、當即爆炸該所稍有損傷、又有人在市塲投彈、幸未爆炸、某處又有商店兩家、發生大火、驚察常局刻已着手偵査、但迄未逮捕何人、</p>
+<h3>英艦自地中海　駛入直布羅陀</h3>
+<p>馬德里十八日海通社電　抽此閒接到消息、英戰鬥艦隊來亞號、航空母艦　號及阿加斯號驅逐艦二艘及平面戰艦五艦、於昨晨由地中海進入直布羅陀、同日若十時後又有戰艦八艘入港、並有受重創之巡洋艦一艘由駁船　艘拖入、該批戰艦係於本月十一日離該港、</p>
+<p>柏林十八日海通　電德軍司令部昨晚發表軸心國在地中海襲擊英國護航隊二隊之捷報據稱德海空軍攻擊結果、沉英商二十四艘、共一一一、〇〇〇噸、另軍艦七艘、</p>
+<p>羅馬十七日哈瓦斯社電　此間負責力面稱、義艦　日　曾在地中海中部西西里島附近海而與英艦發生海戰、事後英方宣布此後義艦損失情形、實屬過甚其詞、實際上僅被擊沉巡洋艦艘、重創驅逐艦一、艘且此艦業已拖回木國某港修理、</p>
+<h3>德機飛瑞典事　已吿圓滿解決</h3>
+<p>柏林十八日海通社電　關於瑞典所傳德機飛越瑞典領空之消息、施密特公使昨在德外部情報會議中稱、德國與瑞典政府間對此已有接洽、業已作圓滿解決、</p>
+<h3>傳英政府提議　動員各國移民</h3>
+<p>倫敦十七日哈瓦斯社電　據聞有人向下議院院提出草案件、主張授權英政府、動員現設倫敦各外國政府統治下之人民、</p>
+<p>瑞典京城十七日海通電　據倫敦息、英政府昨向下院提出議案稱、在英國栘民之已屆入伍年齡、但未在其木國　隊服役者、此後應入英軍服、所牽涉之各國移民爲比利時、荷蘭·希臘、南斯拉夫印度、波蘭·捷克、</p>
+<h3>國際簡訊</h3>
+<p>阿根廷京城十七日哈瓦斯社電　參議院頃通過、政府所提延長戒嚴令六十日一案、</p>
+<p>華盛頓十七日哈瓦斯社電　「紅人協會」頃上書國會、聲明該會決與軸心國宣戰、</p>
+<p>華盛頓十七日哈瓦斯社電　白宮總統府頃任命埃生　威爾氏爲新設之戰時情報局副局長</p>
+<p>瑞典京城十七日哈瓦斯社電　外傳瑞典駐埃及公使囚遭埃及當局之反對、被迫離仟、靈通方面已予否認、並謂、該公使實係例假返國、</p>
+<p>巴西京城十七日哈瓦斯社電　巴西公民十六名、因有代替某國活動情事、被送往格朗特島圈禁、</p>
+<p>薩拉哥薩港十七日哈瓦斯社電巴塞羅納及伐倫西亞兩港工人一千五百名、本日抵此、定明日轉程赴德工作、</p>
+<h2>Page 3</h2>
+<h3>講講吃飯</h3>
+<p>飯醫餓，故食量以不飢爲準，（不飢和飽，絕對不同）肚子，　不好，飽更不好；有時半飢，有時半飽，最妥最好，（如爲人日動夜息，以調劑身體者同）有時飢餓，毋損健康；有時飽悶，易生疾病，故進食寧可不及，萬勿過之。食量過度，胃不得已放棄一部分責任，忽忙移交於大腸，腸又層層逼迫，上壓下擠，未化物乃囤積大腸下端，因之大便秘結，久而發炎，痔瘡以生。食物既嫌過量，大便又難暢通，腸中餘滓，愈積愈多，以致悶熱汚濁之氣上薰，則口臭，喉痛，眼疾，頭昏，瘡癤，失眠等症，勢必接二連三。吃飯適當標準；小兒每餐一淺小碗，大人一小碗，多則有損精神，無補腸胃。</p>
+<h3>兩租界當局　指示領米指示辦法領取務必遵照指示辦法　領取地段分清毋須排隊候領</h3>
+<p>工部局情報處公吿云、凡住居於下開各馬路之納稅人、應於本月二十二日或二十三日分別俞往指定之分發購米證辦事處、請領購米證、屆時可毋庸列隊候領、因簽證之時閒分配、極爲充分、各該辦事處之辦公時間、定爲上午九時至中午、下午一時至四時、計開、</p>
+<p>（一）中區辦事處馬霍路二三四號、路名厦門路、愛多亞路三四號至七六〇號（雙數）、白克路·廣東路·平望街·盆湯弄·倍爾福路外灘·芝罘路·浙江路、</p>
+<p>（二）北區（甲）辦事處海寗路一三〇號、‘路名漢璧禮路·海能路·嘉興路·老官路·　一行路·瑪禮遜路·南潯路·北海一寗路、一</p>
+<p>（三）北區（乙）辦事處愛而近路四五六號、路名阿拉白斯脫路·文監師路·界路·克能海路·唐家弄·愛而近路九三號至三八號（單數）、</p>
+<p>（四）東區（甲）辦事處通州路八〇號、路名亞德路·東百老滙路·兆豐路九一號至二九五號（單數）東漢璧禮路二七三號至四六八號、東熙華德路公平路、</p>
+<p>（五）東區（乙）辦事處華德路二十九號、路名愛而考克路·倍開爾路三號至七一一號（單數）、及〇號至五六〇號（雙數）、百老滙路·舟山路·兆豐路二六〇號至六二〇號（雙數）、大連灣路　　號至七　九號（單數）、及　號至三六〇號（雙數）、濟寗路一號至一四九號（單數）及一　弄、</p>
+<p>（六）東區（內）辦事處齊物浦路五五八號、路名倍開爾路一五八號至一〇二叫號（雙數）、及九三九號至一〇三三號（單數）、安東路·齊物浦路·朝陽路·荊州路　格·路海州路杭州路·河問路·海關路一六九號至三四〇號·福寗路。</p>
+<p>（七）西區（甲）辦事處馬霍路二三叫號、路名梅白格路二號至五八四號（雙數）、及三五五號至五七九號（單數）、派克路二一號至三一九號、愛多亞路一二七七號至一四五一號（單數）、及八五〇號至一四七六號（雙數）、　　路三四號至三三四號（雙數）、</p>
+<p>（八）西區（乙）辦事處戈登路一一〇號、路名靜安寺路五七七號五一六九九號（單數）愛文義路二二一四號至一六四八號（雙數）、赫德路第五弄、福煦路匕四〇號至一三七〇號、海格路·戈登路　號至三九四號、大西路·哈同路、</p>
+<p>（九）西區（丙）辦事處西摩路七八八號、路名昌牛路·康腦脫路三號至九〇九號（單數）、及二號至一五八號（雙數）、　袋角（馬崎路）一五號及三五五A號至五五四號、</p>
+<p>（十）西區（丁）戈登路七五三號、路名小沙渡路九五七號至一五〇五號、　袋角（馬崎路）三號至三一九號戈登路一〇一一號至一三六三號（聞數）、及九九四號至一〇六〇號（雙數）、　袋角（海防路）五五五號至六○一號（單數）、各有關係納稅人、爲其自身利益計、對於以上各項、務須嚴密注意切實遵照辦理、至於續批詳情、當於下星期二刊載各報、</p>
+<h3>法租界</h3>
+<p>法租界發給第一次購米證、將於本月二十二日星期一上午八時開始、已如昨述、茲將各　區內應行領取第一次購米證之各段戶長列之如下、</p>
+<p>小東門區第九段</p>
+<p>六舖八－二七、第二段法外灘一二三－一二五、小東門大街一－八五、挨斯加里挨路八五－八八A、第三段小東門大街八七－一二五、第四段小東門大街一一二－一一六、　行路三五－四三、民國路九－一、京州路一二、第五段京州路二－一八、江東門大街九八　一一〇、彤雲路一－一三　行路二一－三三、</p>
+<p>麥蘭區　第三十一段法外灘公館馬路、天主堂街、愛多亞路、第三十二段老永安街、新永安街天主堂街、公館馬路、</p>
+<p>霞飛區　第一一三段福煦路一－三七、備石路四－五八、薩坡賽路（蒲石路與福煦路間）第一一四段霞飛路三八二－四四八、備石路一－三十一、白爾部路三九－五七、薩坡賽路（霞飛路與備石路間）、第一一五段愛多亞路七六三－八〇一、呂宋路三八－九〇、華格臬路二六〇－二六四、貝勒路二－一六、第一〇〇段愛多亞路七二五－七六一、貝勒路一－二五、華格桌路（　羅路與貝勒路間）葛羅路二－四、第一一〇段福熙路六三－一〇三、薩坡賽路（霞飛路與福煦路間）、霞飛路三四二－三七四、馬浪路（福煦路與宮崎駿飛路間）、第一○六段華格臬路貝勒路與呂宋路間）、呂宋路（華格泉路與　自爾路間）　自爾路（呂宋路與貝勒路間）、貝勒路一八－一五、第一〇七段福煦路一－五三馬浪路一－五一霞飛路二九六－三四〇貝勒路五二－一五〇、</p>
+<p>中央區　第一五五區　斐德路五三－五六九、呂班路二二四－三〇〇、薛華立路二－一二、馬斯南路八一－一八五、第一六一－一六二段二六五－三五七、巨　　路二－九八、求新　、第一八一段霞飛路七六五－八七一、金神父路二－一八、環龍路二〇〇－二五〇、　區域西愛路二七、－三一一、第一九〇段蒲石路一七三－三二三、　區域西愛路二九〇、霞飛路九〇〇－九五二八、亞爾培路一二五－二七九、</p>
+<p>福煦區　第一二七－二一八段　飛路一二九四－一三二六、善中路八七－一七三、蒲右路六七七－六九三、麥陽路、第一二九段辣麥德路一三〇〇－一三三六、實健路一－一三A、霞飛路由畢勛路一〇－三〇、第二二〇段蒲石路六二－八二、巨　達路六六七－七〇五、勞區域燕嘜一－呈七、第一九九段蒲石路三二五－四〇七、勞爾東路七一－一三、享利路一六－八〇、來亞爾培路一六四－二〇〇、第一二三段徐家滬路八四〇－八五二、祁齊路　六五－一二九、福　理路二六三－四〇一、台拉斯脫路二二二－二九四、第二〇五段宙米路一〇－八六、拉都路二〇七－二四一、辣　　路一一九九－一二五一、廿世東路二－一三四、</p>
+<p>貝當區　第二五四段福</p>
+<p>開森路　一九八－二七〇、居爾典路三八〇－四一〇、高爾地愛路一五－五五、白賽仲路一九九　二六九、第二五六段台斯德郎路一一－三一、愛棠路一六五－一八七、貝當路七〇〇－七一四、下開住戶之戶長或二房東請於六月廿三星期二前往領取、</p>
+<p>小東門區　第六段小東門大街七二－九六、老永安街二－一〇、　行路一－一九、洋行街－一七、第七段小東門大街三二－七〇、洋行街二－一〇、裕與大街二七－六三、堂斯凡沙爾路一－一七、第八段小東門大街二－三〇、堂斯凡爾沙路、一－一六、裕與大街一—二三、法外灘一〇九－一二二、第十一段六行街一二－二六、法外灘九九－一〇八、裕與大街二－六〇、南翔路二－一六、第十二段　行路二－一四、彤雲街二二－三〇、洋行街二三－四五、第十三段　行路一六－二六、彤雲街一五－二九、</p>
+<p>麥蘭區　第卅段法外灘。新安街.老永安.法大馬路、第卅三段新永安街．天主堂街．民國路．老永安街、</p>
+<p>霞飛區　第一○一段華格　路二四一－二五三、貝勒路二七－六五、　自爾路二五〇－二九六、葛羅路六－三十第一〇二段　自爾路二六三－三○九、貝勒路六七－一五三、霞飛路二五四－二九〇、葛羅路三四－六〇、第九五段愛多亞路六五一－七二三、葛羅路二五－三一、　自　路一八〇－二四六、李梅路五四十九〇、第九七段　自邇路二〇九－二六一、葛羅路（　自　路霞飛路之而）霞飛路一〇二－二五二李梅路九二－一三八、第八九段愛多亞路五九一－六四九、李梅路一－五三、華路泉路一五六－一九〇段華格　路一五四四第九〇段華格臬路一五七－一九三、李梅路五五－一一三、　自　路一三六—一五二、第九一段　自　路一五七－二〇七、雜爾　路一一五－一四九、霞飛路一四八－二〇〇、維　　路一一二－一四八（待績）</p>
+<h3>撤僑輪　定期起椗　遺返僑民計六三六　定二十四日上午離滬</h3>
+<p>上海泰晤十報云、聞諸負責人士、義郵船康鐵凡第號、定於六月二十四日（星期三）午前十一時起椗、載遣返僑民約六百三十六人、駛往葡屬非洲洛　斯馬基斯、、駐東京瑞士公使館及日外務省官員各一人監督隨船同行、據駐滬日總領署秘書通譯官眞崎聲稱、遺返僑民中有數人因親戚患病、或其他原因、表示願留滬上、此種原因、或將使遺返僑民之總數、逐日更變在今日則共計六百三十六人、內一百五十五人係駐中國淪陷區、屬於領署與外交界之政府官員、其中　　人一百三十一名、巴西人十一人、墨西哥人六名、加拿大人四名、與瓜地瑪拉人三名、遣返平民之從中國淪陷區各城市來滬聚集者、共四百十九人、來自馬尼刺者十三人、旅滬僑民計四十九人、據瑞士領署人士聲稱、遣返僑民中、尙有去留未定者少數人、餘者則已接獲或在數日內將接犯啟程通知、至於隨船同行、至洛侖斯馬貴斯監督布置之進行、並在途中負責之瑞士與日方官員不久將從東京抵滬、或係搭康鐵凡第號而來、康　凡第號近駛日木、添置供應品、將於啟程駛非之前、約兩日抵滬、確期則未經披露、日方與瑞士什表在洛侖柯馬基斯完成使命後、將返上海覆命、</p>
+<h2>Page 4</h2>
+<h3>法租界全體典當　昨日止當候贖　認法領署管理條文碍難照辦典當公會押當公所勸導復業</h3>
+<p>法和界典担業一百八十餘家昨因接奉法國總領事第一七八號令對界內典當實施管理、惟其中條款異常苛嚴、此後受常物品、有動輒抵觸法令之　　昨日上午起全體止當候　、呈半停業狀態、情形相常嚴重　條文中最重要奢爲（第四條）當舖祇應放款於共知悉身份及住址之人、或能以正式文件證明共身份及住址之人、或由當舖所認識之保人二名與質物者共同簽字於放款簿內、證明共身份及住址之人、（第五條）凡受當物件均須以當票交與質物人、該當票應記下列各項、（甲）當舖名稱及地址、（乙）質物人之姓名住址及職業、（丙）有保人時保人之姓名住址及職業、（丁）受當日期、（戊）放款數目、（已）利率、（庚）對於質物者之贖當期限、（第八條）如當鋪不依第叫條之規定而受贓物詐欺物或侵佔物、則常舖經理對於竊盜詐欺或侵佔之被害人應負責、（第十二條）如常舖受質物而不詳細查明其來源者、則對其經理得依收受贓物罪或疏忽受當來源不明之物件罪起訴（第十七條）違犯本署令規定及共禁令者、處以一元至千元之罰金、如係累犯可增至十元至二千元、違者之罰金由管轄之法庭判定、一百八十餘家典當及押當、昨晨接到上項條文之後、以照此規定則典押兩　受當物品、殊有動輒抵觸法令之虞、認為萬難招辦、自上午九時起、即全體止常停贖、同時並聲請典當公會押當公所爲同業請命、該兩業公會及公所劇情、除勸令同業暫安毋跥、照舊營業、以免影響平民周轉、並已着手擬具意見、準備提請總領署、將該項章程加以修正、以維營業</p>
+<p>體育新聞</p>
+<h3>第一屆國斌盃圓門球賽秩序公布定七月二十六日結束</h3>
+<p>首屆　斌盃圓門球聯賽、男子組共六隊加入、採單循環制、女子組三隊參與、故採雙循環個、全部秩序昨經主辦當局　定公佈、共賽六周、定於七月二十六日結束、比賽均逢星期日舉行、各隊不得藉故要求改期俾便準時圓滿功德、查男子組六隊、實力均異常雄厚、如强星·中聯·V隊、　屬球壇勁旗、而華南·南洋兩隊、前者乃孟賢盃籃球冠軍、後者爲圓門球中之鐵軍、此外藥光乃新興強隊、集滬星名手張錦璇·馬燦希·林萬里等、陳容堅挺、不可輕視、是以將來競爭興趣、必十分濃厚、茲將全部秩序錄下、</p>
+<p>六月廿（星期日）友隊－愛國（女組）下午四時中聯－V隊（男組）下午五時南洋－混合（表演）下午六時</p>
+<p>六月廿八（星期日）V隊－南洋（男組）三時卅分愛國－鈴聲（女組）四時卅分華南－中聯（男組）五時卅分强星－藥光（男組）六時卅分</p>
+<p>七月五日（星期日）友隊－鈴聲（女組）下午四時藥光－華南（男組）下午五時</p>
+<h3>北河南路酒精廠　發生爆炸　死一人傷十三人</h3>
+<p>昨晨九時零五分、北河南路三百六十五弄十六號、某酒精製造廠、突起爆炸、轟然聲該廠後壁即被炸坍而廠屋兩處起火堆存酒精空地上所蓋屋頂亦吿摧毀、而事後現現焚斃者名、灼傷者達十三名之多、廠屋僅餘殘肢、四壁以他物支持、</p>
+<p>死傷情形</p>
+<p>當爆炸發生後、虹口救火會即趕往營救、而於大門　見有一人橫臥、頭面焦灼、傷勢甚重、知覺已失、顯然彼曾設法爬出廠屋、然不待其爬至　中、而即告暈倒、救火員等復依循地上之血跡、尋至屋後之弄中、發現有該廠工人十三明、而筋疲力盡、彷徨無定、彼等亦曾自火焰煙霧瓦　中掙扎而出、惟至此已不能再前、此十四名均經中送靶子路上海療養院診治所醫治、而在大門前發現之一人、即在途中氣絕、</p>
+<p>調査起因</p>
+<p>爆炸後、同時復有兩處起火、幸火勢甚小、未幾即吿　滅、而公共租界捕房人員、與救火會人員、即開始査勘炸發生之原因然至昨午仍無重要發現、此臨時改造酒精廠、廠主姓名、及其釀造酒精目的、均無法確定、該處本雇有工人三十名、除死傷之十四名外、處均逃逸無蹤、故　查進行　爲困難</p>
+<h3>來函</h3>
+<p>逕啟者、　六月十八日貴報本埠新聞欄、刊有　塲職員要求改善待遇消息一則、無任　異、查敝塲賓主感情融洽、絕無上項情事發生、相係傳聞失實致有此誤、用特專函奉懇　　予　正、以明眞相、不勝盼禱之至此致報館台鑒、中央運動塲啟六月十八日、</p>
+<p>昨日本報發報時間六點四十分强星－南洋（男組）下午六時</p>
+<p>七月十二（星期日）華南－强星（男組）三時卅分友隊－愛國（女組）四時卅分V隊－藥光（男組）五時卅分中聯－南洋（男組）六時卅分</p>
+<p>七月十九（星期日）V隊－强星（男組）三時卅分愛國－鈴聲（女組）叫時卅分中聯－藥光（男組）五時卅分南洋－華南（男組）六　卅分</p>
+<p>七月廿六（星期日）華南－V隊（男組）三時卅分中聯－强星（女組）四時卅分友隊－鈴聲（男組）五時卅分藥光－南洋（男組）六時卅分</p>
+<h3>中青游泳池　七月一日開放</h3>
+<p>上海靑年會四川路分會游泳池、決定於七月一日起開放、一切辦法大致與往年相同、但每人須各備二吋照片一張、經醫師檢騐合格簽名蓋章後、方可報名納費參加、該會印有簡章備索、</p>
+<p>商業新聞</p>
+<h3>四月份　票據交換統計</h3>
+<p>本市銀行　聯合準備委員會票據交換所、昨發表四月份票據交換統計、茲摘要於後、（一）交換票據部份</p>
+<p>全月金額總數八六九九四六六九四元六一、全月票據總數一四五二八　張</p>
+<p>最高金額五七五六　四五九元八三（七日）、張數一　九九叫張（七日）、</p>
+<p>低金額二八　　七六四五元匕六（十八日）、張數四一一七張（十八日）、　每日平均金額三七八二三七六九元三三張數六三一七張、</p>
+<p>（二）代收票據部份</p>
+<p>全月金額總數　九四九三四二二三八元一四、全月票據總數三四一二張、</p>
+<p>最髙金額一一八六四三三七五元八八（七日）張數　六〇○九張（七日）、</p>
+<p>低金額五六七八三二四六二元三七（十八日）、張數六六七二張（十八日）、</p>
+<p>每日平均金額八四七五四〇一〇元三四、張數九七四四長、</p>
+<p>（三）全月往來銀行轉帳金額合計一九八六八五九八一六元三四、</p>
+<p>（四）同業存款每日平均金額六七五九一四九一四元八三，「附註」四月份交換金額總數與代收金額總數校三月份减少四萬八千一百餘萬元、而同業存款每日平均金額則增一萬三千〇〇九禹一千〇一十三元三角七分</p>
+<h3>五金業　安渡端節　各貨市勢向榮</h3>
+<p>五金同業、昨日安渡端陽節、適値各貨花色軋缺之期、雖實銷仍稀、但同業心思並不因此而軟化、其原因實係本埠各五金品存底俱告不豐、以致各貨市勢依舊向榮茲再分述諸花色走銷及市况如下、</p>
+<p>大馬口鐵　目前存貨奇情、花色僅　十四號與二十六號兩種、查是貨市况、日昨以還頗呈熱鬧狀態、其用途泰半爲製造紗廠家之滾　所用、一句以來、紗廠紛紛復工、故對該貨採購殊熱、於是執有少量存貨者、非至好行情、有不肯輕易脫手之感、故市價所漲甚厲、如二十四號花色每張開一百元、二十六號貨每張七十元、比前均各漲二三十元不等、且整箱無貨、</p>
+<p>黑鐵坯子　交易陸續不斷、爲數並不衆多、採辦者首推本街塘瓷製坯廠、其次印鐵廠水瓶廠等亦有搜進、查是項現貨時雖無斷檔之虞、然來源不繼、日久以後、難免軋缺、故市勢頗露向榮之態、業中人心思亦堅、行情俏俐無比、昨二千磅貨每噸已須一萬四千元、較前又升達百數十元之譜、</p>
+<p>本廠元釘　本釘市面</p>
+<p>俏已多日雖南洋幫北路客商生意皆淸、但其出產亦稀、蓋原料品（盤元絲）滬市存貨單薄、製釘廠多紛紛减工或停工、於是流通貨　形軋缺、目囤戶亦時有吸進、故難免使其價格高昂、兼之同業心思亦堅、眼光看好、昨市倍司行情、已喊八百元光景、</p>
+<h3>潮枝現貨軋缺</h3>
+<p>潮枝本周來源、雖有轉到　批、因原頭海關手續尙未完備、須押鉅額稅金、方可先行出貨　然客方以此貨不欲急售、未允押稅、故迄未報出、致現貨甚爲軋缺　號盤遂叫升一二百元、趨勢堅挺、</p>
+<h3>茴香新盤迭增</h3>
+<p>茴香前以滯銷、暗盤降度至銳、曾有五六百元夕差度、自金融更動後、價遂復振邇來更見新髙峯、行盤迭增、今售價幣一千一百元、</p>
+<h2>Page 5</h2>
+<p>春秋</p>
+<h3>鍾馗過端午</h3>
+<p>— 袁英</p>
+<p>鍾馗大仙近來覺得非常不適意，最主要的原因是酒的漲價和鬼的瘦弱。雖然，酒可以暫時忍住不喝，但如果要節省到連鬼也不吃，那可不是容易做得到的事。肚皮總耍塡飽的呀！何况我們的大仙素來以專吃鬼魅的責任自居的呢！？</p>
+<p>端午節終於又到了，照例，該是妹妹派人送些酒和鬼來孝敬哥哥的。然而我們的大仙眼巴巴地等了幾天，依然看不到半點鬼的影子，這使我們的大仙有點冒火了，難道人間居然都已經呑了長生不老的仙丹了嗎？</p>
+<p>鍾大仙躊躇了一會，決定親自降臨下界去考察一下，究竟是怎麼一同事。生活程度雖髙，總不作興餓着肚子過端午呀！何况這是一年僅有一度的佳節！</p>
+<p>撫着劍，他開始向下界進發。</p>
+<p>首先，他來到了上海。－－這地方本來是大仙的舊遊之地，他曾經在這兒吃過許多頓美滿豐腴的午餐，這兒有各式各樣的鬼，色鬼，賭鬼，鴉片鬼，（和比较次一等的白麵鬼）</p>
+<p>然而我們的大仙找了老半天，還是看不見一個鬼，也許這時是深夜，小鬼們都躱到鬼窠裏去了吧。於是他嗅了一嗅，開始在黑夜裏作一度巡察。</p>
+<p>突然，他的脚步快起來，因爲他看見在一家米店門口蹲着一些瘦弱的鬼，瘦雖然瘦，但總勝於沒有，於是他一把抓住了幾個。</p>
+<p>「我們是來軋米的！被抓的鬼大聲抗錢。一一但是在我們的大仙聽起來，那是多微弱的聲音呀！</p>
+<p>「那麽你們是人？」大仙有點奇怪。</p>
+<p>「是的！」</p>
+<p>「人也要吃的！」大仙有些飢不擇食了。</p>
+<p>「不！大仙饒命！」被抓的人哀求着：「小人家裏還有八十幾歲的老母和兩歲的孩子，明天是端午節，求大仙放了小人軋點米回去吃吃，－小人，小人家裏已經有廿幾天沒吃着一粒米了！」</p>
+<p>「胡說！　幾天不吃飯，還不變成鬼麼？你簡直是想賴！」</p>
+<p>「飯是沒吃，可是吃的苞米粉，黃荳麵，…仙有所不知，現在上海有幾家能够吃着米的呢？」</p>
+<p>鍾大仙到失望而且驚訝了，旣沒有鬼吃，人也是這樣瘦，難道神仙就該餓肚子嗎</p>
+<p>同到天上，接着了妹妹的一封短信：</p>
+<p>「莊源大的菉荳燒也漲了價，所以今年端午不得已停止贈送了。」</p>
+<p>鍾大仙無聊地過了端午。摸着劍，歎了一口氣，且待明年端午吧！</p>
+<h3>成功</h3>
+<p>— 新綠</p>
+<p>成功前滿佈着危機，同樣，成功後也滿佈着危機。</p>
+<p>成功前的危機是怕中途生變，達不到目的。成功後的危機是怕達到目的後從　歇手，鬆弛了成功前奮鬥的精神：甚至走到享樂奢　－可稱完全失敗－的道路上去。</p>
+<p>可是，一般人却祗顧到成功前，而忽視了成功後。</p>
+<p>我們要有能力，衝破成功前的艱難：我們更要有能力，不被成功後的種種壊習氣所束縛。因爲成功後的失敗，較成功前的失敗，尤其可怕；不可悲！</p>
+<h3>補不盡的無底洞</h3>
+<p>— 鳳馬牛</p>
+<p>黑鋼鐵鍋子上一個洞，洋傘上一個洞，洗脚盆上一個洞，洋瓷面盆上一個洞，丈夫的橡皮套鞋子漏進了雨水，把補了底的襪子浸黃了一大塊，兒子的舊襯衫上一個洞，－洞，這許多的洞，把黃太太煩惱了大半天。黃太太可不是女媧，有補天的本事。黃太太對付襪子或襯衫還過得去，於洋瓷面盆，鋼鐵鍋子，則須請敎鬥口叫喊的修理司傳了，而且這是刻不容緩的事，晚上靠了鍋子煮飯，雨天靠了橡皮套鞋跑「沃非司」；看了這些傢伙又眞惹氣。鍋子已換過了三回底，橡皮套鞋像隻張開了腮的死黃魚，發起火，眞耍扔到垃圾桶裏去，買新的！新的，黃太太已是憧憬了許久，一回回的想買，嫌貴，那曉得越等越貴；鍋子換第一趟的時候，想買新的，不過四十：換第二趟的時候，便七十幾了，「早知道可以買兩隻。」現在，眞合不來，於是拖拖挨挨，鍋子第三趟漏洞了，決心扔了買隻新的吧，問黃先生，黃先生却死勁的搖頭：「買甚麼呢，馬馬虎虎用用冉說，還要軋米買油，補補用用吧，新的要上百呢！」黃太太的「決心」一下子被戳了一個洞，不響了，默默的懷着「一半兒恨牠，一半兒愛牠」的心情，挾着鍋子，去找修鉛桶鉛鍋的擔子。</p>
+<p>擔子找着了，黃太太老資格的問：「換個底，幾個錢？」</p>
+<p>那修鉛桶的拿了鍋子打了個照面，說：「算便宜些吧，十四隻洋。」</p>
+<p>黃太太心裏一驚，但這一種驚嚇，也體騐得習慣了，一秒鐘後又鎭靜了，心裏想得還個價，想了想，開口了：「五隻洋來不來？」</p>
+<p>修鉛桶的把鍋子望她上一推，「不幹，你可曉得白鐵的價錢嗎，五隻洋，只好補隻撈水匙子。」他頭也不回的挑擔子走了。</p>
+<p>黃太太只好拿出「挽留」的辦法：「八隻洋吧！」不然，晚飯會吃不到嘴了；買新的，又得上百，忍着氣，叫住修鉛桶的。</p>
+<p>修鉛桶的擔子挑回了頭，於是大家爭價錢了，修鉛桶的表示「不幹」有三次之多，黃太太也擺出「七擒七縱」的態度應付，但到底抝不過修鉛桶的，十一隻洋一個也不能少成交</p>
+<p>黃太太宛若打了一回仗，理想中以爲八隻洋儘够了，却超了「逾限」一黃太太打了回敗仗，又得默認了。</p>
+<p>監督修鉛鍋子的，順使向弄堂口皮匠打聽修理橡皮套鞋的價錢，大約補滿黃魚腮子起碼也得八九元，她又想到兒子的皮鞋也要修補，不然會越穿越壊，可是一問又一驚，換一對前後掌，二十朝外！「從前可以買上一雙小牛皮的，可惜沒有替阿囝買一雙。」黃太太又照例生出「思古」的憂　。</p>
+<p>把修好的鍋子拿回，煮夜飯，兒子丈夫都回來了。小兒子纏着媽：「媽，我的自來水筆又漏了墨水，寫字也不好寫，我要修一修，媽，給我錢，明兒要大考。」兒子是乖兒子，並不討買新的。</p>
+<p>而丈夫呢，，坐在床沿邊，敲敲床沿說：「阿囝媽，這隻棕棚凹得不成樣子，明兒得喊一個修棕棚修修補補，老王買一隻舊棕棚，是算尺頭的呢！」</p>
+<p>黃太太正在補襯衫，她抬頭望望灰黑色的常有老鼠滾上滾下的壁角，歎了口氣，洞，無底洞！</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（六）一彈指</p>
+<p>直到晚上，翠珍　是和維城暢談，維城間國芳的家裹，是多少房子，翠珍道：「房子倒是挺好的，不過不是陳家自己的房子，是租人家的。」維城道：「在上海居住的人，只少數人是有房產，大多數人是借屋居住的，因此產生了二房東的制度，比鄕裏常然比不得了。他們是兩上兩下還是三上三下？」翠珍道：「這個我不懂得，進門是一個天井，兩邊是廂房，中間是客堂，有　層樓，他們說是假的，我看一些也不假，假的樓房怎麽住人？「維城道：「假三層，有這個名目，是把二層樓改造的，那麽國芳的房是在那裏？翠珍道。「就是住在三層樓上，內外有兩問。我看二層上，有幾間空着，問她爲什麽不住，少走一層梯子，一年算下來，也要少走好些路。她道：我獨自一個躱在樓上，可以和家裏的人少見面。城弟，你想陳小姐這　，說得奇怪嗎？」維城道：「我知道她和她的姨媽，不大說得來。你住在她家裏，見過她的姨媽嗎？翠珍道：見過，和她的爸爸見過一次，和她的姨媽見過兩次。她姨媽很年輕的，三天裏總有兩天在打牌。陳小姐的事，她姨媽簡直不問。」維城道：「本來一個大家庭，卑鄙齷齪，昏憤糊塗，是常有之事。國芳的家，還不能說是大家庭，不過不能把家　人的情感，溶成一團，打成一片，是事實。翠珍姊你去住了幾天，總也看出來了。她在家裹有女同學，或是女朋友來嗎？翠珍：「去的時候，是陳小姐，和她的哥哥，和我，一同去的，後來她哥哥就回到學堂裏去。中間有好幾次，有人來看陳小姐，都是和陳小姐不相上下的年紀。她有朋友來了，我就害怕，不比在城弟家裏，來的客人，我都認識，她們來了，我都不認識；又一個個都是新娘子樣的，我爲了這個，常常不按。」　（一〇六）</p>
+<h3>計口授糧之前夜</h3>
+<p>— 文超</p>
+<p>早飯前，胡先生照例將報紙翻了一遍，很髙興地向胡師母說：「部局已規定計口授糧的辦法，下個月可以不用軋米了！」</p>
+<p>「哦！發戶口米了嗎？胡師母早就聽到計口授糧這回事，可是巴望很久，還不見實行，這幾天，大家又紛紛地傳說，想來是有眉目了。</p>
+<p>上街買了小菜，回家時半路上遇見阿毛娘，她們從蔬菜漲價談到軋米，於是話頭就轉到戶口米的問題了。</p>
+<p>「不行，不行，據說一禮拜　每人祇能領三升米，像我家都是　肚皮，怎能够吃呢？」阿毛娘說。</p>
+<p>「不見得吧。胡先生說，報上曾登過，每人有八合米一天，一個月也有二斗四升呢。」胡師母不信她的話。</p>
+<p>「二斗四升，那就够吃了，有人還勸我這幾天要多軋些米，日後不足，有得補補，我因爲家裏錢不多，沒有辦法！」</p>
+<p>「放心好了。我們胡先生說，發戶口米最公平了，不像軋米，有力氣的可以多買幾升，力氣小的人一升也不到手。」</p>
+<p>「軋米眞苦啊！天又熱起來，眞吃不消！阿毛娘聽見胡師母說得頭頭是道，很相信她的話。</p>
+<p>下午，二房東太太在胡師母屋子裏閒談，當然，又是老生常談，總少不了生活程度和食米。</p>
+<p>「做　房東眞倒霉，領米證又要我們來包辦，房客欠房錢，倒不能開罪他們，可是我們遲一天繳捐費，就領不到購米證，那就要被房客逼死了。」二房東太太像背霄似地訴說她的苦經。</p>
+<p>胡師母聽了，很覺得痛快，暗想：「若不到這一步，你們的威風還不减呢：」</p>
+<p>「像胡帥母這樣的好房客，替你們做點事，倒是情願的，像：」房東太太不自然地笑了一聲，把手向前廂房指一下，她最恨那位朱先生，幾次要求加房錢都遭到拒絕。</p>
+<p>剛將房東太太送到樓梯口，聽見亭子問裏那位綽號叫「白相人嫂嫂」的正在和人家談着戶口米的事。</p>
+<p>「一個禮拜領一次米，總要七八十塊錢，阿拉先生月底領了工錢，半個月就要用光，到日脚拿不出這筆錢領米，就僵了…」</p>
+<p>胡師母聽了她的話，覺得自家也和她差不多，這也是個難題，平日軋米，沒有錢的時候，當幾件衣服，能買一兩天的米就够了，好在一星期中有三天賣米呢。</p>
+<p>晚上，胡師母早早上床睡了，因為明天又是售米日子，要在半夜出去排隊。</p>
+<p>「沒有幾天，就可以不受這種罪了！」胡先生安慰她道</p>
+<p>「那你的責任更大了，到領米的時候，須得將鈔票預備充足點！」</p>
+<h3>語錄</h3>
+<p>— 胡蓉</p>
+<p>思想是行動的種子！－伊默遜</p>
+<p>環境！－我改造環境－拿破崙</p>
+<p>敎育是國家的屛障。－白克</p>
+<p>格言是從經騐得來的短句。　－宙文斯</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.06.19</h1>
+<h3>Continued Japanese Announcements: War Results of Attacking Dutch Harbor, Australian Prime Minister Curtin's Broadcast Speech</h3>
+<p>Tokyo, 18th (Domei News Agency) - The Imperial Japanese Headquarters announced at 3:30 PM today that, according to confirmed detailed reports, the Japanese Navy attacked Dutch Harbor in the Aleutian Islands on the 4th and 5th of this month, shooting down 21 enemy aircraft and destroying most of the military equipment.</p>
+<p>Lisbon, 18th (Domei News Agency) - According to sources in Canberra, Australian Prime Minister Curtin delivered a pessimistic broadcast speech to the Australian people last night, stating, "I dare to say that Australia may fall. Australia is currently facing the danger of being attacked. The terrible situation that the Soviet Union is currently experiencing may be seen in Australia. The war news from the Libyan front is unfavorable, and the war there has reached a critical juncture. If the Allied powers suffer a complete defeat in the Middle East, the Axis powers will control the Suez Canal, which will have a significant impact on Australia. As for the Allied ships sunk by Axis submarines, the number is extremely large. The current annual shipbuilding capacity is insufficient to compensate for the losses."</p>
+<p>Lisbon, 17th (Domei News Agency) - According to sources in London, Australian Prime Minister Curtin's broadcast speech to the Australian people yesterday was prominently featured in all London evening newspapers. Curtin stated in his speech that the battles in the Coral Sea, Midway, and the Aleutian Islands were not decisive. Australia has not yet overcome the crisis. If the Japanese army occupies Australia, the entire Pacific coast from Hawaii and from Alaska through Canada, the United States, and to Mexico will be in danger of being attacked.</p>
+<p>Lisbon, 17th (Domei News Agency) - After the Japanese army suppressed the Pacific and Indian Oceans, the threat to Australia, the only stronghold of the anti-Axis Allied forces, has greatly increased. Coupled with the continuous bombing of key areas on the northern coast of Australia by Japanese aircraft, the Australian people are even more uneasy. According to reports from Melbourne, Australian Prime Minister Curtin, after discussing wartime countermeasures with Allied Commander General MacArthur on the 17th, delivered a broadcast speech to the nation, informing them that Australia is now facing a major crisis, urging national unity. He said that Australia has tasted the suffering of submarine warfare (referring to the Japanese special submarines' surprise attack on Sydney). Australian ships have been sunk at sea, and the rate of ship losses exceeds shipbuilding capacity. However, the protection of Australia by the United Nations is the most important event related to the war situation.</p>
+<p>Lisbon, 17th (Domei News Agency) - According to Reuters Melbourne, the Southwest Pacific Joint Command announced on the 17th that Japanese air force units again raided military facilities in Darwin and Port Moresby on the 16th. The bombing of Darwin was extremely fierce, with fires breaking out in several places in the port, and black smoke covering the sky. Japanese aircraft have been continuously bombing the port with large formations for four days since the 13th. The Australian authorities have admitted that this is an unprecedented large-scale air raid.</p>
+<h3>Japanese Troops in Guangdong Occupy Sanshui, First Gaining a Stronghold Along the West River</h3>
+<p>Tokyo, 18th (Domei News Agency) - The Asahi Shimbun here reports from the Chinese front that Japanese troops launched an attack in the lower reaches of the West River in Guangdong last Tuesday, and entered Sanshui at 2 PM yesterday. This place is an important location in the northwest of the West River. The Japanese troops on this route captured Conghua Yinzhanao and other places earlier this month. With the help of aircraft and reinforcements, they launched another attack. It is reported that they captured many key points along the West River before reaching Sanshui. This area was defended by the 155th Division of the 35th Army.</p>
+<h3>Pacific Military Commission Holds a Meeting</h3>
+<p>Argentina, 18th (Domei News Agency) - According to sources in Washington, the Pacific Military Commission held a meeting at the White House yesterday morning to discuss the Pacific war situation. In the afternoon, the U.S. military authorities also held a meeting, attended by President Roosevelt, Secretary of War Stimson, Secretary of the Navy Knox, Army Chief of Staff General Marshall, Deputy Chief of Staff Major General Arnold, and Commander-in-Chief of the Navy Admiral King.</p>
+<p>Lisbon, 17th (Domei News Agency) - According to Reuters, in Melbourne, the Australian government convened a Southwest Pacific military conference on the 17th to review future strategies in the Pacific. Anti-Axis Allied Commander General MacArthur also attended. Before the conference, MacArthur held discussions with Australian Prime Minister Curtin.</p>
+<h3>Japanese Aircraft Attack Port Moresby</h3>
+<p>Lisbon, 18th (Domei News Agency) - According to reports from Melbourne, the Australian Allied Headquarters announced that Japanese aircraft, heavily escorted by fighter planes, attacked Port Moresby in New Guinea today, inflicting heavy damage.</p>
+<h3>Anti-Submarine Nets Set Up in Brazilian Ports</h3>
+<p>Argentina, 17th (Domei News Agency) - According to reports from the Brazilian capital, the Brazilian government, threatened by Axis submarines, is currently preparing to set up anti-submarine nets at the mouth of Rio de Janeiro Bay.</p>
+<h3>Germany Agrees to Apologize and Compensate for the Sinking of an Argentine Ship</h3>
+<p>Argentina, 18th (Haitong News Agency) - The Argentine Foreign Ministry announced that the German government has responded with an apology for the torpedoing of the Argentine oil tanker "Victoria." In addition to the apology, the German government also agreed to compensate for the losses incurred.</p>
+<h3>Ships Sunk in Various Locations</h3>
+<p>Washington, 17th (Havas News Agency) - The Navy Department recently issued a public announcement stating that a medium-sized Panamanian cargo ship and a small Honduran merchant ship have been lost in the Caribbean Sea one after another. All rescued crew members have landed at a certain port on the eastern coast.</p>
+<p>New York, 17th (Havas News Agency) - The 3,400-ton ship "Capelin," belonging to the Swedish "Atlantic Shipping Company," has been sunk in a collision. Rescued sailors landed at a certain port in Canada yesterday.</p>
+<p>London, 17th (Havas News Agency) - According to sources in the capital of Portuguese East Africa, Mozambique, the British ship "Sebehte" was torpedoed and sunk on the morning of the 12th of this month in the Mozambique Channel, 100 miles from the port of Beira.</p>
+<p>Stockholm, 18th (Haitong News Agency) - London announced yesterday that the Yugoslavian ship "Supetar" (3,748 tons) sank in the Mozambique Channel, approximately 100 miles south of Bara, on Saturday morning last week. The ship had been chartered by Britain.</p>
+<p>Argentina, 18th (Haitong News Agency) - According to reports received here last night from Havana, after a Nicaraguan cargo ship was sunk in the Caribbean Sea, its 20 rescued crew members landed at a certain port in Cuba aboard an American ship. Other details have not been released.</p>
+<h3>Japan and Thailand Establish a Loan Agreement</h3>
+<p>Tokyo, 18th (Domei News Agency) - The Ministry of Finance announced that the President of the Bank of Japan, Toyotaro Yuki, and the head of the Thai economic mission to Japan, Phraya Nana Nanda (Thai Minister without Portfolio), signed an agreement today for Japan to lend Thailand 200 million yen, with a term of five years and an annual interest rate of 3.5%. The funds will be deposited in the Bank of Japan in the name of the Thai Ministry of Finance. The Thai Ministry of Finance can withdraw these funds to purchase gold from the Bank of Japan. This agreement can be extended by the Bank of Japan and the Thai Ministry of Finance through consultation.</p>
+<p>Tokyo, 18th (Domei News Agency) - According to the Qingbao Bureau, the Bank of Japan signed an agreement with the Thai Ministry of Finance today for Japan to lend Thailand 200 million yen to strengthen Thailand's financial and economic position.</p>
+<h3>U.S. Secretary of State Hull Refrains from Commenting on Reports of Western Merchant Ships Supplying Submarines</h3>
+<p>Washington, 17th (Havas News Agency) - When Secretary of State Hull was hosting reporters today, a reporter asked whether a report published in the Brazilian newspaper "O Globo," stating that a number of Spanish merchant ships are sailing on routes between Spain and South America, specifically to supply Axis submarines, was true. Hull replied that the question should be directed to the Navy Department. However, a Navy Department spokesperson subsequently declined to release any information.</p>
+<h3>U.S. Secretary of Commerce Jones: The War Shows No Signs of Ending</h3>
+<p>Lisbon, 18th (Haitong News Agency) - U.S. Secretary of Commerce Jones said in a speech yesterday that the war will be longer than many people expect. There are currently no signs of an early end.</p>
+<h3>Iraqi Foreign Minister Resigns</h3>
+<p>Istanbul, 18th (Haitong News Agency) - According to reports from Cairo, Iraqi Foreign Minister Tawfiq al-Suwaidi has resigned for health reasons. His position will be temporarily held by Prime Minister al-Said.</p>
+<h3>Extremely Hot Weather in North Africa, Fierce Battles Approaching Climax, British Troops Defending Tobruk Area Retreat from El Adem and Sidi Rezegh</h3>
+<p>German Supreme Headquarters, 18th (Haitong News Agency) - Today's German military report states that the British Eighth Army in North Africa has been divided. One part has retreated towards Tobruk, and a strong German-Italian armored force is pursuing British soldiers retreating towards Bardia. Several British fortresses south of Tobruk have been captured. The German Malta torpedo boat sank a destroyer and an escort ship each near the Libyan coast. Another "submarine destroyer" and 15,000 tons of supplies carried by an enemy ship were also sunk.</p>
+<p>Lisbon, 18th (Domei News Agency) - The fierce battles in the eastern Libyan Cyrenaica desert have lasted for three weeks and are approaching their climax today. After the British troops under General Ritchie were forced to retreat from El Adem towards the Egyptian border, General Rommel's armored forces have surrounded Tobruk. News received today from Cairo indicates that the German threat to Tobruk is quite serious, and the German desert army is in danger of reaching the British defensive positions along the Mediterranean coast. It is reported that the German encirclement of the Tobruk defenses has yet to be completed, so there is still one route leading to Tobruk, namely the coastal highway to the east. Reports from British sources indicate that Allied mobile units are still trying to prevent the German advance on Tobruk, but this news does not conceal the seriousness of the situation faced by the British forces in Libya. The British official communiqué released in Cairo today announced that British forces have been forced to retreat from El Adem and Sidi Rezegh, but did not specify the details of the retreat route. Axis sources state that German-Italian aircraft are active in the war zone, repeatedly bombing the retreating British columns, and the mopping-up operation in the Gazala area is nearing completion.</p>
+<p>Lisbon, 18th (Domei News Agency) - According to reports from Cairo, officials announced that the British troops defending the Tobruk area in Libya have been forced to retreat from El Adem and Sidi Rezegh.</p>
+<p>Bern, Switzerland, 17th (Havas News Agency) - Newspapers quote German military sources in Berlin as saying that the approaching summer and hot weather in North Africa will make things difficult for both armies. It is expected that the fighting will subside. At the same time, according to reports from London, newspapers do not conceal the seriousness of the situation. However, if the German army cannot invade the Caucasus, thereby threatening the Near East, then British Commander-in-Chief of the Middle East General Auchinleck will not only be able to defend Egypt, but will also be able to launch a major counter-offensive in mid-summer or early autumn.</p>
+<p>Somewhere on the Libyan border, 17th (Havas News Agency) - The latest news from the front indicates that the fighting has subsided in the past two days. Yesterday, the main battlefield appeared to be in the El Adem area south of Tobruk. General Rommel's strategy seems to be to cut off the British lines of communication with Tobruk, so as to completely encircle the British forces. As for the Axis armored units, they have not been very active in the past two days, and the fighting has eased somewhat. It is speculated that this is because they need to wait for reinforcements to arrive before launching a large-scale offensive. The British defensive line runs from a certain point along the coast to the northwest of Acroma, turning south to reach El Adem and Bir Hakeim, a total length of 50 miles. However, the British have also built strong defensive works in the El Adem area. In addition, a large German force, under the cover of tanks and artillery, attacked the city of Sidi Rezegh. At the same time, Axis forces reoccupied the town of Tammar west of the city. British military experts insist that it will not be easy for the German High Command to obtain sufficient water supplies. However, in terms of tanks, their number is still far greater than that of the British. Recently, 300 tanks were destroyed by British forces in the fighting in the Knightsbridge and Acroma areas and are currently being repaired. General Ritchie's troops are continuously moving from the east to assist the Eighth Army in resisting the strong enemy. Judging from the recent naval battles in the Mediterranean, it can be seen that the British are making every effort to transport military supplies to North Africa at any cost. In short, whether the British High Command sends reinforcements to strengthen the British forces' ability to hold the line at Acroma and El Adem, so that Tobruk will not be completely encircled by the enemy, will completely determine the future development of the war. Switzerland will send personnel to accompany</p>
+<h3>Belligerents Recall Diplomatic Personnel; Switzerland Will Send Personnel to Accompany</h3>
+<p>Washington, 17th (Havas News Agency) - Secretary of State Hull stated today that the negotiations between Japan and the United States regarding the mutual return of diplomats are progressing smoothly.</p>
+<p>Bern, Switzerland, 17th (Havas News Agency) - It has been officially announced here that Switzerland will send personnel to accompany the mutual exchange of diplomatic personnel by the belligerents, in order to monitor whether the exchange agreement is being fulfilled. The Swiss Federal Government has appointed Colonel Werner to be responsible for monitoring the exchange of personnel between Europe and the Americas. Lieutenant Colonel Stettler is responsible for monitoring the exchange between the United Kingdom and the Far East. Sträffeler, Keller, and Degen are responsible for monitoring the exchange between the Americas and the Far East.</p>
+<h3>Japanese Ambassador to the Soviet Union Flies to Moscow</h3>
+<p>Kuybyshev, July 17th (Domei News Agency) - Japanese Ambassador to the Soviet Union Sato discussed the current international situation with Soviet Deputy Foreign Minister Vyshinsky yesterday afternoon. Sato is scheduled to travel to Moscow by plane today with six embassy staff members.</p>
+<p>Berlin, 18th (Haitong News Agency) - Minister Schmidt remained silent at the information conference yesterday regarding reports in British and American newspapers about strained relations between Japan and the Soviet Union, only stating that, according to Domei News Agency, Japan's policy towards the Soviet Union has not changed. Appeal by Soviet Defendant</p>
+<h3>Verdict Announced in the Attempted Assassination of Papen; Soviet Defendants Appeal</h3>
+<p>Ankara, 18th (Hai Ri News Agency) - The verdict in the case of the attempted assassination of the German ambassador Papen was announced by the Ankara court yesterday. The presiding judge read the verdict at 5:30 PM, sentencing the Soviet defendants Pavlov and Konilov to 10 years imprisonment each. The Turkish defendants Abdullah Rahman and Suleiman were sentenced to 10 years imprisonment each and sent to reformatories for re-education. The presiding judge explained that after reviewing the evidence presented by the witnesses and the prosecutor, the court determined that the defendants were indeed involved in the preparation for the assassination and committed the crime of attempted murder. Therefore, according to the severity of their circumstances, they were sentenced to the appropriate penalties.</p>
+<p>Ankara, 18th (Haitong News Agency) - According to an announcement today, the two Soviet defendants in the Papen assassination case have filed an appeal after the verdict was announced.</p>
+<p>Turkish Ambassador Jarred Talks About German-Turkish Relations</p>
+<p>Berlin, 18th (Haitong News Agency)</p>
+<p>Turkish Ambassador Jarred made a speech on the first anniversary of the signing of the German-Turkish Friendship Treaty, stating that relations between the two countries have become increasingly close since the signing of the treaty, especially in economic and cultural life. Turkish policy seeks to protect independence, peaceful cooperation with other countries, and domestic construction. Although the war is not enough to change Turkey's goals, its construction work has been affected by the war.</p>
+<h3>Swedish Parliament Passes Bill to Strengthen National Defense</h3>
+<p>Stockholm, 18th (Haitong News Agency) - After a heated debate, both houses of the Swedish parliament passed a proposal last night to strengthen national defense. The Upper House approved the proposal with 78 votes in favor and 51 against. The Lower House approved the proposal with 149 votes in favor and 55 against.</p>
+<h3>Pan-American Conference to Convene at the End of the Month</h3>
+<p>Washington, 18th (Havas News Agency) - The Pan-American Conference is scheduled to convene on the 30th to discuss financial control issues. Undersecretary of State Welles, as chairman of the Inter-American Economic and Financial Advisory Committee, will serve as chairman at the time.</p>
+<h3>British House of Commons Passes New War Expenditure Bill</h3>
+<p>Lisbon, 17th (Domei News Agency) - According to Reuters London, the British bill for new war expenditure of 1 billion pounds was passed by the British House of Commons on the 17th. British Chancellor of the Exchequer Wood stated that British war expenditure is approximately 82.25 million pounds per week. The 1 billion pounds of war expenditure approved in May will be used up by the middle of next week. This expenditure amount will only be sufficient to last until July. In total, the war expenditure approved by Parliament since the start of the war has reached 1.5 billion pounds. Based on the most recent war expenditure amount, an average of approximately 12 million pounds is required per day.</p>
+<h3>Wind and Hail Disasters in Southern Brazil</h3>
+<p>Rio de Janeiro, 17th (Havas News Agency) - Violent storms and hail have caused a disaster in the state of Paraná, southern Brazil, the severity of which has never been seen before. Ten residents have died, and many have been injured. More than 50 houses have been destroyed, and livestock losses are also significant.</p>
+<h3>Fierce Battles on the Outskirts of Sevastopol; Germans Deploy Huge Guns on High Ground, Each Shell Weighing Over Six Tons</h3>
+<p>German Supreme Headquarters, 18th (Haitong News Agency) - Today's German military report states that German infantry and engineers fighting in the Sevastopol area, with the assistance of artillery and aircraft, are attacking the main defensive works in the north. Among them, the newest and strongest fortification is the Maxim Gorky Battery. German troops are now only three kilometers away from the port of Sevastopol. The Soviet troops on the southern side of the port's fortress, although resisting stubbornly, have been driven back to the hilltop positions. Food depots and grain ships in the port have been destroyed by German aircraft. The fighting in the central section of Eastern Europe continues.</p>
+<p>Berlin, 18th (Haitong News Agency) - An urgent telegram from the German military command states that German troops have broken through the northern defensive line of Sevastopol and captured several fortresses.</p>
+<p>Somewhere on the Ukrainian Front, 18th (Havas News Agency) - The battle on the outskirts of Sevastopol is still in a stalemate, but the ferocity of the fighting has not diminished. It is reported that German troops have deployed newly occupied heavy artillery on the high ground in the northeast corner of the city. Its caliber is even larger than the famous "Big Bertha" artillery used by the German army to bombard Paris during the First World War. The shells used weigh more than six tons each. However, the city is shrouded in smoke and flames, visibility is impaired, and artillery operations are difficult. German aircraft bombing operations are also quite difficult. German aircraft began dropping aerial landmines several days ago. The Red Army, with the airfield near the port of Sevastopol destroyed by German forces and unusable, dispatched a Stalin-class aircraft carrier to the port to assist in the battle. Although the number of aircraft carried by the ship is small, it is enough to provide some assistance to the defenders. As for the Red Army units that landed in a surprise attack behind German lines, south of Eupatoria, north of Bedenivale, east of Taganrog, and in various parts of Balaklava, they are now engaged in hand-to-hand combat with German forces. In the area east of Kharkov, after crossing the Donets River, German forces continue to advance towards the northeast. The fighting is currently taking place between the river and another tributary. In other areas, the fighting in the Keresk region has intensified in the last fourteen hours. The Red Army is attacking in several locations, and several villages in the Vorbaansk region have been gained and lost several times. Both sides have sent reinforcements. Although German forces are temporarily maintaining the initiative, it is difficult to determine the overall situation, because the forces of the two armies are evenly matched and are both in superior positions.</p>
+<p>The Battle of Kharkov Continues</p>
+<p>Bear City, July 11th (Domei News Agency)</p>
+<p>The massive offensive launched by the German side towards Sevastopol and Balaklava, the Soviet Union's last ports on the western coast of the Black Sea, did not ease on Wednesday night. German forces launched a total of eleven attacks on the Soviet defensive positions in these two places. To date, German forces have been advancing in the Sevastopol area for two weeks. Berlin broadcast also reported that German forces have captured the Siberian Fortress in front of the port. According to the latest war news, German forces have launched six fierce attacks on the important roads in the north of the Soviet base, and five equally fierce attacks on the northern defenses of the area. The ferocity of the fighting is even greater than in November and December of last year. News this afternoon stated that the Soviet side claimed to still be holding the roads leading to Sevastopol and Balaklava. The Soviet communiqué at noon today only stated that there were no major changes on the front line. At the same time, the Second Battle of Kharkov is still ongoing. German forces in the area, accompanied by a large number of armored vehicles, are constantly attacking with the help of infantry and artillery, maintaining the initiative and repelling multiple Red Army counterattacks.</p>
+<h3>Soviet Consul-General to South Africa Presents Credentials</h3>
+<p>Lisbon, 18th (Domei News Agency) - According to reports from Pretoria, the first Soviet Consul-General, Mr. Demin, presented his credentials to South African Prime Minister General Smuts yesterday. It is noted that the South African Federation and the Soviet Union recently decided to establish diplomatic relations…</p>
+<h3>Nehru Supports Gandhi, Urges Britain to Return Political Power; Anti-British Tide Among the Hur Tribe Increases, Sindh Province Falls into Chaos</h3>
+<p>Tokyo, 18th (Domei News Agency) - The Nichinichi Shimbun carries a special report from Lisbon stating that Indian National Congress leader Nehru spoke in Bombay on the 17th, criticizing Britain's demand for British-Indian cooperation. According to Reuters Bombay, Nehru stated on the evening of the 17th that he fully supported Gandhi's call for the complete withdrawal of British forces from India, and demanded that the British government return political power to India. At the same time, he further explained that if the British government could accommodate the above-mentioned demands of India, India would solve its own defense problems independently. Therefore, if India cannot achieve complete independence, it will be difficult for various issues between Britain and India to be resolved peacefully.</p>
+<p>Lisbon, 17th (Domei News Agency) - The Indian anti-British movement, aimed at fighting for national independence, has become even more likely to succeed since the Congress Party elder Gandhi and Nehru reached a complete consensus in their meeting in Wardha. Gandhi published another article in the "Harijan" newspaper on the 17th, again demanding that the British leave India, in which case India would establish an Indian government composed of representatives of the Congress Party, the Muslim League, etc. However, if this government adopts my views, it will no longer assist the United Nations. When Britain withdraws from India, the Indian army should also be disbanded immediately. However, if Britain and the United States do not withdraw their hands of aggression from India in the past, the theory of human freedom will have no value.</p>
+<p>Tokyo, 18th (Domei News Agency) - According to the Yomiuri Shimbun, a special report from Zurich, Switzerland, states that the rebellion of the Hur tribe in Sindh province in northwestern India is now receiving increasingly strong support from Muslims. Events such as cutting telephone lines and destroying roads are constantly occurring, and the entire province is in a state of anarchic chaos. The situation is extremely serious. Gandhi has also requested the state government to resign immediately so that he can come forward to mediate and find a solution. However, the British Indian government has rejected this mediation, begun a military crackdown, and arrested the majority of the Hur tribe members. However, given the deep-rooted anti-British sentiment of the Indian people, it is practically impossible for the British authorities to completely suppress the Hur tribe.</p>
+<h3>Bombing Incident in South Africa</h3>
+<p>Johannesburg, South Africa, June 17 (Havas News Agency) – Several terrorist incidents occurred here this morning. Someone threw a bomb in front of a printing house, which exploded immediately, causing minor damage to the house. Another bomb was thrown in the market, but fortunately, it did not explode. Two shops caught fire in another location. The police are currently investigating, but no arrests have been made yet.</p>
+<h3>British Warships Sail from Mediterranean to Gibraltar</h3>
+<p>Madrid, June 18 (Haitong News Agency) – News received here states that the British battle fleet, including the aircraft carrier , two destroyers of the Agas class, and five flat-deck battleships, entered Gibraltar from the Mediterranean Sea yesterday morning. At about 10:00 AM the same day, another eight warships entered the port, along with a severely damaged cruiser towed in by a barge. This fleet departed from that port on the 11th of this month.</p>
+<p>Berlin, June 18 (Haitong News Agency) – The German High Command announced last night a victory for the Axis powers in attacking two British convoy fleets in the Mediterranean. According to reports, as a result of the German air and naval attack, 24 British merchant ships, totaling 111,000 tons, and 7 warships were sunk.</p>
+<p>Rome, June 17 (Havas News Agency) – A responsible official here stated that Italian warships had engaged in a naval battle with British warships in the central Mediterranean Sea near Sicily. The British announcement of the Italian warships' losses afterward was greatly exaggerated. In reality, only one cruiser was sunk and one destroyer was severely damaged, and this ship has already been towed back to a certain port in the country for repairs.</p>
+<h3>German Plane Flying Over Sweden Incident Resolved Satisfactorily</h3>
+<p>Berlin, June 18 (Haitong News Agency) – Regarding the news circulating in Sweden about a German plane flying over Swedish airspace, Ambassador Schmidt stated in the German Foreign Ministry's intelligence meeting yesterday that the German and Swedish governments have been in contact about this and have reached a satisfactory resolution.</p>
+<h3>Rumor of British Government Proposing to Mobilize Immigrants from Various Countries</h3>
+<p>London, June 17 (Havas News Agency) – It is rumored that someone has submitted a draft proposal to the House of Commons, advocating that the British government be authorized to mobilize the people under the rule of the foreign governments currently established in London.</p>
+<p>Stockholm, Sweden, June 17 (Haitong News Agency) – According to news from London, the British government yesterday submitted a proposal to the House of Commons stating that immigrants in Britain who have reached the age of enlistment but have not served in their home country's army should henceforth serve in the British army. The immigrants involved come from Belgium, the Netherlands, Greece, Yugoslavia, India, Poland, and Czechoslovakia.</p>
+<h3>International Briefs</h3>
+<p>Buenos Aires, Argentina, June 17 (Havas News Agency) – The Senate has just passed the government's proposal to extend martial law for sixty days.</p>
+<p>Washington, D.C., June 17 (Havas News Agency) – The "Red Men Association" has recently submitted a letter to Congress, declaring that the association has decided to declare war on the Axis powers.</p>
+<p>Washington, D.C., June 17 (Havas News Agency) – The White House has recently appointed Elson Wells as the Deputy Director of the newly established Wartime Information Bureau.</p>
+<p>Stockholm, Sweden, June 17 (Havas News Agency) – Rumors that the Swedish ambassador to Egypt was opposed by the Egyptian authorities and forced to leave his post have been denied by informed sources, who say that the ambassador is actually on a regular leave back to his country.</p>
+<p>Rio de Janeiro, Brazil, June 17 (Havas News Agency) – Sixteen Brazilian citizens have been sent to Grande Island for confinement because they were involved in activities on behalf of a certain country.</p>
+<p>Saragossa Port, June 17 (Havas News Agency) – 1,500 workers from the ports of Barcelona and Valencia arrived here today and are scheduled to transfer to Germany for work tomorrow.</p>
+<h2>Page 3</h2>
+<h3>Talking About Eating</h3>
+<p>Eating treats hunger; therefore, the amount of food consumed should be based on not being hungry (not being hungry and being full are absolutely different). A slightly empty stomach is not bad, but being full is even worse. Sometimes half-hungry, sometimes half-full, is the most appropriate and best (as is the case for those who work during the day and rest at night to regulate their bodies). Sometimes being hungry does not harm health; sometimes being full and stuffy easily causes illness. Therefore, when eating, it is better to eat less than enough and never eat too much. Excessive eating forces the stomach to abandon part of its responsibility and hastily hand it over to the large intestine. The intestines then press down layer by layer, causing undigested food to accumulate at the lower end of the large intestine. As a result, bowel movements become constipated, and inflammation occurs over time, leading to hemorrhoids. Since the food is already excessive and bowel movements are difficult, the residue in the intestines accumulates more and more, causing hot and turbid air to rise and fumigate upwards, resulting in bad breath, sore throat, eye problems, dizziness, sores, insomnia, and other symptoms that are bound to occur one after another. The appropriate standard for eating is: a small, shallow bowl for children per meal, and a small bowl for adults. More than that will harm the spirit and not benefit the intestines and stomach.</p>
+<h3>Authorities of Two Concessions Instruct on Receiving Rice Instructions on how to Receive Must Follow Instructions Clear Division of Receiving Areas, No Need to Queue</h3>
+<p>The Information Office of the Public Works Department announced that taxpayers residing on the following roads should go to the designated distribution offices to apply for rice purchase permits on the 22nd or 23rd of this month. There is no need to queue at that time, as the time allocated for certification is very sufficient. The office hours of each office are set from 9:00 AM to noon and from 1:00 PM to 4:00 PM. The details are as follows:</p>
+<p>(1) Central District Office: 234 Mahou Road, Xiamen Road, 34-760 Edward Road (even numbers), Baker Road, Guangdong Road, Pingwang Street, Bentang Lane, Balfour Road, The Bund, Zhifu Road, Zhejiang Road.</p>
+<p>(2) Northern District (A) Office: 130 Haining Road, Hanbi Li Road, Haineng Road, Jiaxing Road, Laoguan Road, Yihang Road, Malisson Road, Nanxun Road, Beihai - Haining Road.</p>
+<p>(3) Northern District (B) Office: 456 Aierjin Road, Alabaiste Road, Wenjianshi Road, Jielu Road, Kenenghai Road, Tangjia Lane, 93-38 Edward Road (odd numbers).</p>
+<p>(4) Eastern District (A) Office: 80 Tongzhou Road, Yad Road, East Broadway Road, 91-295 Zhaofeng Road (odd numbers), 273-468 East Hanbi Li Road, East Xihuade Road, Gongping Road.</p>
+<p>(5) Eastern District (B) Office: 29 Huade Road, Aierkaoke Road, 3-711 Beikaier Road (odd numbers), and 0-560 (even numbers), Broadway Road, Zhoushan Road, 260-620 Zhaofeng Road (even numbers), Dalianwan Road - - - 7-9 (odd numbers), and - - - 360 (even numbers), 1-149 Jining Road (odd numbers) and - - Lane.</p>
+<p>(6) Eastern District (Inner) Office: 558 Qiwupu Road, 158-102 Beikaier Road (even numbers), and 939-1033 (odd numbers), Andong Road, Qiwupu Road, Chaoyang Road, Jingzhou Road, Ge Road, Haizhou Road, Hangzhou Road, Hewen Road, 169-340 Customs Road, Funing Road.</p>
+<p>(7) Western District (A) Office: 23 Mahou Road, 2-584 Meibaige Road (even numbers), and 355-579 (odd numbers), 21-319 Parker Road, 1277-1451 Edward Road (odd numbers), and 850-1476 (even numbers), - - - 34-334 Road (even numbers).</p>
+<p>(8) Western District (B) Office: 110 Gordon Road, 577-51699 Jing'an Temple Road (odd numbers), 2214-1648 Avenue Edward VII (even numbers), 5th Lane of Hedde Road, 40-1370 Avenue Foch (even numbers), Haige Road - - - 394 Gordon Road - - Road, Daxi Road, Hadong Road.</p>
+<p>(9) Western District (C) Office: 788 Seymour Road, Changniu Road, 3-909 Connaught Road (odd numbers), and 2-158 (even numbers), - - - Cape Angle (Maqi Road) 15 and 355A-554.</p>
+<p>(10) Western District (D) 753 Gordon Road, 957-1505 Xiaoshadu Road, - - - Cape Angle (Maqi Road) 3-319, 1011-1363 Gordon Road (odd numbers), and 994-1060 (even numbers), - - - Cape Angle (Haifang Road) 555-601 (odd numbers), Each relevant taxpayer, for their own benefit, must pay close attention to the above items and strictly follow the instructions. As for the detailed continuation of the approval, it will be published in the newspapers next Tuesday.</p>
+<h3>French Concession</h3>
+<p>The French Concession will issue the first rice purchase permits starting at 8:00 AM on Monday, the 22nd of this month, as mentioned yesterday. Here is a list of the heads of households who should receive the first rice purchase permits in each district:</p>
+<p>Xiaodongmen District, Section 9</p>
+<p>6 Pao 8-27, Section 2, French Bund 123-125, Xiaodongmen Street 1-85, Aisijiali'ai Road 85-88A, Section 3, Xiaodongmen Street 87-125, Section 4, Xiaodongmen Street 112-116, Yihang Road 35-43, Minguo Road 9-1, Jingzhou Road 12, Section 5, Jingzhou Road 2-18, Jiangdongmen Street 98-110, Tongyun Road 1-13, Yihang Road 21-33.</p>
+<p>Mailan District, Section 31, French Bund, Gongguan Road, Tianzhutang Street, Edward Road, Section 32, Lao Yong'an Street, Xin Yong'an Street, Tianzhutang Street, Gongguan Road.</p>
+<p>Xiafei District, Section 113, Avenue Foch 1-37, Bei Shi Road 4-58, Sa Posaile Road (between Avenue Pu Shi and Avenue Foch), Section 114, Avenue Xiafei 382-448, Bei Shi Road 1-31, Bai Erbu Road 39-57, Sa Posaile Road (between Avenue Xiafei and Avenue Bei Shi), Section 115, Avenue Edward 763-801, Lusong Road 38-90, Huagenie Road 260-264, Beile Road 2-16, Section 100, Avenue Edward 725-761, Beile Road 1-25, Huagenezhuo Road (between Guluo Road and Beile Road), Guluo Road 2-4, Section 110, Avenue Foch 63-103, Sa Posaile Road (between Avenue Xiafei and Avenue Foch), Avenue Xiafei 342-374, Malang Road (between Avenue Foch and Miyazaki Avenue), Section 106, Huagenie Road (between Beile Road and Lusong Road), Lusong Road (between Huagequan Road and - Zier Road), Zier Road (between Lusong Road and Beile Road), Beile Road 18-15, Section 107, Avenue Foch 1-53, Malang Road 1-51, Avenue Xiafei 296-340, Beile Road 52-150.</p>
+<p>Central District, Section 155, Feide Road 53-569, Luban Road 224-300, Xuehuali Road 2-12, Masinan Road 81-185, Section 161-162, 265-357, Ju Road 2-98, Qiuxin, Section 181, Avenue Xiafei 765-871, Jin Shenfu Road 2-18, Huanlong Road 200-250, - Area West Ai Road 27, -311, Section 190, Avenue Pu Shi 173-323, - Area West Ai Road 290, Avenue Xiafei 900-9528, Ya Erbei Road 125-279.</p>
+<p>Avenue Foch District, Section 127-218, Fei Road 1294-1326, Shanzhong Road 87-173, Pu You Road 677-693, Maiyang Road, Section 129, Spicy Maid Road 1300-1336, Shijian Road 1-13A, Avenue Xiafei from Bi Xun Road 10-30, Section 220, Avenue Pu Shi 62-82, Ju Da Road 667-705, Lao Area Yan Mai 1-Cheng 7, Section 199, Avenue Pu Shi 325-407, Lao Erdong Road 71-13, Xiangli Road 16-80, Lai Yaerbei Road 164-200, Section 123, Xujiahui Road 840-852, Qi Qi Road 65-129, Fu Li Road 263-401, Tai Lasituo Road 222-294, Section 205, Zhou Mi Road 10-86, La Du Road 207-241, Spicy Road 1199-1251, 20th Century East Road 2-134.</p>
+<p>Beidang District, Section 254, Fu</p>
+<p>Kaisen Road 198-270, Ju Erdian Road 380-410, Gao Erdi Ai Road 15-55, Bai Sai Zhong Road 199-269, Section 256, Tai Side Road 11-31, Ai Tang Road 165-187, Beidang Road 700-714. The heads of households or second landlords of the following residences should go to collect them on Tuesday, June 23rd:</p>
+<p>Xiaodongmen District, Section 6, Xiaodongmen Street 72-96, Lao Yong'an Street 2-10, Yihang Road 1-19, Yanghang Street - 17, Section 7, Xiaodongmen Street 32-70, Yanghang Street 2-10, Yu Yu Street 27-63, Tang Sifan Shaer Road 1-17, Section 8, Xiaodongmen Street 2-30, Tang Sifan Ersha Road, 1-16, Yu Yu Street 1-23, French Bund 109-122, Section 11, Liuhang Street 12-26, French Bund 99-108, Yu Yu Street 2-60, Nanxiang Road 2-16, Section 12, Yihang Road 2-14, Tongyun Street 22-30, Yanghang Street 23-45, Section 13, Yihang Road 16-26, Tongyun Street 15-29.</p>
+<p>Mailan District, Section 30, French Bund, Xin'an Street, Lao Yong'an, Fa Da Ma Road, Section 33, Xin Yong'an Street, Tianzhutang Street, Minguo Road, Lao Yong'an Street.</p>
+<p>Xiafei District, Section 101, Huage Road 241-253, Beile Road 27-65, Zier Road 250-296, Guluo Road 6-31, Section 102, Zier Road 263-309, Beile Road 67-153, Avenue Xiafei 254-290, Guluo Road 34-60, Section 95, Edward Road 651-723, Guluo Road 25-31, Zi Road 180-246, Li Mei Road 54-90, Section 97, Zi Er Road 209-261, Guluo Road (Zi Road Avenue Xiafei Zhi Er), Avenue Xiafei 102-252, Li Mei Road 92-138, Section 89, Edward Road 591-649, Li Mei Road 1-53, Huage Spring Road 156-190 Section 90, Huage Road 157-193, Li Mei Road 55-113, Zi Road 136-152, Section 91, Zi Road 157-207, Za Er Road 115-149, Avenue Xiafei 148-200, Wei Road 112-148 (to be continued)</p>
+<h3>Repatriation Ship Scheduled to Set Sail A Total of 636 Repatriated Overseas Chinese Scheduled to Leave Shanghai on the Morning of the 24th</h3>
+<p>The Shanghai Times reports that according to responsible sources, the Italian postal ship Conte Verde is scheduled to set sail at 11:00 AM on Wednesday, June 24th, carrying approximately 636 repatriated overseas Chinese to Lourenço Marques in Portuguese Africa. One official each from the Swiss Embassy in Tokyo and the Japanese Ministry of Foreign Affairs will accompany the ship for supervision. According to Masaki, a secretary and translator at the Japanese Consulate General in Shanghai, some of the repatriated overseas Chinese have expressed their desire to stay in Shanghai due to relatives' illnesses or other reasons. This reason may cause the total number of repatriated overseas Chinese to change daily. As of today, there are a total of 636 people, including 155 government officials from the consular and diplomatic circles in the occupied areas of China, including 131 , 11 Brazilians, 6 Mexicans, 4 Canadians, and 3 Guatemalans. There are a total of 419 repatriated civilians who have gathered in Shanghai from various cities in the occupied areas of China, 13 from Manila, and 49 overseas Chinese residing in Shanghai. According to sources at the Swiss Consulate, a small number of repatriated overseas Chinese have yet to decide whether to leave, while the rest have received or will receive departure notices within a few days. As for the Swiss and Japanese officials who will accompany the ship to Lourenço Marques to supervise the arrangements and be responsible during the journey, they will arrive in Shanghai from Tokyo soon, or they may be coming on the Conte Verde. The Conte Verde recently sailed to Japan to replenish supplies and will arrive in Shanghai about two days before setting sail for Africa. The exact date has not been disclosed. After completing their mission in Lourenço Marques, the Japanese and Swiss representatives will return to Shanghai to report back.</p>
+<h2>Page 4</h2>
+<h3>All Pawnshops in the French Concession Suspended Pawn Redemption Yesterday Association of Pawnbrokers and Loan Offices Encouraged to Resume Business</h3>
+<p>Over 180 pawnshops in the French Concession suspended pawn redemption yesterday after receiving Order No. 178 from the French Consul General regarding the management of pawnshops within the concession. However, the terms were extremely harsh, making it easy to violate the law when accepting pawned items. From yesterday morning, all pawnshops suspended pawning and redemption, resulting in a semi-closed state, which was quite serious. The most important clauses are: (Article 4) Pawnshops should only lend money to people whose identity and address are known, or who can prove their identity and address with formal documents, or who have two guarantors known to the pawnshop co-signing the loan book with the pledger to prove their identity and address. (Article 5) All pawned items must be given to the pledger with a pawn ticket, which should include the following items: (A) Name and address of the pawnshop, (B) Name, address, and occupation of the pledger, (C) If there is a guarantor, the guarantor's name, address, and occupation, (D) Date of pawning, (E) Amount of loan, (F) Interest rate, (G) Redemption period for the pledger. (Article 8) If the pawnshop accepts stolen goods, fraudulent goods, or embezzled goods without complying with the provisions of Article 4, the pawnshop manager shall be liable to the victims of theft, fraud, or embezzlement. (Article 12) If a pawnshop accepts pledged items without thoroughly investigating their source, its manager may be prosecuted for receiving stolen goods or negligently accepting objects of unknown origin. (Article 17) Those who violate the provisions of this order and its prohibitions will be fined from one to one thousand yuan. Repeat offenders may be fined up to ten to two thousand yuan. The amount of the fine for violators will be determined by the competent court. After receiving the above clauses yesterday morning, more than 180 pawnshops and loan offices believed that if they followed these regulations, both pawn and loan items would easily violate the law, making it impossible to operate. Starting at 9:00 AM, all pawning and redemption were suspended. At the same time, they requested the Association of Pawnbrokers and the Loan Office Association to plead for the industry. The two associations and offices responded urgently, advising the industry to remain calm and continue to operate as before to avoid affecting the turnover of ordinary people. They have also begun to draft opinions and prepare to submit them to the Consul General to amend the regulations in order to maintain operations.</p>
+<p>Sports News</p>
+<h3>Schedule Announced for the First Guo Bin Cup Round Gateball Tournament Scheduled to End on July 26</h3>
+<p>A total of six men's teams have joined the first Guo Bin Cup Round Gateball League, adopting a single round-robin system. Three women's teams are participating, so a double round-robin system is adopted. The entire schedule was finalized and announced by the organizing authorities yesterday. The tournament will last for six weeks and is scheduled to end on July 26. All matches will be held on Sundays. Teams may not request rescheduling without good reason in order to ensure timely and successful completion. The six men's teams are all exceptionally strong. Teams such as Qiangxing, Zhonglian, and V Team are well-known in the gateball world. Huanan and Nanyang are also strong teams. The former is the champion of the Mengxian Cup basketball tournament, and the latter is the iron army in round gateball. In addition, Yaoguang is a newly emerging strong team, gathering famous Shanghai players such as Zhang Jinxuan, Ma Canxi, and Lin Wanli, with a solid lineup that cannot be underestimated. Therefore, the future competition will be very intense and interesting. The entire schedule is listed below:</p>
+<p>June 21 (Sunday) Friendship Team vs. Patriotic Team (Women's Group) 4:00 PM, Zhonglian vs. V Team (Men's Group) 5:00 PM, Nanyang vs. Mixed (Exhibition) 6:00 PM</p>
+<p>June 28 (Sunday) V Team vs. Nanyang (Men's Group) 3:30 PM, Patriotic Team vs. Lingsheng (Women's Group) 4:30 PM, Huanan vs. Zhonglian (Men's Group) 5:30 PM, Qiangxing vs. Yaoguang (Men's Group) 6:30 PM</p>
+<p>July 5 (Sunday) Friendship Team vs. Lingsheng (Women's Group) 4:00 PM, Yaoguang vs. Huanan (Men's Group) 5:00 PM</p>
+<h3>Explosion at Alcohol Factory on North Henan Road One Dead, Thirteen Injured</h3>
+<p>At 9:05 AM yesterday, an explosion occurred suddenly at a certain alcohol factory located at No. 16, Lane 365, North Henan Road. With a loud crash, the rear wall of the factory collapsed, and two locations in the factory caught fire. The roof built on the open space where alcohol was stored was also destroyed. Afterward, one person was found burned to death, and as many as thirteen people were burned. Only the remnants of the factory remained, with the four walls supported by other objects.</p>
+<p>Casualty Situation</p>
+<p>After the explosion occurred, the Hongkou Fire Brigade rushed to the rescue. At the gate, they saw a person lying prostrate, his head and face charred, and his injuries were very serious. He had lost consciousness, apparently trying to crawl out of the factory building, but he fainted before he could crawl to the middle of the gate. Firefighters then followed the bloodstains on the ground to the lane behind the building, where they found thirteen workers from the factory, exhausted and wandering aimlessly. They had also struggled out of the flames, smoke, and tiles, but they could no longer move forward. These fourteen people were all sent to the Shanghai Convalescent Hospital Clinic on Bazilu Road for treatment. The person found in front of the gate died en route.</p>
+<p>Investigation of the Cause</p>
+<p>After the explosion, two fires broke out at the same time. Fortunately, the fire was small and quickly extinguished. Personnel from the Public Concession Police and the Fire Brigade began to investigate the cause of the explosion, but as of yesterday afternoon, no important findings had been made. This temporarily converted alcohol factory, the name of the factory owner, and the purpose of his brewing alcohol could not be determined. The place originally employed thirty workers. Apart from the fourteen dead and injured, the rest had all fled, making the investigation difficult.</p>
+<h3>Letter</h3>
+<p>To the editor,</p>
+<p>We are deeply surprised to read the news item in the local news column of your newspaper on June 18, entitled "Employees of the Stadium Demand Improved Treatment." After investigation, we have found that the relationship between our stadium's staff and management is harmonious, and no such incident has occurred. This appears to be a false rumor. We are writing to request that you correct the record in order to clarify the truth. We look forward to your favorable consideration. Sincerely, Central Stadium June 18</p>
+<p>Yesterday's newspaper was published at 6:40 PM, Qiangxing vs. Nanyang (Men's Group) 6:00 PM</p>
+<p>July 12 (Sunday) Huanan vs. Qiangxing (Men's Group) 3:30 PM, Friendship Team vs. Patriotic Team (Women's Group) 4:30 PM, V Team vs. Yaoguang (Men's Group) 5:30 PM, Zhonglian vs. Nanyang (Men's Group) 6:30 PM</p>
+<p>July 19 (Sunday) V Team vs. Qiangxing (Men's Group) 3:30 PM, Patriotic Team vs. Lingsheng (Women's Group) 4:30 PM, Zhonglian vs. Yaoguang (Men's Group) 5:30 PM, Nanyang vs. Huanan (Men's Group) 6:30 PM</p>
+<p>July 26 (Sunday) Huanan vs. V Team (Men's Group) 3:30 PM, Zhonglian vs. Qiangxing (Women's Group) 4:30 PM, Friendship Team vs. Lingsheng (Men's Group) 5:30 PM, Yaoguang vs. Nanyang (Men's Group) 6:30 PM</p>
+<h3>China Youth Swimming Pool to Open on July 1</h3>
+<p>The Sichuan Road branch of the Shanghai YMCA has decided to open its swimming pool on July 1. All arrangements are generally the same as in previous years, but each person must prepare a 2-inch photo and pass a doctor's examination and signature before registering and paying the fee to participate. The association has printed a brochure available upon request.</p>
+<p>Business News</p>
+<h3>April Bill Exchange Statistics</h3>
+<p>The City Banks United Preparatory Committee's Bill Exchange Office yesterday released the bill exchange statistics for April. The summary is as follows: (1) Exchange of Bills Section</p>
+<p>Total amount for the entire month: 869,946,694.61 yuan; Total number of bills for the entire month: 14,528</p>
+<p>Highest amount: 57,564,459.83 yuan (7th); Number of bills: 1,990 (7th)</p>
+<p>Lowest amount: 2,876,450.6 yuan (18th); Number of bills: 4,117 (18th); Average daily amount: 37,823,769.33 yuan; Number of bills: 6,317</p>
+<p>(2) Collection of Bills Section</p>
+<p>Total amount for the entire month: 94,934,223.84 yuan; Total number of bills for the entire month: 3,412</p>
+<p>Highest amount: 11,864,337.58 yuan (7th); Number of bills: 6,009 (7th)</p>
+<p>Lowest amount: 5,678,324.62 yuan (18th); Number of bills: 6,672 (18th)</p>
+<p>Average daily amount: 8,475,401.034 yuan; Number of bills: 9,744</p>
+<p>(3) Total amount of interbank transfer for the entire month: 198,685,981.634 yuan</p>
+<p>(4) Average daily amount of interbank deposits: 67,591,491.483 yuan. "Note": The total exchange amount and total collection amount in April decreased by more than 48.1 million yuan compared to March, while the average daily amount of interbank deposits increased by 13,009,013.37 yuan.</p>
+<h3>Hardware Industry Safely Passes Dragon Boat Festival; Market Shows Prosperity for Various Goods</h3>
+<p>Hardware industry colleagues safely passed the Dragon Boat Festival yesterday. It happened to be a period when various goods were in short supply and styles were lacking. Although actual sales were still limited, the mindset of industry colleagues did not soften because of this. The reason is that the inventory of various hardware items in this port is not abundant, so the market for various goods is still prosperous. The sales and market conditions of various types of goods are described below:</p>
+<p>Straits Tinplate: Current inventory is very tight. Only styles #14 and #26 are available. Checking the market situation for this item, it has been quite lively since yesterday. Most of its uses are for manufacturing rollers for spinning mills. Since the beginning of the month, spinning mills have been resuming work one after another, so the demand for this item has been very strong. Therefore, those holding small amounts of inventory are unwilling to sell easily without a good price. As a result, the market price has risen sharply. For example, style #24 is quoted at 100 yuan per sheet, and style #26 is 70 yuan per sheet, both up by 20-30 yuan each compared to before. Moreover, there are no whole boxes available.</p>
+<p>Black Iron Blanks: Transactions continue one after another, but the volume is not large. Purchasers mainly include enamel blank factories in this street, followed by tin printing factories, thermos factories, etc., which also collect them. Although there is no risk of running out of stock of this item at present, the source is not continuing, and shortages are inevitable in the long run, so the market shows a prosperous trend. The industry's mindset is also firm, and the market is extremely brisk. Yesterday, 2,000 pounds of goods required 14,000 yuan per ton, an increase of several hundred yuan compared to before.</p>
+<p>Local Factory Wire Nails: The nail market has been brisk for many days. Although merchants from the Nanyang and Northern routes are all clear on business, their production is also limited. The inventory of raw materials (wire rod) in the Shanghai market is thin, and many nail factories are reducing or stopping work. As a result, the circulation of goods is lacking.囤户 (speculators) also absorb stock from time to time, so it is inevitable that prices are high. In addition, the industry's mindset is also firm, and the outlook is good. Yesterday, the market price for "倍司" (beis, a unit of weight) was quoted at around 800 yuan.</p>
+<h3>Teochew Branches Out of Stock</h3>
+<p>Although a batch of Teochew branches arrived this week, the customs procedures at the source are not yet complete. A large amount of tax money must be deposited before the goods can be released first. However, the customer did not want to sell this item urgently and refused to deposit the tax, so it has not been declared, resulting in a severe shortage of spot goods. As a result, the price has increased by one or two hundred yuan, and the trend is firm.</p>
+<h3>Fennel New Offers Increase Repeatedly</h3>
+<p>Fennel was previously slow-moving, and the unofficial price reduction was very sharp, with a difference of five or six hundred yuan. Since the financial changes, the price has rebounded. Recently, there has been a new high. Market offers have repeatedly increased. Today's selling price is 1,100 yuan.</p>
+<h2>Page 5</h2>
+<p>Essays</p>
+<h3>Zhong Kui Spends the Dragon Boat Festival</h3>
+<p>— Yuan Ying</p>
+<p>Recently, Immortal Zhong Kui has been feeling very uncomfortable, mainly because the price of wine has risen and the ghosts are too thin. Although he can temporarily refrain from drinking wine, it is not easy to save to the point of not even eating ghosts. He has to fill his stomach! Besides, our immortal has always regarded it as his responsibility to specialize in eating ghosts and demons!</p>
+<p>The Dragon Boat Festival has finally arrived again. As usual, his sister should send some wine and ghosts to honor her brother. However, our immortal waited anxiously for a few days, but still did not see a single ghost. This made our immortal a little angry. Could it be that people have swallowed the elixir of immortality?</p>
+<p>Zhong Kui hesitated for a while and decided to personally descend to the mortal world to investigate what was going on. Although the cost of living is high, one should not starve on the Dragon Boat Festival! Besides, this is a festival that only comes once a year!</p>
+<p>Grasping his sword, he began to descend to the mortal world.</p>
+<p>First, he came to Shanghai. This place used to be a frequent haunt of the immortal. He had many satisfying and plump lunches here. There were all kinds of ghosts here: lustful ghosts, gambling ghosts, opium ghosts (and the slightly lesser white powder ghosts).</p>
+<p>However, our immortal looked for a long time but still couldn't see a single ghost. Maybe it was late at night, and the little ghosts had all hidden in their lairs. So he sniffed and began a patrol in the dark night.</p>
+<p>Suddenly, his pace quickened because he saw some thin ghosts squatting in front of a rice store. Although they were thin, it was better than nothing, so he grabbed a few.</p>
+<p>"We are here to buy rice!" The ghosts being grabbed loudly protested. But to our immortal, that was such a weak sound!</p>
+<p>"Then you are humans?" The immortal was a little surprised.</p>
+<p>"Yes!"</p>
+<p>"Humans also have to eat!" The immortal was a bit indiscriminate.</p>
+<p>"No! Immortal, spare us!" The people being grabbed pleaded, "This humble one has an eighty-year-old mother and a two-year-old child at home. Tomorrow is the Dragon Boat Festival, please let this humble one buy some rice to take home to eat. This humble one hasn't eaten a grain of rice in over twenty days!"</p>
+<p>"Nonsense! If you haven't eaten for a few days, you wouldn't have turned into a ghost? You're simply trying to deny it!"</p>
+<p>"We haven't eaten rice, but we've eaten corn flour, soybean noodles... Immortal, you may not know, but how many families in Shanghai can afford to eat rice now?"</p>
+<p>Zhong Kui was disappointed and surprised. There were no ghosts to eat, and the humans were so thin. Could it be that immortals should starve?</p>
+<p>Back in heaven, he received a short letter from his sister:</p>
+<p>"The price of Zhuangyuan's mung bean pastries has also risen, so I have no choice but to stop sending them this Dragon Boat Festival."</p>
+<p>Zhong Kui spent the Dragon Boat Festival bored. Touching his sword, he sighed. Let's wait for next year's Dragon Boat Festival!</p>
+<h3>Success</h3>
+<p>— Xin Lü</p>
+<p>Success is filled with crises before it, and similarly, success is filled with crises after it.</p>
+<p>The crisis before success is the fear of unexpected changes along the way, failing to achieve the goal. The crisis after success is the fear that after achieving the goal, one will stop fighting, relax the spirit of striving before success: even to the point of indulging in enjoyment and extravagance – which can be called a complete failure – and going down that road.</p>
+<p>However, most people only care about before success and neglect after success.</p>
+<p>We must have the ability to break through the difficulties before success: we must have even more ability not to be constrained by the various bad habits after success. Because failure after success is more terrible than failure before success; it is more tragic!</p>
+<h3>Bottomless Pit That Can't Be Filled</h3>
+<p>— Feng Ma Niu</p>
+<p>A hole in the black iron pot, a hole in the umbrella, a hole in the washbasin, a hole in the enamel basin, the husband's rubber overshoes leaked rainwater, staining the patched socks yellow, a hole in the son's old shirt – holes, all these holes, troubled Mrs. Huang for most of the day. Mrs. Huang is not Nüwa, she doesn't have the ability to mend the sky. Mrs. Huang can handle socks or shirts, but for enamel basins and iron pots, she has to ask the repairmen shouting in the alley for advice, and it's urgent. At night, she relies on the pot to cook, and on rainy days, she relies on the rubber overshoes to run to the "沃非司" (office); looking at these things makes her angry. The pot has had its bottom replaced three times, and the rubber overshoes are like a dead yellow fish with its gills open. Getting angry, she really wants to throw them in the trash and buy new ones! New ones, Mrs. Huang has been looking forward to for a long time, wanting to buy them again and again, but finding them too expensive. Little did she know that the longer she waited, the more expensive they became. When the pot had its first bottom replaced, she wanted to buy a new one, but it was only forty: when it had its second bottom replaced, it was already seventy-something, "If I had known, I could have bought two." Now, it's really not worth it, so she procrastinates. The pot has a third hole, she decides to throw it away and buy a new one. She asks Mr. Huang, but Mr. Huang shakes his head vigorously: "What are you buying? Just use it as it is. We still have to buy rice and oil. Fix it and use it. A new one costs over a hundred!" Mrs. Huang's "determination" was punctured, she became silent, silently harboring a "half-hating it, half-loving it" feeling, and carrying the pot, she went to find the vendor who repairs lead buckets and pots.</p>
+<p>She found the vendor. Mrs. Huang, with her old qualifications, asked: "How much to replace the bottom?"</p>
+<p>The repairman took the pot and looked at it, saying: "I'll give you a cheaper price, fourteen 洋 (silver dollars)."</p>
+<p>Mrs. Huang was shocked, but she was used to this kind of shock. A second later, she calmed down again, thinking of haggling over the price. She thought for a moment and opened her mouth: "Five 洋, will you do it?"</p>
+<p>The repairman pushed the pot back to her, "No, do you know the price of white iron? For five 洋, I can only fix a ladle." He turned his head and walked away with his load.</p>
+<p>Mrs. Huang had to use the "retain" method: "Eight 洋!" Otherwise, she wouldn't be able to eat dinner; buying a new one would cost over a hundred, she held her breath and called the repairman back.</p>
+<p>The repairman turned his load back, and so they argued about the price. The repairman said "no" more than three times, and Mrs. Huang put on a "seven captures, seven releases" attitude to deal with it, but in the end, she couldn't out-argue the repairman. Eleven 洋 was the final price, not a penny less.</p>
+<p>Mrs. Huang felt like she had fought a battle. She had thought eight 洋 would be enough, but she exceeded the "limit" by one - Mrs. Huang had fought a losing battle and had to accept it silently.</p>
+<p>While supervising the repair of the pot, she asked the shoemaker at the entrance of the alley about the price of repairing the rubber overshoes. It would cost at least eight or nine yuan to fill the yellow fish gills. She also thought about repairing her son's leather shoes, otherwise they would get more and more worn out. But when she asked, she was shocked again. Replacing a pair of front and back soles would cost over twenty! "In the past, I could have bought a pair of calfskin shoes, but it's a pity I didn't buy a pair for A-jian." Mrs. Huang habitually had "nostalgic" worries.</p>
+<p>She took the repaired pot back home to cook dinner. Her son and husband both returned. The younger son clung to his mother: "Mom, my fountain pen is leaking ink again, and it's hard to write. I want to get it fixed, Mom, give me money, I have a big exam tomorrow." Her son was a good son, he didn't ask to buy a new one.</p>
+<p>And her husband, sitting on the edge of the bed, tapping the edge of the bed and said: "A-jian's mom, this palm bed is so dented, I have to call someone to repair it tomorrow. Old Wang bought an old palm bed, which is calculated by the foot!"</p>
+<p>Mrs. Huang was patching a shirt. She looked up at the gray-black corner of the wall where rats often rolled up and down and sighed. Holes, a bottomless pit!</p>
+<h3>Sailing in the Same Boat</h3>
+<p>— He Jia Zhi</p>
+<p>(6) In a Flash</p>
+<p>Until evening, Cui Zhen had a good chat with Wei Cheng. Wei Cheng asked about the size of Guo Fang's house. Cui Zhen said: "The house is quite good, but it's not the Chen family's own house, it's rented." Wei Cheng said: "In Shanghai, only a few people own property, most people live in rented houses, which has led to the system of second landlords, which is naturally incomparable to the countryside. Are they two stories or three stories?" Cui Zhen said: "I don't know about that. There is a courtyard when you enter, with wing rooms on both sides and a hall in the middle. There is a floor, they say it's fake, but it doesn't look fake at all. How can people live in a fake building?" Wei Cheng said: "A fake three-story building is a term for a remodeled two-story building. So where is Guo Fang's room?" Cui Zhen said, "She lives on the third floor, in two rooms inside and out. I saw that there were several empty rooms on the second floor and asked her why she didn't live there, to avoid walking up another flight of stairs. In a year, she would avoid walking quite a lot. She said: I hide alone upstairs so I can see less of my family. Cheng-di, do you think Miss Chen's words are strange?" Wei Cheng said: "I know that she and her aunt don't get along very well. Have you met her aunt since you've been living in her house?" Cui Zhen said: "I've met her and her father once, and her aunt twice. Her aunt is very young and plays mahjong two out of three days. Her aunt doesn't care about Miss Chen's affairs at all." Wei Cheng said: "Originally, in a big family, meanness, filth, confusion, and muddleheadedness are common occurrences. Guo Fang's family can't be said to be a big family, but it's a fact that they can't melt family emotions into a group and make them a piece. You've lived there for a few days, you can see that. Does she have any female classmates or girlfriends visiting her at home?" Cui Zhen: "When we went, it was Miss Chen, her brother, and me who went together. Later, her brother went back to school. In the middle, several people came to see Miss Chen, all about the same age as her. When her friends came, I was afraid, unlike at Cheng-di's house, where I knew all the guests who came. I didn't know them, and they were all dressed like brides. Because of this, I often felt uneasy." (106)</p>
+<h3>The Night Before Rationing by Mouth</h3>
+<p>— Wen Chao</p>
+<p>Before breakfast, Mr. Hu flipped through the newspaper as usual and said to Mrs. Hu happily, "The department has stipulated the method of rationing by mouth. We don't have to buy rice next month!"</p>
+<p>"Oh! Did they distribute the household rice?" Mrs. Hu had heard about the rationing by mouth a long time ago, but had been hoping for it for a long time and hadn't seen it implemented. These days, everyone was talking about it, so it seemed that there was progress.</p>
+<p>She went to the street to buy vegetables and met Mrs. Mao on the way home. They talked about the rising prices of vegetables and then switched to the issue of household rice.</p>
+<p>"No, no, they say each person can only receive three sheng of rice a week. How can my family, who are all big eaters, be able to eat that?" Mrs. Mao said.</p>
+<p>"That's not necessarily true. Mr. Hu said that the newspaper once reported that each person has eight he of rice a day, which is also two dou and four sheng a month." Mrs. Hu didn't believe her.</p>
+<p>"Two dou and four sheng, that's enough to eat. Some people even advised me to buy more rice these days, so I can make up for it in the future if there's not enough, but I can't because my family doesn't have much money!"</p>
+<p>"Don't worry. Our Mr. Hu said that distributing household rice is the fairest, unlike buying rice, where those with strength can buy a few more sheng, and those with little strength can't get even one sheng."</p>
+<p>"Buying rice is really hard! And it's getting hot again, I can't stand it!" Mrs. Mao heard what Mrs. Hu said so logically and believed her.</p>
+<p>In the afternoon, the landlady chatted with Mrs. Hu in her room, of course, it was the same old story, always including the cost of living and rice.</p>
+<p>"Being a landlord is really unlucky. We have to take care of getting the rice coupons. If the tenants owe rent, we can't offend them. But if we are one day late in paying the donation fee, we won't get the rice coupons, and then we'll be forced to death by the tenants." The landlady complained about her hardships like reciting scriptures.</p>
+<p>Mrs. Hu felt very happy when she heard it, thinking to herself, "If you don't get to this point, you won't reduce your prestige:"</p>
+<p>"It's a pleasure to do things for good tenants like Mrs. Hu, like:" The landlady smiled unnaturally and pointed to the front wing room. She hated Mr. Zhu the most, who had refused several requests to increase the rent.</p>
+<p>As soon as she sent the landlady to the stairway, she heard the "White-Collar Wife" from the pavilion talking to someone about the household rice.</p>
+<p>"Getting rice once a week will cost seventy or eighty yuan. My husband spends his wages at the end of the month in half a month. If he can't get the money to get the rice by then, it's over…"</p>
+<p>Mrs. Hu felt that her situation was similar to hers, and this was also a difficult problem. When buying rice on weekdays, when she had no money, she could pawn a few clothes, which would be enough to buy a day or two of rice. Fortunately, there are three days a week when rice is sold.</p>
+<p>In the evening, Mrs. Hu went to bed early because tomorrow was another day for selling rice, and she had to go out in the middle of the night to queue up.</p>
+<p>"In a few days, we won't have to suffer this anymore!" Mr. Hu comforted her.</p>
+<p>"Then your responsibility is even greater. When it's time to get the rice, you have to prepare enough money!"</p>
+<h3>Quotations</h3>
+<p>— Hu Rong</p>
+<p>Thought is the seed of action! - Emerson</p>
+<p>Environment! - I transform the environment - Napoleon</p>
+<p>Education is the barrier of a country. - Burke</p>
+<p>A maxim is a short sentence derived from experience. - Jouvens</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.06.18.html", "next": "1942.06.20.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

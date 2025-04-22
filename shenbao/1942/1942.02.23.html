@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.02.23 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 396 - 4924399</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>蘇門答臘附近　邦加島日軍登陸　日軍公布完全佔領巨港</h3>
+<p>東京廿二日同盟社電　日本帝國大本營、今日午後三時宣布、日本海陸軍部隊、於本月十五日拂曉、在蘇門答臘東面邦加島登陸、是日晚間、即將該島東海岸邦加賓南港完全佔領、</p>
+<p>東京二十二日海通社電　蘇門答臘附近之小島邦加及其鄰島勿里洞、為世界產錫最富之區、現均已入日軍手中、一九三九年荷印所產之錫約四萬噸、幾乎均來自該二島、邦加島居民約七萬人、大都為華人、主要職業為錫業云、</p>
+<p>東京廿二日同盟社電　日本帝國大本營今日午後三時十分宣布、日本陸軍部隊、在蘇門答臘東南部沿莫西河進攻、與佔領巨港飛行塲之傘兵部隊、取得聯絡之後、現巳將巨港完全佔領、</p>
+<p>東京廿二日海通社電　日本帝國大本營今日宣稱、蘇門答臘油礦中立地之巨港、乃於本月十七日被日軍佔領、日軍於十五日在蘇門答臘摩錫河口登陸後、即與在巨港降落之日傘兵取得聯絡、佔領該處航空港云、</p>
+<p>廣州廿二日司盟社電　巴達維亞傳來非官方消息稱、荷當軸已開始散退蘇門臘島之軍隊、</p>
+<p>日方某根據地二十二日同盟社電　從巨港蘇門答臘南進之日軍、已佔鐵路上之要點丹滅如冷、爪哇與蘇門答臘間之荷方交通、遂完全切斷、</p>
+<p>日空軍某根據地二十二日同盟社電　二月十九日日海軍機在峇厘島天空作偵察飛行時、襲擊空軍根據地一處、摧毀地面之波音式飛行堡壘機五架、同時其他日海軍機襲爪哇北面之巴惠安島、重創該島根據地、</p>
+<h3>菲島兩軍　砲戰猛烈　奎松仍在菲境</h3>
+<p>華盛頓　十二日路透社電陸車部昨日宣布、呂宋八打雁半島方面、二十四小時以來砲戰甚烈、日軍飛機仍以燒夷彈向美軍防綫擲擊、馬尼刺灣口柯利基多要塞方面、亦有砲戰、弗倫克砲台被轟擊尤烈、</p>
+<p>華盛頓二十二日哈瓦斯電陸軍部頃發表戰報稱、「過去二十四小時中、八打半島砲戰甚烈、雙方斥堠部隊、亦極活躍、迭次發生小接觸、日機不時飛至我軍陣地上空、日方砲隊、仍以轟炸我方砲台為目的、佛朗克要塞、首當其衝、堆我方砲隊、開砲還擊、亦極得手」云、</p>
+<p>華盛頓二十一合衆電　據菲律賓駐美專員伊里薩德宜稱、渠曾接奎松總統來電謂、菲政府現在菲律賓境內某地照常工作、襄助總統者、為戰時內閣即副總統奧斯敏納、司法部長桑尼阿斯、財政部長沙里阿諾、及兼管國防公共工程與交通事宜之瓦爾德斯、</p>
+<h3>烏拉圭總統　宣佈解散議會　內閣昨舉行重要會議國防部長羅勒蒂准辭</h3>
+<p>烏拉圭京城二十一日哈瓦斯社電巴爾多米總統、本日發表命令、解散衆議院會塲暫由軍隊駐守、總統並定於午後九時發表演說、問明解散衆議院之理由、此外、閣員多人曾提出辭呈、但除國防部長羅勒蒂將軍稱病辭職、巳予照准外、其他均拒不接受、全國安謐如常、</p>
+<p>烏拉圭京城二十二日哈瓦斯社電內閣定令晚舉行會議、屆時當有重要決定、據總統稱、如屬必要、內閣可實行改組、此後並將推行堅强政策、本港所貯燃料、易受飛機轟炸、常設法加以保護云、</p>
+<p>烏拉圭京城二十一日路透社電總統巴爾多米解散議會、並宣布三月三日總選舉暫緩舉行、彼將要求與政府友善之政黨組織政府委員會、代行立法職權、議院業已封閉、由警局掌管門錀、迄今當局尙未下令捕人、據內長蒂斯科尼亞稱、軍隊並未參加今日之政局變動云、</p>
+<p>阿根廷京城廿二日海通社電烏拉圭總統昨夜發表廣播演說、嚴詞抨擊國民黨反對以根據地讓予美國一事、略謂、誠如羅斯福總統所言、美洲巳處於威脅之危機中、故國民黨倘反對政府、實欲使國家陷於危險之中、且謂國民黨企圖離間烏拉圭與美國之關係、實為國家之「罪人、」今國家正遭遇政治與經濟之困難、故國民應團結一致、擁護政府云、</p>
+<p>阿根廷京城二十二日海通社電據烏拉圭京城傳來消息稱、烏拉圭之政潮、係政府黨議員與國民反對黨議員在議會中之爭執所引起、常時內長所發表之文吿、不但為政府辯護、且抨擊該黨、按烏拉圭國民黨領袖係赫勒拉、據稱、政府曾屢欲修改選舉法、藉以减弱該黨之勢力、於是國民黨遂抨擊政府操縱選舉、當時雙方爭執甚烈、內長竟與指斥國民黨議貧為煽動者、故衆信議曾先須對總統所擬之憲法改革方案表示同意夕後、始能舉行選舉、但議會當時曾通過決議、不贊成政府之政策、並要求於憲法限期內舉行選舉、總統乃下令佔領議會與選舉廳、引起騷動、有議員多人受傷、國民黨秘書及議員一人被捕、議員乃在議會大厦門前舉行會議、聯合簽一文件、要求不承認總統巴爾多米之權威、且表示祗能承認副總統却洛思、其後全體閣員亦提出辭呈、但為總統所拒絕云、、</p>
+<h3>羅斯福今午　發表演說　紀念華盛頓誕辰</h3>
+<p>紐約二十二日哈瓦斯社電明日為開國元勳華盛頓故大總統二百十週年誕辰、屆時全國將一律慶祝、學校·銀行·交易所及商店、均將休假一日、但國防工業各工廠、則照常工作、羅斯福總統並定晚間發表「爐邊閑談」、以資紀念、</p>
+<p>華盛頓二十一日電　美總統羅斯福定二十三日午十二時至十二時半（上海時間二十四日午十一時至十一時半）向全美播講、白宮秘書歐萊稱、國人靜聽總統播講之時、各應携有世界地圖一張、總統擬於保守重要軍事秘密所許可之範圍以內、檢討世界大戰經過、一俟總統播講完畢、國人即知美國四週之大洋、已非過去所謂不可飛越之防禦錢、而千萬哩外之海戰、對於美國內地之影鄕、亦極重大也、</p>
+<p>華盛頓二十一日哈瓦期社電羅斯福總統雖感受風寒、但昨夜仍忙於起草本月二十二日所當發表之演說稿、直至午夜始輟、全日並未接見任何賓客、可見其正潛心準備此一重要演說、</p>
+<h3>英國東北部　火藥廠突爆炸</h3>
+<p>倫敦二十一日哈瓦斯社電英國柬北部美大火藥廠昨日突然發生爆炸、炸斃女工四人、原因未明、</p>
+<h3>法戰艦一艘　修理完竣　駛回都隆軍港</h3>
+<p>維希二十一日哈瓦斯社電法國戰鬬艦「鄧寇克」號、前於一九四〇年七月三日、在北非奧朗港附近凱比爾灣、被英國艦隊擊傷之後、頃已全部修竣、於本日駛回都隆軍港、按此一戰鬭艦、排水量二萬六千五百噸、於一九三七年五月編入艦隊服役、其速度每小時可達三十海里、裝有十四吋口徑、大砲八門、大小高射砲二十門、機關槍三十二挺，並有飛機四架、</p>
+<h3>美政府訣別保護　西半球航綫　即將採取緊急措置　巴西準備武裝商船</h3>
+<p>華盛頓二十一日哈瓦斯社電國務副卿威爾斯頃向報界談稱、美政府當局即當採取緊急措置、俾能保護西半球航錢、泛美洲聯防委員會現正硏究各項適當措置、以保護南美洲各國之商船、至以巴西商船二艘、被軸心國潛水艇放射魚雷擊中一事而論、吾人巳實行護航、此即美洲各國協力聯防方法之一種、不久且當採取其他實際措置、</p>
+<p>華盛頓二十一日哈瓦斯社電關於巴西商船「波克號與「奧林達號兩艘、在大西洋美國沿岸被軸心國潛水艇擊沉一事、頃據巴西京城消息、該國政府業向德國政府提出强硬抗議、內閣並於昨日舉行閣議、討論德國不能提出圓滿答復時所當採取之措置云、</p>
+<p>阿根廷京城二十二日海通社電巴西政府決定、商船均將加以武裝、巴西最大之商船「曼杜號（六千五百八十八噸）、現正在改漆深灰色、據巴西商船艦隊稱、巳西或將組織護航隊、</p>
+<p>美運油船一艘擊沉</p>
+<p>華盛頓二十二日路透社電　海軍部宜布、美運油船」大麻州」號（八二〇噸）、在大西洋方面被潛艇放魚雷擊沉、水手十八人獲救、二十人被油火灼傷致死、按美船在大西洋被擊沉者、此為第三十一艘、</p>
+<p>南美荷屬庫拉薩奧島首府二十一日哈瓦斯社電挪威油船「鞏加爾號（九四六七噸）、今晨在本島海面被魚雷擊中、現巳拽至此間港口、</p>
+<p>柏林二十二日海通社電　昨日德軍戰報稱、德潛艇在美國海岸擊沉商船十七艘、總重十萬零二千噸、故自美國參戰以來、在美國海岸所擊沉之船隻巳達八十艘之多、總重五三二九〇〇噸、在特里尼達之首邑西班牙港海面外、亦為德潛艇活躍之地、德艇會深入巴里阿灣擊沉敵船二艘、其中包括運油船一艘、按特里尼達島為艦隊之空軍根據地當、英、美締結美國將驅逐艦六十艘移交於英國之協定時、同時規定將該島建為根據地、因該島在軍事上極為重要、該島為巴拿馬運河之屛障、並位於自美國至非洲之航綫上今德國潛艇竟在西班牙港之海面上擊沉船隻、此為英美之威望受打擊之男一事件、</p>
+<h3>大批黃金　自非運德</h3>
+<p>華盛頓二十一日電　美政府現悉、有大批現金正由飛機自北非運往歐洲、以德國為最後目的地、聞該飛機自亞爾及爾飛往馬賽、再由馬賽實行轉遝、上述現金聞為比政府所有云峇厘Bali稱巴里，又有「詩之島」及「千廟島」之名，為荷屬小巽他羣島中最重要之一島，不惟風景優美而又為印度敎碩果僅存之地。此島風俗習慣，尙保持千年以前傳統之舊習，如婦女袒胸露乳也，死後火葬也，彫刻及歌舞也，使用中國之孔方錢也，男權高於一切也，嗜鬥鷄也等等，均與荷屬其他各島不同，故外國游客之往荷印者，無不趨向峇厘。此地之寺廟，雖為數甚多，但不甚壯麗，數層之高塔，皆以棕招及竹木為之。（如上圖）峇之歌舞，在世界中極著名，最流行之新式舞蹈，如羊格爾舞Djager，不受傳統之舊習所束縛，且有打譚穿插，頗為游侶所歡迎。（見下圖）茲者此小島已充滿火藥氣味，從地勢言，密邇泗水，荷印至感受威脅也。</p>
+<h3>華維爾論將才（四）</h3>
+<p>最後，我要說一說現代軍事的錯綜複雜，未知諸君曾否有見及此。今日的司令長官，除必須符合尋常的各種資格外，還得熟曉如何運用空軍，裝甲機車，與高射砲；如何在進攻或退守時應用毒氣及烟幕；如何使用無綫電以通訊息如何利用偽裝掩蔽和宣傳技倆；如何追隨軍事工程學的發展，庶其不落人後。戰塲上的情形當然也巳完全改觀。在白雷哈姆戰役中，馬爾巴羅於親自分佈砲位，並騎馬巡視全綫後，即在砲火下午餐，等候四哩外右翼友軍尤全的消息。那時，四哩路程巳算很遠了。拿破崙在奧斯特里齊能够親眼看到敵軍的孱弱無能，難以抵禦法軍正在準備中的反攻，遂即決定了進攻的最佳時機。威靈頓在薩拉費加前綫目睹其勁敵調度失宜，，只發了幾個口傳的命令，便能够很有把握的回轉頭來對西班牙代表說道：「我親愛的亞拉佛，此獠今番休矣！」即六十年後在色當，毛奇和他的皇上還能够在附近的小山顚上注視法軍的潰敗，幾乎全綫收入眼簾。到了上次大戰時，雖是巳令預備隊加人作戰的營長也不能够看到前綫情形如上面所說的那樣淸楚了。至於總司令呢，早巳不在戰塲上，却坐在幾哩後的辦公室裹或心神不寗的在別墅花國中徘徊，等候着遲遲不來的前方戰報，而戰報即使到了，往往還是不可靠的。</p>
+<p>以往的情形如此，將來怎樣呢？在陸上和空中都要使用許多新的武力，而其性能大多尙未發掘。有些在上次大戰中曾局部的利用過，但戰後巳大大的改良擴展；有些到最近才獲見進步；有些還是完全未經試騐。有想像力的指揮官——實即天才——能善用這些新武力，就可以名留靑史，躋身於「名將」之列。但是這個頭銜豈是輕易能够到手的；試看要具備怎樣的資格才行。現代陸上部隊的運用，速率之高與距離之遠巳趨過了舊時最流動的騎兵，所以統領的人，除了騎兵戰術外，還須通曉海軍的戰略戰術。將領在現代戰塲上所處的地位與當機立斷不容遲疑的情狀可以由遮特蘭大海戰得到一些概念；索爾茲巴立平原或長谷之戰都還不能比擬。對於空軍的運用也必須同樣的能够得心應手，這是母庸辭費的了。</p>
+<p>至於充任指揮官的究竟要嫻熟空戰的陸軍將領還是嫻熟陸戰的空軍將領，我以為不成問題。在未來戰爭中，必須兩者配合，方能克敵致果，缺一不可。除此之外，指揮官的學養，必須常識充實，人情洞達。全部戰爭的實踐最後都築在這些特質上面，並不是築在機械上面的。這一點下次我還要申說。</p>
+<p>上一次我巳經把將領的性質和職務略加論列；這可以說之事將領本身的問題。現在讓我們看一看將領與其部下的關係。將領管轄部下須藉助於參謀人員，我就從參謀說說起。我以爲每一個將官都應該遵守兩條簡單的規則：第一，切莫親自去做參謀的工作；第二，切莫讓參謀官隔絕了自己與部下的關係。參謀官最希望將領給以明白確切的訓令，而聽其謀劃細節，不加干涉。部屬和下級指揮官最希望將領個人能够常常和他們接觸，不應當各事上途只經過參謀官的耳目。一個將領他在辦公室的時間愈少，與部下接觸的時間愈多，那才愈好。</p>
+<p>上次大戰中我曾在阿楞比和乞說　特手下服役，覺得道兩位將軍在這一方面很合乎理想。我想大多數的英國將官都是如此，但是也不乏例外，如攻下巴格達的摩德便喜歡集中一切參謀與指揮的工作於一、己之手；阿楞比在巴力斯坦的前任累累則與部下不通聲氣。</p>
+<p>在座諸君，或者也知道德國軍隊裏有一種奇特的參謀制度，就是在司令官之下，另有一批大本營的高級軍官，也握着極大的獨斷權，且其品級往往很低。諸君想必都記得瑪恩河一役中關於漢取中校的故事，當時其所負使命之重大直影響整個戰局。叉如興登堡與魯登道夫的合作，魯登道夫無異是一身兼參謀長司令官，興登堡不過傀儡罷了。這種制度與英國陸軍格格不相入，自未必會加以採用，俄國會傚而行之，就不時發生怪異的現象。例如大戰時，某一集團軍的司令官為老將伊凡諾夫，而其參謀長亞歷山伊夫却是一個非常科學化的軍官。兩人對於總司令部發來的要電，都以爲有最先拆閱之權，各不相讓；結果只得將所有電訊繕成兩份，參謀長與司令官各閱其一；常常還不相商酌而各行其是。</p>
+<p>講到將將之道，一個統帥必先熟知各人的性格，醫如何者須加約束而何者須加催促，何者可寄以獨當一面之重任而何者必須隨時監督。有的部將須給以詳細週到的命令，有的枝粗大棄已足。有許多將領在上級統御之下是出色的司令官，但是令其單獨指揮則立覺遜色，有時甚至於驚惶失措了。反之，也有不易統御而可以聽其獨斷獨行的。這兩種人切不可混為一談；這就是說，任統帥者必須精於鑑人。我們試看拿破崙和威靈頓在這方面的措施。拿破崙部將中能獲其信任而專擅指揮的為數極少——達武，馬塞那，馬蒙諸人是主要的例外。威靈頓對於格累姆完全信賴，常責成其獨當一面，但於克牢福脫，伯勒斯福，或匹克頓就不肯付以極大的自由權，蓋克牢福脫雖稱能幹猶嫌鹵莽，其他二人則才能較差。</p>
+<p>現在要講將領和部下的關係了。想來諸君也看到這是一個大題目，難以遽下斷論。對各級軍官以看法自然和對士兵的不同，而各國的軍隊復須各別處理。法國人稱部下曰「我的健兒」，還提到光榮和祖國，英國人在偶然集合部隊訓話時則稱「士兵們」；蘇聯稱「同志」；德國的司令官或許將來會高呼「亞利安同袍」，以激起將士之自尊心理。但是不論國別，不論環境，根本的問題始終不變：即士卒受何誘導才肯奮不顧身，而欲養成士卒之忍耐力將領須負何職責？人孰不貪生怕死；能使士卒出生入死的究係何物？這也許是戰利品或光榮，也許是紀律與傳統精神，也許是對主義對國家的信仰，也許是對領袖的信仰。</p>
+<h3>葡萄牙總理　發表報告　對蒂摩爾事件謂已提出抗議</h3>
+<p>葡萄牙京城二十一日哈瓦斯社電關於日軍在葡屬蒂摩爾島登陸一事、內閣總理薩拉柴、本日向國民大　會提出詳　細報吿、事後國民大會即全體一致通過一項決議案、對此一舉提出强硬抗議、並要求政府」採取一切適當措置、務使各國尊重葡國主權及領土完整」云、</p>
+<p>葡萄牙京城二十一日哈瓦斯社電　內閣總理薩拉柴、本日在國民大會發表演說、略謂、日政府巳向我國提出牒文、明白承認我國在蒂摩爾島之主權、查荷、英兩國軍隊前此進佔該島之後、當時我人以為恢復原狀之最佳方法、乃在增加我國在該島之戍軍、當與英國進行談判、英方態度亦極坦白、惟不幸我國軍隊延未開到、值至本月十九日、日本公使先於下午六時親至外交部、口頭通知、旋又於晚間十時半提出書面文件、申明日軍巳佔領蒂摩爾島、且吿以此舉純係出於軍事上之理由、同時聲明完全承認我國在該島葡屬部份之主權、但此項文件並不能减輕時局之嚴重性、是以我國已向日政府提出抗議云、</p>
+<p>葡萄牙京城二十一日哈瓦斯社電　葡國運兵船「霍亞培洛」號、自本國載有士兵一批、前往葡屬蒂摩雨島增防、並藉此表示該島東部雖為英荷聯軍所佔領、但並不損及葡國主權、啟椗以來、為時已歷多日、頃悉該船巳於本日自錫蘭島東駛、內閣總理薩拉柴本日向國民大會報吿該島事件時、即曾涉及此船、</p>
+<h3>德英空軍　互施轟炸</h3>
+<p>倫敦二十一日哈瓦斯社電航空保安部頃發表公報稱、「我國東部沿海某城今晨被炸、除平民死傷數人外、物質上亦略有損失」云、</p>
+<p>倫敦二十二日路透社電英航空部公報稱、英轟炸機於星期六夜襲擊德國西部之萊因等區目標、並在德領海敷設水雷、英機三架失蹤、</p>
+<h3>東綫蘇軍　數度進攻</h3>
+<p>德元首行營二十一日海通社電　今午德軍戰報稱、東歐蘇軍數度進攻未逞、德機咋擊毀中路蘇車二百餘輛、復猛炸蘇方鐵路及飛機塲、</p>
+<p>柏林二十二日哈瓦斯社電軍息、列寗格勒區被圍紅軍、本日先後進攻五次、均被德軍擊退、紅軍陣亡官兵數百名、</p>
+<h3>英將改變　印度政策</h3>
+<p>瑞典京城二十二日海通社電據倫敦消息、英國政界人士預料、內閣將繼續改組、因倫敦幾每日舉行重要會議云、倫敦盛傳印緬事務大臣愛梅立及其他閣員數人、將由少壯派接替、邱吉爾會於昨日接見愛梅立、政界人士、均以為、英國之印度政策、行將改變、但讓步之程度、尙未確定、邱吉爾殆難完全改變對印度之態度、而僅能稍作讓步而巳、據稱、克里浦斯爵士參加戰時內閣、以改變對印　之態度為條件、渠之勢力、業巳發生影響云、</p>
+<h3>印度防空措置</h3>
+<p>西二十二日海通社電　據此間接獲消息、印度當局頗慮日機之空襲、卡拉希當局、巳勸吿城巿居民疏散、馬德拉斯各學校定於三月一日停閉、學童均送往鄕間、據加爾各答消息、印度政府正考慮採取强迫保險制度、使東海岸城市之工廠及商店、均保兵險云、</p>
+<h3>尼赫魯談話</h3>
+<p>盤谷二十二日海通社電　加爾各答電訊、印度民族運動領袖尼赫魯宣稱、倘英國對印度之自由要求表示採納、則吾人願與英國合作、保衛國家、倘英國能於戰爭之初聽從印度之耍求、則印度之情形將不同於今日、尼赫魯糧對英內閣願否履行印度之要求、頗表懷疑、故不相信能於短期內成立此項協定</p>
+<h3>德開始徵募　摩托化步兵隊</h3>
+<p>柏林二十二日哈瓦斯電　陸軍部今日開始徵募摩托化步兵隊、機械化部隊及情報隊志願兵、凡年在十七歲以上二十八歲以下者、均可應微、服役期限定為十二年、此外、凡年在十七歲以上二十五歲以下者、均可於陸海空三軍中任擇一門、應徵為志願兵、</p>
+<h3>南非與蘇聯　互派使節</h3>
+<p>倫敦二十一日哈瓦斯社電南非聯邦駐倫敦高級委員華透森、本日與蘇聯駐英大使邁斯基簽訂一項協定、恢復兩國外交關係、並決定互派使節、</p>
+<h3>馬關大火</h3>
+<p>馬關二十二日同盟社電　此間鬧巿於今晨零時二十分發生大火、延燒兩小時、焚燬房屋四十二所之多、</p>
+<h3>荷印日僑抵澳</h3>
+<p>東京二十二日海通社電　據日本外務省昨發表官方之文吿稱、荷屬東印度之日本僑民一千四百人、其中包括婦人二百二十四人、巳由英國當局運送至澳洲、渠等不久以前已抵達澳洲南部之阿特萊特港、此項消息係由照料日本在荷印之權益之瑞士政府通知日本政府云</p>
+<h3>美陸軍將領　將大更動</h3>
+<p>華盛頓二十二日哈瓦斯社電據海陸軍周報宣布、美國陸軍將領、定於下月一日大加更動、此後陸軍將分三大組、即　軍需、　陸軍、　空軍、各組由將領一人主持之、此三將領、僅向參謀部負責、</p>
+<p>華盛頓二十二日路透社電羅斯福總統已下令、着將聯邦各機關幹練職員、調往各軍事機關工作、</p>
+<h3>貝當接見李希</h3>
+<p>二十一日哈瓦社維希電　貝當元首本日接見美駐法大使李希海軍上將、有所商談、內閣協理兼外長達蘭亦在座、惟官方對於此事未發表公報、</p>
+<h3>柏林正式宣佈　沒收蘇船七艘</h3>
+<p>柏林二十二日海通社電　柏林海軍捕獲物法庭昨日宣布、沒收蘇船七艘、其船名如下、三·九七九噸之「喀山」號、一·七九八噸之「愛爾頓」號、三·九四五噸之「伏爾哥爾斯」號、三·五八〇噸「尼斯透」號、三·六六三噸之「卡根諾維茨」號、四·四七〇噸之「泰林」號、三·五六六噸「麥格尼托哥斯克」號、</p>
+<h3>美國人士一致希望　在愛爾蘭設根據地</h3>
+<p>紐約二十一日路透社電　據蓋洛普民意測騐所最後之調登、美國人士中、百分之九十希望愛爾蘭自由邦允許同盟國在該邦沿海設根據地、該所提出之問題內稱、「君等希望愛爾蘭自由邦允令同盟國利用其沿岸根據地乎」、答然者計佔百分之九十、答否者百分之五、未置可否者百分之五、在祖籍愛爾蘭之美國公民中答然者、計百分之七十二、答否者百分二十一、未置可否者百分之七、該所提出另一問題謂「愛購蘭自由邦應否與同盟國聯合對德宜戰」、其所獲之全部答案、計答然者百分之七十一、否者百分之十六、不置可否者百分十三、祖籍愛爾蘭之美國公民、其答案則如為百分之五十六、百分之三十二及百分之十二云、</p>
+<h3>厘小景</h3>
+<p>厘Bali一稱巴厘，又有「詩之島」及「千廟島」之名，為荷屬小　他島風俗習慣，尙保持千年以前傳統之舊習，如婦女坦胸露乳也，死後火葬也，　刻及歌舞也，使用中國之孔方錢也，男權高於一切也，嗜鬥鶏也等等，均與荷屬其他各島不同，故外國游客之往荷印者，無不趨向　厘。此地之寺廟，雖為數甚多，但不甚壯麗，數曾之高塔，皆以棕　及竹木為之。（如上圖）　厘之歌舞，在世界中極著名，最流行之新式舞蹈，如羊格爾舞Djager，不受傳統之舊習所束縛，且有打　穿插，頗為游侶所歡迎。（見下圖）茲者此小島已充滿火藥氣味，從地勞言，密邇泗水，荷印至感受威脅也。</p>
+<h2>Page 3</h2>
+<h3>各業安渡總結賬期　本埠商業瞻望　未統制物品價格看漲</h3>
+<p>著名經濟學家安翰能氏、昨於英文大美晚報發表一文、縱論本埠最近之經濟局勢、茲擇要譯錄於後、</p>
+<p>總結賬期各業安渡</p>
+<p>上海商界現已安渡舊歷年底之總結賬期、閉歇者甚少、商界中雖不乏於太平洋戰事發生時遭受嚴重損大者、然彼等於先前均巳獲有厚利、故多未因而動搖、多數商家、曾於一月前瀕於倒閉、卒以貨棧之部份啟封、與多種貨物之價格騰漲而得倖免、上週內若干華人企業之收歇、並非由於破產、而為通常淸理性質、蓋彼等於新局面下、巳不復如前之可坐享厚利也、</p>
+<p>過去數天物價踵貴</p>
+<p>一般預期舊歷新年後、物價將趨下跌者、甚感失望、各種物品之零售價格、除受當局統制之少數必需品外、於過去三四天內、繼續高漲、凡自商店或菜塲購物回家者，必携回若干物品漲價之新消息、西僑與華人之生活費、顯亦一致增高、且增高甚速</p>
+<p>驕傲一趨向未統制品</p>
+<p>舊歷新年後各項商價格、仍續趨堅挺、而大多數商界人士猶翼其再漲、交易趨勢顯已轉向於不受統制物品之購進、半月以前、於當時被封堆棧中握有存貨、幾願以任何價格、出售其棧單、而至今日、凡存貨可自由提取者、均不脫手矣、若幹人甚至非僅不賣、且欲買進、蓋現款或將貶值、而商品或可增值、</p>
+<h3>肉莊聚賭抽頭　吊銷執照</h3>
+<p>法租界總巡捕房幹探、偵悉金神父路新新街七號莊元茂肉莊內、有人秘密聚賭抽頭、乃於前日下午三時許、密往拘捕、當在三樓房內、抄出賭具賭洋甚夥、連同男女賭客十四人、一併帶入捕房、結果賭客各處罰二十元以儆、該肉莊因有設局聚賭情事、故罰將肉莊敎照吊銷、</p>
+<p>法租界警務總監以滬人風俗、每屆廢歷新年、有人假旅館抽頭聚賭、不但勞民傷財、且違警例、爰特傳令所屬各捕房探捕曁捉賭班各探、嚴密查禁、不得鬆弛、故近各旅館每晚深夜有探員入內查察各房間、以禁絕賭博、維護社會安寗、</p>
+<h3>寄往國外郵件　另覓新郵綫</h3>
+<p>由滬寄往國外各種輕重郵件、滬郵政局曾經積極設法疏通、卒因水陸運輸未克及時恢復、及各地戰事未己、以致信函運送不無感受困難、茲向郵政局方面探悉、凡山滬寄往國外各地郵件、該局南在尋覓新郵綫、務使迅速及不遺留爲宗旨、惟旅滬外僑投遞各種函件方法、是否變東、屆時郵局將另行佈告知照、至由寄往國外各地大小包裹、郵政局現均在停止收寄中、惟寄往法屬印度支那之包裹、該局巳恢復收寄、惟須由寄件人自負賣任、如因無船隻開駛、以致有延誤情事、郵局並不負責、</p>
+<h3>催領助學金　二月底截止逾期即作廢</h3>
+<p>本報讀者助學金、核准名額業巳全部發表完竣、為時多日、尙有一部份學生未將支票領去、除按址另行去函知照外、特再公吿、此項助金支票、限木月底前來館具領、逾期一概作廢、絕不通融、未核准諸生之前繳證明文件、亦盼即日來領、以淸手續、如有函詢、務須註明登記證號碼、並附回郵否則不予答覆、面詢亦須附帶登記證、盼各注意、</p>
+<h3>乳類供給　須憑醫師證明　同時聲明其家中並無存貨法租界當局通告居民週知</h3>
+<p>法租界通告云、「為通吿事、法當局鑒於罐頭乳類、為病人及兒童不可少之食物、茲為維持永久供給該項食物起見、決將界內所有之儲存罐頭乳類、予以收買、嗣後貝勒路六三〇號衛生處、將負責分配乳類事宜、凡界內居民、可向該處申請、發給一星期所需要之乳量、但申請人須備有已註冊醫師發給之證明害、證明病人絕對需要之分量、或兒童對乳類為需要之食物、申請人除該項證明書外、尙須簽呈「住戶聲明書、」其家並無乳類存貨後、衛生處始可發給「出貨單、俾其領取需要之乳類、衛生處及警務處、並得隨時檢查、如有偽報、當予處分不貸、至於憑單領取乳類之日期、除假日外每日下午在貝勒路六三〇號衛生處、合亟通吿、此佈、</p>
+<h3>工廠與勞工調查　明日收集表格　兩租界同時進行表格須詳實塡報</h3>
+<p>公共租界之工廠與勞工調查、巳於本月二十日起、開始進行、其所調查之工廠、僅限於不受日當局管理、而所雇工人達三十人或三十人以上者、惟位於公共租界內者、不論蘇州河南北、均須受調查、此項調查、印有兩種表格、一塡工廠情形、一塡勞工情形、工廠方面所須塡具者、計有所造物品與所用原料之種類與數量、以及所使用之機器與原動力者、所塡務須詳實、此項調查結果、聞將由工部局送交日本亞洲振興公司之駐滬辦事處、顯然日方意欲澈底明瞭本埠之工業狀况、並擬根據調查結果、以獲悉各工廠於原料燃料與勞工方面之需要、以及對日本戰事之可能幫助、然據本埠工商界人士表示、彼等希望此項調查結果、亦能公布於工商界方面、蓋此種情報、彼等均亟欲獲悉、而可依之籌謀未來之營業計劃也、此外法租界亦同時進行相同性質之調查、兩租界之調查工作、均完全由警務處擔任、公共租界並定於明日收集所發之調查表格、故各工廠應即迅速塡就、以免稽延、</p>
+<h3>聯生義務夜校　續招免費生</h3>
+<p>聯生義務夜校自開辦以來、已有一年、現巳遷至北京路（江西路西）二六六號中一大樓四樓、因鑒於失學者衆多、本屆仍繼續辦理、自高小至初中各級共收二百名、於每晚七時至九時上課、費用完全免收、課程計有國·英·算·常識·科學等科、管敎均甚優良、現該校尙有餘額甚多、淸寒子弟、速宜前往報名</p>
+<h3>盜案倂誌</h3>
+<p>昨晨八時半、河南路北京路口有一靑年女子雇乘人力車經過、突遇路刦匪三人、上前將伊手提皮夾（內儲日鈔等約值數十元）搶刦逸去、經該女大聲呼喊、經崗捕聞警趕到、拘獲一匪、餘匪已携贓逸去、乃將獲犯連同事主帶入捕房訊究、</p>
+<p>昨晨九時三刻許、虹口東有恒路公平路口、有盜匪數名從附近某處行刦逃出、後面有事主追趕嗚警、致有一盜被崗捕開槍擊倒、餘匪則被兎脫、嗣經救護車將傷盜送醫院救治、</p>
+<h3>一年以前上海印象記（二）</h3>
+<p>— 吳演存譯</p>
+<p>船舶繼續上駛的時候，很像是東京隅田川上流尾久發電所的上海電力公司電廠便兀立在眼前了。上海公共租界所需的電力差不多全是那電廠供應的。電力公司的資本金有五千六百萬元，公司債有八千八百萬元，可算是很大的企業。這資本金的裹面，百分之八十是美國人所有，百分之十是英國人所有，百分之三是日本人所有，近水樓臺的中國人却只有百分之六多一些。江岸上堆積着的煤斤像山一樣地高，中日爭端勃發以前，廠裹所用的煤斤大部份是從華北的開　煤礦運來。開　是英國人的資本，那是人所共知的事實。</p>
+<p>上海電力公司的附近地帶是工廠區域，可以見到很多的工廠。華中的江蘇浙江安徽三省在全中國工業裹面佔有百分之五十至六十的比數，單是上海一地，便佔到百分之四十至四十五。日本紗廠和中國紗廠英國紗廠鼎立着的形勢，在船舶上面就可以觀察到了。原來，華中的三角地帶——上海南京杭州——以內，紗廠的錠子總數大約有三百二十八萬錠，這裏面歸於中國資木經營的有一百七十三萬錠，餘下來的，日本有一百三十三萬錠，英國有二十二萬錠。這當然還是一九三六年年底的統計，戰事以來，已經損毀的不在少數。但是，日本人把上海做中心從事復興工作，中國的紗廠，有的是經過日木人的修理改善而由日本人經營，有的仍舊由中國人經營，截至一九三九年年底，那三角地带裏面開工的錠子，日本方面共有一百九十三萬錠，中國方面有四十七萬錠，英國方面有二十五萬錠。日本方面的紡織公司共計九家，總投資額大約是二萬萬二千一百萬圓，英國方面紡織業的總投資額大約是二千九百萬圓。</p>
+<p>本來中國國內的重工業還沒有發達，中國資本發展所象徵的企業袛不過是輕工業，而輕工業的標準工業正就是紡織工業。在這中國的標準民族工業上面，日本的工廠和中國的工廠是有着如何劇烈的競爭，看了上列錠子的數字比較便不難明瞭了。道是日本資木和中國民族閒抗爭的問題。</p>
+<p>姑且放下資本的國籍問題不談，以上海為中心的華中紡織工業另外還有關係國際經濟的一個重要因素，那就是紡織原料的棉花問題。照上面所講的情形，華中三角地帶以內開工的錠子大約有二百六十五萬錠，中日爭端發生以後，中國國內的棉花不能够充份供給上海的需耍，所以外國棉花的大量輸入便成為必然的局勢。一九三九年度上海一埠的棉花輸入共計有二百三十萬公担，牠的價值按英國幣制算大約有九百六十一萬磅。這樣多的棉花是從什麽地方去運來的呢，請看以下的說明：——</p>
+<p>英領印度輸入　值五百十七萬磅巴西輸入　值二百〇八萬磅美國輸入　值一百五十九九萬磅埃及輸入值　四十八萬磅其他各國輸入值　二十七萬磅</p>
+<p>這棉花輸入的總值共計是九百六十一萬磅，照上海黑巿的滙率折合起來，大約是法幣三萬萬八千萬元。一九三九年度上海輸入外國貨的總值是三千五百五十八萬磅，那麽棉花輸入的價值便佔到百分之二十七的鉅額。那樣大量的進口當然影響到貿易的平衡，更進一步，法幣在上海自由巿塲上的貶值，也未始不是因為這個緣故。然而，暫且離開本題來講，把上海的外棉輸入和國際間的大量棉花貿易來比較，由美國輸出到中國來的棉花祗不過佔了總輸出額的百分之六，那是全中國的數字，上海一埠的輸入當然還不及此數。還有也許想不到的事，本來外國投入中國的資本大約有二十五萬萬美圓，中國的經濟因此蒙受莫大的影響，但這三十五萬萬美圓之數，僅僅是紐約一巿資產的總值罷了。</p>
+<p>現在把話再說回到黃浦江來，船舶繼續前進，離開碼頭更加逼近了。那沿江一帶各國的碼頭，各國的倉庫緊密地排列着，顯出龐雜之極的狀况。作為一國門戶的港口而被世界各國所分佔，怕是世界各國稀有的事情吧，然而看在眼裹倒是非常有趣的！各國的船舶停泊在那裹，小輪像梭子般開來開去。尤其惹人注意的，法國船，意大利船等等交戰國的商船，回不得歐洲去的只得繫留在上海的港內。像道樣統一而又不統一的模樣乃是世界上有數的大上海港。</p>
+<p>一九三九年度出人上海的外洋船舶，進口的共有七百六十一萬噸，出口的共有七百三十九萬噸，近海船舶進口的共有二百九十六萬噸：出口的共有三百十九萬噸。在這裹不得不加注意的是國內航運界裹面外國船舶的勢力，其中最重要的國家，只要查看一九三九年度中國全國各港船舶進出口噸數的此率表便可知道。按照下列表格所舉的數字，英國和日本的勢力最為强盛，其他在中國沿海航行的外國船還有很多。除了零星各國不計以外——英國船　估百分之三七，〇三</p>
+<p>日本船　佔百分之三〇·三五</p>
+<p>那威船　佔百分之六·二七</p>
+<p>中國船（帆船除外）佔百分之無·一九</p>
+<p>德國船　佔百分之四·一〇</p>
+<p>荷蘭船　佔百分之三·四九</p>
+<p>中國帆船　佔百分之二·九七</p>
+<h2>Page 4</h2>
+<p>意大利船　佔百分之人二·一八</p>
+<p>丹麥船　佔百分之二·一五</p>
+<p>法國船　佔百分之二·五</p>
+<p>美國船　佔百分之一·五九</p>
+<p>葡萄牙船　佔百分之〇·五九</p>
+<p>瑞典船　佔百分之〇·五九</p>
+<p>在中國港內出入的縣掛着各色各樣船旗的外國船舶，連帶地，各地的倉庫碼頭及土地種種的設備也由外國人來經營了。這裹面，華中方面依照國別來統計，一九三六年年底大致像下面表列的模樣。雖說是華中，關於船舶一層，因為屬於移動性質，不能分別計算，所以把全中國沿海岸和內河航行的船舶一併計入的。</p>
+<p>日本　五千八百萬元</p>
+<p>英國　一萬萬八千二百萬元</p>
+<p>美國　一千五百萬元</p>
+<p>法國　二千萬元</p>
+<p>其他各國只有少數。憑籍着像上面所述的航業投資，中國各地的土產便從華中各地和揚子江的腹地輸送到某散的中心地點上海來，然後再申上海分被向各國輸送出去，還有，由世界各國運送到上海的貨物也便可以轉送到華中的內地去了。</p>
+<p>到底，以上海為中心的華中地區從世界各國輸入了什麽商品，又把什麽商品輸出到世界各國去的呢？引用了最近的統計正可以表示第二次歐洲大戰勃發前後一年中的情形，一九三九年下半期和一九四〇年上半期的進口貨大致是道樣：（單位：海關金單位）</p>
+<p>燃料　一四，二四五，九八一</p>
+<p>金屬及金屬製品　三〇，三四九，二七四，</p>
+<p>化學製品　三五，五七九九七七</p>
+<p>業製製品　一，二八八，三一三</p>
+<p>維及織維製品　九二，八三〇，〇五六其他輕工業製品　一八，一六四，一六六</p>
+<p>食料　四四，三四九，五六五</p>
+<p>雜項六，三八八，四四七</p>
+<p>合計　二四，一九五，七七九</p>
+<p>同時期上海的出口貨大致是這樣：——（單位：法幣元）動物產品　一九〇，二一四，〇九四</p>
+<p>植物產品　一四〇，八四九，八二八</p>
+<p>林產品　九，九七六，一一四</p>
+<p>紡織纖維　二五一，〇三四，二八四</p>
+<p>礦產品　四二，〇六七，二五八</p>
+<p>工業製品　四二二，六〇八，一八五</p>
+<p>合計　一，〇六五，，七三九，八六三</p>
+<p>進口貸物的總值是二四三，一九五，七七九金單位，按照一九三九年度的法幣黑市市價，平均折合二十四萬高元以上，這樣看起來，入超之數大約是十四萬萬元。</p>
+<p>登陸以後的旅行家，假如寓居在蘇州河濱的百老匯大厦；從屋子的高層看下去，國際都市上海的心臟部是可以一覽無餘的。黃浦江沿岸一帶就是所謂「外灘」；大都市的中心地區大抵是美輪美奐的銀行大厦。　（未完）</p>
+<h3>卡車撞斃行人</h3>
+<p>前日淸晨八時廿分、有四十左右之無名男子一人、行經法大馬路九十四號門前、由南向北穿過馬路、突有卡車由東朝西疾駛而來不及避讓、致被撞倒、跌傷頭部、卡車於出事後掉首不顧駛去、當由巡捕將傷者送往醫院、不及救治身死、尸體昨由善堂殮埋、候屬認領、</p>
+<h3>神經病患者　獲得救助</h3>
+<p>本月十三日本報曾載有「代神經病患者呼籲二稿、茲蒙毛宗和氏介紹凌君之弟赴海格路紅十字會醫院神經科粟宗華醫師處診治、並慨助醫藥費、毛氏古道熱腸、欽景無似、</p>
+<h3>衡器不合規定　肉攤主受處分</h3>
+<p>西摩路小菜塲一百八十一號肉攤主曹阿小、平日因使用不準確之秤欺騙主顧、被西捕頭非南特查悉、對曹阿小提起訴訟、業經傳案判決、曹處罰金二百元以儆、</p>
+<h3>中教到義會施販</h3>
+<p>同孚路中敎道義會、近日捨米發飯、極形忙碌、自晨至夕、領取者擁擠異常、幾乎途為之塞、扶老携幼、莫不歌頌載道、憑證給米發飯、秩序井然、該會處理有方、辦事人員亦無不視為已任、據云於三天之中、發出米飯數約一百餘石、值此艱困時候、辦理賑務、熱心不减往昔、誠難能可貴也、</p>
+<p>昨日本報發報時間六點十五分</p>
+<h3>各警務機關定期　實行警戒演習二十天</h3>
+<p>上海各警務機關、決定實行警戒恐怖事件演習二十日、發表預吿如次、茲為預防恐怖事件發生、當局與巿民實行逮捕犯人演習、本演習在長期間屢次實行、至達成目的時為止、一般巿民須遵守左開事項、協力達成演習目的為要、　目覩恐怖事件發生者、應大聲連呼「恐怖」以傳達附近居民及行人盡力逮捕、　目覩或聞知恐怖事件發生者、應立即報吿最近地點之官憲或自警團、電話裝戶接到報吿時應有通知官憲義務、　目覩恐怖事件發生者、須記認犯人音貌服裝逃去方向、等待官憲到來後自動報告、　奮勇追捕犯人或與官憲協力之個人或團體認為適當者、由當局授獎、　不遵守上列各項者、經由監視員發覺後處罰、　演習犯人左臂帶紅白色臂章上書「演習犯人」等字樣、　不准對演習犯人加以暴行、</p>
+<p>體育新聞</p>
+<h3>合羣體育回足球賽　展期本星期日舉行</h3>
+<p>合羣體育會主辦之籌募基金足球賽、原定昨日二時半起在震旦球塲舉行、惟天公不作美、春雨總綿、致塲地潮濕、難以應用、故決定展期一星期舉行、所發售之門票、本週末仍可通用、節目仍照舊云、</p>
+<h3>孟賢盃籃球賽　下月一日開賽</h3>
+<p>孟賢補習學校主辦之孟賢盃範球賽、計有華南·友隊·綠萍·蓉廬·微隊·幼精·孟賢·小龍等八隊報名、本擬昨日揭幕、茲因天雨被阻、現經主辦當局公佈、決順延一週、特定於下月一日（週末）舉行揭幕、</p>
+<h3>初級盃足球賽</h3>
+<p>初級會獲決賢權西聯足球賽、昨初級盃複賽、雪那格對初級會雙方勢均力敵、媾成各二平手、在延長時間中、初級會連破二關、擊敢雪那格奠定勝局、獲決賽權、比數為五比三，</p>
+<h3>萬利體育回成立</h3>
+<p>寗波路上海銀行大樓四一六號萬利洋行同人作組織之萬利體育會內、有小足球籃球乓乒等隊、歡迎友隊約賽、向該會郭金泉接洽、</p>
+<h3>「客滿」及其啊</h3>
+<p>— 重章</p>
+<p>新年無聊，蕩馬路，賞街景，滿擬隨遇而安，找一個地方消磨晨光，走過小影戲院，見鐵門拉得很緊，不問而</p>
+<p>知是人滿爲患；第一輪影戲院的門首則客滿牌當門而立，簡直是擋駕，走廊內人頭擁擠，互相討論「第二塲都沒有了，怎麽辦？」似乎問題十分嚴重，急切解決不下，從這種地方作觀點，上海好像還保持着都市的繁榮。</p>
+<p>有人去過减傻後的第一流舞塲，因為衣冠楚楚，頗得僕歐靑睞，以為他是「老白相」，乘隙談些舞塲近事。據說現在萬客雲集，生意與隆，但實際上他們的「跌拍」收入反而銳减，原因是「靑布長杉圍巾幫」遇多，而又「文王神課」盛行，香茗一杯，左顧右瞻，生辰時刻都會忘記，臨行「僕歐」連聲，正賬之外，檯上發現角要數紙，僕歐家里同樣有老有小，一番怨艾，自亦有其苦衷，聽者唯唯，不好意恩再坐，因為自已心理巳被道個正着。不過賞光者看來，舞塲營業並不淸淡，照樣是「魚游滿池」之外，「攤如林立」的。</p>
+<p>麒迷某告我黃金空座甚多，我吿以另一麒迷的確訊，黃金門票巳早售完，空座祇是看客因故缺席，可見得京朝派客滿，海派亦是客滿，票價貴與票價公道亦不足影響之，原因是上海人需要消遣，至於消遣者是否眞有消遣的資格，或他的家中米煤有無，則是另一問題，與客滿這現象並不站於對立地位·</p>
+<p>是否有人連客飯錢亦化在售票處，倒是一個疑團，因為戲味與河豚味不能混為一談，看客自不致拼死，而預備束緊褲帶，道個疑團，非到山窮水盡，是無從打破的。</p>
+<h3>不同衣</h3>
+<p>— 星花</p>
+<p>在某府喜席間，有某甲者衣靑布大褂，衆人議日：「吃喜酒而穿布大　，窮相也。」</p>
+<p>同時有某乙者，家擁鉅萬，是日亦身穿布衣，衆乃贊日：「富而能儉，此大富相。」</p>
+<h3>「楊貴妃」的音樂</h3>
+<p>— 白石</p>
+<p>話劇配以音樂，這回不算是第一次的嘗試，但這回約配樂，可以說是比較的成功。</p>
+<p>「楊貴妃」的故事是人人知道的，看「楊貴妃」的觀衆對於劇情的進展和結局，未看戲巳經很淸楚，看戲時用不着費神緊隨台詞去找綫索，而可以自由自在地去欣賞光，聲和動律的美。第一，二，三，四，六各幕，簡直是幾首抒情詩，尤其是牛郞織女隔着銀河，半輪月影照着長生殿的光景，在這種塲合，音樂的效果是必操左券的。</p>
+<p>第五幕的情景是兵荒馬亂，生離死別。道一幕配音樂相當困難。音樂者，誠如華格納所說，是不善於描繪醜惡的塲面的。孟德爾仲給仲夏夜之夢作配樂，盡力抓住美好的塲面而放棄粗野兇險的，這正是他的聰明。「楊貴妃」第五幕音樂之比較缺乏表現力是有原因的：作曲者為求適合古裝宮闡戲的情調計，自始即採用中國式的曲調，許多地方且採用五聲昔階，這種材料應用於富於戲劇性的緊張關頭，是不容易收效的。但關於這一點我們得體諒作曲者的用意：他一定是不願意破壞全劇的一貫氣氛——古香古色，爐烟裊裊的氣氛。再有一點值得一提的：是作曲者很能利用Crescendo與Tremolo的效果，這可以說是在中國式曲調中達到緊張情緒的唯一辦法吧。</p>
+<p>第四劉兩幕插入黃白先生的遺作「山在虛無縹渺間」，由三部女聲唱出，全劇為之生色不少。每塲省有許多鼓掌聲是為了這一首歌而來的。</p>
+<p>總之，雖然不無可疵求之處，音樂與戲劇在色彩上和氣氛上的配合恰到好處，演員和觀衆都一定有這種感覺。</p>
+<h3>舞臺幕</h3>
+<p>白雲在叫做養維漢的時候，是最新啊入國聯公司的，可是收過定洋之後就發生問題了；後來由許幸之介紹入國華任「紅粉　零」主角；到不久以前，白雲在國華的合同將滿，又與國聯舊事重提，國聯也頗想派他到香港廠去與胡蝶合演「茶花女」，可是十二約八日之前還沒有定局，而他與國華的合同也不像有繼續的可能，此次上靑島去，或許也是為了苦悶的發洩吧。</p>
+<p>梅熹在國聯未完的戲是與陳雲裳合演的「歡樂年年」。</p>
+<p>姚莉與董妮在仙樂斯高士滿伴唱成功後，麗都亦邀楊柳加入。楊柳為藝華演員，從來沒有人知道她能歌唱，但新聲初試，頗為不錯的樣子。</p>
+<p>曲學業刋社出版之「戲曲」，由趙景深莊一拂編輯，專以硏究我國戲曲為目的。現已出至二輯，該刊除載戲曲理論及史料外，又刊戰曲譜秘本，如繡褥記，販馬記，皆與現今通行諸本不同，實為愛好研究習曲者之最佳刊物。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>一枝春茶館，近在咫尺，維城走了進去，和張樹榮對面坐下，茶館裹巳然開電燈了。張樹榮呷了一口熱茶，撚了撚他的花白鬍子，笑道：「葉少爺，你不知道，人怕出名猪怕壯，我在船上揷了紅旗子，人家都喚我紅旗張。花港地頭上，那些地痞流氓，當我做了好買賣，這兩天，一起一起的問我要年規，他媽的年規，張樹榮把紅旗子捲了，他們叉把我怎麽樣？「維城道：「要什麼時候開船？我知道你是逢禮拜三，逢禮拜六，在上海碼頭開船，今天是禮拜六。」張樹榮道：「是的，今天是禮拜六。葉少爺，今天開船，要八點鐘才潮來。我們弄船，風呀雨呀，倒是不怕，可是拗不過潮水，非等潮來，開不得船，不記得是前天，還是大前天。你們世德堂的老媽子，上花港來說，葉少爺要在這幾天裹回家，叫張樹榮在碼頭上看看，看到葉少爺，就接回去。恰巧今天我們的船，中艙沒有一個客。葉少爺，有人說你在蘇州念書，有人說你在上海念書，你到底是在那裹？」維城點點頭，答了「蘇州」兩個字。</p>
+<p>張樹榮要去招呼其他的乘客，維城要向裹街找一家飯店去進晚膳，大家在一枝春門前暫被，油紙傘還是在維城手裏。維城坐在飯店裹等飯來菜來的時候，又想起了穿翠綠色雨衣的女子。等到菜心炒肉片上來的時候，那菜葉子的綠，正和雨衣的顏色，同其鮮艷。他想這女子好生面善，只記不起在那裹見過的。他在腦海裹搜素了一遍：上海，蘇州；蘇州，上海；還動會：演說競賽會；像映着一幕一幕的電影，只是記不起。</p>
+<h2>Page 5</h2>
+<p>家庭</p>
+<h3>破壞兒童品性的家庭教育</h3>
+<p>— 秦英傑</p>
+<p>（一）無論在什麽時候，當他為了要東西而哭，你就給他什麽東西。</p>
+<p>（二）當他的面，吿訴你的友朋們，他是如何的聰明如何的伶俐。</p>
+<p>（三）讓他聽父母們的吵嘴。</p>
+<p>（四）吿訴他，你是非常的疼愛他。</p>
+<p>（五）假使他逃學，你都順從他。</p>
+<p>（六）指示他，金錢是生命的領袖。</p>
+<p>（七）假如他使你煩惱，——並不使人家煩惱——你就處罰他。</p>
+<p>（八）他喜歡到那裹去，你不加思案地讓他去。</p>
+<p>（九）不論那一件事，他要怎樣做，你就給他怎樣做，決不加意指導：尤其是他有惡劣行為時。</p>
+<p>（十）護助他違背老師。</p>
+<p>（十一）他所選的同伴，你不去查問優劣。</p>
+<p>（十二）在他面前同友朋辯論是非：或吿訴他，你是不很尊敬他們。</p>
+<h3>娘要嫁人</h3>
+<p>— 葉秀一</p>
+<p>不幸的，父親在前年死了；現在，母親又戀上了人！</p>
+<p>母親今年四十歲不到，風韻是不减往昔，因為善於交際，生活浪沒得很，她本是出身學生，嫁給父親是為了貪慕虛榮，要過奢華的生活，所以甘願做父親的小妾。</p>
+<p>這二年，算是母親的選擇對象的醞釀時期，家中大母便趁此機會，指她不貞，脫離了關係；母親本是外鄉人，沒有父母，沒有至親好友，加以她素來不慣獨居，於是就毅然同我走出了這家庭，說大不大，說小不小的家庭。</p>
+<p>我現在是二十歲，在一家棉布廠服務，每月的薪給，可以維持我們活像姊妹的母女兩個生活了，但因媽是烟（鴉片，香烟）酒，賭都來的，所以經濟難免時形拮据，生活比較淸苦；不過我常勸媽，我說女兒已經大了，媽就同我苦一些過活吧：（意思不要再嫁男人吧）</p>
+<p>然而母親有了身孕了，她勢必要與人結婚而嫁給人了；可是我，我是不願隨着她去的。</p>
+<p>油瓶女，該是多羞恥的一個名詞啊！</p>
+<p>同時，如果我跟了媽一同去那家食和宿，我的姓氏也必要改了，否則我想一定要被人家笑話的，何况我巳是上了社會服務的人（就是那人與母親也不答允我不更改姓的）。</p>
+<p>我不願作油瓶女，不願改姓，我想　請人家幫忙，但是去請誰呢？親戚長輩？都沒有；朋友，小姊妹，同學，同事？但那能啟口呢？</p>
+<p>我與一個同事相　巳有相當的時日了，便因他的封建頭腦父母，說我身家不淸白，將來會染汚門庭的等話，所以不尤他和我結婚！</p>
+<p>娘為什麽要嫁人呢？我會偷看過她的日記，中有一頁這樣記着：唉，不幸我竟成了喪偶的少女了，他死後，一切感到慘痛，沒有意思；內心的苦悶，當然非遭遇者是感受不到的，也非筆墨所能描寫的，我想自殺，但我是個受有中等敎育的人，我不願！我要重獲人生幸福，雖然自己巳是染有不正當嗜好的人……。</p>
+<p>俗習娘要嫁人，兒女是不能阻擋的，我雖欲原諒媽，但我不願做油瓶女，改姓；不能喪失我的幸福，我要想和媽反對，其法或和她脫離關係，或和她採取不合作主義。同時，我想對於媽的戀人，加以侮辱……橫豎我巳是個足能營獨立生活的人了。但不知可適當否？</p>
+<p>編者按娘要嫁人，這是她的自由，沒有人可以去阻止她，而且在現在這個時代婚姻有絕對的自由，而她的再婚，或許是她一生幸福所必要的，雖則她巳染有不良嗜好，對於前途幸福，十分渺茫。</p>
+<p>葉女士既然偷看過她的日記，你自然已經明瞭她的苦痛，而一定對她表示同以葉女士自身幸福着想，我以為可以和母親開誠的談判一次，你旣然顧到她的幸福，她也應當顧到你的幸福，你旣然能够自給自足，自不妨讓你自立起來，不必做什麽油瓶女，男子可以立身社會，替社會做一點事，女子何嘗不可，而且事實上你巳經踏上服務社會的梯子。</p>
+<p>至於你的婚姻，自然也可以加以考慮，目前的對象，旣然有一個封建的家庭，當然是不甚適宜的，但以後你一定可以有機會找到你合意的配偶。</p>
+<h3>家事一得</h3>
+<p>— 茵</p>
+<p>洗　鍍金的照相框子，最好用性質和平的肥皂，微溫的水，和一些鹽酸，再用檸樣汁快一些輕擦一下。</p>
+<p>盛水的木桶，破裂以後，如果用三合土去崁補裂縫，那麽比較用油灰去嵌補，更來得堅固而耐用。</p>
+<p>新的宜興紫泥茶壺，每天沖入熱水以後，用絹包了敲碎的胡桃肉，勤加摩擦，不久便光澤更好了。</p>
+<p>新碗好在了未。曾動用之前，必先入水煮過，如果放在煮肉的湯中煮二三滾，則可經久，而不易拆裂。</p>
+<p>面盆上的污　，有時候要想把它急切除去而感到困難，架使用食鹽揩擦，污跡便立刻拭淨了。</p>
+<p>新購的毛筆，若藏而不用，每易蛀　。最好把他們放在硫磺水中浸一次，俟乾透收藏，保可經久不蛀。</p>
+<h3>一星期家常菜單</h3>
+<p>— 華英女士</p>
+<p>春節照例是一個吃喝的季節，雖在這米珠薪桂期間，民不聊生，而得天獨厚經濟富裕的人家，依然是羊羔美酒，海味山珍，吃了年夜飯，再來財神酒，儘量的大吃大喝，這幾天也許吃得太覺油膩了吧。筆者借箸代籌，今天特來配幾式淸鮮的菜，作為春節的小供　　　豆芽麻醬拌雞絲，　韮芽肉絲滴醋拌蛋皮，　露香瓜滷蝦米燉鷄蛋。　元蛤淸蒸　魚湯；　鮮雪菜炒冬筍片；　邊尖木耳豆腐花，　糖醋拌膠洲菜，　冬　筍衣綫粉湯，輩素各四色，吃葷吃素，悉聽尊便。</p>
+<p>星期一肉絲拌蛋皮雪菜蒸黃魚筍衣綫粉湯酷溜膠州菜</p>
+<p>星期二洋蔥牛肉絲糖醋煎帶魚幹絲炒芹菜海蜇　萄絲</p>
+<p>星期三肉圓　靑菜醬麻油蚶子薺菜炒筍片蝦子炒麵筋</p>
+<p>星期四白菜牛肉湯粉皮燒白魚青菜炒綫粉油條黃豆芽</p>
+<p>星期五醃肉豆腐湯生　金花菜銀芽拌鷄絲元蛤　魚湯麻醬拌水芹</p>
+<p>星期六銀芽拌雞絲元蛤　魚湯紅燒素十景麻醬拌水芹</p>
+<p>星期日十景鍋糟靑魚炒塌蔡炒蘿蔔（姚齊池擬稿）</p>
+<p>天府食譜（九〇）</p>
+<h3>（一六〇）春卷</h3>
+<p>— 姚齊池擬稿</p>
+<p>預備…春卷皮子（市上現成有售）腿花肉韮芽（或菱菜，冬筍）油味精白糖製法…將春卷皮子先上飯蒸至微熟取出，使其可張張撕開為度。再將猪肉平舖於砧墩上面，依肉紋切成薄片，復切成細絲，洗淨後用　油略炒，至脫生，乃潑料酒少許，董燒片刻，旋再和以適量之醬油，味精，白糖等，並微和以淸水，俟肉熟透，趁手以韮芽等和頭傾人同炒，見韮芽半熟，隨手盛起，然後用皮子包成長圓形，再逐一投入沸油鍋內煎之，至兩面皆現焦黃色後即成，食至頗耐尋味也。</p>
+<h3>（一六）元宵</h3>
+<p>— 徐寳朋擬稿</p>
+<p>預備…芝麻香脆餅（市上現成有售）豬油　木　醬　西瓜子肉　晶狀味精　糯米粉　製法…把香脆餅用臼舂細後，以熬沸之猪油澆入拌和，俟稍冷搓成小圓型，中間嵌木　醬和瓜子肉及精狀味精等為點，乃用水酒濕，放在糯米粉內擂之，使週團之厚薄均勻，再放入蒸籠內蒸熟，即可取食。諸君…天廚味精廠出品之「味精」，「味宗」，</p>
+<p>「天廚醬油精液」，「天廚家用護粉」，本市各大公司，各南貨食品店，均有出售。</p>
+<h2>Page 6</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.02.23</h1>
+<h3>Japanese Landing on Bangka Island Near Sumatra; Japanese Announce Complete Occupation of Palembang</h3>
+<p>Tokyo, 22nd, Domei News Agency - The Japanese Imperial Headquarters announced today at 3:00 PM that Japanese naval and army troops landed on Bangka Island, east of Sumatra, at dawn on the 15th of this month. That evening, they completely occupied the port of Bangka Pinang on the island's east coast.</p>
+<p>Tokyo, 22nd, Haitong News Agency - Bangka, a small island near Sumatra, and its neighboring island, Belitung, are the richest tin-producing areas in the world. Both are now in the hands of the Japanese army. In 1939, the Dutch East Indies produced approximately 40,000 tons of tin, almost all from these two islands. Bangka Island has a population of approximately 70,000, mostly Chinese, whose main occupation is tin mining.</p>
+<p>Tokyo, 22nd, Domei News Agency - The Japanese Imperial Headquarters announced today at 3:10 PM that Japanese army troops, advancing along the Musi River in southeastern Sumatra, after making contact with paratrooper units that occupied the Palembang airfield, have now completely occupied Palembang.</p>
+<p>Tokyo, 22nd, Haitong News Agency - The Japanese Imperial Headquarters announced today that Palembang, located in the neutral oil-mining area of Sumatra, was occupied by Japanese forces on the 17th of this month. Japanese forces landed at the mouth of the Musi River in Sumatra on the 15th and made contact with Japanese paratroopers who landed in Palembang, occupying the airport there.</p>
+<p>Guangzhou, 22nd, Simeng News Agency - Unofficial news from Batavia states that the Dutch authorities have begun to withdraw troops from Sumatra.</p>
+<p>A certain Japanese base, 22nd, Domei News Agency - Japanese troops advancing south from Palembang, Sumatra, have occupied the key railway point of Danmeruleng, completely severing Dutch communications between Java and Sumatra.</p>
+<p>A certain Japanese air base, 22nd, Domei News Agency - On February 19th, Japanese naval aircraft conducted reconnaissance flights over Bali, attacking an air base and destroying five Boeing Flying Fortress aircraft on the ground. At the same time, other Japanese naval aircraft attacked Bawean Island, north of Java, heavily damaging the island's base.</p>
+<h3>Intense Artillery Battles Between Two Armies in the Philippines; Quezon Still in the Philippines</h3>
+<p>Washington, 12th, Reuters - The War Department announced yesterday that artillery battles have been very fierce in the Batangas Peninsula area of Luzon for the past 24 hours. Japanese aircraft continue to drop incendiary bombs on American defense lines. There has also been artillery fire at Corregidor Fortress in the mouth of Manila Bay, with Fort Frank taking the brunt of the shelling.</p>
+<p>Washington, 22nd, Havas - The War Department has just released a battle report stating, "Over the past 24 hours, artillery battles have been very fierce on the Bataan Peninsula. Both sides' scouting units are also very active, with small-scale engagements occurring repeatedly. Japanese aircraft frequently fly over our army's positions. Japanese artillery continues to aim at bombing our forts, with Fort Frank taking the brunt. Our artillery is also very effective in returning fire."</p>
+<p>Washington, 21st, United Press - According to Philippine Commissioner to the United States, Elizalde, he received a telegram from President Quezon stating that the Philippine government is continuing to function as usual in a certain location within the Philippines. Assisting the President are the wartime cabinet, namely Vice President Osmeña, Justice Minister Sanidad, Finance Minister Salariano, and Valdez, who is in charge of defense, public works, and transportation.</p>
+<h3>Uruguayan President Announces Dissolution of Parliament; Cabinet Held Important Meeting Yesterday; Resignation of Defense Minister Roletti Approved</h3>
+<p>Montevideo, Uruguay, 21st, Havas - President Baldomir issued an order today dissolving the House of Representatives. The meeting hall is temporarily guarded by troops. The President also scheduled a speech at 9:00 PM to explain the reasons for dissolving the House of Representatives. In addition, several cabinet members have submitted their resignations, but except for Defense Minister General Roletti, who resigned due to illness and was approved, the others were rejected. The country is as peaceful as usual.</p>
+<p>Montevideo, Uruguay, 22nd, Havas - The cabinet is scheduled to hold a meeting tonight, at which important decisions will be made. According to the President, the cabinet may be reorganized if necessary, and a strong policy will be implemented thereafter. Fuel stored in the port is vulnerable to aerial bombardment, and measures are being taken to protect it.</p>
+<p>Montevideo, Uruguay, 21st, Reuters - President Baldomir dissolved Parliament and announced the postponement of the general election scheduled for March 3rd. He will request parties friendly to the government to form a government committee to exercise legislative powers. Parliament has been closed and the keys are in the hands of the police. So far, the authorities have not ordered any arrests. According to Interior Minister Tiscornia, the military did not participate in today's political changes.</p>
+<p>Buenos Aires, Argentina, 22nd, Haitong News Agency - The President of Uruguay delivered a radio address last night, strongly criticizing the National Party for opposing the granting of bases to the United States. He stated, "As President Roosevelt said, the Americas are in a time of threatened crisis. Therefore, if the National Party opposes the government, it actually wants to put the country in danger." He also said that the National Party's attempt to alienate Uruguay from the United States is a "crime" against the nation. The country is currently facing political and economic difficulties, so the people should unite and support the government.</p>
+<p>Buenos Aires, Argentina, 22nd, Haitong News Agency - According to news from Montevideo, Uruguay, the political turmoil in Uruguay was caused by disputes between government party members and National opposition party members in parliament. The statement issued by the Minister of Interior not only defended the government but also attacked the party. It is reported that the leader of the National Party of Uruguay is Herrera. It is said that the government has repeatedly tried to amend the election law to weaken the party's power. As a result, the National Party criticized the government for manipulating the elections. At that time, the dispute between the two sides was very intense. The Minister of Interior even accused the National Party's parliamentarians of being agitators. Therefore, the people believed that parliament must first express its approval of the constitutional reform plan proposed by the President before elections could be held. However, parliament then passed a resolution disapproving of the government's policy and demanding that elections be held within the constitutional timeframe. The President then ordered the occupation of the parliament and election hall, causing turmoil. Several parliamentarians were injured, and the National Party secretary and one parliamentarian were arrested. The parliamentarians then held a meeting in front of the parliament building, jointly signing a document demanding non-recognition of President Baldomir's authority and stating that they could only recognize Vice President Chelos. Subsequently, all cabinet members also submitted their resignations, but they were rejected by the President.</p>
+<h3>Roosevelt to Deliver Speech This Afternoon Commemorating Washington's Birthday</h3>
+<p>New York, 22nd, Havas - Tomorrow is the 210th anniversary of the birth of founding father President Washington. The whole country will celebrate uniformly. Schools, banks, exchanges, and shops will be closed for one day, but factories in the national defense industry will continue to operate as usual. President Roosevelt is also scheduled to deliver a "fireside chat" in the evening to commemorate the occasion.</p>
+<p>Washington, 21st - US President Roosevelt is scheduled to broadcast to the entire United States from 12:00 PM to 12:30 PM on the 23rd (11:00 PM to 11:30 PM Shanghai time on the 24th). White House Secretary O'Reilly stated that when the people listen to the President's broadcast, they should each have a world map. The President intends to review the progress of the World War to the extent permitted by the preservation of important military secrets. Once the President has finished broadcasting, the people will know that the oceans surrounding the United States are no longer the so-called impenetrable defensive lines, and that naval battles thousands of miles away have a significant impact on the American homeland.</p>
+<p>Washington, 21st, Havas - Although President Roosevelt is suffering from a cold, he was still busy drafting the speech he is scheduled to deliver on the 22nd of this month until midnight. He did not receive any guests all day, indicating that he is focusing on preparing this important speech.</p>
+<h3>Sudden Explosion at Powder Factory in Northeastern England</h3>
+<p>London, 21st, Havas - An explosion suddenly occurred yesterday at the Mid-Ardeer Powder Factory in northeastern England, killing four female workers. The cause is unknown.</p>
+<h3>French Battleship Repairs Completed; Sails Back to Toulon Naval Port</h3>
+<p>Vichy, 21st, Havas - The French battleship "Dunkerque", which was damaged by the British fleet in Kebir Bay near Oran, North Africa, on July 3, 1940, has now been completely repaired and sailed back to Toulon Naval Port today. This battleship has a displacement of 26,500 tons and entered fleet service in May 1937. Its speed can reach 30 nautical miles per hour. It is equipped with eight 14-inch guns, twenty large and small anti-aircraft guns, thirty-two machine guns, and four aircraft.</p>
+<h3>US Government Bids Farewell to Protecting Western Hemisphere Shipping Lanes; Emergency Measures to be Taken; Brazil Prepares to Arm Merchant Ships</h3>
+<p>Washington, 21st, Havas - Undersecretary of State Welles recently told the press that the US government authorities will take emergency measures to protect Western Hemisphere shipping routes. The Inter-American Defense Board is currently studying appropriate measures to protect the merchant ships of South American countries. As for the fact that two Brazilian merchant ships were hit by torpedoes fired by Axis submarines, we have implemented escorting. This is one of the ways in which the Americas are cooperating in joint defense, and other practical measures will soon be taken.</p>
+<p>Washington, 21st, Havas - Regarding the sinking of the two Brazilian merchant ships "Bucare" and "Olinda" by Axis submarines off the American coast in the Atlantic, according to news from the Brazilian capital, the Brazilian government has lodged a strong protest with the German government, and the cabinet held a cabinet meeting yesterday to discuss the measures to be taken if Germany fails to provide a satisfactory response.</p>
+<p>Buenos Aires, Argentina, 22nd, Haitong News Agency - The Brazilian government has decided that all merchant ships will be armed. Brazil's largest merchant ship, the "Mandu" (6,588 tons), is currently being repainted dark gray. According to the Brazilian merchant fleet, an escort fleet will soon be organized.</p>
+<p>US Oil Tanker Sunk</p>
+<p>Washington, 22nd, Reuters - The Navy Department announced that the US oil tanker "Pennsylvania" (8,200 tons) was sunk by a torpedo from a submarine in the Atlantic. Eighteen sailors were rescued, and twenty died from burns caused by oil fires. This is the thirty-first American ship sunk in the Atlantic.</p>
+<p>Willemstad, Curacao, Dutch West Indies, 21st, Havas - The Norwegian oil tanker "Kongsdal" (9,467 tons) was hit by a torpedo this morning in the waters off this island and has now been towed to this port.</p>
+<p>Berlin, 22nd, Haitong News Agency - Yesterday's German war report stated that German submarines sank seventeen merchant ships off the American coast, totaling 100,002 tons. Therefore, since the United States entered the war, the number of ships sunk off the American coast has reached eighty, totaling 532,900 tons. The waters off Port of Spain, the capital of Trinidad, are also an area of ​​German submarine activity. German submarines penetrated into Paria Bay and sank two enemy ships, including one oil tanker. Trinidad is a naval and air base. When the United States and Britain concluded the agreement for the United States to transfer sixty destroyers to Britain, it was also stipulated that the island would be built as a base. Because the island is of great military importance, it is a barrier to the Panama Canal and is located on the shipping route from the United States to Africa. Now that German submarines have sunk ships in the waters off Port of Spain, this is an incident that has damaged the prestige of Britain and the United States.</p>
+<h3>Large Quantities of Gold Transported from Africa to Germany</h3>
+<p>Washington, 21st - The US government has learned that large quantities of cash are being transported by plane from North Africa to Europe, with Germany as the final destination. It is reported that the plane flies from Algiers to Marseille, and then transits from Marseille. The above-mentioned cash is said to belong to the Belgian government.</p>
+<h3>Wavell on Generalship (4)</h3>
+<p>Finally, I want to talk about the complexities of modern military affairs. I don't know if you have ever noticed this. Today's commanders must not only meet the usual qualifications, but also be proficient in how to use the air force, armored vehicles, and anti-aircraft guns; how to use poison gas and smoke screens when attacking or defending; how to use radio to communicate messages; how to use camouflage and propaganda techniques; and how to follow the development of military engineering so that they are not left behind. The situation on the battlefield has of course also completely changed. In the Battle of Blenheim, Marlborough personally deployed the artillery positions and rode along the line. After inspecting the whole line, he had lunch in the afternoon in the midst of the gunfire, waiting for news of the allied forces four miles away on the right wing. At that time, four miles was considered a very long distance. Napoleon at Austerlitz was able to see with his own eyes the weakness and incompetence of the enemy army, making it difficult to resist the counterattack that the French army was preparing. Then, he immediately decided on the best time to attack. Wellington witnessed his powerful enemy's misallocation of resources in front of the Sarapega front, and was able to turn around with confidence and say to the Spanish representative, "My dear Alava, this fellow is finished this time!" Just sixty years later, at Sedan, Moltke and his emperor were still able to watch the defeat of the French army on a nearby hilltop, with almost the entire line in sight. By the time of the last war, even the battalion commander who had ordered the reserves to join the battle could not see the front line as clearly as described above. As for the commander-in-chief, he was no longer on the battlefield, but sat in an office several miles behind or wandered anxiously in the flower garden of the villa, waiting for the delayed battle report from the front, and even if the battle report arrived, it was often still unreliable.</p>
+<p>That was the situation in the past, what about the future? Many new forces will be used on land and in the air, and most of their capabilities have not yet been discovered. Some of them were partially utilized in the last war, but have been greatly improved and expanded after the war; some have only recently seen progress; and some have not been tested at all. Imaginative commanders - in fact, geniuses - who can make good use of these new forces can leave their names in history and join the ranks of "famous generals". But this title is not easily attainable; see what qualifications are required. The speed and distance of modern land forces are now greater than those of the most mobile cavalry in the past. Therefore, the person who leads them must not only be familiar with cavalry tactics, but also understand naval strategy and tactics. The position of generals on the modern battlefield and the situation where decisions must be made without hesitation can be seen to some extent from the Battle of Jutland; the battles of Salisbury Plain or the Great Valley cannot be compared. It goes without saying that one must be equally adept at the use of the air force.</p>
+<p>As for whether the commander should be an army general who is familiar with air combat or an air force general who is familiar with land combat, I don't think it matters. In future wars, both must be combined to defeat the enemy. In addition, the commander's learning must be rich in common sense and understanding of human nature. The practice of all wars is ultimately built on these qualities, not on machines. I will elaborate on this next time.</p>
+<p>Last time I briefly discussed the nature and duties of generals; this can be said to be a question of the general himself. Now let us look at the relationship between the general and his subordinates. Generals must rely on staff officers to command their subordinates, so I will start with the staff. I believe that every general should abide by two simple rules: first, never do the work of a staff officer himself; second, never let a staff officer isolate himself from his subordinates. Staff officers most want the general to give clear and precise instructions and let them plan the details without interference. Subordinates and junior commanders most want the general to be able to contact them personally often, and should not have everything go through the staff officer's ears. The less time a general spends in the office and the more time he spends in contact with his subordinates, the better.</p>
+<p>During the last war, I served under Allenby and Chetwode and felt that the two generals were very ideal in this regard. I think most British generals are like this, but there are also exceptions. For example, Maude, who captured Baghdad, liked to concentrate all staff and command work in his own hands; Allenby's predecessor in Palestine, Murray, did not communicate with his subordinates.</p>
+<p>Some of you may also know that there is a peculiar staff system in the German army, that is, under the commander, there is another group of senior officers from the General Staff who also hold great discretionary power, and their ranks are often very low. You must all remember the story of Lieutenant Colonel Hentsch in the Battle of the Marne, whose mission at the time had a major impact on the entire war situation. Another example is the cooperation between Hindenburg and Ludendorff, where Ludendorff was in effect both chief of staff and commander, and Hindenburg was just a puppet. This system is incompatible with the British Army and will naturally not be adopted. Russia will follow suit, and strange phenomena will occur from time to time. For example, during the war, the commander of a certain army group was the veteran Ivanov, while his chief of staff, Alexeyev, was a very scientific officer. Both believed that they had the right to be the first to read the telegrams sent by the General Staff and refused to give way to each other. As a result, all telegrams had to be copied into two copies, one for the chief of staff and one for the commander; often they did not consult with each other and went their own way.</p>
+<p>Speaking of the way of commanding generals, a commander must first know the character of each person, how to restrain those who need to be restrained and urge those who need to be urged, and who can be entrusted with the important task of being alone and who must be supervised at all times. Some subordinates need to be given detailed and thoughtful orders, and some only need to be given rough guidelines. There are many generals who are excellent commanders under the command of a superior, but when they are ordered to command alone, they immediately appear inferior, and sometimes even panic. Conversely, there are also those who are difficult to command but can be allowed to act on their own. These two types of people must not be confused; that is to say, the commander must be good at judging people. Let us look at the measures taken by Napoleon and Wellington in this regard. Few of Napoleon's subordinates could gain his trust and command independently - Davout, Masséna, and Marmont were the main exceptions. Wellington completely trusted Graham and often charged him with acting alone, but he was unwilling to give Craufurd, Beresford, or Picton great freedom, because Craufurd was considered capable but also reckless, and the other two were less capable.</p>
+<p>Now it is time to talk about the relationship between generals and subordinates. I think you can see that this is a big topic and it is difficult to draw conclusions immediately. The way we look at officers at all levels is naturally different from the way we look at soldiers, and the armies of different countries must be treated separately. The French call their subordinates "my brave men" and mention glory and the motherland. British people, when gathering troops for a speech, call them "soldiers"; the Soviets call them "comrades"; the German commander may in the future shout "Aryan comrades" to arouse the self-esteem of the officers and soldiers. But regardless of nationality, regardless of the environment, the fundamental question remains unchanged: what kind of guidance will make soldiers willing to risk their lives, and what responsibilities must generals bear to cultivate the soldiers' ability to endure? Who does not want to live and fear death; what exactly is it that makes soldiers willing to give their lives? Perhaps it is spoils of war or glory, perhaps it is discipline and tradition, perhaps it is belief in ideology and country, perhaps it is belief in the leader.</p>
+<h3>Portuguese Prime Minister Issues Report on the Timor Incident, Saying Protest Has Been Lodged</h3>
+<p>Lisbon, Portugal, 21st, Havas - Regarding the landing of Japanese troops on Portuguese Timor, Prime Minister Salazar submitted a detailed report to the National Assembly today. Afterwards, the National Assembly unanimously passed a resolution strongly protesting this action and requesting the government to "take all appropriate measures to ensure that all countries respect Portuguese sovereignty and territorial integrity."</p>
+<p>Lisbon, Portugal, 21st, Havas - Prime Minister Salazar gave a speech in the National Assembly today, stating that the Japanese government had submitted a note to our country clearly recognizing our country's sovereignty over Timor Island. After Dutch and British troops occupied the island previously, we believed that the best way to restore the original state was to increase our country's garrison on the island. We negotiated with Britain, and the British attitude was very frank. Unfortunately, our troops did not arrive in time. On the 19th of this month, the Japanese ambassador first went to the Ministry of Foreign Affairs in person at 6:00 PM to notify us verbally, and then submitted a written document at 10:30 PM in the evening, stating that Japanese troops had occupied Timor Island and informing us that this action was purely for military reasons. At the same time, he declared that he fully recognized our country's sovereignty over the Portuguese part of the island, but this document does not reduce the severity of the situation. Therefore, our country has protested to the Japanese government.</p>
+<p>Lisbon, Portugal, 21st, Havas - The Portuguese troop transport ship "Joao Bello," carrying a batch of soldiers from the country to Portuguese Timor to reinforce its defenses, and thereby demonstrate that the eastern part of the island, although occupied by British and Dutch forces, does not prejudice Portuguese sovereignty, has been sailing for many days since its departure. It has been learned that the ship sailed east from Ceylon today. Prime Minister Salazar referred to this ship when he reported the island incident to the National Assembly today.</p>
+<h3>German and British Air Forces Exchange Bombardments</h3>
+<p>London, 21st - Havas News Agency - The Air Defense Department issued a communique stating, "A certain city on our eastern coast was bombed this morning, resulting in several civilian casualties and some material damage."</p>
+<p>London, 22nd - Reuters - The British Air Ministry announced that British bombers attacked targets in the Rhine region of western Germany on Saturday night and laid mines in German territorial waters. Three British aircraft are missing.</p>
+<h3>Soviet Troops on the Eastern Front Launch Multiple Attacks</h3>
+<p>German Headquarters, 21st - Domei News Agency - This afternoon's German military report stated that Soviet troops in Eastern Europe launched multiple unsuccessful attacks. German aircraft destroyed over 200 Soviet vehicles in the central sector and heavily bombed Soviet railways and airfields.</p>
+<p>Berlin, 22nd - Havas News Agency - Military sources report that the Red Army encircled in the Leningrad area launched five attacks today, all of which were repelled by German forces. Hundreds of Red Army officers and soldiers were killed.</p>
+<h3>Britain to Change Indian Policy</h3>
+<p>Stockholm, 22nd - Domei News Agency - According to London sources, British political figures expect a further cabinet reshuffle, as important meetings are held in London almost daily. It is widely rumored in London that the Secretary of State for India and Burma, Leo Amery, and several other cabinet members will be replaced by younger figures. Churchill met with Amery yesterday, and political figures believe that Britain's Indian policy is about to change, but the extent of the concessions is yet to be determined. It is unlikely that Churchill will completely change his attitude towards India, but will only make slight concessions. It is said that Sir Stafford Cripps participated in the war cabinet on the condition of changing the attitude towards India, and his influence has already begun to take effect.</p>
+<h3>Indian Air Defense Measures</h3>
+<p>[Location missing in original text], 22nd - Domei News Agency - According to sources received here, Indian authorities are quite concerned about Japanese air raids. Karachi authorities have advised residents to evacuate the city. Schools in Madras are scheduled to close on March 1st, and students are being sent to the countryside. According to reports from Calcutta, the Indian government is considering adopting a compulsory insurance system to ensure that factories and shops in eastern coastal cities are covered by war risk insurance.</p>
+<h3>Nehru's Statement</h3>
+<p>Bangkok, 22nd - Domei News Agency - A dispatch from Calcutta states that Indian nationalist leader Nehru declared that if Britain indicates acceptance of India's demands for freedom, then we are willing to cooperate with Britain to defend the country. If Britain had heeded India's demands at the beginning of the war, the situation in India would be different today. Nehru expressed considerable doubt as to whether the British cabinet would fulfill India's demands, and therefore does not believe that such an agreement can be reached in the short term.</p>
+<h3>Germany Begins Recruiting Motorized Infantry</h3>
+<p>Berlin, 22nd - Havas News Agency - The Army Department today began recruiting volunteers for motorized infantry units, mechanized units, and intelligence units. Anyone between the ages of seventeen and twenty-eight can apply. The term of service is limited to twelve years. In addition, anyone between the ages of seventeen and twenty-five can choose one of the three services, the Army, Navy, or Air Force, to enlist as a volunteer.</p>
+<h3>South Africa and the Soviet Union Exchange Envoys</h3>
+<p>London, 21st - Havas News Agency - The High Commissioner of the Union of South Africa to London, Heaton Nicholls, signed an agreement with the Soviet Ambassador to Britain, Ivan Maisky, today to restore diplomatic relations between the two countries and decided to exchange envoys.</p>
+<h3>Fire in Shimonoseki</h3>
+<p>Shimonoseki, 22nd - Domei News Agency - A fire broke out in the city's commercial district at 0:20 this morning, lasting for two hours and destroying as many as 42 houses.</p>
+<h3>Japanese Nationals from the Dutch East Indies Arrive in Australia</h3>
+<p>Tokyo, 22nd - Domei News Agency - According to an official statement released yesterday by the Japanese Ministry of Foreign Affairs, 1,400 Japanese nationals from the Dutch East Indies, including 224 women, have been transported to Australia by British authorities. They recently arrived at Port Adelaide in southern Australia. This news was reported to the Japanese government by the Swiss government, which is taking care of Japan's interests in the Dutch East Indies.</p>
+<h3>Major Changes in US Army Leadership</h3>
+<p>Washington, 22nd - Havas News Agency - According to the Army and Navy Journal, major changes in US Army leadership are scheduled for the first of next month. The Army will then be divided into three major groups: Quartermaster Corps, Army, and Air Force. Each group will be headed by a general, and these three generals will only be responsible to the General Staff.</p>
+<p>Washington, 22nd - Reuters - President Roosevelt has ordered that skilled personnel from various federal agencies be transferred to work in military agencies.</p>
+<h3>Pétain Meets with Leahy</h3>
+<p>Vichy, 21st - Havas News Agency - Marshal Pétain met today with the US Ambassador to France, Admiral William Leahy, for discussions. Cabinet Associate and Foreign Minister Darlan was also present. However, no official statement was released regarding this matter.</p>
+<h3>Berlin Officially Announces Confiscation of Seven Soviet Ships</h3>
+<p>Berlin, 22nd - Domei News Agency - The Berlin Naval Prize Court announced yesterday the confiscation of seven Soviet ships. Their names are as follows: "Kazan," 3,979 tons; "Elton," 1,798 tons; "Volgoles," 3,945 tons; "Nistru," 3,580 tons; "Kaganovich," 3,663 tons; "Talin," 4,470 tons; and "Magnitogorsk," 3,566 tons.</p>
+<h3>Unanimous US Hope for Base in Ireland</h3>
+<p>New York, 21st - Reuters - According to the latest survey by the Gallup Poll, 90% of Americans hope that the Irish Free State will allow the Allies to establish bases along its coast. The question posed by the poll stated, "Do you hope that the Irish Free State will allow the Allies to use its coastal bases?" 90% answered in the affirmative, 5% in the negative, and 5% were undecided. Among American citizens of Irish descent, 72% answered in the affirmative, 21% in the negative, and 7% were undecided. The poll posed another question: "Should the Irish Free State join the Allies in declaring war on Germany?" The overall responses obtained were: 71% affirmative, 16% negative, and 13% undecided. The answers from American citizens of Irish descent were 56%, 32%, and 12%, respectively.</p>
+<h3>Snippets</h3>
+<p>Bali, also known as "The Island of Poetry" and "The Island of a Thousand Temples," is one of the Lesser Sunda Islands in the Dutch East Indies. Its customs and habits still retain the traditions of a thousand years ago, such as women baring their breasts, cremation after death, wood carving and dancing, the use of Chinese square-holed coins, male supremacy, and cockfighting, all of which are different from other islands in the Dutch East Indies. Therefore, foreign tourists visiting the Dutch East Indies invariably flock to Bali. The temples here, although numerous, are not very magnificent. The high towers are all made of palm leaves and bamboo. (See above picture) Bali's dances are extremely famous in the world. The most popular new dance, such as the Djager dance, is not bound by traditional customs and is interspersed with jokes, which is quite popular with tourists. (See below picture) Today, this small island is filled with the smell of gunpowder. Geographically speaking, it is close to Surabaya, and the Dutch East Indies is also feeling threatened.</p>
+<h2>Page 3</h2>
+<h3>Smooth Passage Through the Year-End Accounting Period: Outlook for Commerce in this City; Prices of Uncontrolled Goods Expected to Rise</h3>
+<p>The well-known economist Mr. Annan published an article in the English-language "North China Daily News" yesterday, discussing the recent economic situation in this city. Excerpts are translated below:</p>
+<p>Smooth Passage Through the Year-End Accounting Period</p>
+<p>The Shanghai business community has now safely passed through the year-end accounting period of the old lunar year, with very few closures. Although some businesses suffered severe losses during the Pacific War, they had previously made substantial profits, so most were not shaken. Many businesses were on the verge of collapse a month ago, but were spared by the partial opening of warehouses and the soaring prices of various goods. The closures of some Chinese enterprises in the past week were not due to bankruptcy, but were of a normal liquidation nature, as they could no longer enjoy the same high profits as before under the new circumstances.</p>
+<p>Prices Rise Continuously in the Past Few Days</p>
+<p>Those who generally expected prices to fall after the Lunar New Year were greatly disappointed. The retail prices of various goods, except for a few necessities controlled by the authorities, have continued to rise in the past three or four days. Anyone returning home from shopping at stores or markets inevitably brings back new news of price increases. The cost of living for both Westerners and Chinese has clearly increased, and at a very rapid pace.</p>
+<p>Eagerness to Purchase Uncontrolled Goods</p>
+<p>After the Lunar New Year, the prices of various commercial goods continue to be firm, and most business people still expect them to rise again. The trend in transactions has clearly shifted to the purchase of goods that are not subject to control. Half a month ago, those who held inventory in the then-sealed warehouses were almost willing to sell their warehouse receipts at any price, but today, those whose inventory can be freely withdrawn are not selling them. Some people are even not only not selling, but want to buy, because cash may depreciate, while commodities may appreciate.</p>
+<h3>Gambling Den in Butcher Shop; License Revoked</h3>
+<p>Detectives from the French Concession Police Headquarters learned that there was a secret gambling den operating in the Zhuang Yuanmao butcher shop at No. 7 Xinxin Street on Rue Cardinal Fesch. They secretly raided the premises at around 3:00 PM the day before yesterday and confiscated gambling equipment and money in a room on the third floor. Fourteen male and female gamblers were arrested and taken to the police station. As a result, the gamblers were each fined 20 yuan as a warning. The butcher shop's license was revoked because it was found to be operating a gambling den.</p>
+<p>The Commissioner of Police of the French Concession, considering that it is customary for Shanghai residents to gamble in hotels during the Lunar New Year, which is not only a waste of money but also a violation of police regulations, specially ordered detectives and gambling squads from all police stations under his jurisdiction to strictly investigate and prohibit such activities and not to slacken their efforts. Therefore, detectives have been entering hotels late at night to inspect the rooms in order to eliminate gambling and maintain social stability.</p>
+<h3>New Postal Route for Mail Sent Abroad</h3>
+<p>The Shanghai Postal Bureau has been actively seeking ways to facilitate the dispatch of various types of mail, both light and heavy, from Shanghai to foreign countries. However, due to the failure to promptly restore water and land transportation and the ongoing wars in various places, the delivery of letters has inevitably encountered difficulties. It has been learned from the Postal Bureau that it is searching for new postal routes for mail sent from Shanghai to foreign countries, with the aim of ensuring speed and avoiding any loss. However, whether the method of delivering various letters by foreign residents in Shanghai will change, the Postal Bureau will issue another notice in due course. As for large and small parcels sent abroad, the Postal Bureau is currently suspending their acceptance. However, the Bureau has resumed accepting parcels sent to French Indochina, but the sender must bear the responsibility for any delays due to the lack of ships, and the Postal Bureau will not be responsible.</p>
+<h3>Reminder to Collect Scholarship Funds; Deadline at the End of February; Overdue Applications Will Be Invalidated</h3>
+<p>The list of those approved for the scholarship funds for newspaper readers has been published in its entirety for many days. There are still some students who have not collected their checks. In addition to sending them separate letters of notification to their addresses, we are issuing another public notice that these scholarship checks must be collected at our office before the end of this month. Applications that are overdue will be invalidated without exception, and no exceptions will be made. We also hope that students whose applications have not been approved will collect the previously submitted supporting documents as soon as possible to clear the procedures. If you have any inquiries, please be sure to include your registration certificate number and attach a self-addressed stamped envelope, otherwise, we will not respond. You must also bring your registration certificate if you come in person. We hope everyone will pay attention.</p>
+<h3>Milk Supplies Require a Doctor's Certificate; Declaration Required Stating No Stock at Home; Notice to Residents from the French Concession Authorities</h3>
+<p>The French Concession issued a notice stating, "For the purpose of notification, the French authorities, recognizing that canned milk is an indispensable food for patients and children, have decided to purchase all stored canned milk within the concession in order to maintain a permanent supply of this food. The Health Office at 630 Rue de Baron Louis will be responsible for the distribution of milk. Residents within the concession can apply to the office for a weekly supply of milk, but applicants must provide a certificate issued by a registered doctor proving the quantity absolutely needed by the patient or that the child needs milk as a necessary food. In addition to the certificate, applicants must also sign a "Household Declaration" stating that there is no milk stock at home, before the Health Office can issue a "Delivery Order" allowing them to collect the milk they need. The Health Office and the Police Department may conduct inspections at any time, and those who make false statements will be punished without leniency. As for the dates for collecting milk with the order, the Health Office at 630 Rue de Baron Louis will be open every afternoon except on holidays. This is a urgent notice.</p>
+<h3>Factory and Labor Survey; Collection of Forms Tomorrow; Carried out Simultaneously in Both Concessions; Forms Must Be Filled Out in Detail</h3>
+<p>The factory and labor survey in the International Settlement began on the 20th of this month. The factories surveyed are limited to those not under the control of the Japanese authorities and employing 30 or more workers. However, those located within the International Settlement, whether north or south of the Suzhou Creek, must be surveyed. Two types of forms have been printed for this survey, one for factory information and one for labor information. The factory form requires information on the types and quantities of goods produced and raw materials used, as well as the machinery and power used. The information must be filled out in detail. It is reported that the results of this survey will be submitted by the Municipal Council to the Shanghai office of the Japanese Asia Development Board. It is apparent that the Japanese side intends to thoroughly understand the industrial situation in this city and plans to use the survey results to learn about the needs of various factories in terms of raw materials, fuel, and labor, as well as their possible contribution to the Japanese war effort. However, according to business leaders in this city, they hope that the results of this survey can also be published to the business community, as they are eager to obtain this information and use it to plan their future business operations. In addition, the French Concession is also conducting a survey of a similar nature at the same time. The survey work in both concessions is being carried out entirely by the Police Department. The International Settlement is scheduled to collect the issued survey forms tomorrow, so all factories should fill them out quickly to avoid delays.</p>
+<h3>Liansheng Free Night School Continues to Enroll Free Students</h3>
+<p>Liansheng Free Night School has been operating for a year and has now moved to Room 4, Zhongyi Building, 266 Beijing Road (west of Jiangxi Road). In view of the large number of out-of-school students, it will continue to operate this session, enrolling a total of 200 students from the upper grades of elementary school to junior high school. Classes are held every night from 7:00 PM to 9:00 PM. Tuition is completely free. The curriculum includes Chinese, English, Mathematics, General Knowledge, and Science. The teaching and discipline are excellent. There are still many vacancies available at the school. Poor children should apply quickly.</p>
+<h3>Crime Log</h3>
+<p>At 8:30 yesterday morning, a young woman hired a rickshaw at the intersection of Henan Road and Beijing Road. Suddenly, three robbers attacked her and snatched her handbag (containing Japanese currency worth several tens of yuan) and fled. The woman shouted loudly, and a police officer on duty heard the alarm and arrested one robber. The other robbers escaped with the stolen goods. The arrested suspect and the victim were taken to the police station for questioning.</p>
+<p>At 9:15 yesterday morning, several robbers fled from a robbery nearby at the intersection of Dongyouheng Road and Gongping Road in Hongkou. The victim chased after them, shouting for help, causing a police officer on duty to shoot and wound one robber. The other robbers escaped. The injured robber was taken to the hospital for treatment by ambulance.</p>
+<h3>A Shanghai Impression from a Year Ago (II)</h3>
+<p>— Translated by Wu Yancun</p>
+<p>As the ship continued upstream, the Shanghai Electric Power Company's power plant, much like the Oku power plant upstream on Tokyo's Sumida River, stood prominently before us. Almost all the electricity required by the Shanghai International Settlement was supplied by that power plant. The electric power company had a capital of 56 million yuan and bonds worth 88 million yuan, making it a large enterprise. Of this capital, 80% was owned by Americans, 10% by British, 3% by Japanese, and only a little over 6% by the Chinese, who were in the most advantageous position. The coal piled up on the riverbank was as high as a mountain. Before the outbreak of the Sino-Japanese conflict, most of the coal used by the plant was transported from the Kailuan coal mines in North China. It is a well-known fact that Kailuan was British capital.</p>
+<p>The area near the Shanghai Electric Power Company is an industrial zone, with many factories visible. The three provinces of Jiangsu, Zhejiang, and Anhui in Central China account for 50% to 60% of the total industrial output of China, with Shanghai alone accounting for 40% to 45%. The situation of Japanese, Chinese, and British yarn mills standing side by side could be observed from the ship. Originally, within the triangular area of Central China—Shanghai, Nanjing, and Hangzhou—the total number of yarn spindles was approximately 3.28 million, of which 1.73 million were operated by Chinese capital. Of the remainder, Japan had 1.33 million spindles and Britain had 220,000 spindles. This, of course, was the statistic from the end of 1936. Since the war, a considerable number have been destroyed. However, with Shanghai as the center for reconstruction, some of the Chinese yarn mills were repaired and improved by the Japanese and operated by them, while others were still operated by the Chinese. By the end of 1939, the number of spindles in operation within that triangular area was 1.93 million on the Japanese side, 470,000 on the Chinese side, and 250,000 on the British side. There were a total of nine Japanese textile companies, with a total investment of approximately 222.1 million yuan, and the total investment in the British textile industry was approximately 29 million yuan.</p>
+<p>Originally, China's heavy industry was not developed, and the enterprises that symbolized the development of Chinese capital were only light industries, with the textile industry being the standard light industry. The intensity of competition between Japanese and Chinese factories in this standard national industry of China can be easily understood by comparing the numbers of spindles listed above. This is the problem of the struggle between Japanese capital and the Chinese nation.</p>
+<p>Leaving aside the issue of the nationality of capital for the moment, the textile industry in Central China, centered around Shanghai, also has an important factor related to the international economy, namely the issue of cotton as a textile raw material. According to the situation described above, approximately 2.65 million spindles were in operation within the triangular area of Central China. After the outbreak of the Sino-Japanese conflict, the domestic cotton in China could not fully supply Shanghai's needs, so the large-scale import of foreign cotton became inevitable. In 1939, Shanghai imported a total of 2.3 million metric quintals of cotton, with a value of approximately 9.61 million pounds in British currency. Where did so much cotton come from? Please see the following explanation:——</p>
+<p>Imports from British India: valued at 5.17 million pounds</p>
+<p>Imports from Brazil: valued at 2.08 million pounds</p>
+<p>Imports from the United States: valued at 1.599 million pounds</p>
+<p>Imports from Egypt: valued at 480,000 pounds</p>
+<p>Imports from other countries: valued at 270,000 pounds</p>
+<p>The total value of these cotton imports was 9.61 million pounds, which, converted at the Shanghai black market exchange rate, was approximately 380 million legal tender yuan. In 1939, the total value of foreign goods imported into Shanghai was 35.58 million pounds, so the value of cotton imports accounted for a huge 27%. Such a large amount of imports certainly affected the balance of trade, and further, the devaluation of the legal tender on the Shanghai free market may also have been due to this reason. However, leaving this topic aside for the moment, comparing Shanghai's foreign cotton imports with the large-scale international cotton trade, the cotton exported from the United States to China accounted for only 6% of the total exports. That is the figure for the whole of China, and Shanghai's imports were certainly less than this number. Also, perhaps unexpectedly, the foreign capital invested in China was approximately 250 million US dollars, and the Chinese economy was greatly affected by this, but this amount of 350 million US dollars is only the total value of the assets of New York City.</p>
+<p>Now, returning to the Huangpu River, the ship continued to move forward, getting closer and closer to the wharf. The wharves and warehouses of various countries along the river were closely arranged, showing an extremely complex situation. A port that serves as a country's gateway being divided among various countries of the world is probably a rare thing in the world, but it is very interesting to see! Ships from various countries were docked there, and small boats shuttled back and forth like shuttles. Particularly noteworthy were the merchant ships of warring nations, such as French and Italian ships, which could not return to Europe and had to remain tied up in the port of Shanghai. Such a unified yet ununified appearance is the great port of Shanghai, one of the few in the world.</p>
+<p>In 1939, the number of foreign ships entering and leaving Shanghai was 7.61 million tons for imports and 7.39 million tons for exports, and 2.96 million tons for imports of coastal ships and 3.19 million tons for exports. It is important to note here the power of foreign ships in the domestic shipping industry. The most important countries can be seen by examining the ratio table of ship import and export tonnage of various ports in China in 1939. According to the numbers listed in the table below, the power of Britain and Japan is the strongest, and there are many other foreign ships sailing along the coast of China. Excluding scattered countries—British ships account for approximately 37.03%</p>
+<p>Japanese ships account for 30.35%</p>
+<p>Norwegian ships account for 6.27%</p>
+<p>Chinese ships (excluding sailing ships) account for 0.19%</p>
+<p>German ships account for 4.10%</p>
+<p>Dutch ships account for 3.49%</p>
+<p>Chinese sailing ships account for 2.97%</p>
+<h2>Page 4</h2>
+<p>Italian ships account for 2.18%</p>
+<p>Danish ships account for 2.15%</p>
+<p>French ships account for 2.5%</p>
+<p>American ships account for 1.59%</p>
+<p>Portuguese ships account for 0.59%</p>
+<p>Swedish ships account for 0.59%</p>
+<p>Foreign ships flying various flags in Chinese ports, along with various facilities such as warehouses, wharves, and land in various places, were also operated by foreigners. Among these, in Central China, according to national statistics, at the end of 1936, it was roughly as listed in the table below. Although it is said to be Central China, regarding the layer of ships, because it belongs to the nature of movement, it cannot be calculated separately, so all the ships sailing along the coast and inland rivers of China are included.</p>
+<p>Japan: 58 million yuan</p>
+<p>Britain: 182 million yuan</p>
+<p>United States: 15 million yuan</p>
+<p>France: 20 million yuan</p>
+<p>Other countries only have a few. Relying on the shipping investment described above, local products from all over China are transported from various places in Central China and the hinterland of the Yangtze River to Shanghai, a central distribution point, and then distributed from Shanghai to various countries. Also, goods transported to Shanghai from all over the world can be transferred to the inland areas of Central China.</p>
+<p>In the end, what commodities did the Central China region, centered on Shanghai, import from various countries in the world, and what commodities did it export to various countries in the world? The latest statistics can be used to represent the situation in the year before and after the outbreak of the Second European War. The imported goods in the second half of 1939 and the first half of 1940 were roughly as follows: (Unit: Customs Gold Unit)</p>
+<p>Fuel: 14,245,981</p>
+<p>Metals and metal products: 30,349,274</p>
+<p>Chemical products: 35,579,977</p>
+<p>Manufacturing products: 1,288,313</p>
+<p>Fiber and textile products: 92,830,056</p>
+<p>Other light industrial products: 18,164,166</p>
+<p>Food: 44,349,565</p>
+<p>Miscellaneous: 6,388,447</p>
+<p>Total: 24,195,779</p>
+<p>During the same period, Shanghai's export goods were roughly as follows:—— (Unit: Legal Tender Yuan)</p>
+<p>Animal products: 190,214,094</p>
+<p>Plant products: 140,849,828</p>
+<p>Forest products: 9,976,114</p>
+<p>Textile fibers: 251,034,284</p>
+<p>Mineral products: 42,067,258</p>
+<p>Industrial products: 422,608,185</p>
+<p>Total: 1,065,739,863</p>
+<p>The total value of imported goods is 243,195,779 gold units, which, according to the black market price of legal tender in 1939, is converted to an average of more than 240 million yuan. It seems that the amount of import surplus is about 140 million yuan.</p>
+<p>After landing, if a traveler resides in the Broadway Mansions on the banks of the Suzhou Creek; looking down from the upper floors of the building, the heart of the international city of Shanghai can be seen at a glance. The area along the Huangpu River is the so-called "Bund"; the center of the metropolis is mostly magnificent bank buildings. (To be continued)</p>
+<h3>Pedestrian Killed by Truck</h3>
+<p>At 8:20 AM the other day, an unidentified man, around 40 years old, was walking across Avenue Edward VII in front of house number 94, crossing the road from south to north, when a truck suddenly sped from east to west and was unable to avoid him, causing him to be knocked down and suffer a head injury. The truck turned around and drove away after the accident. The injured man was sent to the hospital by the police, but he died before he could be treated. The body was buried by a charitable organization yesterday, pending identification.</p>
+<h3>Mental Patient Receives Assistance</h3>
+<p>This newspaper published two articles on the 13th of this month, "An Appeal on Behalf of a Mental Patient." Thanks to the introduction of Mr. Mao Zonghe, Mr. Ling's younger brother was taken to Dr. Su Zonghua of the Neurology Department of the Red Cross Hospital on Haig Road for diagnosis and treatment, and medical expenses were generously donated. Mr. Mao's noble character is admired beyond measure.</p>
+<h3>Butcher Punished for Non-Compliant Scale</h3>
+<p>Cao Axiao, the butcher at stall number 181 of the Seymour Road wet market, was found by Western patrolman Finnant to be cheating customers by using an inaccurate scale. A lawsuit was filed against Cao Axiao, and after a trial, Cao was fined 200 yuan as a warning.</p>
+<h3>The Chinese Morality Association Distributes Charity</h3>
+<p>The Chinese Morality Association on Tongfu Road has been distributing rice and meals recently, and is extremely busy. From morning till night, those who receive assistance are extremely crowded, almost blocking the road. The old and the young, all sing praises. The rice and meals are given out with vouchers, and the order is well maintained. The association handles things effectively, and the staff all regard it as their responsibility. It is said that in three days, about 100 stones of rice and meals were distributed. In these difficult times, the enthusiasm for charity is no less than in the past, which is truly commendable.</p>
+<p>Yesterday's newspaper was broadcast at 6:15 PM</p>
+<h3>Various Police Agencies Schedule 20 Days of Regular Alert Drills</h3>
+<p>Various police agencies in Shanghai have decided to conduct 20 days of drills to guard against terrorist incidents and have issued the following announcement: In order to prevent the occurrence of terrorist incidents, the authorities and citizens will conduct drills to arrest criminals. This exercise will be carried out repeatedly over a long period of time until the goal is achieved. The general public must abide by the following items and cooperate to achieve the purpose of the exercise: Anyone who witnesses a terrorist incident should shout "Terrorist!" loudly to inform nearby residents and pedestrians and make every effort to arrest the perpetrator. Anyone who witnesses or hears of a terrorist incident should immediately report it to the nearest official or self-defense group. Telephone users are obliged to notify officials when they receive a report. Anyone who witnesses a terrorist incident must record the criminal's appearance, clothing, and direction of escape, and report it to the authorities when they arrive. Individuals or groups who bravely pursue criminals or cooperate with officials will be rewarded by the authorities as appropriate. Those who do not comply with the above items will be punished after being discovered by monitors. Drill criminals wear red and white armbands on their left arms with the words "Drill Criminal" written on them. No violence is allowed against drill criminals. He can go wherever he wants without thinking</p>
+<p>Sports News</p>
+<h3>The Cooperation Athletic Association Returns to the Football Field, the Tournament Postponed to this Sunday</h3>
+<p>The football tournament hosted by the Cooperation Athletic Association to raise funds, originally scheduled to start at 2:30 PM yesterday at the Aurora University Field, was unfortunately affected by the weather. The spring rain was incessant, causing the field to be wet and difficult to use. Therefore, it was decided to postpone it for one week. The tickets that have been sold will still be valid this weekend. The program will remain the same.</p>
+<h3>Mengxian Cup Basketball Tournament to Open on the 1st of Next Month</h3>
+<p>The Mengxian Cup Basketball Tournament hosted by the Mengxian Tutorial School has eight teams registered, including South China, Friendly Team, Green Duckweed, Ronglu, Micro Team, Young Elite, Mengxian, and Little Dragon. It was originally scheduled to open yesterday, but it was blocked by rain. Now, the organizing authorities have announced that it will be postponed by one week and will be held specifically on the 1st of next month (weekend).</p>
+<h3>Junior Cup Football Tournament</h3>
+<p>The Junior Association won the right to decide on the Xilian Football Tournament. Yesterday, in the Junior Cup semi-final, Xuenage and the Junior Association were evenly matched, drawing 2-2. In overtime, the Junior Association broke through two goals in a row, defeating Xuenage to secure the victory and win the right to the final. The score was 5-3.</p>
+<h3>Wanli Athletic Association Established</h3>
+<p>The Wanli Athletic Association, organized by colleagues of the Wanli Foreign Company at 416 Ningbo Road, Shanghai Bank Building, has teams in mini-football, basketball, and table tennis. Friendly teams are welcome to make appointments for matches. Contact Guo Jinquan at the association.</p>
+<h3>"Full House" and Its Ah</h3>
+<p>— Chongzhang</p>
+<p>Bored on New Year's Day, I wandered around the streets, admiring the street scenes, intending to take things as they came and find a place to pass the morning. Walking past a small movie theater, I saw the iron gate pulled tightly shut, knowing without asking that it was overcrowded. At the entrance of the first-run movie theater, a "Full House" sign stood prominently, simply blocking the way. The corridor was crowded with people, discussing with each other, "The second showing is also sold out, what should we do?" The problem seemed very serious, and it was difficult to resolve it urgently. From this point of view, Shanghai seems to still maintain the prosperity of a metropolis.</p>
+<p>Someone went to the first-class dance hall after [missing word], because they were well-dressed, they were favored by the waiters, who thought he was an "old Shanghai hand," and took the opportunity to talk about recent events in the dance hall. It is said that now there are crowds of people and business is booming, but in fact their "commission" income has decreased sharply. The reason is that there are more "blue cloth gowns and scarf gangs," and the "King Wen Divine Calculation" is popular. With a cup of fragrant tea, they look around, forgetting their birthday and time. Before leaving, the "waiters" say goodbye repeatedly. In addition to the regular bill, a few small change are found on the table. The waiters also have old and young at home, and they also have their own grievances. The listener could only agree, embarrassed to sit any longer, because they had been caught in the act. However, from the perspective of the patrons, the dance hall business is not slow, still "fish swimming in a full pond," and "stalls stand like a forest."</p>
+<p>A Qilin opera fan told me that there were many empty seats in the Golden Theater. I told him of the definite news from another Qilin opera fan that the Golden tickets had already been sold out. The empty seats were only because patrons were absent for some reason. It can be seen that the Beijing-style opera is full house, and the Shanghai-style opera is also full house. The price of tickets, whether expensive or fair, is not enough to affect it. The reason is that Shanghai people need entertainment. As for whether those who are entertained are truly qualified to be entertained, or whether their homes have rice and coal, that is another question, and it does not stand in opposition to the phenomenon of a full house.</p>
+<p>Whether someone even spends their meal money at the ticket office is a mystery, because the taste of drama and the taste of puffer fish cannot be confused. The audience will not die for it, and prepare to tighten their belts. This mystery cannot be broken until the end of the road.</p>
+<h3>Different Clothes</h3>
+<p>— Xinghua</p>
+<p>At a wedding feast in a certain mansion, someone named Jia wore a blue cloth gown. The crowd discussed, saying, "Wearing a cloth gown to a wedding feast, how poor."</p>
+<p>At the same time, someone named Yi, who owned a huge fortune, also wore cloth clothes that day. The crowd praised, saying, "Rich and frugal, such a wealthy person."</p>
+<h3>The Music of "Yang Guifei"</h3>
+<p>— Baishi</p>
+<p>This is not the first attempt to accompany a play with music, but this time the music accompaniment can be said to be relatively successful.</p>
+<p>The story of "Yang Guifei" is known to everyone. The audience watching "Yang Guifei" already knows the progress and ending of the plot before watching the play. When watching the play, there is no need to work hard to follow the lines to find clues, and they can freely appreciate the beauty of light, sound, and movement. The first, second, third, fourth, and sixth acts are simply a few lyric poems, especially the scene of the Cowherd and Weaver Girl separated by the Milky Way, with half a moon shining on the Hall of Eternal Life. In this kind of setting, the effect of music is guaranteed.</p>
+<p>The scene in the fifth act is one of war, chaos, and parting. It is quite difficult to compose music for this act. Music, as Wagner said, is not good at depicting ugly scenes. Mendelssohn wrote incidental music for A Midsummer Night's Dream, trying to capture the beautiful scenes and abandoning the rough and dangerous ones. This is his cleverness. The comparative lack of expressiveness of the music in the fifth act of "Yang Guifei" is due to a reason: In order to suit the mood of the ancient costume palace drama, the composer adopted Chinese-style tunes from the beginning, and many places also used the pentatonic scale. It is not easy to achieve results when this material is applied to a dramatic and tense moment. But on this point, we must understand the composer's intention: he must be unwilling to destroy the consistent atmosphere of the whole play - the ancient, fragrant, and smokey atmosphere. Another point worth mentioning is that the composer is very good at using the effects of Crescendo and Tremolo, which can be said to be the only way to achieve tension in Chinese-style tunes.</p>
+<p>The insertion of Mr. Huang Bai's posthumous work "Mountains in the Vain Misty World" in the fourth and sixth acts, sung by a three-part female voice, adds a lot of color to the whole play. Many applause at each performance are for this song.</p>
+<p>In short, although there are some flaws, the coordination between music and drama in color and atmosphere is just right, and both actors and audiences must have this feeling.</p>
+<h3>Stage Curtain</h3>
+<p>When Bai Yun was called Yang Weihan, he was the newest to join the National Union Film Company, but problems arose after receiving the deposit. Later, Xu Xingzhi introduced him to the Guohua Film Company as the leading actor in "Rouge Zero". Until recently, Bai Yun's contract with Guohua was about to expire, and the National Union Film Company brought up the old matter again. The National Union Film Company also wanted to send him to the Hong Kong factory to co-star in "La Traviata" with Hu Die, but nothing was decided before December 8. And his contract with Guohua did not seem to have the possibility of continuation. Going to Qingdao this time may also be for the release of depression.</p>
+<p>The unfinished play that Mei Xi was in at the National Union Film Company was "Happy New Year" co-starring with Chen Yunshang.</p>
+<p>After Yao Li and Dong Ni successfully sang accompaniment for the high-ranking people in the Sinapore Hotel, Lido also invited Yang Liu to join. Yang Liu is an actor of the Yihua Film Company. No one ever knew that she could sing, but her new voice trial was quite good.</p>
+<p>The "Drama" published by the Quxue Yekan Society, edited by Zhao Jingshen and Zhuang Yifu, is dedicated to the study of Chinese drama. It has now been published to the second collection. In addition to carrying drama theory and historical materials, the journal also publishes secret copies of battle music scores, such as Embroidery Robe Notes and Selling Horses, which are different from the current popular editions, and are truly the best publications for those who love to study music.</p>
+<h3>Sharing the Same Boat Through Storms</h3>
+<p>— He Jiaji</p>
+<p>A Branch of Spring Tea House was nearby. Weicheng walked in and sat opposite Zhang Shurong. The lights in the tea house were already on. Zhang Shurong took a sip of hot tea, twirled his gray beard, and smiled, "Young Master Ye, you don't know, people are afraid of being famous, and pigs are afraid of being fat. I put a red flag on the boat, and people call me Red Flag Zhang. In Huagang, those local ruffians, thinking I made a good deal, have been asking me for annual fees these past two days. The annual fees, Zhang Shurong took down the red flag, what would they do to me?" Weicheng said, "When will the boat leave? I know you leave from the Shanghai pier every Wednesday and Saturday. Today is Saturday." Zhang Shurong said, "Yes, today is Saturday. Young Master Ye, the boat will leave today, but the tide won't come until eight o'clock. We sailors aren't afraid of wind or rain, but we can't go against the tide. I have to wait for the tide to come to sail. I don't remember if it was the day before yesterday or the day before that. The old woman from your Shidetang came to Huagang and said that Young Master Ye was going home in these few days, and asked Zhang Shurong to look at the pier. When he saw Young Master Ye, he would take him back. It just so happens that our boat has no passengers in the middle cabin today. Young Master Ye, some people say you are studying in Suzhou, some people say you are studying in Shanghai. Where are you actually studying?" Weicheng nodded and answered the two words, "Suzhou".</p>
+<p>Zhang Shurong had to greet other passengers. Weicheng wanted to find a restaurant in the inner street to have dinner. Everyone was temporarily separated in front of the gate of A Branch of Spring. The oil paper umbrella was still in Weicheng's hand. While Weicheng was sitting in the restaurant waiting for the food to come, he thought of the woman in the emerald green raincoat again. When the meat slices stir-fried with vegetables were served, the green of the vegetable leaves was the same as the color of the raincoat, equally bright and vivid. He thought this woman looked very familiar, but he couldn't remember where he had seen her. He searched through his mind: Shanghai, Suzhou; Suzhou, Shanghai; also thought of: speech competition; like a scene by scene of a movie, just can not remember.</p>
+<h2>Page 5</h2>
+<p>Family</p>
+<h3>Family Education that Destroys Children's Character</h3>
+<p>— Qin Yingjie</p>
+<p>(1) Whenever he cries for something, give him whatever he wants.</p>
+<p>(2) Tell your friends in front of him how smart and clever he is.</p>
+<p>(3) Let him hear his parents argue.</p>
+<p>(4) Tell him that you love him very much.</p>
+<p>(5) If he skips school, obey him.</p>
+<p>(6) Tell him that money is the leader of life.</p>
+<p>(7) If he annoys you—but does not annoy others—then punish him.</p>
+<p>(8) Wherever he likes to go, let him go without thinking.</p>
+<p>(9) Whatever he wants to do, let him do it, and never guide him intentionally: especially when he has bad behavior.</p>
+<p>(10) Help him disobey the teacher.</p>
+<p>(11) You do not inquire about the quality of the companions he chooses.</p>
+<p>(12) Argue about right and wrong with friends in front of him: or tell him that you do not respect them very much.</p>
+<h3>A Mother Wants to Remarry</h3>
+<p>— Ye Xiuyi</p>
+<p>Tragically, my father died the year before last; now, my mother has fallen in love again!</p>
+<p>My mother is not yet forty this year, and her charm is undiminished. Because she is good at socializing and her life is very extravagant, she was originally a student who married my father to indulge in vanity and live a luxurious life, so she was willing to be my father's concubine.</p>
+<p>These past two years have been a period of brewing for my mother's choice of a partner. During this time, the senior wife in the family took the opportunity to accuse her of infidelity and severed relations. My mother is from another town and has no parents, no close relatives or friends. In addition, she is not used to living alone, so she resolutely left this family, which is neither large nor small, with me.</p>
+<p>I am now twenty years old and work in a cotton mill. My monthly salary can support the two of us, mother and daughter, who live like sisters. However, because my mother is addicted to tobacco (opium, cigarettes), alcohol, and gambling, our finances are inevitably tight, and our life is relatively poor. However, I often advise my mother, saying that her daughter is already grown up, and that she should endure hardship with me: (meaning she should not remarry).</p>
+<p>However, my mother is pregnant and she will inevitably marry someone. But I, I am unwilling to go with her.</p>
+<p>"Oil bottle girl" – what a shameful term!</p>
+<p>At the same time, if I go with my mother to that household for food and lodging, my surname will have to be changed. Otherwise, I think I will definitely be laughed at, especially since I am already working in society (and that man and my mother would not agree to me not changing my surname).</p>
+<p>I don't want to be an "oil bottle girl", I don't want to change my surname. I want to ask for help, but who should I ask? Relatives and elders? I have none. Friends, sisters, classmates, colleagues? But how can I bring it up?</p>
+<p>I have been seeing a colleague for quite some time, but because his feudal-minded parents say that my background is not clear and that I will pollute the family, they won't allow him to marry me!</p>
+<p>Why does mother want to remarry? I secretly read her diary, and one page reads: Alas, unfortunately, I have become a widowed young woman. After his death, everything feels painful and meaningless. The inner suffering, of course, cannot be felt by those who have not experienced it, nor can it be described in writing. I want to commit suicide, but I am a person with a secondary education, I don't want to! I want to regain the happiness of life, even though I am already addicted to improper habits...</p>
+<p>According to custom, children cannot stop their mother from remarrying. Although I want to forgive my mother, I do not want to be an "oil bottle girl" or change my surname; I cannot lose my happiness. I want to oppose my mother. My methods might be to sever relations with her or to adopt a policy of non-cooperation. At the same time, I want to insult my mother's lover... Anyway, I am already a person who is fully capable of living independently. But I don't know if it is appropriate?</p>
+<p>Editor's note: A mother wants to remarry, this is her freedom, no one can stop her, and in this era, marriage is absolutely free, and her remarriage may be necessary for her lifelong happiness, even though she is already addicted to bad habits, and her future happiness is very slim.</p>
+<p>Since Ms. Ye has secretly read her diary, you must already understand her pain, and you should express sympathy for her. Considering Ms. Ye's own happiness, I think it is possible to have an open and honest negotiation with your mother. Since you care about her happiness, she should also care about your happiness. Since you are able to be self-sufficient, you might as well let yourself become independent and not be an "oil bottle girl." Men can establish themselves in society and do something for society, why can't women? Moreover, you have already stepped onto the ladder of serving society.</p>
+<p>As for your marriage, you can naturally consider it. The current object, since there is a feudal family, is of course not very suitable, but you will definitely have the opportunity to find a suitable spouse in the future.</p>
+<h3>Glimpses into Housekeeping</h3>
+<p>— Yin</p>
+<p>To wash gilded photo frames, it is best to use mild soap, lukewarm water, and some hydrochloric acid, and then quickly wipe lightly with some lemon juice.</p>
+<p>If a wooden bucket for holding water cracks, it is more durable to use cement mortar to repair the crack than to use putty.</p>
+<p>For new Yixing purple clay teapots, after pouring hot water into them every day, wrap crushed walnut meat in silk and rub diligently, and they will soon become even more glossy.</p>
+<p>New bowls, before they are used, must first be boiled in water. If they are boiled two or three times in the soup for cooking meat, they will last longer and will not easily crack.</p>
+<p>Sometimes it is difficult to quickly remove the stains on the washbasin. If you use salt to scrub it, the stains will be wiped away immediately.</p>
+<p>Newly purchased writing brushes are easily damaged by moths if they are stored without use. It is best to soak them in sulfur water once, wait for them to dry completely, and then store them, which will keep them from moths for a long time.</p>
+<h3>Weekly Home Menu</h3>
+<p>— Ms. Huaying</p>
+<p>The Spring Festival is traditionally a season for eating and drinking. Although in this period of expensive rice and firewood, the people are struggling to survive, those who are blessed with economic wealth still have lamb and fine wine, and delicacies from the sea and mountains. After eating the New Year's Eve dinner, they have the God of Wealth wine, eating and drinking as much as possible. Perhaps they have eaten too much greasy food these past few days. The writer will prepare some fresh dishes as a small offering for the Spring Festival: Bean sprouts with sesame sauce and shredded chicken, Garlic sprouts with shredded meat and vinegar-dressed egg skin, Fragrant melon with dried shrimp stewed eggs, Steamed clam soup; Fresh preserved vegetable stir-fried with sliced bamboo shoots; Water snowflake fungus tofu flower, Sweet and sour Jiao Zhou cabbage, Winter bamboo shoot skin vermicelli soup, four vegetarian dishes, you can eat meat or vegetarian, whatever you prefer.</p>
+<p>Monday: Shredded meat with egg skin, preserved vegetable steamed yellow fish, bamboo shoot skin vermicelli soup, cold Jiao Zhou cabbage.</p>
+<p>Tuesday: Onion and shredded beef, sweet and sour fried ribbonfish, dried shredded radish stir-fried with celery, jellyfish with shredded pear.</p>
+<p>Wednesday: Meatballs with greens, sesame oil cockles, shepherd's purse stir-fried with sliced bamboo shoots, shrimp roe stir-fried with gluten.</p>
+<p>Thursday: Chinese cabbage and beef soup, mung bean noodles braised white fish, green vegetables stir-fried with mung bean noodles, fried dough sticks with yellow bean sprouts.</p>
+<p>Friday: Pickled meat tofu soup, raw stir-fried golden needle vegetable, silver sprouts with shredded chicken, clam fish soup, sesame sauce with water celery.</p>
+<p>Saturday: Silver sprouts with shredded chicken, clam fish soup, braised vegetarian ten-delight, sesame sauce with water celery.</p>
+<p>Sunday: Ten-delight pot, fish stewed with fermented grains, stir-fried collapse vegetable, stir-fried radish (Draft by Yao Qichi)</p>
+<p>Heavenly Cuisine Recipe (90)</p>
+<h3>(160) Spring Rolls</h3>
+<p>— Yao Qichi, Draft</p>
+<p>Prepare... Spring roll wrappers (available ready-made on the market), ham, garlic sprouts (or water chestnuts, winter bamboo shoots), oil, MSG, white sugar. Method... Steam the spring roll wrappers over rice until slightly cooked, then remove them so they can be easily peeled off one by one. Then, spread the pork flat on a cutting board, cut it into thin slices along the grain, and then cut it into thin shreds. Wash it and stir-fry it lightly with oil until it is no longer raw, then pour in a little cooking wine and stir-fry for a moment. Then add an appropriate amount of soy sauce, MSG, white sugar, etc., and a little water. Wait until the meat is thoroughly cooked, then add the garlic sprouts and other ingredients and stir-fry together. When the garlic sprouts are half-cooked, remove them quickly. Then use the wrappers to wrap them into long, round shapes, and then put them one by one into a pot of boiling oil and fry them until both sides are golden brown. They are very tasty to eat.</p>
+<h3>(16) Yuanxiao (Sweet Rice Balls)</h3>
+<p>— Xu Baopeng, Draft</p>
+<p>Prepare... Sesame crispy cakes (available ready-made on the market), lard, rose sauce, winter melon seeds, crystal-like MSG, glutinous rice flour. Method... Grind the crispy cakes into fine pieces with a mortar, pour in boiling lard and mix. Wait until it is slightly cool, then knead it into small round shapes, embed rose sauce and melon seeds and crystal MSG in the middle, then moisten with water and wine, put it in glutinous rice flour and roll it to make the thickness of the surrounding area even, then put it in a steamer and steam it until cooked before serving. Gentlemen... "MSG", "Wei Zong",</p>
+<p>"Tianchu Soy Sauce Essence", and "Tianchu Household Protective Powder" produced by Tianchu MSG Factory are sold in major companies and South goods food stores in this city.</p>
+<h2>Page 6</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.02.22.html", "next": "1942.02.24.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.11.02 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 509 - 4924648</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>英軍再度進攻　北非復發生激戰　義軍增援特里波利港　李奇沃親王雨子陣亡</h3>
+<p>倫敦一日哈瓦斯社電官方宜布、埃及前綫英第八軍、於前日深夜在猛烈砲火掩護之下、曾一度向軸心軍陣地猛攻、迨至昨日淸晨父復進攻、</p>
+<p>羅馬一日哈瓦斯社電義軍總司令部頃發表戰報稱、埃及前綫北路、英軍於昨晨又復發動攻勢、當即發生激戰、英國鐵甲車隊亦曾參戰、但經軸心軍大舉反攻後、即將英軍堵住、並擊毀英國坦克車多輛、俘獲士兵二百名、至於德義空軍、不斷轟炸敵軍集中地點及機械化部隊、予敵以重創、又德機與敵機發生空戰、擊落敵機七架、另有一架、被迫降落於軸心軍後方、飛行員一人被俘、</p>
+<p>柏林一日海通社電柏林方面估計、協約國在埃及戰綫之軍力爲一十萬人、其中英軍及蘇格蘭軍約八萬人、協約國軍隊中共有十二種不同之語言、協約國發　攻勢、以澳洲軍·紐西蘭軍·南非軍·法國猶太軍爲主力、</p>
+<p>羅馬一日哈瓦斯社電官方宣布、李奇沃親王之子馬斯柯蒂與康斯丹　昆仲二人、先後於上月二十四日及二十六日、在埃及前綫陣亡、</p>
+<p>羅馬一日哈瓦斯社電官方頃宣布義國機羣及高射砲隊、於上星期內共擊落敵機一百二十二架、其中有六架在義國上空、八十九架在埃及前綫、十六架在地中海上空、另有十架則爲高射砲隊所擊落、</p>
+<p>瑞士京城三十一日哈瓦斯社電據此間各報所載倫敦消息、最近大批義國生力軍開抵北特里波利港增援、惟此項援軍並不向東調至埃及前綫反向西北開往面對法屬都尼西亞之海岸地帶又據新沮利希新聞報載稱、外間盛傳英軍迭次企圖在埃及前綫之馬羅馬特魯港登陸、惟倫敦方面尙未能證實之、開羅英軍總司令部本日所發表之戰報、僅謂軸心軍於本月二十九日夜間、向英軍陣地反攻、均已被我第八軍擊退、同時我軍又不斷進攻軸心軍之哨站、</p>
+<p>柏林一日海通社電吒間軍界人士昨夜指稱、英軍在北非前綫發動大規模之攻勢後、今已進入第二週、但羅美爾將軍所指揮之德·義鐵甲車聯軍、扼守瓜達拉低地至地中海之陣地、並未稍受動搖、英第八軍昨晨復發動上月二十四日所開始之攻勢、戰果如何、此時尙不得而知、德機與敵機交綏、擊落敵機五架、吾方未受絲毫損失、昨日並未發現美國戰鬥機或轟炸機之踪跡、</p>
+<h3>新任日駐義大使　日高低京辭行</h3>
+<p>即將返日後赴義履新</p>
+<p>南京卅一日中央社電榮任駐義大使之前日本駐華公使日高信六郞氏、爲向各方面辭行、卅一日十時廿分抵達南京、與重光大使及大使館員互致惜別之辭、（又電）日本駐義大使館公使日高信六郞，已榮升爲駐義大使、遺缺並任命堀內公使繼任、茲悉日高氏偕其夫人、巳於卅日下午一時廿分、由滬乘車抵京、辦理各項移交手續、在京將作短期問之勾留、一俟手續辦竣、並擬向各方辭行後、即返國禀陳一切、赴義履新、</p>
+<h3>日機三次襲印</h3>
+<p>緬甸卅一日同盟社電　日陸軍航空部隊、於二十五日起曾大舉猛攻英美仕印空軍、經三次猛　、被擊落之敵機共五十三架、其餘敵機、均逃往內地、故印緬國境方面之敵軍根據地、於二十八日後、即　不復有敵機停留、</p>
+<h3>大東亞戰爭博覽會　昨在南京揭幕　汪主席親臨參加</h3>
+<p>南京一日中央社電大東亞戰爭博覽會、於一日上午九時、在玄武湖翠洲該會塲、、舉行揭幕典禮、九時正修祓式於該會塲鬥右舉行、該會委員評議員實行委員林柏生·周學昌·鄧祖禹。郭秀峯·岩崎報道部長·原田特務機關長等、均依次分坐兩排參加修祓式、嗣即由岩崎報道部長致詞、首對籌備人員之努力表示感謝、繼就大東亞戰爭及舉行博覽會之意義、有所闡述、修祓式舉行後、即由林宣傳部　原田時務機關長親升中日國旗、而大東亞戰爭博覽會之汽球、亦冉冉上升，繼即共同乾杯、表示祝賀、此隆重之揭幕典禮、遂吿完成、十時正、在中席御灰黑色　服、翩然蒞止、大東亞博覽會全體委員、均立于會塲門首、鵠立恭迎、先至迎紫堂稍事休息、同時日本總軍司令部畑大將　日本大使館重光大使·及　府各院院長·副院長·江亢虎周佛海·諸靑來·軸心各國駐華使節等、均先　蒞臨、十時許、主席由該會委員及中外長官等陪同步出迎紫堂蒞會塲參覜、湖上軍艦于此時鳴砲三響、以示慶祝歡迎、主席依次參覜大東亞戰·館共榮館及演戲館、每至一處、均站立良久、詳細觀賞、主席繞塲一週後、即由各院部長官委員等恭送至會塲門首、乘車返官邸、畑大將·重光大使·亦先後返邸、十一時卅分、該會招待中日各機關長官及軸心國谷外交官參觀、舉行午餐、到各中外長官等一千餘人、至下午二時、一般參觀、遂吿開始、</p>
+<h3>美承認損失　航空母艦</h3>
+<p>阿根廷京城一日同盟社電華盛帕海軍部昨日承認、美方於十月二十六日聖太克魯慈羣島（瓜達康納爾以化二百六十哩）附近之南太平海戰中、損失航空母艦一艘、查該艦爲美國承認喪失於南太平洋海戰中之第一艘航空母艦、美方承認之第二艘乃喪失於所羅門區者、上週東京曾宣布日方在聖太克魯慈役中、擊沉美航空母艦四艘、華盛頓公報未披露該艦之名稱、惟稱、該役中美方並損失驅逐艦撲透號、公報父稱、該航空母艦於上週一遭日方轟炸機與魚雷機兩度攻擊後沉失、第一次在午前被襲、該母艦受·創、乃由他船曳之、以便援救、午後復遭第二次　　、水綫上之艦身又受損害，開始傾側、艦員當即離艦、未幾、艦即沉沒、艦昌略有死傷、一俟接報、即常電吿陣亡艦員之親屬、</p>
+<p>里斯本一日海通社電據紐約泰晤士報刋載墨京消息、墨西哥政府已決定派遣軍隊赴海外、該國國防部宣稱、下年將徵募壯丁一八一三八五八人入伍、正月將徵募一〇·〇〇〇人、</p>
+<p>西貢一日海通社電重慶一大公報昨發表評論稱、重慶對南太平洋之局勢品爲焦慮、若美國在戰略上犯有相同之錯誤、則南太平洋戰事有造成、一第二次珍珠港事件」之可能、該報要求協約國在緬甸發動反攻、以保所羅門羣島、「吾則吾人將　各個擊破」、</p>
+<h3>丹王病有起色</h3>
+<p>丹麥京城一日哈瓦斯社電頃據官方宣佈、國王克里斯興、續有起色、漸見有力、胃口較佳、昨夜平靜、今晨體溫及脈搏已恢息常態、</p>
+<h2>Page 3</h2>
+<h3>日大東亞省昨成立　首任大臣起用青木一男</h3>
+<p>東京一日同盟社電日大東亞省成立典禮、於一日上午十時、首相官邸隆重舉行出席省內職員千錄人、由靑木大東亞大臣致訓詞後、即由山本次官致答詞、至十一時半禮成、東京一日同盟社電日大東亞省第一任大臣、已決定起甲國務相靑木一男、本日上午十時、特在宮中鳳凰間舉行就職典禮、日情報局並於上午十時發表稱、國務大臣乙三位動二等靑木一男、特任大東亞省大臣、已於本日上午十時、舉行就職典禮、又大東亞省主要人事、亦已發表、計外務次官山本熊一、任大大亞省次官、對滿事務局次官次官竹內新平、任大東亞省總務局長、拓務省拓北局長今吉敏　、任大東亞省滿洲事務局長、興亞院經濟部長宇佐美珍彥、任大東亞省中國事務局長、務省南洋局長水野伊太郞、任大東亞省南方事務局長、興亞院文化部長松村泰、興亞院技術部長三浦七郞、（以上一等）拓務省拓南局長森重干夫、拓務雀管理局長中野勝次　岡崎嘉平太、（以上二等）任大東亞省參事官、又大東亞省書記官杉原荒太、兼任大東亞省參事官（二等）</p>
+<p>次官司局長　略歷一般</p>
+<p>東京一日同盟社電　日大東亞省首任次官山本熊一、現年五十四歲、畢業東亞同文警院後、即服務外務省、久居中國、爲外務省中唯一之中國通、一九三九年十一月入通商局服務、嗣升通商局局長、翌年八自調任東亞局局長、本年九月一日、東鄉外相辭職、由東條首相兼攝外相時、即兼代外務次官、辦理行政簡紫化及設置大東亞省之各種述絡事務、谷正之就任外相、即正式升任外務次官、於大東亞省之設立、貢獻頗多、此次調任該省次官、必能勝任愉快、「總務局長」竹內新平、年四十九歲、畢業東京帝國大學法科、歷任東京稅務監督局關稅部長、主稅局特別調查科長、經課課長兼、特銀課長及興亞院書記官等職「滿洲事務局長、今古敏雄、現年四十五歲、畢業東京帝國大學後、服務內務省、前年任拓北部長以迄今日、中國事務局長」字佐美珍彥、五十歲、一九一八年畢業東京帝國法科、一九二〇年入外務省服務於日內瓦、歷任駐法大使館書記官、駐安東領事通商局第二課長、福州總領事、大使館參事官、國際會議日本事務局次長　職于九三八年任駐德大使　參事官、一九四〇年一月任駐埃及公使、同年十月任與亞院經濟部長迄今、「南方事務局長水野伊太郎、現年四十七歲、畢業東京帝國大學法科後、入外務省服務條約局、又曾赴比利時法國歷任調查部第一課長、通商局第一課長等職、一九四〇年任通商局長、邋來以日滿蘇常設調停委員會委員、本年五月任南洋局長、六月父任廣田答禮特使隨員、前赴泰國、</p>
+<p>各局課長　名單發表</p>
+<p>東京一日同盟社電大東亞省各局課長名單如下、「總務局」總務課長杉原荒太、經濟課長愛知揆一、調查課長監見友之助、鍊成課長島津久大考查課長山田久就、「滿洲事務局」總務課長松尾揪，殖產課長吉田晴二、拓務課長鹽谷末吉、開拓課長字野末次郞、靑年課長大澤雄一、「中國事務局」總務課長堂脇先雄、司政課長根道廣吉、文化課長虅井重雄、理財課長秋元順朝、農林課長安孫子藤吉、商工課長長谷川輝彥、交通課長磯野直孝、「南方事務局」政務課長萩原徹、監理課長高橋進太郞、文化課長東光武三、理財課長石田吉男、產業課長佐佐木金太郞、交通課長岡田修一、</p>
+<p>任命在華　公使四人</p>
+<p>東京一日同盟社電今日官報宣布、正式任命在華機稱之四特命　權公使、即南京之堀內干城、上海之田尻愛義、北京之鹽澤淸宣、張家品之岩崎民男等四氏、</p>
+<p>省及各局　分課任務</p>
+<p>東京一日同盟社電　大東亞省已吿成立、茲將各局課任務摘錄如次、（一）大臣官房設置文書·人事·會計·　信四課、並設審議室制度、該室受命大臣、以掌理審議草案爲使命、（二）總務局分置總務、經濟·調查·練成·考查、五課、總務課除與官房審議室緊密連絡、掌理重要政策之企劃草案及情報宣傳調查等事項、並分掌新設聯絡委員會之關係事項、經濟課掌理大東亞省各地之官廳及滿鐵·華北·開發·華中振興·南力金庫等公司之綜合調查　務、並專掌大東亞全域之經濟·產業·交通·資金·物資、勞務·及其他動員事、練成課則企劃實行日人之啟發練成進出各地之配置、（三）滿洲事務局分置總務·殖產·拓務·開拓·靑年·等五課、總務課對關東·殖產課對滿織·滿　拓務課對滿拓之美務等、分別予以監督、社會服務關係業務、由　拓課、靑年女子義勇軍關係業務、由靑年課分別掌理（四）中國事務局、分總務、司政·文化·理財·農林·商工·交通·等七課、司政課掌理日人公共團體事務、文化課掌理對中國敎育協力等事項、商工課則監督華北開發、華中振興兩公司之事務、（五）南方事務局分設政務·監理·文化·理財·產業·交通·等六　、</p>
+<p>青木大臣　發表談話</p>
+<p>東京一日同盟社電　首任大東亞大臣青木一男氏、於就職典禮完畢後、即赴首相官邸出席大東亞省成立典禮、據該氏於典禮開始前發表談話稱、大東亞省業於今日成立、令猥以菲材、謬膺大臣之　任、殊深惶恐、大東亞省之設立要旨、前已由政府明白宣示、此次大東亞戰爭旣有戰爭即建設之意義、故大東亞之建設與戰爭之完成、具有不能分離之關係、在此建設戰中、自當根據我國八紘一宇之建國大義顯現於東亞、使大東亞圈內各國家及各民族能各得其所、以　義爲基礎、建設東亞新秩序、然欲實現此目標、則完成必勝態勢以爭取戰爭之勝利、實在絕對要伴、故必須急速增強並擴充帝國之戰力、因此政府方面、爲使大東亞建設之企劃及政務之施行、能與統帥部緊密協力起見、自須有一元的綜合的機構、期能作迅速確實之運用、大東亞省之成立、即爲應此緊急之需要、余深感此使命之重大、決心竭其全力、至誠奉公、茲大東亞戰爭賴皇軍將兵之忠勇、已獲赫赫戰果而確立勝利之基礎、然大東亞戰爭及大東亞建設、爲曠古未有之大業、故外與盟邦加緊恊力、丙須國民强固團結、以堅忍不撓之精神、盡全力於本位工作、以發揚最大之力量、實爲必要、因此余當與中·滿·泰·越等共榮圈各國依照所定條約、努力與各國緊密提携、同時深望各盟國理解此次大東亞戰爭之眞義、爲實現東亞新秩序之建設而更相與協力、</p>
+<h3>日外務省　變更組織　改設政衆等四局</h3>
+<p>東京一日中央社電　外務省頃因大東亞省之設立、已刷新機構、改設政務、通商·條約·調查四局、各局任務、計（一）「政務局」辦理關於以前之歐亞與美洲二局六課、及不移歸於大東亞省之大東亞方面之外交　務、從新制定七課、各課事務、計第一課（總務、）第二課（大東亞、）第三課（蘇聯、）第四課（歐洲除英蘇、）第五課（英本土及屬　、）第六課（北美、）第七課（南美、）其中尤以擘劃一切外交政策及綜合調查直接輔佐局長之第一課長與担當大東亞省聯絡事務之第二課長責任最重、且此新設之政務局以負責其東亞地域之事務外、並推廣辦理全世界之一切外交事項、故實爲外務省之中　部門（二）「通商局」局內一部政務、已移歸於大東亞省、故組織較前縮小、現已由六課减爲三課、（三）「條約局」機構亦形縮小、前設三課、合减爲二課、（四）「調查局」一爲外務省之調查機關、過去爲調查部內設六課、營理蒐集調查資料及情報事務、　新機構爲適應行政簡素化、將六課减爲四課、同時使部昇格爲局、以謀內容充實、調查局新設外交機　勅任調查官制度，決定　新調查局、第四課管理與情報局及政務局第一課緊密聯絡、專門担任情報宣傳事宜、</p>
+<p>東京一日中央社電　日外務省新任次官及各局局長業已發表如下、條條局長松木俊一任外務次官、大使館參事官上村伸一任政務局長、歐亞局長安東義良任條約局長、大使館一等書記官山田芳太郞任調查局長、總領事兼大使館一等書記官澀澤信任通商局長、</p>
+<p>東京一日同盟社電　據報道部今晨宣布、任命松木俊一氏爲外務次官、前外務次官山本熊一則任新成立之大東亞省次官、</p>
+<h3>東綫南部各區　德蘇空戰劇烈　伏爾加河有水底橋樑　蘇軍仍源源增防斯城</h3>
+<p>柏林一日同盟社電　昨日蘇聯南部戰事以劇烈之空戰爲其特色、一般注意力、則從斯達林格勒區移往那爾契克區、昨夜消息、從泰雷克河前進之德羅軍隊殲滅蘇軍兩師、今日又傳　軍突破抵抗甚力之蘇軍防務、惟官方未說明該支德軍已　　至何地、此區及蘇聯南部其他各區均發生劇烈空職、德方　遂　射落蘇　　　二十八架、並摧毀滿載軍隊與戰具之卡車一百五十輛、最激烈之空戰、發生於斯達林格勒之北部、德機在該處轟炸現仍據守工廠區之蘇軍與伏蘭伏河東岸之蘇軍砲隊、</p>
+<p>安加拉一日同盟社電　據今日此開接未證實消息、德方現有小型潛艇約八艘在黑海中、此等潛艇係分段從陸地運至黑海、而在黑海口岸裝配者、</p>
+<p>烏克蘭邊境某地三十一日哈瓦斯社電　蘇聯境內雖已寒風凛冽、但東綫戰事仍甚劇烈、尤以高加索邦及斯達林城兩區爲然、關於斯達林之戰、據中立觀察家所知、紅革在斯達林城區、迄今猶能負隅抵抗、實爲一「時代之謎」、推原其故、殆因伏爾加河中築有水底橋樑、故斯城紅軍仍能源源獲得接濟及援軍所致、至以高加索前綫各路戰况如次、（一）都普斯區、日來大雨不止、企圖佔領該城西北高山之德軍、已因紅軍賡　進攻之故、不得不改取守勢、（二）泰雷克河流域、軕心軍　續向達格柯許推進、戰局之發展、顯對軸心軍有利、（三）那爾契克區德軍、正企圖陷紅軍於孤立、使其與主力失去聯絡、並悉德羅聯軍已在那爾契克城之南、續有進展、惟蘇聯方面已有生力軍開抵該區增援、（四）　柴勒夫斯克城之東北發生激戰、德羅聯　企圖突破紅軍陣地、直搗黑海海岸、</p>
+<h3>威爾基主張　美法絕交　撰文抨擊美政府</h3>
+<p>紐約一日哈瓦斯社電　共和黨要人威爾基、本日就紐約州州長競選之便、向報界發表論文一篇、長及三頁、抨擊美國政府、其中有一點、批評政府缺乏勇氣、</p>
+<p>里斯本一日海通社電　威爾基昨日在紐約發表演說、抨擊政府之戰事行動、混亂而缺乏效力、渠要求對法國斷絕邦交、並抨擊美國政府未能　日斷絕美法外交關係、</p>
+<h3>風雲變幻中之非洲　埃及—大戰重心的第二門戶（一）</h3>
+<p>在這持螯當菊的季節，只要一杯在手，足以醉生夢死，何必去問天下事！淸閑的晋人畢卓說得好，「右手持酒杯，左手持蟹螯，泊浮酒船中，便足了一生矣……」這是何等浪漫的心胸。</p>
+<p>吃蟹罷了，爲什麼一般詩人多半放不過那一對螯？閒行街頭，每每看見一隻塗着鮮紅寇丹的玉手，挑起蟹來，雖說目的是注意在其雌雄肥　的問題上，可是瞧着那隻玉手，老是一彈一縮的，似手有些顧忌。怕什麼？還不是那對强而有力的大螯；爲了口福而把塗了寇丹的手指夾掉半邊，那才不値得理。本來一瞧到這對大鉗，確實有些觸目驚心咧。</p>
+<p>看小說，見到宋朝的名將，發明過一座虎鉗陣；這明明有些不通；虎何曾有鉗，還不是蟹　罷了；不過文人筆下，把這螯形容得更兇狠點而已。不料還虎鉗陣今日又出上了鋒頭了。偶一　　歐陸的烽火，一隻虎鉗已伸到了高加索的近脚，一隻虎鉗早在北非擒拏作式；在這持螯賞菊的季節中，一瞧了蟹，難免不有些觸目驚心哩。</p>
+<p>凑巧一羣猢猻中，有一部分是羅宋孩子，一部分是英籍孩子。在黑板粉筆之餘，偶然問着：「你們吃蟹嗎？」</p>
+<p>「不大吃」羅宋孩子們答着。「我們喜歡大烟熏魚和魚子」</p>
+<p>「看見過蟹嗎？」</p>
+<p>「現在街上很多。」</p>
+<p>「怕那蟹鉗嗎？」</p>
+<p>「不，只要輕輕一搬，就會折斷了—先拿一片木，或一片鐵給牠鉗上，再從後面一下，就折斷了。」羅宋孩子們眞够詭詐頑皮。</p>
+<p>「我們也不怕，」英籍孩子們也要表示兩句。「我們可以戴上很厚的皮手套，不怕螯鉗，只要這麼一拗，牠就「破」了。」</p>
+<p>歐陸的烽火，在高加索一方面，現在也許就算膠着而至於停頓了。現在且談談北非埃及一水汀」中的那隻螯。</p>
+<p>要問埃及風雲，爲何如此上緊，我們得先指陳出非洲的大略形式，在報上現在有幾個黑人國的地名被我們看熟了，里比亞，自從北非有了戰事，這個名字就在我們的記憶中。還有一個甚麼達加爾，新近變得很熱鬧，好在只有三個字，還算容易記得。此外來了一個馬達加斯加，囉囉哆哆一大堆，要是不願留心時局，誰也不肯去管這麻煩。最近忽然又有美軍在一個西非的僻國登陸的事，於是我們又得記住一個里比利亞的名字。血腥的風雲，漫天的烽火，却給了我們一個背誦地名的機會，這是大時代一個幽默的貢獻。餘下還有一個亞力山大，因爲歷史上的大亞力山大這名名字記得很順，所以還不覺得生疏。</p>
+<p>以上列舉的四個地名，在無形中，把非洲的東西南北形勢，一齊收括，在一個整個的、陣形中。英人進兵馬島的作用，當然是要維持南非的一條航路：所以顧不得維希政府的一再非笑，而强行佔領了一部分。美軍在里比利亞登陸，這是一件大事，其中有重要的戰略關係，我們這裏暫且保留一下，下篇里比利亞專論中，自然要指出一個分曉。關於達加爾，前在「阿拉斯加公路」一文中，曾略經提到！這裏距離南美巴西僅二千餘哩，美人注意牠，是護航供應的關係；德人注意牠，是想由沙哈拉沙澳建築鐵道，直達該地，作爲進攻南美的張本。</p>
+<p>至於亞力山大，現在恰恰處在德人右螯形影之下，關於軍事的重要，可想而知。如其說埃及是大戰重心的第二門戶，這亞力山大就是這門戶上的一把鑰匙。</p>
+<p>以上把整個非洲的形勢略略提過，往下就可專心來研究一下這第二門戶的問題。關於埃及的記載，木報在本年六月中刋過一篇「埃及縱橫談」，七月下旬，又發表過一篇「神秘的埃及」，想尙在閱者記億之中，因此本文不擬再提她的縱橫和神秘，只把她的形勢，從烽火迷漫之中，略略勾畫一下罷了。</p>
+<p>埃及的大勢，我們如姿承認她是大戰重心的門戶的話，至少可以在這門戶上找到三把鑰匙，（一）運輸供應的埃及蘇丹公路；（二）軍事　鎭的亞力山大；（三）歐亞孔道的蘇彝士運河。這三把鑰匙，各有不同的情形，也各有其不同的重要性。</p>
+<p>可是，像埃及這樣的一個國家，偏在北非的一隅，人民的血脈裏，似乎沒有火氣；而自紀元前經羅馬人一陣蹂躪以來，直到今日，三番五轉，遭人侵佔磨折之餘，一切武化簡直落後；而且，除了尼羅河流域，有些出產外，倒不見有什麼特殊的富藏；我們要問，這位戰神爲什麼偏要屢屢的照顧她呢？</p>
+<h2>Page 4</h2>
+<h3>維護正當食戶需要　普遍購糖辦法　規定價格每人限購五元劃分區域憑市民證出售</h3>
+<p>糖商合作營業處爲便利正當食戶購糖、以免擁擠、及防止販戶競買牟利起見、商妥普及食戶購買食糖辦法、自昨日起實行規定凡各甲種零售商（南貨店等）門售食糖、憑市民證售給、每人以中儲券五元爲限、實施之後、凡非屬上海糖商合　處配給範圍內者、此　無法再向上海販買牟利則整個食糖競買　慌、即可消滅、</p>
+<p>普及食戶　購買辦法</p>
+<p>合作營業處普及食戶購買食糖辦法、（一）各食戶購買食糖時、如係居住共法兩租界者、即憑其市民證向兩租界之任何門售食糖商店購買、其居住滬西·滬南·虹口·閘北·各地段者、亦憑市民證向各該地段之售糖商店購買、不得越區、（二）各零售食糖商店、應按十月份所受配給總額、及前前存之糖額、每日售出三十分之一、並爲免除零找便利手續起見、暫定每人購買零售捐在內、以中儲券五元爲度、售糖時間、自上午十時起至下午四時止、額滿止售、如售出糖額不足三十分之一時、則將所餘數量併入次日出售、依此順推、務使每日有糖出售、以資普及、（三）各零售商門售食糖之價、均在顯明處懸脾標明、如有違反規定抬高價格、或减少分量及攙雜等弊、或强迫搭售其他物品者、准由購買人向本處舉發、（地址法租界洋行街彤雲街二十三號、電話八三三〇〇、或逕報警務機關究辦、（四）本處有駐店監售員及流動監查員、均佩有本處所發之臂章、購買人如有不明瞭情形、可隨時向其詢問、（五）爲使食戶明白門售之價起見、特將公定限價、</p>
+<p>規定限價　杜絕黑市</p>
+<p>食糖發售新辦法頒布後、、特餘各零售商依照合作處規定限價發售、絕對不得抬高價格、以及參與黑市交易、准許購買人舉發究辦、並聲明上海存糖甚豐、足供長期配給、希各食戶切勿受惑、並希按照實在需要購買以期普及、茲錄限價如下、粗砂白糖每斤四元三角三分、TK嘜每斤四元五角六分、一號綿白每斤四元三角二分、四號綿白每斤四元二角五分、B嘜每斤四元三角三分、DY嘜每斤四元三角二分、HX嘜每斤四元三角一分、荷赤砂每斤四元零六分、生砂每斤四元零六分、冰花靑每斤四元零六分、泗水靑每斤三元八角三分、冬霧靑每斤三元七角一分、漳刁靑每斤三元七角一分、冰糖每斤五元一角四分（以上以天平秤計算）、</p>
+<p>監督發售　以杜流弊</p>
+<p>記者昨向合作營業處探悉、本月供給發售食糖總額爲二萬包、計派糖在三十包以上者爲九十六家、其餘派糖三十包以下及十五包以上者爲一百餘家、派糖十五包以下者爲二百餘家、均遵照規定辦法發售、每日准售全月總額三十分之一、由該處派定監售員監查員稽查負共一百十六人、實地監督各甲種零售商發售食糖、以杜流弊、而維民食、其監督辦法、（一）凡派糖三十包以上之甲種零售商、每家派監售員一名、駐店監督、（二）凡派糖三十包以下之甲種零售商、由處隨時派監查員稽查員輪流監督抽查、經售賬目、同時嚴禁缺少斤量及攙入雜質、如有違犯經查明屬實、取消配給權利並予嚴懲、至於未核發居住證區域內之食戶、向本區購糖、亦得說明地址、請求通融、</p>
+<h3>法租界四聯保區　民警成立</h3>
+<p>法租界民警團、組織以來、雖僅一月餘、而工作已具規模、民警團試行値崗亦已期滿、名項成績斐然、法租界保甲當局本欲舉行一盛大之民警團成立大會、以示民警團之正式成立、頃當局因種種原因、已改變原來方針，命令界內各區聯保分別舉行成立儀式、中央區一六一·二·三·四四聯保奉命後、特於昨日上午十時假座福煦路九星大戲院、舉行四聯保之民警團成立大會、到各正副聯保長·保長·及甲長、暨全體民警團員來賓等五百餘人、秩序良好、情形頗爲熱烈、至正午十二時始吿散會、</p>
+<h3>蘇浙皖京滬　最後交換舊幣</h3>
+<p>整理舊幣委員會、奉令處理蘇浙皖三省、及南京·上海·兩特別市區內舊幣最後一次交換、已經訂定舊幣交換辦法要綱、飭由和地分會辦事處、及上海市指定之一百十一家中日商業銀行依照辦法要綱內規定、於昨（一日）起、開始實施交換、茲録該會總辦事處通告持有舊幣者申請兌換辦法如下、（一）收兌舊幣以「中央」「中國」「交通」三行券爲限、除印有上海·廈門·廣州·漢口之地名、及無地名者外、不得兌換、（輔幣券不在收兌之列）（二）兌換時間自三十一年十一月一日起、至三十日止、每日上午九時至十二時、下午一時至三時、自三十一年十二月一日起、全面禁止使用舊幣及携帶、更不得儲藏、兌換期滿、絕對不再延長、（三）兌換比率、按舊幣二元對中儲券一元、（四）兌換額在舊幣一千元以上者、付以現鈔存款、一千元以下者得付予現金、</p>
+<h3>二房東巧立名目　向三房客榨取</h3>
+<p>矇蔽當局收取等於小費之款項　強迫遷讓歁朦條規決嚴加制止</p>
+<p>英文泰晤士報云、據記者調查所悉、本市一般唯利是圖之二房東、力謀矇避市政當局所訂廢止小費之條規、而用新方法强迫三房客先繳一筆款項、此項實等於小費惟巧立另一名目耳、泰晤士報頃接霞飛路某三房客來函、內有公共租界與法租界之二房東、均要求三房客先付五六個月之房租等言、收取小費、固已經當局禁止、然從該來函中、顯見許多二房東之間、現有某種　密勾結、互相以極微之款出讓房屋、同時迫令該屋三房客遷出、另覔住所、三房客旣被迫遷出於另租他屋時、竟須先繳等於六個月房租之款項、然後始能遷入新居、而三房客所以被迫遷出者、因承租時曾訂約、規定房屋過戶時、三房客均須讓出也、聞二房東利用此法、以欺矇法律、剝削三房客者、已有數月、查工部局與法公董局當道前通過條規、禁收小租、减輕租戶之困難、頗非淺鮮、違章者已受重罰過云六星期來、每週必有二房東數人因聲音而受法院審理、處以罰鍰、二房東因此另行設法、竟預先索取房租、尙自信此舉並不違法、實則不然、市政當局於禁收小費後、並未停止其對租屋情勢之研究、刻正考慮其他方法、以制止二房東用非法手段向三房客榨取、內有一法、旨在禁絕二房客强索等於小費之各種款項、</p>
+<h3>法租界房屋　轉租熱照捐</h3>
+<p>法租界公董局爲按照上月二十三日法國駐滬總領事署第三三三號署令之規定、征收房屋轉租執照捐、凡有轉租房屋之各二房東、於本月一日至三十日間、携帶房捐收據、向該局捐務股領取此項署令第一條所稱之報吿單一式三份、其中一份、照章塡寫後、應由二房東懸在有轉租房屋之內部入口處、其他二份同樣塡具後、在限期內退還該局、繳納半年執照捐後、在報告單規定日期內、該局發給房屋轉租執照一紙、該局捐務股總辦事處、在馬浪路八十號、每日辦公時間爲上午九時至十二時、下午二時至五時、星期六下午星期日全日及例假日除外、至捐務股分辦事處有二處、一在西區辣斐德路一四八〇號、一在東區愛多亞路七號、每日辦公時間、均爲下午二時至五時、星期六星期日除外、執照之捐率規定如下、（甲）二房東所付之房租、不超過一百元者、每月每轉租一間、執照捐一元、（乙）二房東所付之房租在一百元以上至二百元、每月每轉租一間、執照捐二元、（丙）二房東所付之房租超過二百元者、每月每轉租一間、執照捐三元、凡二房東有報告遅延等情、應依房屋轉租章程第二十條之規定處罰、</p>
+<h3>煙暇齊談叢（一）</h3>
+<p>— 悔生輯</p>
+<p>清代禁煙拾遺</p>
+<p>鴉片流毒吾華，爲民族之大患，光精中葉，曾頒禁煙之詔，對官員允雷厲風行，時有荊州知州汪仲琪者，亦烟霞中人，不甘受調騐之辱，閉戶絕烟，强制自戒，經三日痛苦，居然跳出苦海，惜年逾知命，氣血已衰，因烟毒作崇，死於痢，清廷嘉其志，卹曲優厚，倍極哀榮戒煙者，當先除積毒，毒未清除，雖斷癮終不安枕也，現有「葉綠素」者，爲一種戒煙新藥，在松綠長春葉中，提出尅毒之天然成分，服之煙毒在二便內排出，極爲澈底，鴉片白面戒絕者甚多，且不感痛苦，不妨工作，南京路拋球塲天綸大樓萬國西藥公司經售每盒廿元、電話九四〇七八云</p>
+<h2>Page 5</h2>
+<h3>新「果報錄」探目被害經過　離棄糟糠另納寵妾惹禍根　水性楊花醋海興波殺親夫　蔣伯明向姊勒索未遂懷恨告密</h3>
+<p>前法捕房捉賭班探目南京人李連生、綽號麻皮連生、退職時、積資數十萬、寓居霞飛路九八七弄十三號、度其海上寓公生活、正圖優　歲月、享樂天年、距於十八年四月二十二日清晨在家被人亂斧砍死、時年僅四十八歲、被審迄今、三年有半、最近始由法捕房破案、查明李之被害、被其妻蔣氏主使、拘獲主犯李蔣氏（即蔣文珍）、與關係人錢冠華（蔣氏這姘夫）、蔣伯明（蔣氏之胞弟）、及張漢凱·張阿福等五名、帶案偵訊法辦、惟凶犯在逃、正在追緝、各情已誌報　、茲補紀李之</p>
+<p>被害因果　、緣李有髮妻、因李素性淫邪、生前拈花惹草、不以為奇、自結識蔣氏、自厭惡髮妻、出其卑鄙激烈手段、硬將髮妻劈離、視蔣氏為正室、并供養氏之老父與弱弟、焉知好景不常、李又隱瞞蔣氏在外結識青年女子某氏、別營金屋藏嬌、對蔣氏暨父弟等、時加白眼、終為蔣氏得悉李在外另納寵妾、乃</p>
+<p>醋海興波　與李爭吵、欲使與妾脫離、豈知爭吵無益、反使老父因是悶鬱攻死、瞻念前途、恐李再施離妻故技、拋棄本人、蔣氏至是不寒而慄、遂生害李佔產惡念、與姘夫錢冠華及弟蔣伯明商議之下、由錢蔣二人挽張漢凱轉託上海紡織廠小工頭張阿福覓得兇手蔣　等四人、先在靜安別墅會議</p>
+<p>殺李計畫　而半蔣氏平日睡眠近午始起、殺李之晨、提早起身佈置一切、開啟　後門及房門、等待兇手直　臥室將李砍斃、蔣氏寂不聲張、從容藏匿李之遺產後、始聲張報告捕房、蔣氏行為竟被瞞、警務人員之耳目、喪事畢、因李尚遺有老母弱北蔣氏　出一小部份、</p>
+<p>遺產分析　後一面出資酬謝參與殺李諸人與兇手、一面斥資在霞飛路八〇八號開設茂大洋行呢羬西服店、由姘夫錢冠華任經理、並仟胞弟蔣伯明為司賬、蔣氏至此、以老闆娘自居、且以重大之</p>
+<p>人命血案　竟獲倖免法綱、人鬼不知、逍遙度日、乃蔣伯明依仗乃姊資產、儼然以小　身份、平日出入歌舞場中、揮霍金錢、甚於糞土、因僓台高　、四　催逼無法彌補、向姊蔣氏強索六萬金、以圖償還債務、奈蔣氏拒絕不允、致伯明懷恨在心、竟將其姊　兇</p>
+<p>殺夫經過　向探員告密欲圖籍此向乃姊逼索金錢、詎知弄巧成拙、李氏被害三年有半之沉冤得以昭書、遂得破案、被捕房　李蔣氏　錢冠華·蔣伯明·張漢凱·張阿福諸人一併逮捕法辦、惟實施殺手李之正兇蔣姓等四人、漏網在逃、正由捕房　緝務獲歸案法辦、</p>
+<h3>紗花業領袖陳春華捐巡迴圖書車</h3>
+<p>上海兒童圖書館、於昨日下午四時特舉行紗花業領袖陳春華氏捐贈巡迴圖書車儀式、到有　曉初陳青年士一百餘人、行禮如　、首由主席胡祖陰、告開會宗旨、旋即致請捐贈人陳春華致詞、繼由顧問陳青士黃　頑、繼致詞、嗣由董事會代表張元甫致謝詞來賓陳　蔭孫翔仲浦緝庭等先後演說、語多勉勵、旋即由董事長胡祖蔭·顧問陳青士·引導全體來賓、齊赴館　舉行贈車授受式、首由捐贈人陳春華授信後、儀式於焉告成、攝影散　、</p>
+<h3>渡邊大佐視察疏散屍柩</h3>
+<p>上海特務機關渡邊大佐、視察本市各寄柩公所、暨疏散屍柩機關、由大佐親自隨　隨員一行、至國華運柩部詳詢一切、旋即往法租界寗波路四明公所察看寄柩情形、當由該公所經理章君　待經大佐垂詢寄存棺柩數目、並謂渠對於本市疏散屍柩、按中國向來習慣、入土為安、極宜妥為遣散回鄉、本人願盡力協助云云、</p>
+<h3>麥蘭區殉職民警黃仲達撫卹費暫定總額為一萬元</h3>
+<p>法租界麥蘭區五十聯保、於十月十日下午三時廿五分、舉行首次縱火演習、時有消防隊員黃仲達跌斃殉職、各界均頗為惋惜、已於前日由該區主持人假大陸殯儀館大殮、法警務處暨麥蘭警察署以及公共租界保甲指導部等均人員致祭、備級哀榮、惟共同君身後蕭條、撫卹問題、尚待各　詳密研究、該區議決暫定為一萬元、</p>
+<h3>靜安寺佛學講座</h3>
+<p>靜安寺主辦佛教學術星期講座、昨請名記者訥厂主講、一有與無的人生觀、闡述頗為精闢、對青年語多勗勉、對人生分為三個階段、略謂二十歲以前屬於無的人生觀、二十歲至五十歲之間進入有的人生觀、五十歲以後復歸於無的人生觀、惟不同於第一階段之無的人生觀、自首至尾、立　純正、莊諧並陳、聽者數百人、咸感無上興趣、熱烈歡迎、聞該講座下期敦請竹林法師主講「法相大意」、時間仍為星期日下午二時至四、</p>
+<h3>衡豐委託商行開幕</h3>
+<p>霞飛路三〇四號、衡豐白貨委託商行、係由金融界巨子徐昭明氏創辦、實力雄厚、於昨日上午九時正式開幕、舉凡古玩書畫、鐘表飾物、日用百貨、中西衣着、化妝用品、棉毛織品、罐頭食物等等、無不應有盡有、如委託代為購進、及長期經銷者亦均服務週到、予以優待、並以平準物價陳列、以供需求、昨日開幕、營業頗盛、日後發展概可預卜</p>
+<h3>各界雜訊</h3>
+<p>三馬路大新街口永和同記棉布號門市部、昨日開幕、應時各貨、原疋碼尺開剪、削價犧牲、生意興旺、盛況空前、聞該號經理洪士　君、為斯業賢俊、招待周到、購者咸稱滿意、</p>
+<p>沈仲如為滬上內歸科名醫、並高民益申莊於大沽路一六三號、昨日沈君與周蘊玉女士假新都飯店舉行結婚典禮、席間並有餘興、車水龍馬、盛極一時</p>
+<p>靜安寺路一一三五號第一西比利亞皮貨商店、昨起舉行各式皮呢大衣、真實大減價、帛貨賤賣、確實便宜、顧客爭　購買、營業盛況空前、該號並　有犧牲品大衣多件、取價尤廉、聞每人限購一件、以其普及、</p>
+<p>昨日本報發報時間六點五十分</p>
+<p>體育新聞</p>
+<h3>最後一分鐘聯誼二比一克混合　勢均力敵上半時各得一球　自警杯足球義賽圓滿結束</h3>
+<p>本市公共租界保甲指導委員會主辦之自警杯足球賽、昨日下午在膠州公園舉行、聯誼於最後一分鐘因混合隊雷米迪與維克泰之自相互撞、李義臣得乘機竄入、孫錦順一蹴、奠定勝局、結果二比一、上半時一比一、戰局始終、在緊張驚險之中、兩隊旗鼓鼓相當、勢均力敵、互有得失、相持不下、至憑幸運獲勝也、觀眾逾萬、盛況縣勝於保甲杯、</p>
+<p>各有千秋</p>
+<p>兩隊各以守勝、聯誼之不敗、宋靈聖當居首功、其第三後衛、踢來甚為得法、救球無數、蓋恩始終在其監視下、其次當推李天生、劉顯漢、混合久攻不入在此、李義臣孫錦順仍一貫作風、懶中取巧、其他平平而已、混合臾之義將守門之佳、出於意外、其高躍救球、備受稱賞、西田之中堅、小鬍子格林堡及兩衛、俱表演堅強之守衛、使聯誼前鋒、一籌莫展、惜乎前鋒蓋恩之中鋒、缺少兩翼之供球、每有到門無法入內之嘆、綜觀全局、尚無失為初見、良好比賽、</p>
+<p>惡鬥經過</p>
+<p>袁履　氏開球、半場休息、循例拍球、由潘三省氏以一萬二千元之　高價購得之、聯誼於開球後、傾師來犯、維克泰解圍、兩隊劇戰甚烈、形成拉鋸戰、聯誼陣　滿城風雨　宋靈聖化險為夷、雙方均小心翼翼、三十一分鐘時、聯誼時來運至、卓石金妙傳吳祺祥、小吳不負眾望全身撲入、混合守門麥尼蒂側出過遠、球已入綱、小吳用力過度、足部受傷離場　聯誼遂以一對〇佔先、好景不常、鄭英權禁區犯規、罰十二碼球、由V蘇若主踢入綱、上半時一比一、擇地再戰、聯誼江潮孟義良登場、局面益見緊張、混戰達十分鐘之久、卓石金高保正數度偷營、未進寸功、混合猛攻不已、其狀殊險、不意球向後漏、雷米迪維克泰趕回搶球、互撞倒地、李義臣乘機而入、輕傳孫錦順射入、相持之和局遂破、聯誼於此最後一分鐘、倖獲勝利、賽畢由保甲委員會副主席王伯元給獎閉幕、</p>
+<p>聯誼</p>
+<p>劉顯漢</p>
+<p>李天生　張林根</p>
+<p>孟義良下　瞿求福上　宋靈聖　鄭英權</p>
+<p>卓石金　李義臣　吳祺祥上　江　潮下　高保正</p>
+<p>混合</p>
+<p>麥尼蒂</p>
+<p>許爾　維克</p>
+<p>茲泰I　蓋　恩　W潘悅遜　　恩</p>
+<p>格林堡　西田　雷米迪維</p>
+<p>T雷祥迪　蘇若</p>
+<h2>Page 6</h2>
+<p>經濟專刊</p>
+<p>週間市語</p>
+<h3>文化股走勢研究　—華商股票走勢論之二—</h3>
+<p>上週文化股走勢激昂，不可一世。據中國經濟研究所編製主要華商股票每週種別指數觀之，本年六月爲百分時，上週十六種華股總指數爲一四七·五％，然世界書局竟達二三六·五％，中華書局亦達一六二·九%，商務雖僅一三八·八%，但較之前週，仍漲起六%。其他股價，則大致回疲白分之一二。</p>
+<p>查本年流通之文化業股，不下十五六種（包括紙廠，電影等）；主要者爲商務等出版業四家，藝林，永祥等印刷業三家，龍章等造紙業六家。而尤以商務，中華，世界之三家出版業，本爲全國出版界之三大權威，規模宏大，歷史久遠，過去對於文化上之貢獻，至深且鉅。</p>
+<p>戰事以還，由於發行上之困難；該三家營業，大爲緊縮；加以其工廠之或爲軍管理，或因內遷而分散，如商務又頻起勞資紛爭，故股價常在票面之下。去年以還，情勢稍變；一受書藉售價成本及囤藏而大貴，再受一般股票步漲之激盪，復因工廠資產本身增價之影響，又有世界增　之刺激，於是先後躍出票面，且節節倍增，似乎與他業同登景氣之域，此時此地之文化股有此成績，不可不謂一最富興味之事。</p>
+<p>本年六月初貨幣變動中，該三家股價，均一時受挫。不接踵而即磨去此種影響。但於七月初旬，市氣已達飽和狀態，其後連續疲衰；直至九月上旬，方見起色。自是迄今，漲勢日緊一日；尤以世界與中華爲更盛。推源其故，中華受增資影響，世界則有發還工廠之說。此係市氣堅挺之由來。</p>
+<p>據中國經濟硏究所編製每週華股指數，該三家股價之變遷，與一般走勢比較，近月來突飛孟　，誠屬最堪注意之事。</p>
+<p>依此而觀，世界增漲最力，發還說之魔力，着實驚人。該公司當局，大半在滬，內部組織健全，精神飽滿。去年十一月以來，連　增資二次；現有資本五百萬元；票面初爲二十五元，嗣改五十元，今又改爲二十五元，去秋補發二十七，八，九之三年股息五分，三十年度股息連紅利共一分五厘。</p>
+<p>漲勢次於世界者爲中華，則受增資影響。增資之說，外間早有所傳，上週內方見證實。該公司經二十五年底增資後，即由孔祥熙及徐可亭分任董事長及監察人，今則不詳。祗知現任董事中有十之三物故後尙未增補，故今次增資時，頗多以驚異目光觀之。該公司現有資本四百萬元，每股票間五十元，去年股息欠發。</p>
+<p>商務本執全國出版界之牛耳，近年情形，頗感困難。所受戰事影響，或爲三家中最重者。惟公司對股東利益，素極重視，而公司資望之隆重，對投資從又頗起作用。故在世界中華飛漲之秋，該公司股票仍不為人所忽視者蓋此。</p>
+<h3>市場動態</h3>
+<p>債市跌停板　上　債市，旣受銀根千緊影響，又受澈查債市消息之打擊，人心驚惶，莫知所可，大戶出籠，散戶追空，各債市價，長軀直瀉，連週好面，一掃而空。週六劇跌四元，且不得不因之停板。</p>
+<p>在漲暴跌，均在坐實其市塲之爲投機組織。投機在取締之列，澈查自非空穴來風。首由東報傳出，繼有各報轉載，於是風聲鶴唳，撳起軒然巨波</p>
+<p>至於今後趨勢，則視塲外人把他手中的牌坦還是撲而定</p>
+<p>文化股飛漲</p>
+<p>上週華股走勢，漲跌互見。大體言之；文化股如火如荼，猛漲不已；新藥股漲力尙有餘威，週末又有新亞藥廠增資計劃說之洩露，市情隨之轉緊。然其他各業股走勢，則已略呈後洪之象。</p>
+<p>據中國經濟研究所編製主要華股每週股別指數觀之：有如次表：（本年六月份全年平均爲〇〇分）</p>
+<p>（一）上表九月份指數，以本年六月全月之平均價爲百分時，則九月份各股價格指數如上。當時低於六月份水準者，僅國貨，中法藥房，商務，中華，四家；餘均升一·五%至一三二·六%</p>
+<p>（二）（三）兩項，即前週上週對六月份之比較。以前週對六月份之比較言：各股價均升〇·二%至一八二·一%，平均增四四·五%。以上週對六月份比較，內衣已降落一·二%，此外漲多跌少，故平均共增四七·五%。</p>
+<p>依此（二）（三）項互比時，則各股之升降，趨勢亦極明顯。上升者則僅世界，中華，商務，大生一廠，大中華火柴，餘均較前週爲後退。然此種跌多漲少之局面，其總指數仍較前爲升，此數種漲度之大，可以想見。</p>
+<p>邇來新藥股上漲之跡。已詳上期本刊「新藥股走勢研究」文。本期又載「文化股走勢硏究」文，上週內世界，中華，商務等市價之猛進，亦可窺見其一般。</p>
+<p>衆業公所訉</p>
+<p>衆業公所原爲外股之公開市塲。十二月八日起停業迄今，屢有再開說，但在取締投機聲中，對於該所之恢復，是否必要？本市關係當局，常在研究之中。昨日日文各報，載有日本興亞院當局對於此一問題之談話；大意略謂衆業公所之復業，原則上業已認可。該所目前在軍管理之下，今後將由軍委託興亞院華中連絡部，在該部充分監察與指導下，實行復業，至於交易物品煙類，則以　商股票，公債等經許可者爲限。實施時期　經紀商之範圍等問題，目前尙在各關係方面研究中云、</p>
+<p>紗布呢絨</p>
+<p>關係當局，對於呢絨，布疋之類，雖已先後實施零售限價制度，上週內且又進一步查禁不合標準之用尺，以杜流弊。不料紗布之批發市價，十月中旬起又開始回漲，至下旬而激漲益烈；至於上週，情勢尤為險惡；每天拔出竟有百元之鉅。報上有查　紗布投機商之消息，雖係舊案之審結，市氣竟不爲之動，毫無脣　齒寒，兔死狐悲之感，其狂熱竟有如是者。</p>
+<p>今次漲風，聞與原棉收買價有關。華中棉產之收買，分江北江南二區，江北收買價早經公佈，江南則至今未見正式決定。投機者及橫加猜測，紗布市氣於是爲之日緊。以上週末對週初比較，鳳由五千六百昇至五于八百二十元，馬由六千三百昇至六千四百七十元。如以十月一日之市價論，　不過五千零五十元，馬不過五千四百五十元；一個月經過五千，竟漲起千元左右，　此　冬　屆，將今人有何以　身之　。想關係當局，決不致忽視此　嚴重情態者也。</p>
+<h3>場外雜談</h3>
+<p>在東京舉行之東亞經濟</p>
+<p>懇談會於上月二十三日舉行金融調查委員會，檢討華中之通貨政策云。</p>
+<p>最近將有大批日製陶磁器運滬，日商飯野逸平等且組織陶磁器輸出振興株式會社，辦理此種輸華事宜云。</p>
+<p>針織棉製品，已經關係方面織織價格審查委員會、審定價格，亦將實施公定價格制度云。</p>
+<p>據昨日日文支那情報所載，十月二十八日左列各地二十支藍鳳紗之市價，有如次，（單位軍票圓）</p>
+<p>蘇州　一一七九圓　南京　一二四二圓</p>
+<p>並錫　一一八八圓　無湖　一六九八圓</p>
+<p>常州　一一四三圓　杭州　一三一五圓</p>
+<p>鎭江　一四四〇元　通州　一二一六圓</p>
+<p>揚州　一三八一圓　泰縣　一二一六圓</p>
+<p>據上項同日該報載有短評一文，略論本市實行九月一日物價停止令後，華中對華北預定移出之物　，因而暫停出口者，計有紗布一千二百萬元，如與暫停輸往蒙疆者合計，則約有二千萬圓之多。因而認為現行物價統制與物物交換制，有重加調整之必要云。</p>
+<p>華中對滿洲之第二次　易計劃，現已經雙方關係當局簽訂，除繼續以華中之棉制品，雜品，交換滿洲之大豆，豆油等原定物品外，刻又增加交換滿洲之木炭與柏油共約五百萬元云。</p>
+<p>日商華中蠶絲公司，定本月廿二日起，在浙東北區，開始收買秋　。查該公司預定本年之收買計劃，春　八萬担，秋　七千担云。</p>
+<h2>Page 7</h2>
+<p>自由談</p>
+<p>社會</p>
+<h3>慎防魚止混珠</h3>
+<p>— 吳濤</p>
+<p>日前報載，有一位服飾都麗的婦女，屢次至銀號佯看首飾，魚目混珠，把贋品換得眞貨而去。最後在重施故技的時候，被明眼的店員識破被捕。聽說這位貴婦，家境並不淸寒，其所以出此者，全因沉湎賭埔，虧負過鉅，不得不以此彌補其損失。結果是聲譽掃地，無顏見人。</p>
+<p>施行魚目混珠的技倆，當然不是一件容易的事，需要有相當的技巧，乘人不備之際，施以閃電式的手法的。但是在受害的人方面，總不免要想到悲憤與痛恨的。所以魚目混珠的手段雖是巧妙，但是於社會和別人有害而無益，於個人終究也不會有多大的好處，所以是不値一試的。</p>
+<p>但是不幸的是，在社會的各階層中，多少都有此魚目混珠之輩在跋扈着。有些甚至是知識階級的入士，和高等社會的仕女，他們利用雍容華貴的外貌，去施行欺詐撞騙的技倆，以低劣的能力，輕微的勞働，去取得豐厚的酬勞。這種尸位素餐之輩，對社會也是魚目混珠之流，往往是一種有害無益的動物，我們也應該愼加防範的。</p>
+<p>科學</p>
+<h3>新玻璃</h3>
+<p>— 史東</p>
+<p>透明的玻璃是人類的恩物之一，它唯一的缺點是容易破碎。因此科學家們努力設法發現一種新式的不碎玻璃，在這方面現在已經獲得異常使人滿意的結果。</p>
+<p>汽車遮風屛的所　安全玻璃是盡人皆知的。這是偶然在一九〇三年發見的。有一個法國化學家把一隻玻璃瓶落在地上，奇怪的是它只有裂隙而沒有破碎。龜裂的各部分是由蒸發之溶液留在瓶內的一層賽璐珞的薄膜黏牢着。</p>
+<p>把這薄膜夾在二層玻璃之間時，那安全玻璃就產生出來了。這發明物使無數人免於受傷或甚至於死亡。</p>
+<p>最近發明的新式安全玻璃是由一種可塑造的樹脂製成。使玻璃不但可以免於爆碎或裂開，並且又可以防彈起見，他們使用着三五層中間夾着樹脂的玻璃。</p>
+<p>另一種安全玻璃是用極細密的金屬絲襯在裏面的一種玻璃。這常應用於珍珠店鋪的廚窗。它不但可防爆裂，同時又可以防禦擊碎玻璃搶刧的匪徒</p>
+<p>又一種是只有八分之一寸厚的玻璃，中間夾着多一價乙烯基樹階。它是保證絕對不碎的，有一個職業棒球投手會從三十五尺的距離對之投一隻硬球，可是却不能把它擊碎。在熱度與壓力之下，這可塑造的薄膜變成玻璃之間的永久黏固物。這種新式玻璃已大量應用於美國的汽車。</p>
+<p>此外還有一種特殊的玻璃。這並不用「夾肉麵包」的原則，而是利用所謂增强法。它可以防爆裂，並且對於寒熱具有極大的抵抗力。</p>
+<p>除了能够自由伸屈以外，它是異常堅固，二端架在支持物上，一張玻璃上面可以載四個成人。</p>
+<p>所謂增强法就是把玻璃燒到鎔解點，然後突然用一陣冷空氣把它的兩面冷却。在表面所受的壓力之下，內部的冷却較爲緩慢，結果形成堅强無比的玻璃。</p>
+<p>修養</p>
+<h3>徵笑之花</h3>
+<p>— 黃文錦</p>
+<p>曾經有人絕望地喊道：「痛苦，痛苦，唯痛苦纔是有機人體的本質，唯痛苦纔是人類所有的生活。</p>
+<p>是的，這世界是個缺陷的世界，不痛苦反是偶然的事。不過，現實雖然痛苦，而現實的痛苦却是幸福的根源。</p>
+<p>在善與惡的消長中，我們的痛苦是完全孕發於「矛盾」的。一方面，良心　策我們去追求眞理，去實現正義；ｇ　方面，又禁不住圖求生存的脅　被物質的環境所征服。在這種絕不和諧的矛盾下，誰也免不了長飲痛苦的血酒；矛盾無法解除，痛苦就不能擺脫。祟高的理想之樓殿，可以任它給罡風姿意地去摧殘，但是，我們一天活着，便一天不能不邁展我們的步履、向眞理走去。</p>
+<p>以血淚灌溉生活的蓓蕾，以歡笑培養幸福的甘菓；欲探求　碩的前途，暫時的忍受該是我們的責任。在沙漠裏，要如駱駝般去追尋水草；在絕望中，要如勇士般去披開荊棘。那末，將來的微笑之花，已經爲我們怒放了，讓我們期待在痛苦中，在希望中。</p>
+<p>話匣</p>
+<h3>貨物的媒介人</h3>
+<p>— 剛之</p>
+<p>（二）生意難做</p>
+<p>跑街以大廠家較爲易做，因爲商店的貨物，須賴廠方的供給。廠方的跑家，因此亦受人的奉承。名爲跑街，亦可不必天天勞駕去兜徠。如有交易，客家自會來尋接洽。有時候，廠方開貨，「盤子」較市面上的現貨價錢爲貴，但跑街只要講幾句話，客家亦會「賣面情」接納的。這種跑街，堪說是跑街中的騙子。至於普通的跑街，除非有特殊的「手面」，是很吃的。上客家兜貨，進貨先生難得來理踩你，甚而將駕的都有；若有貨物有意要與你買，價錢一切都講定了，但猶恐是次貨，是翻戲，要你先送到貨而後付銀。商界的規例，大都是先銀後貨，於是生意就此不成交，徒勞了一雙脚。</p>
+<p>掮客生意尤其雖、但　戰後，由於游資的充塞，有產者瘋狂囤積，掮客隨之大肆活躍。此輩有錢囤貨者，都屬外行，不管是「死貨」，「活貨」。生意容易，賺錢很快，於是頗多剛滿師的小夥　，甚至才由學校畢業的學生，祇知其貨名，未見過其貨的。居然也以掮客自任，經手買賣，從中取佣了。他們聚合談議生意的地方，大都是在茶室茶館和其他公共塲所，但都不是直接的居間賣買。我托於你，你再托於他，他再轉交於另一人……幾經轉手，一筆交易，有十多人經手的多得很。最有興味的，東托西交之後，一個貨樣，竟會兜徠到原賣者的手裏去，這可知其內情的複雜了。貨物多經他們轉一次手，價錢亦增高一次，因爲他們都要加佣的緣故。到後來，修定原價是五六百元的東西，給他們一加再加，增到七八百元亦有。這種生意，極爲難做，吃「空心湯糰」的居多。</p>
+<p>研究</p>
+<h3>關於談話</h3>
+<p>— 歐麗</p>
+<p>在普通談話中，八百五十個字已經够用了。</p>
+<p>據生理學家說，我們談話的時候，肌肉的動作與運用，最爲微妙。</p>
+<p>普通談話的人，每分鐘的講九十個字：講得快的人每分鐘往往說到一百五十個字。</p>
+<p>有人到街頭，運動塲，敎堂，戲院，和理髮室分析五百次談話的結果，發覺男人談話的主要題目是關於生意的事，女人談得最多的是關於男人的事。男人談話的次要題目是運動和娛樂；女人談話的次要題目是服裝。男人談話的第三個主題是別個男人的事；女人談話的第三個主題是別個女人的事。——譯自「每人的生活雜誌」</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>一〇　飛來峯</p>
+<p>葉二太太不能爲他們　難解紛，只能付一笑道：「等過了嫂子的周年，過了新年，你們再細細的想上一想，現在別談陳小姐了。我說，葉家的新婦，不是陳小姐，便是卞小姐，反正是你們兩個人裏去挑。」維城也跟着笑道：「嬸娘說的是。」葉二太太道：「維城，你到外邊來吧。」維城跟了葉二太太到外邊，葉二太太和他商量，葉大太太的周年紀念，要不要做水陸道塲，倘然要大舉，那就非得舉債不可：倘然只是來一次家奠，邀幾家親戚來吃飯，那就不需要借什麼錢。維城的意思，是以節儉爲是，做水陸道塲，鐃鈸叮噹，煩惱得人頭昏腦脹，於死者無益，於生者也算不了是盡了孝心；逢到周年紀念，誠意倒是第一，形式上的熱鬧，是不需要的。維城又料到母親的逝世紀念日，是陰歷十二月二十八日，這個日子，親友家裏都有事，不見得能分身了來。他這麼一說，葉二太太決定不再有所舉動。</p>
+<p>又是一天，翠珍也在屈指算着葉大太太的一周年還有幾天。她去暗暗的叮囑阿興，要阿興上花港問紅旗張的船那一天上上海去。阿興回來說，就是今天晚上開船。翠珍忽的在房裏收拾出一個包裹來。喜鵲看見了，問道：「翠珍小姐，你要上那裏去嗎？」翠珍道：「我想到上海去，一兩天便回來的。」喜鵲覺得這也是偭新奇消息，忙去吿訴葉二太太，葉一太太還不信喜鵲的話。信雖然不信，可不能不來問一問翠珍。翠珍正把一雙棉鞋捺到包裹裏去，回身看見葉二太太，忙笑道；一二伯母，我想往上海去請陳小姐來，一天便回來。如果陳小姐還是和從前一樣的脾氣，聽見大伯母一周年，她沒有個不來的。這幾天，陳小姐學堂裏是放學了。」葉二太太笑她事前一些也不和人商量；又憐她決心要把葉家新婦這一席，國芳，便擺一擺子說：「那不必。」　（二一八）</p>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.11.02</h1>
+<h3>British Forces Attack Again: Fierce Fighting Resumes in North Africa; Italian Forces Reinforce Tripoli Port; Prince Richwo's Sons Killed in Action</h3>
+<p>London, 1st - Havas: Official sources announced that the British Eighth Army on the Egyptian front launched a fierce attack on the Axis forces' positions on the previous day under the cover of intense artillery fire. They resumed their attack again yesterday morning.</p>
+<p>Rome, 1st - Havas: The Italian High Command has just released a battle report stating that on the northern sector of the Egyptian front, British forces launched another offensive yesterday morning, immediately leading to fierce fighting. British armored vehicle units also participated in the battle. However, after a major counter-attack by Axis forces, the British were contained, with many British tanks destroyed and 200 soldiers captured. Furthermore, German and Italian air forces continuously bombed enemy concentration points and mechanized units, inflicting heavy damage. In air combat, German aircraft shot down seven enemy planes, with one additional plane forced to land behind Axis lines, and its pilot captured.</p>
+<p>Berlin, 1st - Transocean: Berlin estimates that the Allied forces on the Egyptian front number 100,000, including approximately 80,000 British and Scottish troops. There are twelve different languages spoken within the Allied forces. The Allied offensive is spearheaded by Australian, New Zealand, South African, and French Jewish troops.</p>
+<p>Rome, 1st - Havas: Official sources announced that Prince Richwo's sons, Mascotti and Constanti, were killed in action on the Egyptian front on the 24th and 26th of last month, respectively.</p>
+<p>Rome, 1st - Havas: Official sources have just announced that Italian aircraft and anti-aircraft units shot down a total of 122 enemy planes last week, including six over Italy, 89 on the Egyptian front, and 16 over the Mediterranean Sea. Additionally, ten planes were shot down by anti-aircraft units.</p>
+<p>Bern, 31st - Havas: According to London news reported by various newspapers here, a large number of fresh Italian troops have recently arrived in the port of Tripoli in North Africa for reinforcement. However, instead of being transferred eastward to the Egyptian front, these reinforcements are heading northwest towards the coast facing French Tunisia. Furthermore, according to the Neue Zürcher Zeitung, it is widely rumored that British forces have repeatedly attempted to land at Marsa Matruh on the Egyptian front, but London has yet to confirm this. The battle report released today by the British High Command in Cairo only stated that the Axis forces launched a counter-attack on British positions on the night of the 29th of this month, which was repelled by the Eighth Army. At the same time, British forces are continuously attacking Axis outposts.</p>
+<p>Berlin, 1st - Transocean: Military sources stated last night that after launching a large-scale offensive on the North African front, British forces have now entered the second week, but the German-Italian armored forces led by General Rommel are holding the positions from the Qattara Depression to the Mediterranean Sea, without any signs of wavering. The British Eighth Army resumed the offensive that began on the 24th of last month this morning. The outcome is currently unknown. German aircraft engaged in combat with enemy aircraft, shooting down five enemy planes without any losses on our side. No American fighters or bombers were seen yesterday.</p>
+<h3>New Japanese Ambassador to Italy, Hidaka Shinrokuro, Bids Farewell in Nanjing</h3>
+<p>To Return to Japan Before Taking Up New Post in Italy</p>
+<p>Nanjing, 31st - Central News Agency: Hidaka Shinrokuro, the former Japanese Minister to China, who has been appointed as the Ambassador to Italy, arrived in Nanjing at 10:20 a.m. on the 31st to bid farewell to various parties, exchanging farewells with Ambassador Shigemitsu and embassy staff. (Another dispatch) Hidaka Shinrokuro, the Minister of the Japanese Embassy in Italy, has been promoted to Ambassador to Italy. Horiuchi has been appointed to fill the vacancy as Minister. It is understood that Mr. Hidaka and his wife arrived in Nanjing by train from Shanghai at 1:20 p.m. on the afternoon of the 30th to handle various handover procedures. He will stay in Nanjing for a short period. After completing the procedures, he plans to bid farewell to various parties before returning to Japan to report everything and take up his new post in Italy.</p>
+<h3>Japanese Aircraft Attack India Three Times</h3>
+<p>Burma, 31st - Domei: The Japanese Army Air Force launched a large-scale attack on the British and American air forces in India from the 25th. After three fierce attacks, a total of 53 enemy planes were shot down. The remaining enemy planes fled inland. Therefore, after the 28th, there were no longer any enemy planes stationed at the enemy bases on the India-Burma border.</p>
+<h3>Greater East Asia War Exposition Inaugurated Yesterday in Nanjing, with Chairman Wang Personally Attending</h3>
+<p>Nanjing, 1st - Central News Agency: The Greater East Asia War Exposition was inaugurated at 9:00 a.m. on the 1st at the Cuizhou venue of the Exposition in Xuanwu Lake. At 9:00 a.m. sharp, a purification ceremony was held at the right side of the venue. Committee members and councilors of the Exposition, including Lin Baisheng, Zhou Xuechang, Deng Zuyu, Guo Xiufeng, News Department Director Iwasaki, and Special Agency Chief Harada, participated in the purification ceremony, seated in two rows. Subsequently, News Department Director Iwasaki delivered a speech, first expressing gratitude to the preparatory personnel for their efforts, and then elaborating on the significance of the Greater East Asia War and the holding of the Exposition. After the purification ceremony, Propaganda Department Director Lin and Special Agency Chief Harada personally raised the Chinese and Japanese national flags, and the Greater East Asia War Exposition balloons also slowly ascended. Then, a joint toast was made to express congratulations. This grand inauguration ceremony was thus completed. At 10:00 a.m. sharp, Chairman Wang, dressed in a dark gray Zhongshan suit, gracefully arrived. All members of the Greater East Asia Exposition stood at the entrance of the venue to respectfully welcome him. He first went to the Yingzi Hall for a brief rest. At the same time, General Hata of the Japanese General Headquarters, Japanese Ambassador Shigemitsu, the heads and deputy heads of various ministries of the government, Jiang Kanghu, Zhou Fohai, Zhu Qinglai, and the ambassadors of the Axis powers to China had already arrived. Around 10:00 a.m., the Chairman, accompanied by committee members and Chinese and foreign officials, walked out of the Yingzi Hall and visited the exhibition grounds. At this time, naval vessels on the lake fired three salutes to celebrate and welcome him. The Chairman visited the Greater East Asia War Museum, the Co-prosperity Museum, and the Theater in turn, standing for a long time at each place, carefully observing. After the Chairman toured the venue, he was respectfully escorted by the heads of various ministries, officials, and committee members to the entrance of the venue, where he boarded his car and returned to his official residence. General Hata and Ambassador Shigemitsu also returned to their residences afterward. At 11:30 a.m., the Exposition hosted a luncheon for Chinese and Japanese heads of various organizations and Axis diplomats, with over 1,000 Chinese and foreign officials attending. At 2:00 p.m., the general public was allowed to enter and visit, thus commencing the general admission.</p>
+<h3>US Admits Loss of Aircraft Carrier</h3>
+<p>Buenos Aires, 1st - Domei: The US Navy Department in Washington acknowledged yesterday that the US lost an aircraft carrier during the naval battle near the Santa Cruz Islands (260 miles southeast of Guadalcanal) in the South Pacific on October 26. This ship is the first aircraft carrier that the United States has admitted to losing in the South Pacific naval battles. The second one acknowledged by the US was lost in the Solomon Islands area. Tokyo announced last week that the Japanese side sank four US aircraft carriers in the Battle of the Santa Cruz Islands. The Washington Gazette did not disclose the name of the ship but stated that the US also lost the destroyer "Porter" in the battle. The Gazette also stated that the aircraft carrier sank last Monday after being attacked twice by Japanese bombers and torpedo planes. The first attack occurred in the morning, and the carrier sustained heavy damage and was towed by another ship for rescue. The second attack occurred in the afternoon, and the hull above the waterline was damaged again, causing it to begin to list. The crew immediately abandoned ship, and it sank shortly thereafter. There were slight casualties among the crew. Upon receiving the report, the next of kin of the deceased sailors were immediately notified by telegram.</p>
+<p>Lisbon, 1st - Transocean: According to a report in the New York Times from Mexico City, the Mexican government has decided to send troops overseas. The country's Ministry of National Defense announced that it will recruit 1,813,858 young men into the army next year, with 10,000 to be recruited in January.</p>
+<p>Saigon, 1st - Transocean: A commentary published yesterday in Chongqing's Ta Kung Pao stated that Chongqing is anxiously concerned about the situation in the South Pacific. If the United States makes the same strategic errors, the South Pacific war may result in a "second Pearl Harbor incident." The newspaper called for the Allies to launch a counter-offensive in Burma to protect the Solomon Islands. "Otherwise, we will be defeated one by one."</p>
+<h3>Danish King's Condition Improving</h3>
+<p>Copenhagen, 1st - Havas: Official sources have just announced that King Christian is continuing to improve, gradually regaining strength and showing a better appetite. He had a peaceful night, and his temperature and pulse returned to normal this morning.</p>
+<h2>Page 3</h2>
+<h3>Japanese Greater East Asia Ministry Established Yesterday, Aoki Kazuo Appointed as First Minister</h3>
+<p>Tokyo, 1st - Domei: The inauguration ceremony of the Japanese Greater East Asia Ministry was held solemnly at the Prime Minister's official residence at 10:00 a.m. on the 1st. A thousand ministry staff members attended. After Minister of Greater East Asia Aoki delivered a speech, Vice-Minister Yamamoto gave a response. The ceremony concluded at 11:30 a.m. Tokyo, 1st - Domei: It has been decided that Minister of State Aoki Kazuo will be appointed as the first Minister of the Japanese Greater East Asia Ministry. A formal investiture ceremony was held in the Phoenix Room of the Imperial Palace at 10:00 a.m. today. The Japanese Information Bureau also announced at 10:00 a.m. that Aoki Kazuo, Minister of State, Third Rank, Second Class, has been specially appointed as Minister of the Greater East Asia Ministry and that the investiture ceremony was held at 10:00 a.m. today. Furthermore, the key personnel appointments of the Greater East Asia Ministry have also been announced: Yamamoto Kumaichi, Vice-Minister of Foreign Affairs, will be appointed as Vice-Minister of the Greater East Asia Ministry; Takeuchi Shimpei, Vice-Director of the Office for Manchurian Affairs, will be appointed as Director of the General Affairs Bureau of the Greater East Asia Ministry; Imakichi Toshio, Director of the Northern Development Bureau of the Ministry of Colonial Affairs, will be appointed as Director of the Manchurian Affairs Bureau of the Greater East Asia Ministry; Usami Yoshihiko, Director of the Economic Department of the Asia Development Board, will be appointed as Director of the China Affairs Bureau of the Greater East Asia Ministry; Mizuno Itaro, Director of the South Seas Bureau of the Ministry of Colonial Affairs, will be appointed as Director of the Southern Affairs Bureau of the Greater East Asia Ministry; Matsumura Tai, Director of the Cultural Department of the Asia Development Board; and Miura Shichiro, Director of the Technical Department of the Asia Development Board (all of the First Rank). Mori Shigeo, Director of the Southern Development Bureau of the Ministry of Colonial Affairs; Nakano Katsuji; and Okazaki Kaheita (all of the Second Rank) will be appointed as Councilors of the Greater East Asia Ministry. Furthermore, Sugihara Arata, Secretary of the Greater East Asia Ministry, will also serve concurrently as Councilor of the Greater East Asia Ministry (Second Rank).</p>
+<p>Brief Biographies of Vice-Minister and Bureau Directors</p>
+<p>Tokyo, 1st - Domei: Yamamoto Kumaichi, the first Vice-Minister of the Japanese Greater East Asia Ministry, is 54 years old. After graduating from the East Asia Common Culture Academy, he served in the Ministry of Foreign Affairs for a long time in China, and is the only China expert in the Ministry of Foreign Affairs. In November 1939, he joined the Commerce Bureau and was promoted to Director of the Commerce Bureau the following year. In August of the following year, he was transferred to Director of the East Asia Bureau. When Foreign Minister Togo resigned on September 1 of this year and Prime Minister Tojo concurrently held the position of Foreign Minister, he also served as Acting Vice-Minister of Foreign Affairs, handling administrative simplification and various liaison affairs for the establishment of the Greater East Asia Ministry. When Tani Masayuki took office as Foreign Minister, he was formally promoted to Vice-Minister of Foreign Affairs and contributed greatly to the establishment of the Greater East Asia Ministry. This time, he has been transferred to the Vice-Minister of the Ministry and will surely be able to fulfill his duties happily. "Director of the General Affairs Bureau" Takeuchi Shimpei is 49 years old and graduated from the Faculty of Law of Tokyo Imperial University. He served as Director of the Customs Department of the Tokyo Tax Supervision Bureau, Chief of the Special Investigation Section of the Taxation Bureau, Chief of the Taxation Section, Chief of the Special Bank Section, and Secretary of the Asia Development Board. "Director of the Manchurian Affairs Bureau, Imakichi Toshio, is 45 years old. After graduating from Tokyo Imperial University, he served in the Ministry of Home Affairs. He was appointed Director of the Northern Development Bureau two years ago and remains so today. "Director of the China Affairs Bureau" Usami Yoshihiko is 50 years old. He graduated from Tokyo Imperial Law School in 1918 and joined the Ministry of Foreign Affairs in 1920, serving in Geneva. He served as Secretary of the Embassy in France, Director of the Second Section of the Consulate General in Andong, Consul General in Fuzhou, Counselor of the Embassy, and Deputy Director of the Japanese Secretariat of International Conferences. He served as Counselor of the Embassy in Germany in 1938 and as Minister to Egypt in January 1940. In October of the same year, he was appointed Director of the Economic Department of the Asia Development Board until now. "Director of the Southern Affairs Bureau, Mizuno Itaro, is 47 years old. After graduating from the Faculty of Law of Tokyo Imperial University, he joined the Ministry of Foreign Affairs' Treaty Bureau. He also went to Belgium and France and served as Director of the First Section of the Investigation Department and Director of the First Section of the Commerce Bureau. In 1940, he was appointed Director of the Commerce Bureau. He also served as a member of the Japan-Manchukuo-Soviet Permanent Conciliation Committee. In May of this year, he was appointed Director of the South Seas Bureau. In June, he accompanied the special envoy Hirota on his visit to Thailand.</p>
+<p>List of Bureau and Section Chiefs Announced</p>
+<p>Tokyo, 1st - Domei: The list of Bureau and Section Chiefs of the Greater East Asia Ministry is as follows: "General Affairs Bureau": Chief of the General Affairs Section Sugihara Arata, Chief of the Economic Section Aichi Kiichi, Chief of the Investigation Section Kansawami Tomonosuke, Chief of the Training Section Shimazu Hisahiro, Chief of the Examination Section Yamada Hisao. "Manchurian Affairs Bureau": Chief of the General Affairs Section Matsuo Shu, Chief of the Industrial Production Section Yoshida Haruji, Chief of the Development Section Shiotani Suekichi, Chief of the Reclamation Section Ueno Suejiro, Chief of the Youth Section Osawa Yuichi. "China Affairs Bureau": Chief of the General Affairs Section Dowaki Sakio, Chief of the Administrative Section Nemichi Hirokichi, Chief of the Cultural Section Fujii Shigeo, Chief of the Financial Section Akimoto Juncho, Chief of the Agriculture and Forestry Section Abiko Fujikichi, Chief of the Commerce and Industry Section Hasegawa Teruhiko, Chief of the Transportation Section Isono Naotaka. "Southern Affairs Bureau": Chief of the Political Affairs Section Hagiwara Toru, Chief of the Supervision Section Takahashi Shintaro, Chief of the Cultural Section Togo Takezo, Chief of the Financial Section Ishida Yoshio, Chief of the Industrial Section Sasaki Kingoro, Chief of the Transportation Section Okada Shuichi.</p>
+<p>Four Ministers to China Appointed</p>
+<p>Tokyo, 1st - Domei: Today's official gazette announced the formal appointment of four special plenipotentiary ministers in China: Horiuchi Toshishiro in Nanjing, Tajiri Aiyoshi in Shanghai, Shiozawa Kiyoshi in Beijing, and Iwasaki Tamio in Zhangjiakou.</p>
+<p>Tasks Assigned to the Ministry and Various Bureaus</p>
+<p>Tokyo, 1st - Domei: The Greater East Asia Ministry has been established. The tasks of each bureau and section are summarized as follows: (1) The Minister's Secretariat will establish four sections: Documents, Personnel, Accounting, and Communications. It will also establish a deliberation room system, which will be tasked with deliberating on draft proposals under the Minister's orders. (2) The General Affairs Bureau will establish five sections: General Affairs, Economy, Investigation, Training, and Examination. The General Affairs Section, in close contact with the Secretariat's deliberation room, will be responsible for the planning of important policies, draft proposals, information, propaganda, and investigation. It will also be responsible for matters related to the newly established Liaison Committee. The Economic Section will be responsible for the comprehensive investigation of government offices in various parts of the Greater East Asia region and companies such as the South Manchuria Railway, the North China Development Company, the Central China Promotion Company, and the Southern Development Fund. It will also be responsible for the economy, industry, transportation, finance, materials, labor, and other mobilization matters throughout the Greater East Asia region. The Training Section will plan and implement the enlightenment and training of Japanese people and the placement of personnel in various regions. (3) The Manchurian Affairs Bureau will establish five sections: General Affairs, Industrial Production, Development, Reclamation, and Youth. The General Affairs Section will supervise the Kanto Leased Territory, the Industrial Production Section will supervise the South Manchuria Railway, and the Development Section will supervise the Manchuria Colonization Company. Social service-related activities will be handled by the Reclamation Section, and youth and women's volunteer army-related activities will be handled by the Youth Section. (4) The China Affairs Bureau will establish seven sections: General Affairs, Administration, Culture, Finance, Agriculture and Forestry, Commerce and Industry, and Transportation. The Administrative Section will be responsible for the affairs of Japanese public organizations, the Cultural Section will be responsible for cooperation in Chinese education, and the Commerce and Industry Section will supervise the affairs of the North China Development Company and the Central China Promotion Company. (5) The Southern Affairs Bureau will establish six sections: Political Affairs, Supervision, Culture, Finance, Industry, and Transportation.</p>
+<p>Minister Aoki Issues Statement</p>
+<p>Tokyo, 1st - Domei: Aoki Kazuo, the first Minister of the Greater East Asia Ministry, attended the inauguration ceremony of the Greater East Asia Ministry at the Prime Minister's official residence after the investiture ceremony. In a statement issued before the ceremony began, he said: "The Greater East Asia Ministry was established today, and I am honored to be appointed as Minister. The purpose of establishing the Greater East Asia Ministry has been clearly stated by the government. This Greater East Asia War has the meaning of both war and construction. Therefore, the construction of Greater East Asia and the completion of the war are inseparable. In this construction war, we should manifest the founding spirit of Hakkō ichiu in East Asia, so that all countries and peoples in the Greater East Asia Co-prosperity Sphere can find their place. We will build a new order in East Asia based on justice. However, in order to achieve this goal, it is absolutely necessary to complete the victory and win the war. Therefore, we must rapidly increase and expand the Empire's war power. The government, therefore, in order to ensure that the planning of the Greater East Asia construction and the implementation of political affairs can closely cooperate with the High Command, must have a unified and comprehensive organization that can operate quickly and surely. The establishment of the Greater East Asia Ministry is in response to this urgent need. I deeply feel the importance of this mission and am determined to devote all my efforts to serving the public sincerely. Thanks to the loyalty and bravery of the soldiers of the Imperial Army, the Greater East Asia War has achieved brilliant results and established the foundation for victory. However, the Greater East Asia War and the construction of Greater East Asia are unprecedented undertakings. Therefore, it is necessary to strengthen cooperation with allied nations, and the people must unite firmly, with a spirit of perseverance, to devote all their efforts to their respective tasks in order to unleash the greatest power. Therefore, I will work closely with the countries of the Co-prosperity Sphere, such as China, Manchukuo, Thailand, and Vietnam, in accordance with the treaties concluded. At the same time, I sincerely hope that all allied nations will understand the true meaning of this Greater East Asia War and cooperate more in the construction of the new order in East Asia."</p>
+<h3>Japanese Ministry of Foreign Affairs Reorganizes, Establishes Four Bureaus: Political Affairs, Commerce, etc.</h3>
+<p>Tokyo, 1st - Central News Agency: Due to the establishment of the Greater East Asia Ministry, the Ministry of Foreign Affairs has recently reorganized its structure, establishing four bureaus: Political Affairs, Commerce, Treaties, and Investigation. The tasks of each bureau are: (1) "Political Affairs Bureau": Handles the diplomatic affairs of the former Europe-Asia and Americas Bureaus and six sections, and the Greater East Asia affairs that are not transferred to the Greater East Asia Ministry. Seven sections are newly established. The tasks of each section are: Section 1 (General Affairs), Section 2 (Greater East Asia), Section 3 (Soviet Union), Section 4 (Europe except Britain and the Soviet Union), Section 5 (British Mainland and Dominions), Section 6 (North America), and Section 7 (South America). Among them, the Chief of the First Section, who is directly assisting the Director in charge of planning all diplomatic policies and comprehensive investigations, and the Chief of the Second Section, who is responsible for liaison affairs with the Greater East Asia Ministry, bear the heaviest responsibility. Moreover, this newly established Political Affairs Bureau is responsible not only for the affairs of the East Asia region, but also for the promotion of all diplomatic matters worldwide, and is therefore the central department of the Ministry of Foreign Affairs. (2) "Commerce Bureau": Some of the political affairs within the bureau have been transferred to the Greater East Asia Ministry, so the organization has been reduced in size. It has now been reduced from six sections to three sections. (3) "Treaties Bureau": The organization has also been reduced in size. The previous three sections have been reduced to two sections. (4) "Investigation Bureau": Is the investigation agency of the Ministry of Foreign Affairs. In the past, the Investigation Department had six sections, managing the collection and investigation of materials and information. To adapt to the simplification of administration, the new organization has reduced the six sections to four sections and has elevated the department to a bureau to enrich its content. The newly established Investigation Bureau has established a system of commissioned investigators for diplomatic agencies, and it has been decided that the new Investigation Bureau, Section 4, will manage and closely liaise with the Information Bureau and the First Section of the Political Affairs Bureau, and will be responsible for information and propaganda.</p>
+<p>Tokyo, 1st - Central News Agency: The newly appointed Vice-Minister and Bureau Directors of the Japanese Ministry of Foreign Affairs have been announced as follows: Toshikazu Shigemitsu, Director of the Treaty Bureau, is appointed as Vice-Minister of Foreign Affairs; Shinichi Kamimura, Counselor of the Embassy, is appointed as Director of the Political Affairs Bureau; Yoshiro Ando, Director of the Europe-Asia Bureau, is appointed as Director of the Treaty Bureau; Yoshitaro Yamada, First Secretary of the Embassy, is appointed as Director of the Investigation Bureau; Nobuyuki Shibuzawa, Consul General and First Secretary of the Embassy, is appointed as Director of the Commerce Bureau.</p>
+<p>Tokyo, 1st - Domei: According to the Information Bureau's announcement this morning, Toshikazu Shigemitsu has been appointed as Vice-Minister of Foreign Affairs, and Yamamoto Kumaichi, the former Vice-Minister of Foreign Affairs, has been appointed as Vice-Minister of the newly established Greater East Asia Ministry.</p>
+<h3>Intense German-Soviet Air Battles in Southern Regions of the Eastern Front; Underwater Bridges in the Volga River; Soviet Forces Continue to Reinforce Stalingrad</h3>
+<p>Berlin, 1st - Domei: Yesterday's fighting in southern Russia was characterized by intense air battles. General attention shifted from the Stalingrad area to the Nalchik area. Last night's news was that German-Romanian forces advancing from the Terek River annihilated two Soviet divisions. Today's reports indicate that German forces broke through the heavily defended Soviet defenses, but officials did not specify how far the German forces had advanced. Intense air battles occurred in this area and other areas in southern Russia. German forces shot down 28 Soviet planes and destroyed 150 trucks full of troops and war materiel. The most intense air battles occurred north of Stalingrad, where German aircraft bombed the Soviet forces still holding the factory district and the Soviet artillery units on the east bank of the Volga River.</p>
+<p>Ankara, 1st - Domei: According to unconfirmed reports received here today, the Germans now have about eight small submarines in the Black Sea. These submarines are transported in sections from land to the Black Sea and assembled at the Black Sea port.</p>
+<p>Somewhere on the Ukrainian Border, 31st - Havas: Although the Soviet Union is already experiencing freezing winds, the fighting on the Eastern Front is still very intense, especially in the Caucasus and Stalingrad regions. Regarding the battle of Stalingrad, according to neutral observers, the fact that the Red Army is still able to resist in the Stalingrad region is a "mystery of the age." The reason for this is that underwater bridges have been built in the Volga River, so the Red Army in Stalingrad is still able to receive supplies and reinforcements. As for the Caucasus front, the situation on each front is as follows: (1) In the Tuapse area, heavy rains have continued for days, and the German forces attempting to occupy the high mountains northwest of the city have had to switch to the defensive due to the continuous attacks of the Red Army. (2) In the Terek River basin, Axis forces continue to advance towards Dagestan, and the development of the battle is clearly favorable to the Axis forces. (3) In the Nalchik area, German forces are attempting to isolate the Red Army, cutting it off from its main forces, and it is understood that German-Romanian forces have continued to advance south of the city of Nalchik, but the Soviet Union has sent fresh troops to reinforce the area. (4) Fierce fighting broke out northeast of the city of Chervishevo, where German-Romanian forces attempted to break through the Red Army's positions and directly attack the Black Sea coast.</p>
+<h3>Wilkie Advocates US Severance of Relations with France, Writes Article Criticizing US Government</h3>
+<p>New York, 1st - Havas: Republican figure Wilkie today took the opportunity of the New York gubernatorial election to publish a three-page article in the press, criticizing the US government. One point criticized the government's lack of courage.</p>
+<p>Lisbon, 1st - Transocean: Wilkie delivered a speech in New York yesterday, criticizing the government's war actions as chaotic and ineffective. He called for the severance of diplomatic relations with France and criticized the US government for failing to sever diplomatic relations with France.</p>
+<h3>Africa in the Midst of Shifting Winds: Egypt—The Second Gateway to the Center of the War (1)</h3>
+<p>In this season of holding chrysanthemums while feasting on crabs, just a cup in hand is enough to live a carefree, dreamlike existence. Why bother asking about world affairs! The leisurely Jin Dynasty figure, Bi Zhuo, put it well: "With a wine cup in my right hand and a crab claw in my left, adrift in a wine boat, that's enough for a lifetime..." What a romantic spirit!</p>
+<p>Having finished eating crabs, why do most poets always focus on the pair of claws? Strolling through the streets, one often sees a jade hand painted with bright red nail polish, picking up a crab. Although the aim is to check whether it is male or female and plump, looking at that jade hand, constantly twitching, it seems to have some reservations. Afraid of what? It's still that pair of strong, powerful claws. For the sake of satisfying one's appetite, to have half of a nail-polished finger clipped off would not be worth it. Originally, a glance at this pair of large pincers is indeed somewhat startling.</p>
+<p>Reading novels, one sees that a famous Song Dynasty general invented a "vise formation." This is clearly somewhat nonsensical; tigers never had pincers, it's just crab claws. However, in the hands of writers, these claws are described as even more fierce. Unexpectedly, today's "vise formation" has once again come to the fore. Glancing at the flames of war in Europe, one pincer has already extended to the vicinity of the Caucasus, and another pincer is already posturing to seize North Africa. In this season of holding crabs and admiring chrysanthemums, a glance at the crabs inevitably causes some alarm.</p>
+<p>Coincidentally, among a group of children, some are Russian and some are British. During blackboard and chalk time, one accidentally asked: "Do you eat crabs?"</p>
+<p>"Not much," the Russian children answered. "We like smoked fish and caviar."</p>
+<p>"Have you seen crabs?"</p>
+<p>"There are many on the streets now."</p>
+<p>"Are you afraid of the crab claws?"</p>
+<p>"No, as long as you move it gently, it will break off—first take a piece of wood or a piece of iron to let it clamp onto, then break it from behind with one stroke." The Russian children are truly cunning and mischievous.</p>
+<p>"We are not afraid either," the British children also wanted to say something. "We can wear very thick leather gloves, not afraid of the claws. As long as we twist it like this, it will 'break'."</p>
+<p>The flames of war in Europe, on the Caucasus front, may now be considered deadlocked and even stalled. Now let's talk about that pincer in North Africa, in the "Egypt-Watering Place."</p>
+<p>To ask why the situation in Egypt is so tense, we must first point out the general shape of Africa. In the newspapers, we are now familiar with the names of several Black African countries. Libya—since the war began in North Africa, this name has been in our memory. There is also something called Dakar, which has recently become very lively. Fortunately, it only has three characters, which is still easy to remember. In addition, there is Madagascar, a large, cumbersome pile. If you are unwilling to pay attention to the current situation, no one is willing to bother with this trouble. Recently, there was suddenly the matter of American troops landing in a remote West African country, so we have to remember the name Liberia again. The bloody winds and clouds and the raging flames of war have given us the opportunity to recite place names. This is a humorous contribution of the great era. There is also Alexandria, which is remembered easily because of the name of Alexander the Great in history, so it doesn't feel unfamiliar.</p>
+<p>The four place names listed above, invisibly encompass the eastern, western, southern, and northern shapes of Africa, all in a whole, strategic formation. The British advance into Madagascar is of course to maintain a shipping route in South Africa. Therefore, they disregarded the repeated ridicule of the Vichy government and forcibly occupied a part of it. The American landing in Liberia is a major event, with important strategic relations. We will reserve it here for the time being. In the special Liberia commentary in the next article, we will naturally point out a clear explanation. Regarding Dakar, it was briefly mentioned in the previous article "The Alaska Highway"! This place is only more than two thousand miles from Brazil in South America. The Americans are paying attention to it because of its relationship to escorting supplies. The Germans are paying attention to it because they want to build a railway through the Sahara Desert to reach the area directly, as a basis for attacking South America.</p>
+<p>As for Alexandria, it now happens to be under the shadow of the German's right pincer. The importance of its military position can be imagined. If it is said that Egypt is the second gateway to the center of the war, then Alexandria is a key to that gateway.</p>
+<p>Having briefly mentioned the overall situation of Africa above, we can now focus on studying the problem of this second gateway. Regarding the records of Egypt, this newspaper published an article "Egypt: A Discourse on Its Length and Breadth" in mid-June of this year, and another article "Mysterious Egypt" in late July. It is hoped that it is still in the readers' memory. Therefore, this article does not intend to mention its length, breadth, or mystery again, but only to briefly outline its situation from the midst of the flames of war.</p>
+<p>Regarding the general situation of Egypt, if we acknowledge that it is a gateway to the center of the war, we can at least find three keys to this gateway: (1) the Egyptian-Sudanese highway for transportation and supply; (2) Alexandria, a military strongpoint; and (3) the Suez Canal, a passage between Europe and Asia. These three keys have different situations and different importance.</p>
+<p>However, a country like Egypt, located in a corner of North Africa, seems to have no fire in the blood of its people. Since the era before Christ when it was ravaged by the Romans, up to the present day, after being repeatedly invaded and tormented, all military strength has simply fallen behind. Moreover, apart from the Nile River valley, which has some production, it does not seem to have any special treasures. We want to ask, why does the god of war repeatedly take care of her?</p>
+<h2>Page 4</h2>
+<h3>Maintaining the Needs of Legitimate Consumers: Universal Sugar Purchase Method - Price Set, Limited to Five Yuan Per Person, Divided Areas, Sold Upon Presentation of Citizen Certificate</h3>
+<p>The Sugar Merchants Cooperative Business Office, in order to facilitate the purchase of sugar by legitimate consumers, avoid congestion, and prevent vendors from competing to buy for profit, has negotiated a universal sugar purchase method for consumers, which has been implemented since yesterday. It stipulates that all Category A retailers (South Goods Stores, etc.) will sell sugar upon presentation of a citizen certificate, limited to five yuan of Central Reserve Bank notes per person. After implementation, anyone not within the scope of allocation by the Shanghai Sugar Merchants Cooperative Business Office will no longer be able to buy and sell for profit in Shanghai. Then the entire sugar purchase panic will be eliminated.</p>
+<p>Universal Sugar Purchase Method for Consumers</p>
+<p>The cooperative business office's universal sugar purchase method for consumers: (1) When purchasing sugar, if the consumers reside in the Joint or French Concessions, they can purchase sugar from any retail sugar store in the two concessions upon presentation of their citizen certificate. Those residing in the Huxi, Hubei, Hongkou, or Zhabei sections can also purchase sugar from sugar stores in their respective sections upon presentation of their citizen certificate. They may not cross district lines. (2) Each retail sugar store should sell one-thirtieth of the total amount allocated in October and the amount of sugar previously in stock each day. To avoid the inconvenience of making small change, it is temporarily set at a limit of five yuan of Central Reserve Bank notes per person, including retail taxes. Sales time is from 10:00 AM to 4:00 PM. Sales will stop when the quota is met. If the amount of sugar sold is less than one-thirtieth, the remaining amount will be added to the next day's sales. This process will be repeated so that sugar is sold every day to achieve universality. (3) The price of sugar sold by each retail store should be clearly marked in a conspicuous place. If there are violations of regulations, such as raising prices, reducing quantities, or adulterating the sugar, or forcing customers to buy other items, the purchaser is allowed to report the matter to this office (address: No. 23, Tongyun Street, Yangxing Street, French Concession, telephone 83300) or report directly to the police authorities for investigation. (4) This office has resident supervisors and mobile inspectors, all of whom wear armbands issued by this office. If purchasers have any unclear situations, they can ask them at any time. (5) To make the retail price clear to consumers, the officially set price limit is specially listed.</p>
+<p>Setting Price Limits to Eliminate the Black Market</p>
+<p>After the promulgation of the new sugar sales method, all retailers should sell according to the price limits stipulated by the cooperative office. Absolutely no price increases or participation in black market transactions are allowed. Purchasers are allowed to report violations for investigation. It is also stated that Shanghai has a large supply of sugar, which is sufficient for long-term allocation. It is hoped that consumers will not be deceived and will purchase according to their actual needs to achieve universality. The price limits are recorded as follows: Coarse granulated white sugar: 4.33 yuan per catty; TK brand: 4.56 yuan per catty; No. 1 fine white: 4.32 yuan per catty; No. 4 fine white: 4.25 yuan per catty; B brand: 4.33 yuan per catty; DY brand: 4.32 yuan per catty; HX brand: 4.31 yuan per catty; Dutch red sugar: 4.06 yuan per catty; Raw sugar: 4.06 yuan per catty; Icing sugar: 4.06 yuan per catty; Surabaya blue: 3.83 yuan per catty; Winter mist blue: 3.71 yuan per catty; Zhang Diao blue: 3.71 yuan per catty; Rock sugar: 5.14 yuan per catty (calculated using a balance scale).</p>
+<p>Supervising Sales to Eliminate Abuses</p>
+<p>Yesterday, the reporter learned from the cooperative business office that the total amount of sugar supplied and sold this month is 20,000 bags. There are 96 stores allocated 30 bags or more, over one hundred stores allocated between 15 and 30 bags, and over two hundred stores allocated less than 15 bags. All are selling in accordance with the prescribed methods. Each store is allowed to sell one-thirtieth of the total monthly allocation each day. The office has assigned 116 supervisors and inspectors to supervise the sale of sugar by Category A retailers on the ground to eliminate abuses and maintain people's livelihoods. The supervisory methods are: (1) Each Category A retailer allocated 30 bags or more will have one supervisor stationed in the store. (2) Category A retailers allocated less than 30 bags will be supervised and inspected on a rotating basis by inspectors and auditors dispatched by the office at any time, who will examine the sales accounts. At the same time, any shortage of weight or mixing of impurities is strictly prohibited. If violations are found to be true after investigation, the allocation right will be revoked and severe punishment will be imposed. As for consumers in areas where residence permits have not been verified, they can also purchase sugar in this area by explaining their address and requesting accommodation.</p>
+<h3>Formation of Civil Police in the Four Joint Security Districts of the French Concession</h3>
+<p>The French Concession Civil Police Corps has only been organized for more than a month, but its work is already taking shape. The trial period for the Civil Police Corps' duty posts has also expired, and its achievements are remarkable. The French Concession Baojia authorities originally wanted to hold a grand founding meeting of the Civil Police Corps to show the official establishment of the Civil Police Corps. Recently, the authorities have changed their original plan due to various reasons and ordered the joint security of each district within the concession to hold separate founding ceremonies. The 161, 2, 3, and 4 Joint Security Districts in the central district were ordered to hold the founding meeting of the Civil Police Corps of the four joint security districts at the Jiuxing Grand Theater on Foch Road at 10:00 AM yesterday. Over 500 people attended, including the heads and deputy heads of the joint security districts, the heads of the Baojia, and the heads of the Jia, as well as all members of the Civil Police Corps and guests. The order was good and the situation was quite enthusiastic. The meeting adjourned at 12:00 noon.</p>
+<h3>Final Exchange of Old Currency in Jiangsu, Zhejiang, Anhui, Nanjing, and Shanghai</h3>
+<p>The Old Currency Consolidation Committee, under orders to handle the final exchange of old currency in the three provinces of Jiangsu, Zhejiang, and Anhui, and the two special city areas of Nanjing and Shanghai, has formulated the main points of the old currency exchange method. It has ordered the branch offices and the 111 designated Sino-Japanese commercial banks in Shanghai to implement the exchange starting from yesterday (the 1st) in accordance with the regulations in the main points of the method. The announcement from the general office of the committee regarding the application for exchange by holders of old currency is recorded as follows: (1) The old currency to be exchanged is limited to the "Central," "China," and "Communications" bank notes. Bank notes with the place names of Shanghai, Xiamen, Guangzhou, and Hankou printed on them, and those without place names, cannot be exchanged. (Subsidiary currency notes are not included in the exchange.) (2) The exchange time is from November 1 to 30, 1942, from 9:00 AM to 12:00 PM and 1:00 PM to 3:00 PM daily. From December 1, 1942, the use and carrying of old currency will be completely prohibited, and storage is not allowed. After the exchange period expires, there will be absolutely no extension. (3) The exchange rate is two yuan of old currency for one yuan of Central Reserve Bank notes. (4) For exchange amounts of 1,000 yuan or more of old currency, a current deposit will be paid. For amounts less than 1,000 yuan, cash may be paid.</p>
+<h3>Second Landlords Ingeniously Create New Items to Extort Third Tenants</h3>
+<p>Concealing from the authorities to collect fees equal to tips - Forcing tenants to move out, severely prohibiting deceptive clauses</p>
+<p>The English-language "The Times" reports that, according to a reporter's investigation, most of the city's profit-seeking second landlords are trying to circumvent the municipal authorities' regulations abolishing tips, and are forcing third tenants to pay a sum of money in advance using new methods. This is actually equivalent to a tip, but with another ingenious name. "The Times" recently received a letter from a third tenant on Avenue Joffre, stating that the second landlords in both the Public Concession and the French Concession are demanding that third tenants pay five or six months' rent in advance. Although the collection of tips has been prohibited by the authorities, it is clear from the letter that there is some kind of secret collusion between many second landlords. They transfer the houses to each other at a very low price, while forcing the third tenants of the house to move out and find other residences. When third tenants are forced to move out, they have to pay a sum equal to six months' rent before they can move into a new home. The reason why the third tenants are forced to move out is because the lease stipulated that the third tenants must move out when the house is transferred. It is said that second landlords have been using this method to deceive the law and exploit third tenants for several months. It is not too late to find that the authorities of the Public Works Department and the French Municipal Council have previously passed regulations to prohibit the collection of small rents and reduce the difficulties of tenants. Violators have been heavily punished. For the past six weeks, several second landlords have been tried by the court every week for sound violations and fined. Therefore, second landlords have found other ways to collect rent in advance, believing that this does not violate the law. In fact, this is not the case. After prohibiting the collection of tips, the municipal authorities have not stopped their research on the rental situation, and are currently considering other methods to prevent second landlords from extorting third tenants through illegal means. One method aims to prohibit second landlords from forcibly demanding various amounts equal to tips.</p>
+<h3>French Concession Housing Sublease License Fee</h3>
+<p>In accordance with the provisions of Order No. 333 of the French Consul General's Office in Shanghai on October 23, the French Concession Municipal Council collects housing sublease license fees. All second landlords who sublease houses must, between the 1st and 30th of this month, bring their rent receipts to the fee collection section of the council to collect three copies of the reporting form mentioned in Article 1 of this order. One copy must be filled out according to the regulations and hung by the second landlord at the internal entrance of the subleased house. After the other two copies are filled out in the same way, they must be returned to the council within the time limit and the half-year license fee must be paid. Within the date specified in the reporting form, the council will issue a housing sublease license. The general office of the council's fee collection section is at No. 80, Marlang Road. The daily office hours are from 9:00 AM to 12:00 PM and 2:00 PM to 5:00 PM, except on Saturday afternoons, Sundays, and public holidays. There are two branch offices of the fee collection section: one at No. 1480, Lafayette Road in the Western District, and one at No. 7, Avenue Edward VII in the Eastern District. The daily office hours are from 2:00 PM to 5:00 PM, except on Saturdays and Sundays. The license fee rates are as follows: (A) If the rent paid by the second landlord does not exceed 100 yuan, the license fee is 1 yuan per room subleased per month. (B) If the rent paid by the second landlord is between 100 yuan and 200 yuan, the license fee is 2 yuan per room subleased per month. (C) If the rent paid by the second landlord exceeds 200 yuan, the license fee is 3 yuan per room subleased per month. Any second landlord who delays reporting shall be punished in accordance with the provisions of Article 20 of the Housing Sublease Regulations.</p>
+<h3>Jottings on Smoking and Leisure (1)</h3>
+<p>— Compiled by Huisheng</p>
+<p>Gleanings on Opium Prohibition in the Qing Dynasty</p>
+<p>Opium poisoning has plagued China, causing great harm to the nation. In the middle of the Guangxu reign, an edict to prohibit opium was issued, and strict measures were allowed for officials. At that time, Wang Zhongqi, the prefect of Jingzhou, was also a leisure-loving person. Unwilling to be subjected to the humiliation of investigation, he closed his door and cut off opium, forcing himself to quit. After three days of suffering, he actually jumped out of the sea of misery. Unfortunately, he was over fifty years old and his qi and blood had declined. Due to the effects of opium poisoning, he died of dysentery. The Qing court praised his determination and gave him generous compensation and extreme mourning. Those who quit opium must first eliminate the accumulated poison. If the poison is not cleared, even if the addiction is broken, they will not be able to sleep peacefully. Now there is "Chlorophyll," a new drug for quitting opium. It extracts the natural ingredient that overcomes the poison from the green, evergreen leaves. Taking it excretes the opium poison in the stool and urine, which is extremely thorough. Many people have quit opium and white powder, and they do not feel pain or affect their work. It is sold by the Wanguo Western Drug Company in the Tianlun Building of the Baobuzhang on Nanjing Road, for 20 yuan per box. Telephone 94078.</p>
+<h2>Page 5</h2>
+<h3>A Detailed Account of the Murder in the New "Records of Retribution": Abandoning His Wife and Taking a Concubine Caused the Trouble - A Fickle Woman Stirred Up a Sea of Jealousy and Killed Her Husband - Jiang Boming Blackmailed His Sister Unsuccessfully and Reported Her Out of Hatred</h3>
+<p>Li Liansheng, a former detective in the French Concession, nicknamed "Pockmarked Li Liansheng," from Nanjing, accumulated hundreds of thousands of yuan when he retired. He lived in No. 13, Lane 987, Avenue Joffre, living the life of a retired merchant in Shanghai, planning to enjoy his old age. On the morning of April 22, 1929, he was hacked to death at home. He was only 48 years old. The case has been under investigation for three and a half years. Recently, the French Concession police solved the case and found that Li's murder was instigated by his wife, Ms. Jiang. The main suspect, Li Jiang (i.e., Jiang Wenzhen), and the related persons, Qian Guanhua (Ms. Jiang's lover), Jiang Boming (Ms. Jiang's younger brother), Zhang Hankai, and Zhang Afu were arrested and brought to justice for investigation. However, the murderer is on the run and is being pursued. The details have been recorded in the newspaper. Now, a supplement is made to record the</p>
+<p>Cause and Effect of the Murder. Li had a legal wife, but because Li was inherently promiscuous, he was not surprised to engage in affairs. Since meeting Ms. Jiang, he hated his legal wife and used卑鄙激烈的手段 means to force his legal wife to leave, treating Ms. Jiang as his main wife, and supporting her elderly father and weak younger brother. Who knew that good times would not last long? Li concealed from Ms. Jiang that he had met a young woman outside, and secretly built a golden house to hide her. He often treated Ms. Jiang and her father and brother coldly. Eventually, Ms. Jiang learned that Li had secretly taken a concubine outside.</p>
+<p>A Sea of Jealousy Arose. She quarreled with Li, trying to make him break off with the concubine. Who knew that arguing was useless? On the contrary, it made her elderly father die of depression. Looking at the future, fearing that Li would use the same tricks to abandon his wife and abandon her, Ms. Jiang was terrified and gave birth to the evil thought of harming Li and seizing his property. After discussing with her lover Qian Guanhua and her younger brother Jiang Boming, Qian and Jiang asked Zhang Hankai to ask Zhang Afu, a small foreman at the Shanghai Textile Factory, to find four murderers, including Jiang 蔣某. They first held a meeting at Jing'an Villa to</p>
+<p>Plan the Murder. Ms. Jiang usually slept until nearly noon. On the morning of Li's murder, she got up early to arrange everything, opening the back door and the bedroom door, waiting for the murderers to directly enter the bedroom and hack Li to death. Ms. Jiang remained silent, calmly hiding Li's property, and then announced the matter to the police. Ms. Jiang's behavior was瞒被警務人員之耳目 concealed from the eyes and ears of the police. After the funeral, because Li still had an elderly mother and a weak child, Ms. Jiang</p>
+<p>Analyzed the Inheritance. After allocating a small portion, she used the funds to reward the people involved in killing Li and the murderers. She also invested in opening a Maoda Foreign Firm呢羬西服店 woolen Western clothing store at No. 808, Avenue Joffre, with her lover Qian Guanhua as the manager, and appointed her younger brother Jiang Boming as the accountant. Ms. Jiang, from this point on, regarded herself as the boss and</p>
+<p>Human Life Blood Case, she was spared the law of law. The human ghost did not know and lived freely. Jiang Boming relied on his sister's assets and acted like a small boss, entering and leaving dance halls on weekdays, squandering money like dirt. Because 僓台高　, he was unable to make up for the debts with the four sides. He forced his sister Ms. Jiang to pay him 60,000 gold coins in order to repay his debts. However, Ms. Jiang refused to agree, causing Boming to hold a grudge and</p>
+<p>The Murder of Her Husband. He reported the fact that his sister had hired someone to kill her husband to the detectives, wanting to force his sister to pay him money by this. However, he played a trick and ruined it. The old case of Li's murder for three and a half years was able to be revealed, and the case was solved. Li Jiang, Qian Guanhua, Jiang Boming, Zhang Hankai, Zhang Afu, and others were all arrested and brought to justice by the police. However, the real murderers, Jiang 蔣某 and the other three, were at large and were being pursued by the police.</p>
+<h3>Chen Chunhua, Leader of the Yarn Flower Industry, Donates a Mobile Library Car</h3>
+<p>The Shanghai Children's Library held a ceremony for the donation of a mobile library car by Chen Chunhua, a leader in the yarn flower industry, at 4:00 PM yesterday. Over one hundred people, including 　曉初 and Chen Qingnian, attended. The ceremony was held as usual. First, Chairman Hu Zuyin announced the purpose of the meeting, then invited the donor Chen Chunhua to speak, followed by advisors Chen Qingnian and Huang 　顽. Then, Zhang Yuanfu, the representative of the board of directors, gave a thank-you speech, and guests Chen 　荫, Sun Xiangzhong, and Pu Qiting spoke one after another, with many words of encouragement. Then, Chairman Hu Zuyin and advisor Chen Qingnian led all the guests to the library to hold the car presentation ceremony. First, the donor Chen Chunhua presented the letter of donation, and the ceremony was completed. After taking photos, everyone dispersed.</p>
+<h3>Colonel Watanabe Inspects the Evacuation of Coffins</h3>
+<p>Colonel Watanabe of the Shanghai Special Affairs Agency inspected the coffin deposit offices and coffin evacuation agencies in the city. Accompanied by his entourage, Colonel Watanabe personally visited the Guohua Coffin Transport Department to inquire about everything. Then, he went to the Siming Guild Hall on Ningbo Road in the French Concession to inspect the coffin deposit situation. The manager of the guild hall, Mr. Zhang, received him and answered Colonel Watanabe's inquiries about the number of coffins deposited. He also said that regarding the evacuation of coffins in the city, according to the Chinese custom of burial for peace, it is very appropriate to properly send them back to their hometowns, and he is willing to do his best to assist.</p>
+<h3>The Total Compensation for the Fallen Civil Police Officer Huang Zhongda in the McLand District is Tentatively Set at 10,000 Yuan</h3>
+<p>The 50th Joint Security District of the McLand District in the French Concession held its first arson drill at 3:25 PM on October 10. At that time, firefighter Huang Zhongda fell to his death while on duty. All sectors were deeply saddened. The funeral was held at the Mainland Funeral Home the day before yesterday, presided over by the district leader. Personnel from the French Police Department, the McLand Police Station, and the Public Concession Baojia Guidance Department all attended the ceremony and paid their respects. However, because Huang Juntao's family was poor, the issue of compensation is still under detailed study by all sectors. The district decided to tentatively set the amount at 10,000 yuan.</p>
+<h3>Jing'an Temple Buddhist Lecture</h3>
+<p>Jing'an Temple hosted a weekly lecture on Buddhist studies. Yesterday, the famous reporter Neichang gave a lecture on "The Philosophy of Existence and Non-Existence," which was very insightful and gave many words of encouragement to young people. He divided life into three stages, briefly stating that before the age of twenty, one belongs to the philosophy of non-existence, between the ages of twenty and fifty, one enters the philosophy of existence, and after the age of fifty, one returns to the philosophy of non-existence, but different from the philosophy of non-existence in the first stage. From beginning to end, the position was upright and the tone was both solemn and humorous. Hundreds of listeners felt boundless interest and warmly welcomed it. It is heard that the next lecture will be given by Master Zhulin on "The General Meaning of Dharmalaksana," and the time will still be from 2:00 PM to 4:00 PM on Sunday afternoon.</p>
+<h3>Hengfeng Consignment Store Opens</h3>
+<p>Hengfeng White Goods Consignment Store at No. 304, Avenue Joffre, was founded by Xu Zhaoming, a financial magnate, with strong financial strength. It officially opened at 9:00 AM yesterday. Everything is available, including antiques, calligraphy and paintings, clocks and watches, ornaments, daily necessities, Chinese and Western clothing, cosmetics, cotton and wool textiles, canned food, etc. Those who entrust the store to purchase or sell on consignment for a long term will be given preferential treatment. Goods are displayed at fair prices to meet demand. The business was very prosperous yesterday at the opening, and its future development can be predicted.</p>
+<h3>Various News from All Walks of Life</h3>
+<p>Yonghe Tongji Cotton Cloth Store's branch on Sanma Road and Daxin Street opened yesterday. They offer seasonal goods, cutting from original bolts of fabric by the yard, with discounted prices to attract customers. Business is booming, and the scene is unprecedentedly lively. It is said that the manager, Mr. Hong Shi, is a capable individual in this industry, providing attentive service, which buyers have praised as satisfactory.</p>
+<p>Shen Zhongru is a famous Shanghai-based internal medicine specialist. He and Gao Minyi Shen Zhuang are located at No. 163 Dagu Road. Yesterday, Mr. Shen and Ms. Zhou Yunyu held their wedding ceremony at the Xindu Hotel. There were also entertainment performances during the event. The traffic of carriages and horses was bustling, reaching a peak of splendor.</p>
+<p>The First Siberian Fur Store at No. 1135 Jing'an Temple Road began a sale yesterday with genuine price reductions on all kinds of fur and woolen overcoats, with silk goods sold at bargain prices, indeed very cheap. Customers are rushing to purchase. The business is more lively than ever. The store also has several sacrifice-priced overcoats, priced especially low. It is said that each person is limited to buying one piece to ensure wider access.</p>
+<p>Yesterday, this newspaper was published at 6:50 PM.</p>
+<p>Sports News</p>
+<h3>Friendly Team Wins Against Mixed Team 2-1 in the Last Minute - Evenly Matched, Each Scoring One Goal in the First Half - Self-Defense Cup Charity Football Tournament Concludes Successfully</h3>
+<p>The Self-Defense Cup football tournament, organized by the Public Concession Baojia Guidance Committee, was held yesterday afternoon at Jiaozhou Park. The Friendly team scored in the last minute because Mixed team players Lei Medy and Victor collided, allowing Li Yichen to seize the opportunity to rush in and Sun Jinshun to score the winning goal. The final score was 2-1, with the first half ending 1-1. Throughout the match, the situation was tense and thrilling. Both teams were well-matched, evenly balanced, with both gains and losses, deadlocked until luck determined the victory. The audience exceeded ten thousand, and the lively atmosphere surpassed even the Baojia Cup.</p>
+<p>Each Has Its Own Strengths</p>
+<p>Both teams excelled in defense. Song Lingsheng deserves the most credit for the Friendly team's unbeaten record. As the third defender, he played very effectively, saving countless balls. Gain was constantly under his watch. Second to him were Li Tiansheng and Liu Xianhan, against whom the Mixed team's long attacks were ineffective. Li Yichen and Sun Jinshun maintained their usual style, taking advantage of opportunities, while others performed just averagely. For the Mixed team, the goalkeeper's excellent performance was unexpected. His high jumps to save balls were highly praised. The center of Xitian, the mustachioed Greenberg, and the two defenders all displayed strong defense, leaving the Friendly team's forwards at a loss. It's a pity that the center forward Gain lacked support from both wings, often unable to get the ball into the goal. Overall, it was a good match, with a high level of play.</p>
+<p>How the Fierce Battle Unfolded</p>
+<p>Mr. Yuan Li kicked off. During halftime, according to custom, the ball was auctioned off and purchased by Mr. Pan Sansheng for a high price of 12,000 yuan. After the kickoff, the Friendly team launched an all-out attack. Victor cleared the ball, and the two teams battled fiercely, forming a seesaw battle. The Friendly team's defense was under heavy pressure, but Song Lingsheng defused the danger. Both sides were very cautious. At 31 minutes, luck favored the Friendly team. Zhuo Shijin made a clever pass to Wu Qixiang. Little Wu lived up to expectations, diving in with all his might. Mixed team goalkeeper McNedy went too far to the side, and the ball entered the net. Little Wu injured his foot due to excessive force and had to leave the field. The Friendly team took the lead with a score of 1-0. However, the lead was short-lived. Zheng Yingquan committed a foul in the penalty area, resulting in a penalty kick, which was scored by V. Su Ruo. The first half ended 1-1. Switching sides, the Friendly team brought on Jiang Chao Meng Yiliang, and the situation became even more tense. The melee lasted for a full ten minutes. Zhuo Shijin and Gao Baozheng repeatedly tried to steal behind enemy lines, but made no progress. The Mixed team attacked fiercely, and the situation was very dangerous. Unexpectedly, the ball was leaked to the back. Lei Medy and Victor rushed back to grab the ball and collided, falling to the ground. Li Yichen seized the opportunity to enter and lightly passed to Sun Jinshun, who shot and scored. The deadlock was broken, and the Friendly team was fortunate to win in the last minute. After the game, Wang Boyuan, Vice Chairman of the Baojia Committee, presented the awards and closed the event.</p>
+<p>Friendly</p>
+<p>Liu Xianhan</p>
+<p>Li Tiansheng Zhang Lingen</p>
+<p>Meng Yiliang (replaced by Qu Qiufu) Song Lingsheng Zheng Yingquan</p>
+<p>Zhuo Shijin Li Yichen Wu Qixiang (replaced by Jiang Chao) Gao Baozheng</p>
+<p>Mixed</p>
+<p>McNedy</p>
+<p>Xu Er Victor</p>
+<p>Zitai I Gain W Pan Yuexun En</p>
+<p>Greenberg Xitian Lei Medy Wei</p>
+<p>T Lei Xiangdi Su Ruo</p>
+<h2>Page 6</h2>
+<p>Economic Journal</p>
+<p>Weekly Market Commentary</p>
+<h3>Research on the Trend of Cultural Stocks - Part Two of the Discussion on the Trend of Chinese Stocks</h3>
+<p>The trend of cultural stocks soared last week, becoming unstoppable. According to the weekly industry index of major Chinese stocks compiled by the China Economic Research Institute, with June of this year as 100%, the total index of 16 Chinese stocks last week was 147.5%. However, the World Book Company reached 236.5%, and the China Book Company also reached 162.9%. Although the Commercial Press was only at 138.8%, it still rose by 6% compared to the previous week. The prices of other stocks generally fell back by 1-2%.</p>
+<p>There are no less than fifteen or sixteen types of cultural industry stocks circulating this year (including paper mills, film companies, etc.). The main ones are four publishing companies such as the Commercial Press, three printing companies such as Yilin and Yongxiang, and six paper-making companies such as Longzhang. In particular, the three publishing companies of the Commercial Press, China Book Company, and World Book Company have always been the three major authorities in the national publishing industry, with large scales and long histories, making profound and significant contributions to culture in the past.</p>
+<p>Since the war, due to difficulties in distribution, the business of these three companies has greatly contracted. In addition, some of their factories are under military management, or dispersed due to relocation, such as the Commercial Press, which has frequent labor disputes, so stock prices are often below par. Since last year, the situation has slightly changed. Firstly, book prices have become expensive due to cost and hoarding, secondly, they have been stimulated by the general rise in stock prices, and thirdly, they have been affected by the increase in the value of factory assets themselves, as well as the stimulus of World Book Company's capital increase. Therefore, they have successively jumped above par and doubled repeatedly, seemingly entering a prosperous era with other industries. It must be said that the performance of cultural stocks at this time and place is a most interesting event.</p>
+<p>During the currency fluctuations in early June of this year, the stock prices of these three companies all suffered setbacks at one time. However, they immediately erased this impact. But by early July, the market atmosphere had reached a state of saturation, followed by continuous weakness. It was not until early September that improvements were seen. Since then, the rising momentum has become tighter day by day, especially for World Book Company and China Book Company. The reason is that China Book Company was affected by the capital increase, and World Book Company had news of the return of its factory. This is the origin of the strong market sentiment.</p>
+<p>According to the weekly Chinese stock index compiled by the China Economic Research Institute, the changes in the stock prices of these three companies, compared with the general trend, have shown a rapid leap in recent months, which is indeed the most noteworthy thing.</p>
+<p>Judging from this, World Book Company has increased the most, and the magic of the return announcement is truly amazing. Most of the company's authorities are in Shanghai, the internal organization is sound, and the spirit is full. Since November last year, it has increased its capital twice in succession, with a current capital of 5 million yuan. The face value was initially 25 yuan, then changed to 50 yuan, and now changed to 25 yuan again. In the autumn of last year, it reissued five points of dividends for the years 27, 28, and 29, and one point five mills of dividends and bonuses for the year 30.</p>
+<p>The rise is second only to World Book Company for China Book Company, which is affected by the capital increase. The rumor of the capital increase had been circulating for a long time, but it was only confirmed last week. After the company increased its capital at the end of the 25th year, Kong Xiangxi and Xu Keting served as chairman and supervisor respectively, but now the details are unknown. It is only known that three of the current directors have passed away without being supplemented, so there are many who are surprised by this capital increase. The company currently has a capital of 4 million yuan, with a face value of 50 yuan per share, and the dividends for last year have not been paid.</p>
+<p>The Commercial Press has always been the leader in the national publishing industry, and the situation in recent years has been quite difficult. The impact of the war may be the heaviest among the three companies. However, the company has always attached great importance to the interests of shareholders, and the company's reputation has also played a role in attracting investors. Therefore, the company's stock is still not ignored in the autumn of World Book Company's and China Book Company's soaring prices.</p>
+<h3>Market Trends</h3>
+<p>Bond Market Crashes - The bond market, affected by the tight money supply and the crackdown on bond market news, is in a state of panic and uncertainty. Major players are exiting, retail investors are shorting, and bond prices across the board are plummeting, wiping out weeks of gains. Prices plunged by four yuan on Saturday, forcing trading to be halted.</p>
+<p>The violent rise and fall confirms that the market is a speculative organization. Speculation is on the list of bans, and the crackdown is not groundless. It was first reported by the Dongbao newspaper, and then reprinted by other newspapers, causing widespread panic and a huge wave.</p>
+<p>As for future trends, it depends on whether the outsiders in the market will reveal or conceal the cards in their hands.</p>
+<p>Cultural Stocks Soar</p>
+<p>Last week's Chinese stock market saw mixed gains and losses. Generally speaking, cultural stocks are booming and rising sharply, and new pharmaceutical stocks still have some upward momentum. At the weekend, the news of New Asia Pharmaceutical Factory's capital increase plan was leaked, and the market sentiment tightened accordingly. However, the trends of stocks in other industries have shown signs of weakening.</p>
+<p>According to the weekly industry index of major Chinese stocks compiled by the China Economic Research Institute, the following table shows (the full-year average for June of this year is 100 points):</p>
+<p>(1) The September index in the table above uses the average price for the entire month of June of this year as 100%, so the price index of each stock in September is as above. At that time, the only ones below the June level were Guohuo, Zhongfa Pharmacy, Commercial Press, and China Book Company; the rest all rose from 1.5% to 132.6%.</p>
+<p>(2) (3) are the comparisons between the previous week and last week with June. Comparing the previous week with June, all stock prices rose from 0.2% to 182.1%, with an average increase of 44.5%. Comparing last week with June, underwear has fallen by 1.2%, and in addition, there were more rises than falls, so the average total increase was 47.5%.</p>
+<p>When comparing (2) and (3) with each other, the trend of rise and fall of each stock is also very obvious. The only ones that rose were World Book Company, China Book Company, Commercial Press, Dasheng No. 1 Factory, and Great China Match Factory, while the rest all retreated compared to the previous week. However, even though there were more falls than rises, the overall index still rose compared to the previous week, which shows how large the increase was for these few stocks.</p>
+<p>The recent rise of new pharmaceutical stocks has been detailed in the article "Research on the Trend of New Pharmaceutical Stocks" in the previous issue of this journal. This issue also contains the article "Research on the Trend of Cultural Stocks", and the rapid progress of the market prices of World Book Company, China Book Company, Commercial Press, etc. last week can also be seen in general.</p>
+<p>Public Industries Association News</p>
+<p>The Public Industries Association was originally an open market for foreign stocks. It has been closed since December 8th and there have been repeated rumors of reopening, but amidst the calls to ban speculation, is the restoration of the association necessary? The relevant authorities in this city are constantly studying the matter. Yesterday, Japanese newspapers carried talks by the authorities of the Japanese Asia Development Board on this issue, generally saying that the resumption of business of the Public Industries Association has been approved in principle. The association is currently under military management, and in the future, the military will entrust the Asia Development Board's Central China Liaison Department to implement the resumption of business under the department's full supervision and guidance. As for the items traded, only the stocks, public bonds, etc. approved by the merchant are allowed. The issues such as the implementation period and the scope of brokerage firms are currently being studied by relevant parties.</p>
+<p>Yarn and Cloth</p>
+<p>Although the relevant authorities have successively implemented a retail price limit system for wool, cloth, etc., and further investigated and banned substandard measuring tools last week to prevent abuses, the wholesale market price of yarn has begun to rise again since mid-October, and the surge became more intense in late October. As for last week, the situation was even more dangerous, with each batch rising by hundreds of yuan every day. There was news in the newspaper about investigating yarn speculators, but even though the case was settled, the market sentiment did not move at all, with no sense of mutual dependence or shared fate, and its frenzy was like this.</p>
+<p>This price surge is said to be related to the purchase price of raw cotton. The purchase of cotton production in Central China is divided into two regions, Jiangbei and Jiangnan. The purchase price in Jiangbei has already been announced, but Jiangnan has not yet been formally decided. Speculators are making wild guesses, and the yarn market is becoming tighter. Comparing the end of the week with the beginning of the week, Feng has risen from 5,600 to 5,820 yuan, and Ma has risen from 6,300 to 6,470 yuan. If we consider the market price on October 1, Feng was only 5,050 yuan, and Ma was only 5,450 yuan; after a month, Feng has risen by about 1,000 yuan. The winter is coming, how will people protect themselves? The relevant authorities will definitely not ignore this serious situation.</p>
+<h3>Off-Market Chat</h3>
+<p>The East Asia Economic Conference held in Tokyo held a financial investigation committee on the 23rd of last month to review the currency policy in Central China.</p>
+<p>A large number of Japanese-made ceramics will be shipped to Shanghai recently, and Japanese merchant Iino Itsuto and others have organized the Ceramic Export Promotion Co., Ltd. to handle this export business to China.</p>
+<p>Knitted cotton products have been reviewed by the relevant price review committee and a fixed price system will be implemented soon.</p>
+<p>According to the Japanese newspaper China Intelligence Agency yesterday, the market prices of 20 strands of Blue Phoenix yarn in the following places on October 28 were as follows (unit: military ticket yuan):</p>
+<p>Suzhou 1179 yuan Nanjing 1242 yuan</p>
+<p>Bingxi 1188 yuan Wuhu 1698 yuan</p>
+<p>Changzhou 1143 yuan Hangzhou 1315 yuan</p>
+<p>Zhenjiang 1440 yuan Tongzhou 1216 yuan</p>
+<p>Yangzhou 1381 yuan Taixian 1216 yuan</p>
+<p>According to a short commentary in the same newspaper on the same day, after the price freeze order was implemented in this city on September 1, the goods originally planned to be shipped from Central China to North China were temporarily suspended from export, including 12 million yuan of yarn and cloth. If combined with the goods temporarily suspended from being shipped to Mengjiang, the total is about 20 million yuan. Therefore, it is believed that the current price control and barter system need to be re-adjusted.</p>
+<p>The second exchange plan between Central China and Manchuria has now been signed by the relevant authorities of both parties. In addition to continuing to exchange Central China's cotton products and miscellaneous goods for Manchuria's soybeans, soybean oil, and other originally scheduled items, the exchange of Manchuria's charcoal and asphalt has now been increased by about 5 million yuan.</p>
+<p>The Japanese-owned Central China Silk Company will start purchasing autumn cocoons in the northeast region of Zhejiang on the 22nd of this month. According to the company's planned purchase for this year, the spring cocoons will be 80,000 dan and the autumn cocoons will be 7,000 dan.</p>
+<h2>Page 7</h2>
+<p>Free Talk</p>
+<p>Society</p>
+<h3>Be Careful of Imitations</h3>
+<p>— Wu Tao</p>
+<p>Recently, it was reported that a woman dressed in elegant clothes repeatedly went to silver shops pretending to look at jewelry, swapping fake items for real ones. She was finally caught by a discerning clerk while repeating her trick. It is said that this noble lady does not come from a poor family, but she resorted to such measures because she was addicted to gambling and had incurred excessive debts, which she had to make up for. As a result, her reputation was ruined, and she had no face to meet anyone.</p>
+<p>Performing the trick of passing off imitations for real ones is certainly not an easy task, requiring considerable skill to use lightning-fast maneuvers when people are not paying attention. However, those who are victimized cannot help but feel grief and hatred. So, although the means of passing off imitations for real ones is clever, it is harmful and useless to society and others, and it will ultimately not bring much benefit to the individual, so it is not worth trying.</p>
+<p>Unfortunately, however, in all levels of society, there are more or less those who flaunt their imitations. Some are even intellectuals and ladies of high society. They use their graceful and luxurious appearance to carry out fraudulent schemes, taking advantage of their low abilities and minimal labor to obtain generous rewards. These deadbeats are also those who pass off imitations for real ones in society. They are often harmful and useless animals, and we should be careful to guard against them.</p>
+<p>Science</p>
+<h3>New Glass</h3>
+<p>— Shi Dong</p>
+<p>Transparent glass is one of humanity's boons, its only drawback being its fragility. Therefore, scientists have worked hard to discover a new type of shatterproof glass, and they have now achieved exceptionally satisfactory results in this area.</p>
+<p>The safety glass used for car windshields is well known. This was accidentally discovered in 1903. A French chemist dropped a glass bottle on the ground, and surprisingly, it only cracked without shattering. The cracked pieces were held together by a thin film of celluloid left inside the bottle by the evaporated solution.</p>
+<p>When this film is sandwiched between two layers of glass, safety glass is produced. This invention has saved countless people from injury or even death.</p>
+<p>The newly invented safety glass is made of a moldable resin. To not only prevent the glass from shattering or cracking but also to make it bulletproof, they use three to five layers of glass sandwiched with resin.</p>
+<p>Another type of safety glass is a glass lined with very fine metal wires. This is often used in the display windows of pearl shops. It can not only prevent explosions but also defend against thieves who smash glass to rob.</p>
+<p>Another type is a glass that is only one-eighth of an inch thick, sandwiched with multiple layers of vinyl resin. It is guaranteed to be absolutely shatterproof. A professional baseball pitcher could throw a hardball at it from a distance of thirty-five feet, but he could not break it. Under heat and pressure, this moldable film becomes a permanent bond between the layers of glass. This new type of glass has been widely used in American cars.</p>
+<p>In addition, there is also a special type of glass. This does not use the "sandwich" principle but rather the so-called reinforcement method. It can prevent explosions and has great resistance to heat and cold.</p>
+<p>In addition to being able to flex freely, it is exceptionally strong. When supported at both ends, four adults can stand on a sheet of glass.</p>
+<p>The so-called reinforcement method is to heat the glass to the melting point and then suddenly cool both sides with a blast of cold air. Under the pressure exerted on the surface, the interior cools more slowly, resulting in an incredibly strong glass.</p>
+<p>Cultivation</p>
+<h3>Flowers of Smiles</h3>
+<p>— Huang Wenjin</p>
+<p>Someone once cried out in despair: "Suffering, suffering, only suffering is the essence of the organic human body, only suffering is all of human life."</p>
+<p>Yes, this world is a flawed world, and the absence of suffering is only accidental. However, although reality is painful, the pain of reality is the source of happiness.</p>
+<p>In the ebb and flow of good and evil, our suffering is entirely born of "contradictions." On the one hand, conscience urges us to pursue truth and to realize justice; on the other hand, we cannot resist the threat to survival and are conquered by the material environment. In this completely disharmonious contradiction, no one can avoid drinking the bloody wine of suffering for long. The lofty tower of ideals can be allowed to be wantonly destroyed by the wind, but as long as we are alive, we cannot but advance our steps and move toward the truth.</p>
+<p>Water the buds of life with blood and tears, cultivate the sweet fruits of happiness with laughter; to explore the bright future, temporary endurance should be our responsibility. In the desert, we must seek water and grass like camels; in despair, we must cut through the thorns like warriors. Then, the flowers of future smiles have already bloomed for us, let us look forward to them in suffering and in hope.</p>
+<p>Chatterbox</p>
+<h3>The Mediators of Goods</h3>
+<p>— Gang Zhi</p>
+<p>(2) Business is Difficult</p>
+<p>Street running is easier for large manufacturers because the goods in stores must rely on the supply from the factory. The factory's street runner is therefore flattered. Although named "street runner," they may not have to go out every day to solicit business. If there is a transaction, customers will come to them. Sometimes, the factory's price is more expensive than the spot price on the market, but the street runner only needs to say a few words, and the customer will "give face" and accept it. This kind of street runner can be said to be a swindler among street runners. As for ordinary street runners, unless they have special "skills," they will have a hard time. When soliciting goods from customers, the purchasing manager rarely pays attention to you, and may even drive you away. If they intend to buy goods from you, and the price has been agreed upon, they are still afraid that it will be inferior goods or a scam, and they will ask you to deliver the goods first and then pay. The rules of the business world are mostly cash before delivery, so the business is not completed, and a pair of legs are wasted.</p>
+<p>Brokerage business is especially difficult, but after the war, due to the influx of floating capital, owners frantically hoarded goods, and brokers became very active. These people who have money to hoard goods are all outsiders, regardless of whether they are "dead goods" or "live goods." Business is easy, and making money is fast, so there are many young people who have just completed their apprenticeships, or even students who have just graduated from school, who only know the name of the goods and have never seen them. They actually take on the role of brokers, handling transactions and taking commissions. The places where they gather to discuss business are mostly in tea rooms, teahouses, and other public places, but they are not direct intermediary sales. I entrust it to you, and you entrust it to him, and he transfers it to another person... After several transfers, a transaction is often handled by more than a dozen people. The most interesting thing is that after being entrusted here and there, a sample of goods may even be passed back to the original seller, which shows the complexity of the inside story. Every time the goods are transferred by them, the price also increases once, because they all want to add a commission. In the end, something that was originally priced at five or six hundred yuan is increased to seven or eight hundred yuan after they add it again and again. This kind of business is extremely difficult to do, and there are many who eat "empty soup dumplings" (earn nothing).</p>
+<p>Research</p>
+<h3>About Conversation</h3>
+<p>— Ouli</p>
+<p>In ordinary conversation, 850 words are enough.</p>
+<p>According to physiologists, the movements and use of muscles are most subtle when we talk.</p>
+<p>An average person speaks 90 words per minute; a fast speaker often speaks 150 words per minute.</p>
+<p>Someone went to the streets, sports fields, churches, theaters, and barbershops to analyze 500 conversations and found that the main topic of men's conversations was business, and the topic women talked about the most was men. The secondary topic of men's conversations was sports and entertainment; the secondary topic of women's conversations was clothing. The third theme of men's conversations was the affairs of other men; the third theme of women's conversations was the affairs of other women. - Translated from "Everyman's Life Magazine"</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jia Zhi</p>
+<p>10. Flying Peak</p>
+<p>Mrs. Ye the Second could not resolve their difficulties and could only respond with a smile, "Wait until after your sister-in-law's first anniversary and the New Year. Then think about it carefully again. Don't talk about Miss Chen now. I say, the Ye family's daughter-in-law will either be Miss Chen or Miss Bian. Anyway, you'll choose one of the two." Wei Cheng also laughed and said, "Auntie is right." Mrs. Ye the Second said, "Wei Cheng, come outside." Wei Cheng followed Mrs. Ye the Second outside. Mrs. Ye the Second discussed with him whether or not to hold a Water and Land Ritual for the first anniversary of Mrs. Ye the First. If they were to do it on a large scale, they would have to borrow money. If they were just to have a family memorial ceremony and invite a few relatives for a meal, then there would be no need to borrow any money. Wei Cheng's idea was to be thrifty. The clanging of gongs and cymbals during the Water and Land Ritual would make people feel dizzy and would not benefit the deceased, nor would it count as fulfilling filial piety for the living. For the anniversary memorial, sincerity is the most important thing; formal fanfare is not necessary. Wei Cheng also anticipated that the anniversary of his mother's death was on the 28th day of the twelfth lunar month. On this day, relatives and friends would have their own affairs and might not be able to spare the time to come. After he said this, Mrs. Ye the Second decided not to take any further action.</p>
+<p>Another day, Cui Zhen was also counting down the days until the first anniversary of Mrs. Ye the First. She secretly instructed A Xing to go to Huagang to ask when Hongqi Zhang's boat would go to Shanghai. A Xing returned and said that it would set sail tonight. Cui Zhen suddenly packed a bundle in the room. Magpie saw it and asked, "Miss Cui Zhen, where are you going?" Cui Zhen said, "I want to go to Shanghai and will be back in a day or two." Magpie felt that this was new and strange news and hurriedly told Mrs. Ye the Second. Mrs. Ye the First still didn't believe Magpie's words. Although she didn't believe it, she couldn't help but ask Cui Zhen. Cui Zhen was pressing a pair of cotton shoes into the bundle when she turned around and saw Mrs. Ye the Second. She quickly smiled and said, "Second Auntie, I want to go to Shanghai to invite Miss Chen. I'll be back in a day. If Miss Chen still has the same temperament as before, she will definitely come when she hears about First Auntie's first anniversary. Miss Chen's school has let out for the holidays these past few days." Mrs. Ye the Second laughed at her for not discussing it with anyone beforehand. She also pitied her determination to secure the position of the Ye family's daughter-in-law. Guo Fang then waved her hand and said, "That's not necessary." (218)</p>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.11.01.html", "next": "1942.11.03.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

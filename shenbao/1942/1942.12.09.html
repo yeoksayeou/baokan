@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.12.09 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 534 - 4924673</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<p>社評</p>
+<h3>「移誠摯熱情於言行」</h3>
+<p>——讀河邊總參謀長「告在華日軍將士」誌感並略申我國國民之態度——</p>
+<p>大東亞戰爭周年紀念日，日駐華派遣軍總參謀長河邊正三氏發表「告在華日軍將士」文，誦讀再四，除對河邊氏「關於大東亞戰爭之完成與中日關係之解決」之正確遠見，和他對中國人民推誠相見，激勸日本將士的精神。表示摯誠的欽敬以外，覺得還有不少感想，必須站在中國人民的立塲，有所申述。</p>
+<p>第一，關於在華日軍將士之態度，河邊氏以（一）確立至嚴之軍紀；（二）實踐「誠」字；（三）尊重中國人之傳統習慣三點，爲勸勉之中心。在軍紀方面，日軍素以軍紀嚴明著稱於世，且日軍士兵皆爲受有相當敎育的子弟，平時在國內或爲遵守法紀的人民，或爲久受嚴格軍訓而習於軍紀的軍人，所以「至嚴之軍紀」一點，中國方面，無有敢以懷疑者；不過中國的社會環境複雜，各地土豪劣紳以及無知無識的投機份子，難免不向日軍將士進行種種誘惑，和假借權威，濫行胡爲，以至直接間接影饗到軍紀上面的，這是不能不倍加警惕的。</p>
+<p>其次，說到「誠」，日本當局，在五年來，迭有聲明，我國各方，也不乏正確認識的反響。但誠如河邊氏所說：「渝方仍執迷不悟，繼續抗戰，此乃因尚求信任日本之誠意故也」。我們還得補充的，問題不在渝方當局對於日本誠意之是否信任而在中國人民對於日本誠意有無正確的認識，中國的哲學，重在一個「誠」字，中國民間，也普遍地以「誠」字來衡量人與人相處間的友善關係，甚至推廣而至人與神之間的關係，如「誠則靈」，如「誠可通神」，如「精誠所至，金石爲開」，都是中國數千年來人生哲學民間哲學的結論。歷史上無論那一代統治者，對老百姓有「誠」的，便爲人民所愛戴。現在日軍在中國，是爲「解放中國，脫出英美之壓迫，助其完成獨立，與之永結善隣之誼一（見河邊氏原文）這是中國一部分知識階級所早經了解的，不過現在的問題，不是少數的中國政府當局和一部份知識份子的了解與信任，而是必須老百姓能澈底了解與信任，才能有助於兩國善隣之誼</p>
+<p>再次，河邊氏特別提及「尊重中國人之傳統習慣」一點，尤具卓見，也大爲重要。事情往往是這樣：中國人民對於日軍軍紀無寗是眞誠信賴的，對於日軍的「誠」字，也有相當的認識。可是，由於中日人民傳統習慣間的不同，往往使前述兩者的努力，受到不良的影響，更因爲雙方的隔閡，日本軍人氣質與中國人民特有的耿直態度間的隔閡，往往會以小小的問題，而發生極大的誤會。這裏一方面須要加緊兩國文化的溝通，不僅在中國推廣日語及日本文化的官揚，而且必需要日本軍民多多硏究中國的語言，文字與歷史和社會狀態風俗習慣等等。另一方面還得加强「克已」的心理，和「互諒」的情緒，並用「眞誠」來補助嚴明的軍紀。我們要認清，處此大東亞戰爭時代，中日兩國需要於協力的地方，一定很迫切，所以雙方朝野必須立刻努力去實現。</p>
+<p>第二，河邊氏在「中日親善始自派遣軍」蛸「常思前方之塲與後方之勞苦」，雖爲對日軍將士而發，但在中國人民讀後，其感想之深，一定不在日軍將士之下的。無庸諱言，除絕少數特出的人物以外，中國大多數人民對於政治沒有學理上的硏究，缺乏觀察的能力和遠大的眼光，他們只憑着直覺。他們對日本軍人到中國作戰，沒有什麼眞確的認識，但是他們有一個歴代遞傳下來的心理，就是誰來了對他們更有利益，他們就推戴誰，就敬愛誰。同樣的，中國人民也不是沒有犧牲的精神，但是要有一種力　或方法，使他們認識這種犧牲是爲了他們的榮譽，利益。在這裏政治的複雜的因素，他們是不能理解的，他們的政治輝解就是這樣簡單，但是這就是目前加强中日協力工作中値得注意和研究的地方。</p>
+<p>我們讀了河邊氏這一文之後，有敢於進一步獻言的的有兩點：第一，對於協助日本軍隊工作的中國工作人員或翻譯人員，務須採取嚴格的甄選制度。尤其是：（一）在錄用之前，必須經過相當時期，—至少六月或一年—使對於日本對華的眞意日本派遣軍來華的使命具有充分與激底的認識，對於工作的態度和方法技術等有充分的切實的了解；（二）在錄用之後，仍應利用各種適當的塲合和方法，繼續訓練，使有較高的造詣，並注重於品性的培養，節操的鼓勵。能在中國人民中發生良好的印象。（三）對於工作，學識，能力，尤其是他的品性行爲，還須建立必要的考查和獎懲制度，這種制度要比一般的更加認眞。只有在這種制度和辦法之下，才能不致輕率用人而累及日軍聲譽，更能因爲善於用人而增進中日協力的程度。第二我們站在中國人民的立塲，摯誠希望對於日本派遺軍的下級士兵及關係工作人員，加强政治訓練，時常講解中國語言，文字，壓史，風俗，習慣，以及社會組織等，使對各方面都有相當的認識與了解，然後在與中國人民接觸的時候，便可避免無謂的誤會，便可避免舌人及間接接觸人員之從中舞弊等情事，而對於中日協力也有了直接的幫助，發生更大的效果。</p>
+<p>同時，因爲河邊氏這篇文字，更使我們感到硏究中國入民對日本派遣軍和友邦僑民應有的態度問題。首先，我們自然更需要對日本的對華政策，對日本派遣軍的在華使命，和對於中日人民間相互的關係，具備更充分的和澈底的認識，了解，與信任。這種認識，了解與信任，絕對不能限於標語·口號·言論·文宇·上面，而要在實際的行動上表現出來，正似我們希望於日本方面的一樣。不過我國一般平民的敎育和組織都不甚完善，因此我們希望負責這一方面的當局對此特別注意，尤其重要者不在於灌輸式的强迫式的工作，即在乎啟發人民自動的要求，發揮其積極性。其次，國人對於友邦軍人方邦僑民，也應有不卑不亢如兄如弟的態度，不卑是表現我們東亞各民族在大東亞戰爭以後抬頭獨立的應有態度，也是兩國人民平等提携互相協力的基礎，不亢是中日互相理解·互相扶助·互相邁進的必要條件。也只有不卑不亢才能如兄如弟，共同協力，爭取光明的前途。當然僅僅實現了這樣還不够，所以，還應該推誠相與，孔子云：「己所不欲，勿施於人」，我們所望於日方對我者是如此，我們所以日方者就更應該如此，尤其在乎率先力行，這就是「誠一字的表現。中國人的哲礎就在一個「誠」字，我們就得先來做個榜樣給人家看。而對日的誠，就是以今日共苦求將來同甘的犧牲精神，就是要準備着更大的犧牲，無限的犧牲，來與日本協力，共同爭取兩國共同的勝利——也就是大東亞戰爭的勝利——東亞民族的解故。</p>
+<p>最後，我們要歸結到「題目」「移誠擎熱情於言行」，中日雙方今後都應注意不再有損及對方感情的一舉一動，一言一行，因爲，一千篇親善的文章，一萬句協力的口號，常常爲損及對方感情的一舉手一投足而大大的减少了親善與協力的成效——這是我們誠摯期待於雙方朝野之努力的。因爲誠爲河邊氏所指出的：「中日事變若未能完全解決，則大東亞戰爭決難得完全之勝利。」而中日事變之完全解決，在乎雙力「移誠摯熱情於言行」！</p>
+<h3>大東亞戰爭一週年　日全國嚴肅紀念　東條首相發表演說決意爭取最後勝利</h3>
+<p>東京八日中央社電大　東亞戰爭勃發迄今、業已一周年、日本舉國上下對完成戰爭、爭取最後勝利之決意、愈益堅昂、際茲一周年紀念日、日本全國各地均盛大執烈嚴肅舉行紀念儀式、八日上午十一時五十九分、全國交通機關及工作人員一律停止工作一分鐘、對英靈默禱、並祈願出征將士武運長久、正年東條首相奉讀宣戰大詔、並轉播去歲首相奉拜宣戰大詔謹話、各機關·團體·學校亦分別舉行大詔奉讀式、下午二時全國召開國民大會、中央大會在靖國神社前舉行、全國道府縣各單位亦分別舉行並轉播東條首相在中央大會訓話、下午一時在此間日比谷公會堂舉行軍樂大演奏會、下午六時仍在該處舉行紀念大講演會、由岸本東京市長、平出大本營海軍報道部課長谷萩大本營陸軍報道部長等講演、二重橋畔自晨曦起至當晚止、民衆及團體代表分別向宮城遙拜、絡繹不絕、祈禱聖壽無疆、情緒熱烈達於極點、</p>
+<p>東京八日中央社電　日大政翼贊會等主辦之大東亞戰爭一週年紀念國民大會、已於八日下午二時在全國各地分別召開、東京中央大會假靖國神社舉行、東條首相親臨致詞、並由廣播臺轉播各地大會、茲錄其演詞大意如次、國民諸君、去年今日乃吾等拜奉對英。美宣戰大詔之日、回意一年以前、帝國爲維持世界和平、防止人類慘禍、會出以最大之穩忍與自重、但終於在一年之今日、蹶然而起、帝國一憶國民以帝國之降替在此一戰、乃亦於是日起在必勝之信念下、誓以全力決心報國、在此具有深長意義之　日、於供奉護國英之靖國神社前、召開大東亞戰爭週年紀念國民大會、余於此得一述所懷、誠有無限感慨、試可顧此一年中、吾一億同胞已皆敬奉聖旨、　全力於奮戰、皇軍於開戰之初、即在威夷、馬來兩地分別重創英、美艦隊主力、同時陸海兩軍以巧妙之共同作戰、先後攻陷香港、菲律濱、東印度及緬甸、軍咸所至、敵人望風披靡、皇軍之威力業已遍及於大東亞各地、吾後方國民亦無不協力、一致克服戰時生活之苦難、能各就其本位出全力奉公、而大東亞共榮圈之建設、亦已與作戰之進展、同時活潑推進、香港、馬來固不待論、即緬甸、東印、菲律濱等亦已使其脫出英·美之桎梏、各地住民無不深感皇恩、樂與協力、故建設事業着着進展、已有偉大之成果、帝國在過去一年中、無論在戰略上、在經濟上、均已確立必勝之基礎、且從而益形擴大增强、必能再戰再勝、直至英·美屈服而後已、茲冉觀德·義等歐洲各盟國、自大東亞戰爭爆發以來、與帝國之提携協力、已益形緊密、在各方面奮戰結果、亦已屢獲戰果、正與帝國互相呼應、奮進於打倒央·美勢力、同時在大東亞方面、滿洲國固已盡其國力協力戰爭、中華民國國民政府、亦以同甘共苦之決意與帝國協力、應付難局、泰國於開戰之初、即採取適當措置、其後復與帝國締結攻守同盟、發揮全力、協力戰爭、因此在東西相呼應之下、在大東亞各國家各民族團結之中、擊滅共同敵人英·美之曠古大戰、乃已踏入眞正階段、帝國以一年來所獲之偉大戰果、加以各盟邦之戮力同心、益信必能擊滅英·美攻勢、猶憶開戰以前、具有無數重要資源之南洋各地、向爲英美等之寶庫、於開戰以後不足半年、即由榨壓之下獲得解放、此等地域、茲已收復其本來面目、成爲保衛東亞偉大之戰力基礎、在敵人固已失去此豐富之戰爭資源、在東亞則又增加無數之寶藏、但能吾將此等資源作最大最佳之利用、以供前綫將兵之縱橫活躍、則悉在我國民諸君之雙肩、故吾一億國民之担任、決非輕易、今日之戰塲早已不限於前綫、故謂諸君每日生活之一舉一動、不必俟諸明日、亦將立即影響於動綫之戰鬥力者決非過言、因此諸君之工廠、即爲前綫爭取勝利之補給廠、諸君之農塲即爲一億國民爭取勝利之兵站部、總而言之諸君之職務、亦無小皆爲爭取勝利之戰塲、猶有言者、自古以來、戰爭即爲意志與意志之戰、故惟能頑强奮鬥至最後之五分鐘者、始能獲得勝利之光榮、帝國茲雖遭逢多難、但南洋資源之獲得既如上述、戰前美·美賴以壓迫吾人經濟封鎖之武器、今已爲吾人所用、敵人所遭困難之重大、不難立知、故今日我與敵人雖均同與最大之困難相戰、所不同者，敵人已陷入絕望之深淵、困難益多、而吾則以光明之前途、生長於痛苦之經騐中、誠如過去余所屢屢申述者即此次戰爭係經巨大之消耗後、始繼以決戰故爲爭取勝利、第一要件在先取得當前決戰之勝利、抑此次戰爭吾人必須勝利、果不能勝、則東亞十億人民百年來期待已久之大東亞建設、即將如一塲好夢、完全消失、此　無以對靖國之央靈、是故無論如何吾人必須克服一切困難排隊一切障碍突破難局、以爭取此次大戰之澈底勝利、目前已非空發議論、隨意批評之時、全國國民　須　傾其　部智能、各盡其最大努力、力守本位、埋頭苦幹、余個人獻身報國之意志已決、先於國民諸君爲國效命、期安聖慮、今日爲宜戰週年紀念日、在此敬向盟邦各國所予帝國之絕大協力表示感謝、同時深望今後更作緊密提携、相倚相扶、以完成爭取最後勝利之共同目的、</p>
+<h2>Page 3</h2>
+<h3>首都民衆興亞大會　汪主席親臨致訓　協力大東亞戰爭　實現大亞洲主義</h3>
+<p>南京八日中央社電　今（八日）爲大東亞戰爭週年紀念、首都民衆爲表示熱烈慶祝、除全市一律懸旗誌慶、並於上午九時三十分在國民大會堂舉行大東亞戰爭一週年紀念首都民衆興亞大會、國府在主席親臨訓話、九時三十分在高奏中日兩國國歌聲中、宣告開會、向中日兩國國旗行最敬禮後、恭聆在主席訓話、全塲民衆聆畢、異常感奮、至十一時許禮成、</p>
+<p>南京八日中央社電　昨（八）日主席爲大東亞戰爭一週年紀念、承接十一月三十日爲中日條約二週年紀念、所發表之告全國國民書、發表再告全國國民書、對於協力大東亞戰爭同甘共苦之意義闡釋至詳、晨間主席並親臨首都民衆興亞大會、首就此義加以說明後、再有一段重要之引伸、指出由和平運動、而協力大東亞戰爭、是進步的同時是一貫的、茲錄全文如左、</p>
+<p>由和平運動進而協力大東亞戰爭、這意義是進步的、向時是一貫的、和平運動的眞意、在回復到國父孫先生的大亞洲主義、本來大亞洲主義、是中國國民革命的骨幹、以前雖有此理想、而未得到實現的時機、及至友邦日本、提倡建設東亞新秩序、本於東方道義精神、以求中日的共存共榮、則大亞洲主義、實現的時機已經到來了、所以中國有志之士、立即拋棄了抗戰的觀念、而從事和平運動、這不是轉變、而是回復到國民革命的本來面目、從此以後、認定復興中華、與復與東亞、是一件事、不是兩件事、這種認識在一般民衆訓練上尤其在陸海空軍軍人訓練上、或爲普通的而且深刻的信念、從前有些人、誤解和平、以爲和平是與民休息的、這些誤解、由於不知道在生存競爭的今日、只有積極的進取、決不是消極的退守、可以濟事、又有些人以爲和平是所以恢復國家元氣、養成人民更生的氣力、道也只是片面的見解、因爲進取要有正確的方向與路綫、吾則不惟不能替國家造福、且適足以取禍、如今的生存競爭、不只是國家與國家間的競爭、而是國家集團與國家集團的競爭這種競爭、是國民的總力戰、有積極的進取精神之後就要將這種精神用在某一國家集團方面、心神不二、志嚮不搖、必須道樣才能在競爭中得到勝利、中國應該站在那一方面的國家集團呢、中國是東亞的一部分、無疑的應該站在東亞的國家集團、道方向與路綫、國父早在大亞洲主義裏、指示得明明白白、照這樣做、是東亞同志、不照這樣做是東亞叛逆、這種意義、在和平運動的起頭、就已確定了、一旦大東亞戰爭發生、國民政府立即聲明、與友邦日本同甘共苦、在信念上是一貫的、在行動上是進步的、數年以來、中國雖然彫敝、但是積極的進取精神、是一切的根本、以這樣精神從事組織、從事訓練更從事於物質之創造、目前縱有千辛萬苦、而一日大東亞戰爭勝利、則東亞安全之日、亦即中國解放之時、無論如何辛苦、都値得的、這是每一個中國人都應該有的自覺、還有一層、所謂同甘共苦、不可專在利害着想、尤其要在是否着想、中國是東亞的一部份、東亞若亡於英美之手、中國何能獨存、這是不可否認的、百年以來、英美本想一口呑了東亞、徒以有日本在、不能爲所欲爲、道也是不可否認的、所以今日中國與日本協力、以求大東亞戰爭之勝利、在中國實在是心安理得、無一毫徘徊觀望之餘地、重慶方面、除了少數叛逆無可挽回外、大多數民衆、只要一念及國父大亞洲主義、必然立刻回顧頭來、只愁我們不努力、不愁全面和平不實現、我們和平運動之先驅者、以身作則、必能使全國同胞、終於走向同一方向、及同一路綫、</p>
+<h3>大東亞戰爭一週年　各地舉行紀念會　中委陳璧君在粵發表演說</h3>
+<p>廣州八日中央社電　此間日本居留民萬四千名爲紀念大東亞戰爭一週年、特於上午八時在廣東神社舉行紀念大會、中國方面亦自上午十時起在中山紀念堂舉行興亞民衆大會、嗣由各撇關團體代表及學生在市內列隊遊行、下午並舉行慰問日軍遊藝大會及街頭宣傳等、廣州八日中央社電中委陳璧君、八日出席省粵興亞大會、發表演詞略謂、</p>
+<p>去年今日是大東亞戰爭開始的日子、日本陸海空軍赫赫的戰果、各位已經知道得淸淸楚楚，用不着我再來說、我們都是有腦筋的人、看到這種戰果、應該明白、這不是偶然的事、日本這種赫赫的戰果、是經過幾許時間的立志、幾許時間的籌備、訓練、然後有今日的成績、同時英美荷之在南洋羣島·珍珠港·馬尼刺等地的敗績、亦不是敗於一刹那之間、亦自有他積漸而來的、</p>
+<p>大東亞戰爭已開始一年了、中國現在尚未加入參戰、但是同甘共苦的聲明、中國已經盡力的實踐、中國連年彫敝之餘。物資是這樣的缺乏、有一部分還須友邦日本的供給、但是中國本身的物資、除了留下僅足生存或竟不够生存的小郁分目己使用之外、是應該儘其可能、以供給大東亞戰爭的、</p>
+<p>北京八日中央社電　華北各地四十萬日僑以本日爲大東亞戰爭週年、特於正午一齊默祈、祈願戰傷及出征將兵之武運長久、並感謝護國英　之武威、又中日兩國已衆在懷仁堂舉行大東亞戰爭週年紀念大會、發表共同宣言、以堅忍持久、同心協力及必勝之信念、向大戰第二年邁進、本日夜中日保甲團體分別召開懇親會、共商生活革新問題、確定實踐建設華北之決意、</p>
+<h3>滿大使發表感想　吾人當戮力同心勇往邁進　貫徹作戰目的爲當前急務</h3>
+<p>中央社京訊　滿駐華大使呂榮寰以今（八）日適逢大東亞戰爭一周年紀念、頃特發表感想略謂回顧一年前之今日日軍開始奇襲夏威夷珍珠灣進擊馬來半島·香港·菲利賓·馬來半島·婆羅洲·緬甸·遂相繼而下、所有英美之重要戰略據點、盡被覆滅、最近更在西南太平洋屢次激戰、擊退敵方之反攻勢力、而英美澳洲間之唯一連絡路綫亦被遮斷矣、目前日軍北自阿留地安羣島，南至所羅鬥羣島之間、確保一廣大之陣綫、安如磐石、完全掌握太平洋上之制海權、在大陸方面、對五年以來予重慶以痛擊、遮斷其輸血路錢、同時我滿洲國、擔任捍衛北邊重責、並完成一大兵站據點之使命、使日本無後顧之憂、與中華民國·越南·泰國·緬甸·共同形成一堅固之陣容、由此觀之、勿論在太平洋上或大陸上、日本之戰略陣勢、業已獲得百戰不敗之地步、尤其日本復興東亞之偉大經綸、已於南方各佔領地逐漸實現、而南方各民族亦莫不徹底覺悟、互助協力、建設大東亞之前途、可謂充滿無限光明無限希望、</p>
+<h3>日軍報道部　舉行書展</h3>
+<p>中央社京訊　日本軍報道部爲紀念大東亞戰爭一週年、特於八九兩日假座中日文化協會興亞堂主辦書展、陳列日本畫家吉田福三郎精心傑構、描寫日軍作戰之巨幅圖畫、展覽期間任人參觀、</p>
+<h3>大東亞經濟會堂　正式開幕</h3>
+<p>東京八日同盟社電　大東亞經濟大會堂、於今晨大東亞戰爭一週年紀念日在此間正式開幕、此爲大東亞經濟同盟所主辦、將成爲大東亞共榮圈各種經濟研究之樞紐、</p>
+<h3>日機襲衡</h3>
+<p>里斯本八日同盟社電　據重慶報告昨日拂晨日本飛機兩次轟炸衡陽、</p>
+<h3>實部調查　鄂蠶絲業</h3>
+<p>中央社京訊　實業部以吾國蠶絲事業、向以長江流域附近之各省、最爲發達、事變後華中各地、蠶絲事業除由華中蠶絲公司與華商協力經營外、幷由工商部制訂管理小型製絲工廠暫行規則、以資補充、兩年以來、江浙各地蠶絲事業、漸有起色、茲以鄂省沔陽、仙桃鎭、河溶等處、事變前每年鮮繭產額最爲豐富、合全省計之、約在十萬担左右、該部爲謀復興吾國固有—業起見、特咨請鄂省府、漢市府將蠶絲事業最近情况、如生產數量、工廠家數、及其組織設備運銷暨事變前後之比較、與統計數字等等詳爲調查、</p>
+<h3>豫災奇重</h3>
+<p>澳門七日電　豫省災奇重</p>
+<h3>宋子文辭　中行總裁</h3>
+<p>里斯本八日同盟社電　據重慶息、渝政權外長宋子文巳辭去中行總裁、</p>
+<h3>二期清鄉區　籌設軍警病院</h3>
+<p>興八日中央社電　二期淸鄉地區籌設軍警病院、早經駐浙辦事處通飭各淸鄕地區病院診療所具領經費、迅速籌備設立、以便應用、茲悉各區奉令後、均在　極辦理中、約本月底以前、即可正式分別設立、</p>
+<h3>日軍在東亞各地　光榮戰史一頁（續昨）</h3>
+<p>—日陸軍報道部發表—</p>
+<p>「泰國方面及緬甸戰綫」三十年十二月八日登陸盤谷、九日和平進駐盤谷、十三日首次空襲緬甸、十四日佔領維多利亞島、廿三日兩處空襲仰光（繼續空襲香港）一月三日進抵拉海恩、四日反覆轟明機拉頓、七日轟炸毛淡棉、十九日進攻緬甸佔領達維奧、卅一日完全佔領毛淡棉、二月十日佔領瑪打萬、三月八日完全佔領仰光、五月一日攻陷瓦城、四日佔領阿基耶蒲飛機塲、五日佔領滇省龍陵、八日佔領敏德基那、十日佔領騰越、十一日八莫附近敵綜肅淸、十三日於加佛來附近擊滅英軍主力、十五日佔領卡薩、廿三日攻陷可麥嶺、八月一日緬甸新政府成立、任命巴莫博士任行政長官、</p>
+<p>「菲島荷印戰綫」三十年十二月八日轟炸菲島各要衝、十日在菲島高薩伽·維岡附近登陸、十二日在菲島萊加期比登陸、十六日於婆羅洲米里·羅東·塞里亞登陸、二十日登陸棉蘭荖島、廿二日主力在仁芽茵登陸、廿三日佔領棉蘭荖島納卯佔領維克島、廿四日在菲島於崇灣登陸、並在婆羅洲古晋登陸、廿五日完全佔領古晋、卅一日佔領濟萊市、一月一日佔領於普安、二日佔領馬尼刺、三日在北婆羅洲威斯東登陸、十一日對荷宣戰、分別在婆羅洲泰拉糧·西里伯島萬雅荖敵前登陸、十二日泰拉糧敵軍投降、完全佔領萬雅著、十四日控制西里伯島萬雅荖一帶、十六日轟炸蘇門答臘、佔領西里伯島北端挪利古那、廿二日轟炸婆羅洲各地、廿四日在婆羅洲峇厘巴板、及西里伯島凱達利敵前登陸、廿五日完全佔領容厘巴板、廿九日佔領婆羅洲坤甸、二月五日新菲島臨時政府開始行政事務、十日佔領婆羅洲馬辰、十四日陸軍降落傘部隊奇襲蘇門答臘巨港、廿四日佔領蘇鬥答臘西岸要衝孟古粦、三月一日在爪哇島東中西部各方面登陸、五日佔領巴達維亞、七日佔領泗水、十二日在蘇門答臘北部各要地登陸、十三日進駐蘇門答臘首府棉蘭、敉平全島、卅一日海軍機轟炸考勤　陀爾島、四月三日期開始總攻擊巴打半島、十日登陸宿　島展開肅清作戰、十一日巴打半島佔領、在北婆羅洲方面設置陸軍最高司令部、十六日登陸班乃島佔領　郎市、廿三日敉平班乃島、廿九日奇襲棉蘭著島戈沓峇株及白　庫實行敵　登陸、五月三日敉平棉蘭荖島、五日在考勒基陀爾敵前登陸、八日在馬尼刺灣口卡白利育及夫拉伊萊亞塞島登陸、九日佔領棉蘭著島卡白康斯米荖敏拉明、十日棉蘭著島美菲軍司令無條件投降、十二日進駐棉蘭著島孟拉巴伊、十二月二日大本營發表敉平全菲島、</p>
+<p>「南太平洋戰綫」三十年十二月八日轟炸中途島、關島、韋克島、十日佔領關島、二十三日佔領韋克島、卅一日攻擊夏威夷、馬維島加鳥、阿島、三十一年一月四日轟炸新不列顚島首都拉喜爾、二十三日在俾斯夢羣島敵前登陸、三月八日在新幾內亞島薩馬拉拉愛登陸、二十三日奇襲登陸南安達曼島、該島英軍無條件投降、四月二十八日馬六甲羣島及新幾內亞北半部告敉平、三十日海軍機空襲澳洲北端之宏恩島、五月十一日轟炸澳洲本土及摩勒斯比港、十二日轟炸摩勒斯比港及宏恩島、十四日再度轟炸摩勒斯比港（其後不斷轟炸）、二十九日第五十八次轟炸摩勒斯比港（其後不繼轟炸）、六月四日攻擊澳洲、十三日海軍機轟炸達爾文港（其後繼續轟炸）、七月八日海軍機轟炸宏恩島、二十五日海軍機空襲達爾文港（八九兩日繼續空襲）、十一月三十日海軍機轟炸摩勒斯比港、</p>
+<p>「印度及印度洋方面」三十一年三月三十一日完全佔領印度耶誕島、四月六日首次空襲印度本土科卡那達港、五月十一日轟炸印度印佛爾、十六日轟炸阿薩密省各要衝、十八日轟炸阿薩密省巴德法爾密爾却、十月二十五日空襲印度丁斯基吉大港、二十七日空襲阿薩密省推布加</p>
+<p>「阿留申羣島方面」三十一年六月七日攻陷基士加島、八日攻陷亞圖島、「其他」三十一年六月八日潛艇砲擊雪梨紐卡斯爾、二十日潛艇兩度砲轟澳萊公省北岸、二十一日潛蜓砲擊溫哥華島、（未完）</p>
+<h3>日本與越南　關係良好　德古抵西貢</h3>
+<p>東京八日海通社電　日本駐越大使芳澤、昨接見東京「日日新聞」駐河內訪員、發表談話曰、日本與越南關係良好、現正在順利合作中、日本與越南決準備一切、應付任何　變、</p>
+<p>河內八日海通社電　越南總督德古海軍上將、已行抵西貢、主持第二十屆西貢博覽會之開幕禮及將在西貢舉行之經濟大會、聞德古將於一月後回河內、</p>
+<h2>Page 4</h2>
+<p>澳門通訉</p>
+<h3>重慶物資缺乏現狀（續）　物資缺乏促成物價高漲　嚴重性不亞於通貨膨脹</h3>
+<p>今日內地物價問題，固與財政金融有密切之關係，然物資不足之因素，亦殊未可忽視。考內地戰時物價狂漲之風，實始於二十九年三月下旬紗價之飛騰，而紗價飛騰之原因，則由於貨缺·在二十九年二月中旬時，渝市存紗不多，同時以運輸阻滯，來貨不易，商人乘機囤積，紗市漸成供不應求之勢。至三月下旬以後，紗貨奇缺，紗價乃抉搖直上。如二十支雙馬牌棉紗在一周之內，上漲約達一千元，自二月至三月之一個月間，約上漲一倍。此爲物價問題嚴重化之開端。</p>
+<p>又如二十九年秋，稻穀歉收，而湘贛之米則以運輸困難，未能接濟川省之需要，大糧戶覩此情勢，積不出售，同時更有商人乘機購囤牟利，遂造成糧荒之嚴重局面。自八月至十二月上漲三倍，至翌年七月，共漲達七倍半之譜。於此可見物資不足之因素，對於物價之作用，實驟而急，最足動搖人心。</p>
+<p>吾人細察年來渝市物價問題嚴重化之起源與過程，則上舉兩例，要爲共中最顯著之大事。茲冉就日用必需品中之花紗估計其供求概况，以便窺知物資不足程度之一斑。</p>
+<p>據聶光堉·朱仙舫之估計，每人每年平均消費布量爲粗布六碼，中等布三碼，細布一碼，共爲十碼。通常布每疋約有四十碼。又按戰前每年動力機織及手工機織布之產量，合計九千五百萬疋，加布貿易入超五十萬疋，共爲九千五百五十萬疋，此爲總供給量，亦即需要量·設全國人口總數爲四萬萬，則每人每年需要布量約爲四分之一疋，亦即十碼，此與聶朱兩氏之估計數相符。令二十四支以下之紗每件可製粗布三十疋；三十二—四十二支紗每件約可製中等布匹十疋；六十—八十支紗每件約可製細布八十疋。按此標準，可由布之需要量求得紗之需要量。又中國紗每件重爲四二〇鎊，即三八一，〇二四市斤，而花紡紗之耗折甚微，則每件紗之紡成，需花三·八市但，故花之需要量可由紗之需要量推求之。</p>
+<p>又據人口估計，以川，康，滇，黔，桂，湘，豫，陝，甘，寗，靑，新等十二省爲準，則爲</p>
+<p>（一）布之供給量　據估計內地現有動力織布機約四千台，每年最高生產能力可達二百萬疋，俱以空襲被炸或缺少動力等原因，在前數年，約僅實產一·四六·八〇〇疋，再加手工織布實產約九百萬疋，兩共得一〇·一四六·八〇〇疋。惟據某機關之估計，內遷工廠補充設備及增設小型織布機後，云年動力機每月約可產布二八五·四四九疋，全年約可產布三，四二五，三八八疋，如是再加手工織布九百萬疋，則後方動力與手工織布合計每年約可產一二·四二五·三八八疋，上列各家估計，均尚相近。</p>
+<p>（二）紗之供給量　二十九年內地動力紗錠開工一〇八·〇〇〇枚，產紗六八·六三二件，此外有「七七」及「三一」等紡紗機三六·〇〇〇架，及手工紡錠五二五·〇〇〇錠，產紗四四〇·〇〇〇件，兩者合計約共爲五〇八·〇〇〇件．又據某機關報告截至去年底止，動力紗錠又增加爲一三一·七〇〇枚，月產九·一四二件，年產一一〇·七〇四件，若再加手工紡紗四四〇·〇〇〇件，共可產五五〇·七〇〇件。但據另一估計，動力紡紗機約可年產七〇·〇〇〇件，手工紡紗約可年產三〇〇·〇〇〇件，兩共約可得三七〇·〇〇〇件，此數與上列估計數略有出入，茲假定前一估計數爲最高產量，後一估計數爲最低產量，似亦屬合理。</p>
+<p>（三）棉花之供給量　據渝農本局之估計，內地棉花生產量爲陝豫區一百二十萬担，襄樊區三十萬担，洞庭湖區四十萬担，浙東區四十萬担，川中區五十萬担，共計二百八十萬担。此與中央農業試騐所之估計數亦頗相近。</p>
+<p>花紗布之需要與供給量，旣經估計如上，試將各項估計數字，列表比較如次：</p>
+<p>據渝經濟部秘書廳之估計，內地人口共有二萬萬人，需要布五千萬疋及軍用布五百寓疋，折合紗一百六十萬件，折合花六百十萬市担。此與上列估計相近。</p>
+<p>花紗布之需要量，已得估計數如上。其供給量，則如左列之估計：若以最低需要量與最高供給量相較，則不足之數，布爲一二·五七五·〇〇〇疋，紗爲一五〇·〇〇〇件，花爲二〇〇·〇〇〇市担。</p>
+<p>由上表觀之，紗布棉花之供給量，皆不及最低需要量，而其價格在二十九年內約上漲二倍餘，在三十年內約上漲一倍半左右，但花紗布尚非最不足物資之列，故物資不足之於物價上漲，其嚴重性不亞於通貨膨脹，况目前外國物資無從輸入，即用飛機輸入，數量極微，前途之可慮實不堪想像。</p>
+<h3>大東亞戰爭一週年　全事舉行紀念　社運會召開興亞大會　公私團體到三千餘人</h3>
+<p>一元復始、六管迎祥、昨為大東亞戰爭一週紀念日、環顧一年以來、建設猛進、復興可期、際此良辰、不得不有所表示、除市政府召集所屬各局會處高級職員舉行紀念大會外、社運會復於十時、假天后宮橋堍市商會大禮堂學行民衆興亞大會、到全市三百餘公私團體代表三千餘人、日方當局於下午在大光明戲院舉行紀念會、盛極一時、茲將兩會詳情分誌如后、</p>
+<p>市府紀念大會</p>
+<p>滬市政府昨晨九時、在該府大禮堂召集各局處會主任以上職員舉行紀念大東亞戰爭一週年紀念大會、陳市長因公赴京、由趙秘書長尊嶽代表主持、行禮如儀後、即由趙秘書長致訓詞、首謂英美侵略、已被友邦日本撲滅、並對主席昭示之同甘共苦、在第二階段開始、我們應盡精神力量、努力本位、協助友邦、爭取最後勝利、至十時禮成散會、</p>
+<p>民衆興亞大會</p>
+<p>晨十時、社運會在市商會大禮堂舉行民衆興亞大會、到市政府暨所屬各局處淸鄉會·同業公會·同鄕會·同業聯誼會·慈善團體·保甲會·敎育界·學生界·農界·工界·文化界·等三百餘公私機關團體代表三千餘人、來賓計到陳市畏代表趙尊嶽·凌科長大挺·宜傳處駐滬辦事處處長馮節·東亞聯盟中國總會滬分會陳孚木·社運會孫鳴岐·滿洲國協和會指導部長王子衡·滿駐華大使館代表劉獻根等、由袁履登·趙正平·張德欽·于晨·章儀椿·袁士興·湯關春等七人爲主席團、開會行禮如儀、由袁履登致開會辭、趙正平于晨張德欽等相繼致辭請陳市長代表趙秘書長訓最後全體歡呼口號、至十散會、</p>
+<p>日方舉行紀念</p>
+<p>日陸海軍於下午一時出動遊行、自虹口四川路出發、經南京路靜安寺路至跑馬廳、至下午四時後、由南京路折回虹口、此外中華民族反英美協會於八九兩日假大光明大戲院排演話劇江舟泣血記、以將英美人驅出東亞爲主題、下午有上海興亞會舉行之東亞民族座談會、日本行事實行委員會假大光明大戲院舉行紀念大會、全日慶祝盛况熱烈空前、今「九」日本市中日各機關團體繼續舉行慶祝、東亞聯盟上海分會主持之聯合舉行懇談會、華中男女中學學生聯合演講大會、上海音樂協會舉行大東亞戰爭周年演奏會等、</p>
+<p>行事委員會</p>
+<p>大東亞戰爭一周年紀念日、在滬友邦日本組織之行事實行委員會、特於昨（八）下午四時半、假靜安寺路大光明大戲院舉行紀念大會、由日本大使館田尻公使担任委員長、中日滿德義各國在滬各機關長官、及社會名流出席參加者不下二千餘人、全體行國民儀禮後、即由興亞會船津會長致開會辭畢、乃由中日滿德義各國在滬長官代表演說、計有陸軍報道部橫山中佐、演講復興精神文明的神聖戰、海軍報道部長鎌田大佐、演講迎大東亞一週年、市府陳市長公博、代表金參事國珍演講當大東亞戰爭一週紀念之間、及滿洲國總領事葉堯公、德國費禧公使代表、義大利畢嘉諾總領事代表等相繼演講、旋由上海總力報國會服部理事領導全體高呼萬歲三聲、即致閉會辭、乃由海軍音樂隊演奏音樂、旋放映夏威夷馬來大海戰影片、直至下午八時始散、</p>
+<p>民族懇談會</p>
+<p>昨日爲大東亞戰爭週年紀念日、上海興亞會特於昨日午後二時卅分、假座華懋飯店九樓舉行上海亞細亞民族同志團體代表懇談會、出席者共計六大民族之各團體、計（一）東亞聯盟會、（二）中華民族反英美協會、（三）滿洲帝國協和會、（四）印度獨立聯盟會、（五）菲律賓協會、（六）阿富汗代表等、不下百餘人、由大日本興亞同盟上海連絡所長兼上海興亞會事務局長中谷武世主席、華方來賓出席參加者、市府秘書長趙尊嶽、宣傳部駐滬辦事處長馮節、社會局長凌憲文、公用局長葉雪松、友邦海軍岡新中將、鐮田大佐、陸軍橫山中佐、主席宣佈開會後、首先對大東亞戰爭陣歿將士舉行默禱、旋由中谷武世致詞後、各民族團體乃先後起立發表演詞、繼由船津會長起立領導、高呼口號、熱烈情緒聲中散會、</p>
+<h3>糖商合作營業處　供售較多數量食糖　憑房捐票購糖限額可望寬放</h3>
+<p>本埠食油與食糖供應問題、均將改善、以便市民允以食油斷擋日久、殷盼殊切日內可望正當配給出售、大通社記者茲錄於後、</p>
+<p>放寬限制</p>
+<p>食糖出售辦法、糖商合作營業處鑒於本埠存糖極爲豐富、來源亦仍絡繹、故已在考慮與市民以較多供給、大致可憑房捐票購買八磅、是種改善辦法、即可正式公告、以便市民、兩租界以及滬西甫市閘北、均行同樣辦法、</p>
+<p>食油將售</p>
+<p>存儲浦東食油、因裝運問題稍有濡滯、然已有四千五百担運達上海、即可配給零售油商出售、食油批發處並在研究派員赴各出售處所嚴密監視辦法、以期普遍、而防杜弊竇、至本月定貨早經簽約、裝運可無問題、即可照常供售、</p>
+<h3>日軍當局繼續　發還啊廠</h3>
+<p>計華商工廠十一家</p>
+<p>友邦日軍當局、爲實踐中日條約、建設東亞共榮圈、於昨（八）日下午二時、在慶祝大東亞一週年紀念聲中、續將日軍管理工廠十一所、在北四川路東和洋行舉行交還典禮、出席代表國府方面計到實業部次長兼駐滬辦事處處長袁愈佺、副處長章駿、商品檢騐局長陳中、友邦方面計到日本陸軍福山中佐、及大使館事務所岸調查官等、暨各工廠代表等行禮如儀後、即田軍管理工廠者雙方調印畢、首由日方代表福山主任委員及袁次長相繼致詞、繼由工廠代表郭順致謝詞、迄至四時始行禮成、</p>
+<p>發還工廠名單</p>
+<p>章華毛絨紡織股份有限公司、利用紡織股份有限公司、永安紡織第一廠、大華印染廠、上海榮昌廠、南滙中華廠、東溝梗片廠、蘇州鴻生廠、鎭江熒廠、杭州光華廠、大中染料廠等十一所、</p>
+<h3>廿期戶口米</h3>
+<p>糙米一升碎米半升</p>
+<p>在本月十一日至十九日爲止之一期內、各米店暨工部局售米所、將憑第二十號聯票分別發售米麵、屆時由聯票上註明登記號碼之米店、按每一買米證聯票、發售糙米一升、碎米半升、售價合計三元八角、按每一麵粉證聯票發售麵粉一斤半、售價三元四角、再各米店暨該局售米所、定於本月廿日停售、東亞滬分會今午歡宴</p>
+<h3>協和會王部長</h3>
+<p>東亞聯盟中國總會上海分會、茲以滿洲國協和會王部長子衡、特來華參加大東亞戰爭一週年紀念、作交換演講、爲表示歡迎起見、特訂於今（九）日正午十二時、假靜安寺路國際飯店設宴款待、該會陳當務理事兼書記長親自偕同僚屬、在塲招待、屆時盛况定可預下、</p>
+<h3>滬港貿易協定　正式簽訂成立　滬粵貿易亦將隨之恢復</h3>
+<p>（商業新聞社訊）上海香港間之物質貿易協定、經上海軍配常務理事小堀氏、與香港總督部當局數次磋商後、業經成立、依此協定、香港將有鉅量食糖運滬、而上海亦將雜糧棉製品雜貨等輸港、小堀氏於簽訂此次協定後、復由港赴粵、與粵當局討論恢復滬粵貿易問題、業獲得具體方案返抵上海、</p>
+<h2>Page 5</h2>
+<h3>防止囤貨　擴大倉庫管制　銀錢業倉庫存或亦須報告　未登記之貨物概不得收受</h3>
+<p>當局爲防止商人囤積物資起見，前者曾實施商業倉庫取締規則、規定所有商業倉庫貨棧、均須向當局報告存庫貨品、茲爲擴大實施計、銀錢業兼管之倉庫、亦須遵照此項規則辦理、依此規則、各倉庫應於每月月底、向當局報告下舉各事、（一）貨商號與營業所在地、（二）屬於何業公會、（三）存貨之價格、此外該規則並規定（一）各倉庫不得收存未登記之貨物、（二）若係日常主要用品、須有同業公會爲其證明、（三）必要時當局得派人前往調査、（四）存庫品須按規定價格出售、</p>
+<p>工商界動態</p>
+<h3>上海企業界的先鋒　新亞建業股份有限公司　（續）</h3>
+<p>現在把新亞建業公司目前投資對象的新亞各廠，簡單的加以介紹：（一）新亞化學製藥股份有限公司，簡稱新亞藥廠，創設於民國十五年，由許　羣會計師趙汝調藥師發起創立。最初範圍甚小，僅以製造化妝品及成藥入手，但因經營得法，經過了十多年的時期，範圍益廣，業務日增，現在竟執中國製藥廠之牛耳。國內及南洋各地均有辦事處，華北華西均有分廠。其附屬事業的主要者，有新亞玻璃廠，新亞化學藥物研究所，新亞生物硏究所，廣澄藥學專科學校，冠羣業餘補習學校，新亞圖書館，新亞出版刊物，如英文醫學雜誌，新醫藥刊，國藥新聲，健康家庭。（二）新亞衛生材料廠股份有限公司，專製新亞橡皮膏，行銷普及國內外。創於民國二十六年，至民國三十年，因是年營業達百三十餘萬元，超過原有資本四倍，乃增資至國幣一百二十萬元，增加生產，充實原料。（三）新亞血淸廠股份有限公司，創於民國二十七年，初創時資本爲國幣三十萬元，聽說不久要增資釗二百萬元。製造方面，計分預防製造部，治療製品部，血淸部。（四）新亞酵素　業股份有限公司，創於民國三十年，額定股本國幣一百萬元，到了三十一年，增資爲國幣三百萬元，從事擴大生產。現在所產酵母，業已推銷全市，以應戶口麵粉發酵之需求。（五）新亞科學股份有限公司，創於民國三十年，資本爲國幣一百萬元，製品爲各種印件，各種紙盒，敎育用品，文具儀器等，（六）香港新亞化學製藥股份有限公司，簡稱香港新亞藥廠爲上海新亞藥廠聯合香港華僑於民國二十八年所設立的，當時的資本爲港幣五十萬元，自建廠屋於九龍，利用熱帶所產原料製成藥品，推銷南洋一帶。</p>
+<p>上面所說的新亞各廠，便是新亞各廠，便是新亞建業公司現在投資的對象。至於未來投資的對象，概括的說，就是去推淮新典的工商事業，並且爲應付今日工商界所遭遇的新環境，所發生的新問題，是要把物資方法精神力量整個的放在一起，來發展一般和社會日常需要有關係的事業，工業也好，商業也好。總而言之，是以救濟目前民營事業之困難，綢繆戰後民營事業之建設爲其理想的—並且由理想的而至於實現的—一個對象。</p>
+<p>三·新亞建業在組織與人才方面：</p>
+<p>新亞建業公司在組織上，可以說是簡單化，它的股東會董事會以及監察人而外，其內部的機構，是絕對採取車質不重量的原則。絕對不因襲因人設事的習慣。所以該公司就以董事畏兼任總經理，而總經理之下，並無副總經理，經理，協理，副經理，襄理一類的名稱，其下祗有業務，總務，稽核，設計四處，每處的下面，分科辦事；業務處轄營業，服務，保管，統計叫科；總務處轄文書，庶務，人事，股務四科；稽核處轄審核，會計，出納三科；設計處轄設計，硏究，編撰三科，此外總經理之左右，有一個顧問專員室，專備諮詢。</p>
+<p>在問幕的那一天，有一位來賓說過這樣一句話：「新亞建業的資本，固然是號　一千萬元，却是新亞建業的人才，恐怕不是這一千萬元所能够羅致得到的。」質言之，它的內部人才，可以够得上說是應有盡有。如董事長許冠羣，常務董事朱博泉，邱良榮，董事趙汝調，顧克民，會廣方，傳湘丞，朱如堂，徐謝康，吳蘊齋，葉扶霄，許寶驊，施作謀，監察人李伯涵，許靖之，史　權，程慕，曹畤玉，都是上海工商界，實業界，金融界的有數人物；如總務處長張國華，糟核處長于稻蓀，業務處長李惕生，設計處長劉雲舫，都爲富有經騐的專門人才，眞可以說是人才會萃了。</p>
+<p>憑着上面的叙述，大概可以把新近開幕的新亞建業股份有限公司作一鳥瞰、我們處於今日工商業環境中的人們，對於這一個有主義，有實力，有組　。有人才的投資組織，當然是懷抱着無限的期望，湧現着滿腔的熱誠。</p>
+<p>商業新聞</p>
+<h3>華股連升過巨　稍有脫售</h3>
+<p>昨日華商股票市况、先猛漲後突回、乃投資者旣爲銀根所支配、且兩星期來市價飛升過高、有一部份脫售也、惟新藥業獨祇漲不回、新亞藥廠由六十六元升見六十八元七角半新高價、又升三元、民誼高五元、達九十五元、五洲升至五百十元、中西昂達四百五十元、信誼藥廠飛叩三白元關、新亞酵素二十五元、大中華火柴續在買勢中見三百四十七元五角新高價、升十元、南洋烟草一百三十五元高五元、文化業亦堅穩、</p>
+<p>商務見四百五十二元後回下爲四百四十五元、中華二百〇五元、爲最後成交價、各升五元、世界書局在一百廿元關外、公用業變動甚巨、閘北水電最高做過六十九元、喊過七十元、後回下至六十六七元、已回小五角、尚係連升九元共升十七元後之小回風、華商電氣一見四十九元、回下爲四十六七元、軋平、百貨業僅中國內衣一度哄至三十七元七五、回下爲三十六元左右、尚升五角、餘如永安一百四十二元五角、回下爲三十六七元、新新見一百五十九元、回下爲一百五十二元半、國貨公司八十七元、各回小二三元不一、紡織業永安紡織已回小三十元、當日由二千元退至一千九百五十元、小額票面之各新股仍趨穩定、交易旺達、今誌市價表於後、</p>
+<h3>飾金掛價又高</h3>
+<p>連升六大　計有六百元</p>
+<p>昨本市銀樓業大新同行首飾金、門市每兩兌出掛脾初平、仍三千二百五十元、至九點五十分均再掛高一百元、爲三千三百五十元、已連升六天掛高六百元、收進减一百元左右、乃同業非正式行市價已高逾掛價之上也、初高一百元、爲三千三百五十元、在買勢中升爲三千四百元、午刻止漲突回下、正午三千三百八十元有售出、比上日尚軋升一百三十元、五十元差度、成交淸稀、至首飾紋銀每兩仍掛十六元、同業互做價十七元半左右、</p>
+<p>昨錢業公會拆息仍一角四分未更、</p>
+<p>昨外幣市况帶軟、日軍票同業互做價小挫爲五元五角五分二四厘、小錢莊與銀號門市售出五元五角六分、收進在五分內、亦趨疲軟、</p>
+<h3>三錢莊加入錢庫</h3>
+<p>春源·成豐·立成三錢莊業已加入錢庫爲會員、自十二月十日（即明日）起、三莊付款票據、依照其他會員莊票據辦法同樣辦理云、又聚豐錢莊亦已加入錢庫爲會員、業已於本月一日起照會員莊辦法辦理、久安銀行、及中國工業銀行之票據、亦於一日起由交換所開始代理交換、久安爲五三—四、中國工業爲五三—五、</p>
+<h3>十月份票據交換</h3>
+<p>同業存款較上月爲减</p>
+<p>本市票據交換所、十月份交換票據總數爲一、四一〇、陸四三、九六四元八六、代收票據總數爲一、八四〇·五一五、一四五元八六、同業存款每日平均金額爲六七〇、五七〇、四四九元一一、與九月份比較、交換總數計增四七八、八一四、六九四元五二、代收總數計增五四九、〇七七、七四五元、八九、兩者合計共增十萬萬餘元、而同業存款則减四千八白七十四萬四千七白五十四元八角一分、</p>
+<h3>重磅粗布　貨缺更俏</h3>
+<p>東布供不敷求</p>
+<p>廠布　昨市始漲後疲、終又上升、白貨十二磅地球細布晨開一九五元、旋即降至一九一元半、但後市人氣高昂、續升至一九四元、同磅大鵬富貴亦跟踪而起、大鵬廠單一九三元有求無供，富貴一九二元、重磅粗布更爲缺俏、十六磅地球做過二六六元、飛鴻二五五元、十四磅地球二二五元、九晚新字一四〇元、八磅振中一三六元、桃花女士林自三一八元跌至三一三元、下午復昂、最高盤做三二〇元、雙魚府綢八元二角半、三羊嗶嘰八元二角、雙金錠元布二〇三元、美人魚元斜二〇五元、均已售開、</p>
+<p>東布　因洋行與本街同業心思看好、故散戶雖有乘高吐出、仍供不敷求、中檔各牌細布每疋續升一元至二元、十二磅彩球細布一九八元半、飛魚一九七元半、陽鶴一九七元、喇叭一九六元半、獨銀行單龍頭較平、午收價爲一九七元半、四君子嗶嘰紅單八元零一分起、步跌至七元九角、而午收價亦復上升爲七元九角分、較漲一角一分、</p>
+<h3>海蜒市挺</h3>
+<p>國產烟台海蜒、邇來略有運到、以市存不充、至爲堅挺、號盤開過二千六百元、行盤售二千八百元、市象穩秀、</p>
+<h3>興化圓隨鬆</h3>
+<p>雜路桂圓、連日開價步鬆後興化貨因亦帶軟、昨開出數十箱、比前跌一百數十元、惟有一部份客貨尚觀望未卸、市勢似難轉好、</p>
+<h3>茴香續緊</h3>
+<p>茴香茲以客囤均有收進、而藥幫亦有食胃、故市勢較緊、茲號盤見升、開九百三十五元、行售四九百五十元、市象堅固、</p>
+<h3>法租界　防空演習成績</h3>
+<p>法租界消極防禦委員會十月份報告云、本月份法租界內防空演習（包括警報投彈救火會三項）共十八次、演習時、各區警察掃除、救大隊救護隊之訓絲、均能各盡其　、聞警後趕赴出事地點之迅速、尤堪欣慰、每次並由救火會會長授與爬梯及傳遞水桶等技術、衛生處亦派專鬥人員到塲、敎授初步救傷及羿床抬運傷者之方法、燈火管制演習時、　初發現居民將窓簾掀去而熄滅燈火者甚多、爲禁止此項現象、及使居民隨時知警起見、將租界劃分若干小區（小東門分二區、麥蘭三區、霞飛六區、中央六區、福煦四區、貝當六區）、每小區每星期演習一次、十一月份中、燈火管制演習共一一八次、成績美滿、至上開各項演習、十二月　均仍繼續舉行、</p>
+<h3>中華菸草公司成立</h3>
+<p>本市華生·東亞共盛·與亞·四大捲烟公司、現已合併改組爲中華菸草公司、資本實力均極充足、本埠總發行所、在漢口路新建大厦、定於今日開幕、該公司之中事人、爲虞宗勛·陳長庚·袁鴻勳睹君、對於派烟、力主公平、售價甚爲克己、以往成績、備受同業愛戴、聞今後將本原有精神、增加出品、務期供應充裕、黑市消滅、使大衆吸戶受惠　　本報十一月份國際特稿及本埠新聞訪員及特稿稿費業已結淸、請於十日向本館會計處領取爲荷</p>
+<p>編輯部啟</p>
+<p>體育新聞</p>
+<h3>一星盃今日給獎閉幕　六路雄師參加表演　下午二時半在光夏中學</h3>
+<p>晨鐘體育會主辦之一星盃小球聯賽、已全部結束、周組錦標　虹聯所得、一組爲永毅奪得、星組冠軍爲文靜、定今日下午二時半起、在光夏中學球塲舉行給奬閉幕表演賽、邀請六路雄師參加表演、屆時工部局副總董袁履登氏、及周一星氏、將親臨球場主持儀式、中法童軍維持秩序、並由袁氏主持拍賣賽球、收人之款、掃數捐助上海貧兒義務學校、序慕計三、小售門票、歡迎參觀、首幕爲星組冠軍文靜隊出戰一組錦標隊永毅、次慕爲影星對抗西混隊、壓軸爲現世戰虹聯、現世爲小球鐵軍三星隊化身、虹聯新獲該賽周組冠軍、秩序如次、</p>
+<p>文靜—永毅（表）二時三十分</p>
+<p>西混—影星（表）三時三十分</p>
+<p>現世—虹聯（表）四時三十分</p>
+<h3>東聯盃足球第二幕　聯誼戰亦海軍</h3>
+<p>本月二十日在膠州公園</p>
+<p>東亞聯盟中國總會上海分會主辦之東聯盃慈善足球賽、首幕業於上星期日（六日）在膠州公園舉行、由東華對義海軍、茲悉第二幕定於下星期日（本月廿日）仍在原處舉行、由西聯會指定史考托盃首週義海軍對聯誼之戰、作爲該項義賽、義軍實力堅强、表演出衆、門票定日內開始預售、</p>
+<h2>Page 6</h2>
+<h3>一年來的大東亞戰爭（二）</h3>
+<p>— 陳彬龢</p>
+<p>（七）菲列賓之戰</p>
+<p>十二月八日，日本陸海軍航空部隊急襲菲律賓的美方航空隊及主要飛機塲。使美國準備攻擊日本本土的空軍實力，遭受致命的打擊。十日晨前開始對呂宋島北岸阿帕里方面及西北海岸方面敵前登陸，在美國的遠東領土上升起日本旗幟，日方稱之爲無血登陸。」十二日，日軍又在呂宋島東南端蘭加士丕附近登陸二十日晨佔領明他拿亞島，此島在菲律賓爲僅次於呂宋的大島。從此，菲律賓的防綫已被衝破。</p>
+<p>二十二日，日本主力在馬尼拉北方二百公里的呂宋島西岸林家恩　登陸，二十四至二十七』，其他各地相繼登陸，對馬尼拉包圍進攻。到了今年元旦日軍就已完全佔領菲島的首都馬尼拉。到了五月上旬日軍已將菲律賓全部控制了。</p>
+<p>（八）婆羅洲之戰</p>
+<p>大東亞戰爭第一週強襲夏威夷新加坡和馬尼拉英美的三大軍事據點，覆滅其海空中勢力。至第二週，戰局中心移至南中國海—日本對英美作戰的主要戰塲。原來北面的香港，東面的菲律賓羣島，西面的馬來半島，南面的英領婆羅洲，其中香港，馬尼拉和新加坡為英美構成遠東的戰略三角區，爲進攻日本的主要根據地。日軍於開戰第一日首攻香港，第三日至第五日在菲律賓的呂宋島南北兩端登陸，接着越南和泰國又於十一日與日軍成立軍事協定和攻守同盟，於是南中國海上英美的對日包圍陳錢已被各個突破了。唯一的根據地，只有婆羅洲了。婆羅洲是世界第二大島，英屬佔全島的七分之二，北部海岸爲石油產地。日軍於十二月十六日在婆羅洲登陸，與香港馬來亞和菲律賓互相呼應，控制了整個的南中國海。</p>
+<p>在婆羅洲，米里，羅敦，塞利亞三地登陸的日軍，經過一個月的血戰，至二月四日，英領婆羅洲便完全戡定。從此以後，南中國海上北自香港，南至婆羅洲，東至菲律賓，都爲日軍所佔領；於是，便可加强對馬來亞尤其是對新加坡的總攻了。</p>
+<p>（九）新加坡之私</p>
+<p>日軍精銳在山下司令官統率下，於十二月八日，開始向馬來半島登陸，占領司令太巴爾飛機場。到了十七日，占領檳榔嶼。一月三日淮占新加波以北二百八十公里的重要航空根據地克阿恩泰，使新加坡陷爲日本戰鬥機的活動目標。</p>
+<p>檳榔嶼攻略的主力部隊於得勝後，續向班拉克洲進攻。二十三日，占領世界第一錫產地泰依濱。二十三日渡過班拉河，二十八日進攻班拉克首都怡保，獲行了對新加坡直接威脅的航空根據地。今年一月十六日就深入柔佛州中部的克爾阿恩了。接着於一月三十一日攻陷柔佛巴哈爾。自十二月八日至此五十五日之間，日軍推進到一千一百公里，開戰史空前的迅速的先例。</p>
+<p>於是，新加坡要塞的攻略戰開始了。</p>
+<p>新加坡，這個英帝國侵略東亞的軍事根據點，會以四萬萬元的國防費，悠長的時日，慘淡建設，與地中海西口的直布羅陀，稱爲世界二大要塞。但是終於遭到日軍無情的攻擊了。一月三十一日、日軍開始强渡柔佛水道。二月七日夜在新加坡東北的烏濱島登陸，牽制敵軍。二月八日夜間始對新加坡總攻，吻日下午七時占領了頓加機塲。十一日奪取布克台麥山，新加坡市街已在指呼之間了。十四日晨開始對新加坡市街作戰；十五日下午，就最後佔領新加坡，在大東亞戰爭史上永留了驚人的一頁。</p>
+<p>新加坡之佔領，具有決定東亞命運的重要意義。從軍事方面說，第一南中國海上英美對日包圍陳綫完全消滅了，英美再也不能在西南太平洋實行聯合哩綫了。第二，從此以後日軍不僅成爲南中國海的主人，而日也要進而解決與英美聯合　日的荷印的命運了。第三，日軍佔領馬來新加坡以後，已可進而控制印度洋，而展開了日軍更遠大的前途。</p>
+<p>從政治方面說，新加坡是英美聯合反抗日本的大本營。日本佔領了新加坡，不僅引起了英美本國人民對於英美在太平洋作戰力的懷疑，而且預先給荷印以莫大的打擊，荷印的士氣也因此大受挫喪。此外東亞各小國和一向在英美荷帝國主義者壓迫之下的小民族，過去百餘年對英美人的崇拜或畏懼，變而突然加強了亞洲民族的自信心。這佔大東亞民族的自覺上，是有極重大的意義。</p>
+<p>（十）東印度諸島之戰</p>
+<p>荷屬東印度，是荷蘭帝國主義者生命所在，在大東亞戰爭前夕，是ABCD陣綫中主要的一環。因此，當日軍攻陷了新加坡之後，立刻展開了對荷屬東印度的總攻勢。</p>
+<p>首先，日軍於一月十一日在荷屬婆羅洲東海岸的泰拉肯登陸，二十四日進攻婆羅洲東海岸的要　巴里八板，二十五日完全佔領該市。這是南太平洋的要　，佔領後，日軍就可控制馬卡撤與海峽，無異對荷印之心臟部斯拉把亞挿進了鋒利的匕首。一月，十七日，進而勘定了西部婆羅洲，至三月中旬，荷領婆羅洲已經全部佔領了。</p>
+<p>其次，日軍在一月二十六日佔領異　羣島中的塞關勃斯島，控制了馬卡撤爾海峽，形成對荷印和澳大利亞的一大威脅。南部蘇門答臘的進攻，開始於二月六日。十一日先把敵方的空軍力量擊潰了。不出旬日，日軍已經勘定了蘇門答臘的南部主要地區，而爪哇也就完全在日軍的威脅之下了。</p>
+<p>其後，經過了爪哇的海戰，日本海空軍又獲得了空前的勝利。當新加坡陷落之後，荷屬爪哇便陷於孤立了。三月一日，日本陸軍部隊在海軍掩獲之下，在爪哇東部，中部，西部強行登陸，立刻獲得重大的成功，西南太平洋聯軍司令部事實上已經瓦解。到了三月五日，荷印的首都巴達維亞已經飛揚起日本旗了。戰事向東部方面移動，三月八日荷印總督和聯軍長官低頭下氣地向日軍投降了。</p>
+<p>從　以後，英美荷在西南太平洋的反攻根據地已經完全消滅，西部方面，日本軍隊已經面對着印度洋了，東部面已經把澳大利亞孤立起來了。</p>
+<p>（十一）緬甸之戰</p>
+<p>當日軍在西南太平洋上縱橫騁所向披靡的時候，聯合國方面於敗北之中，企圖從另一方面來牽制日軍，這裏主要的是第一加強助重慶，在華中華南和華北各綫展開反攻。第二實現英美重慶的軍事合作，加强緬甸的保衛戰，進而向越南泰國進兵，以圖分散日本的兵力。在這兩種策動中，緬甸是有着非常重要的戰略上和攻略上的意義的，可能給日本以重大的威脅。於是，日本開始對緬甸的攻略戰。</p>
+<p>首先，在空軍方面，日軍早於十二月十三日大舉空　緬甸各空軍根據地。以後，日本空軍就不斷在緬甸各地活動，主要目的是粉碎央美在緬甸軍建空軍。</p>
+<p>當日軍進攻馬來半島的時候，日本陸軍早在一月十七日首先占領了克拉　峽要衝緬甸所屬的太伏伊附近的重要陣地，以阻緬甸方面對馬來的增援部隊。一月二十日，日空軍大轟炸緬甸第三都市莫爾孟，協助陸軍進攻莫爾孟平原。三十一日佔領莫爾孟市。於是緬甸以東的敵軍全爲日方肅淸，而援渝路綫也完全陷入日軍轟炸圈內；同時，緬甸首都仰光也就孤立了。</p>
+<p>二月十日，日軍開始向仰光推進，至三月三日對仰光總攻，八日完全佔領。</p>
+<p>仰光失守之後，英軍火速要求重慶派兵援救，蔣軍就迅速向緬境進兵，然而立營未定，首有大隊英軍的潰退，接着又遭遇日軍出其不意的迂　攻略。四月廿九日軍突佔臘戍，五月一日占領緬甸第二都市——瓦城，接着，五月三日進攻八莫，於是蔣軍就被包圍和分割了，甚至連退路也沒有。五月五日軍又衝進了雲南的大門。從此緬甸不再是印度的屛藩了、而日軍已湧到印度的邊綠，英帝國在亞洲崩潰的命運已經迫在眉睫。從此，印度人也站起來了，要求决定自己的命運。（未完）</p>
+<p>本報原有副刋自由談，春秋，遊藝界三種，自明日起合併，改出綜合性質之自由談副刋一種，每日發刋。茲訂徵稿條例如下：</p>
+<p>（一）本攔歡迎下列各種稿件。</p>
+<p>一，站在中國人民立傷上，對社會及文化上有積極會義之短評或雜感。</p>
+<p>二，含有積極性建設性之文學批評，劇評，影評等。</p>
+<p>三，歷史小品文及科學小品文。</p>
+<p>四，社會相—社會上各階層各職業界人物或集團之生動的描寫，須有事實根據。</p>
+<p>五，　合新時代之小說，詩歌，繪畫，攝影及地方素描等。</p>
+<p>六，書報介紹與批評。</p>
+<p>七，文化情報，關於文化界團體，人物及勞作之簡單報告。八，有關社會文化之漫畫與木刻。</p>
+<p>（二）來稿謂用白話文，字數以一千字以內爲標準。特別歡迎五百字左右之短文，其小說及特種稿件字數過多者不在此例。</p>
+<p>（三）來稿除特別有關係者外，槪不退還，請勿附寄郵票。</p>
+<p>（四）來稿槪以現金爲酬，　得依作者指定而　稿酬移充社會文化公益之需。</p>
+<p>（五）本攔熱烈歡迎各界投稿建議及批評。</p>
+<p>自由談以篇幅關係，今明日再停一期，請讀者注意。</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.12.09</h1>
+<h3>"Transfer Sincere Enthusiasm to Words and Deeds"</h3>
+<p>——Reflections on Reading Chief of Staff Kawabe's "Address to Japanese Soldiers in China" and Briefly Stating the Attitude of Our Country's Citizens——</p>
+<p>On the anniversary of the Greater East Asia War, General Staff Kawabe Masakazu of the Japanese Expeditionary Force in China issued the "Address to Japanese Soldiers in China." After reading it repeatedly, in addition to expressing sincere admiration for Kawabe's "correct vision regarding the completion of the Greater East Asia War and the resolution of Sino-Japanese relations" and his spirit of treating the Chinese people with sincerity and encouraging Japanese soldiers, I feel that there are still many thoughts that must be stated from the standpoint of the Chinese people.</p>
+<p>First, regarding the attitude of the Japanese soldiers in China, Kawabe emphasized (1) establishing strict military discipline; (2) practicing "sincerity"; and (3) respecting the traditional customs of the Chinese people. As for military discipline, the Japanese army has always been known to the world for its strictness. Moreover, the Japanese soldiers are all educated youths who, in peacetime, are law-abiding citizens or soldiers accustomed to military discipline through strict military training. Therefore, China has no reason to doubt the "strict military discipline." However, China's social environment is complex. Local bullies, gentry, and ignorant speculators will inevitably use various temptations and abuse their authority to do as they please, directly or indirectly affecting military discipline. This cannot but be taken with extra vigilance.</p>
+<p>Secondly, speaking of "sincerity," the Japanese authorities have made repeated declarations over the past five years, and various parties in our country have responded with correct understanding. But as Kawabe said, "The Chongqing side remains obstinately unaware and continues to resist, because they are still seeking to trust Japan's sincerity." We must also add that the problem is not whether the Chongqing authorities trust Japan's sincerity, but whether the Chinese people have a correct understanding of Japan's sincerity. Chinese philosophy emphasizes the word "sincerity," and the Chinese people generally use the word "sincerity" to measure the friendly relationship between people, and even extend it to the relationship between people and gods, such as "sincerity brings efficacy," "sincerity can communicate with gods," and "where sincerity and determination penetrate, metal and stone will yield." These are the conclusions of Chinese life philosophy and folk philosophy over thousands of years. Historically, any ruler who treated the people with "sincerity" was loved by the people. Now the Japanese army is in China to "liberate China, free it from the oppression of Britain and the United States, help it achieve independence, and establish eternal good neighborly relations (see Kawabe's original text)." This has long been understood by a part of the Chinese intellectual class. However, the current problem is not the understanding and trust of a small number of Chinese government authorities and a part of the intellectuals, but the thorough understanding and trust of the common people, which can help the good neighborly relations between the two countries.</p>
+<p>Again, Kawabe's special mention of "respecting the traditional customs of the Chinese people" is particularly insightful and important. The situation is often like this: the Chinese people sincerely trust the Japanese army's military discipline, and they also have a considerable understanding of the Japanese army's "sincerity." However, due to the differences between the traditional customs of the Chinese and Japanese people, the efforts of the aforementioned two are often negatively affected. Moreover, because of the gap between the two sides, the gap between the temperament of Japanese soldiers and the unique straightforward attitude of the Chinese people can often cause great misunderstandings due to small problems. On the one hand, it is necessary to step up the communication between the cultures of the two countries, not only to promote Japanese language and culture in China, but also for Japanese soldiers and civilians to study Chinese language, writing, history, social conditions, customs, and so on. On the other hand, it is also necessary to strengthen the psychology of "self-restraint" and the emotion of "mutual understanding," and to use "sincerity" to supplement strict military discipline. We must recognize that in this era of the Greater East Asia War, the areas where China and Japan need to cooperate must be very urgent, so both sides must immediately work to achieve this.</p>
+<p>Secondly, Kawabe's words in "Sino-Japanese friendship begins with the expeditionary force" and "Always think of the battlefield in front and the hardships in the rear" are addressed to the Japanese soldiers, but the depth of the feelings of the Chinese people after reading them must not be less than those of the Japanese soldiers. There is no need to hide that, except for a very few outstanding figures, most Chinese people do not have academic research on politics, lack the ability to observe and have long-term vision, and they only rely on their intuition. They do not have a true understanding of the Japanese soldiers coming to China to fight, but they have a psychology passed down from generation to generation, that is, whoever comes and benefits them more, they will support and respect. Similarly, the Chinese people are not without the spirit of sacrifice, but there must be a kind of power or method to make them realize that this sacrifice is for their honor and benefit. The complicated factors of politics cannot be understood by them, and their political understanding is so simple, but this is what is worth noting and researching in the current work of strengthening Sino-Japanese cooperation.</p>
+<p>After reading Kawabe's article, we dare to offer two further suggestions: first, a strict selection system must be adopted for Chinese staff or translators who assist the Japanese army. Especially: (1) Before being hired, they must go through a considerable period—at least six months or a year—to have a full and thorough understanding of Japan's true intentions toward China and the mission of the Japanese Expeditionary Force in China, and a full and practical understanding of the attitude, methods, and techniques of the work; (2) After being hired, various appropriate occasions and methods should still be used to continue training, so that they have higher attainments, and focus on the cultivation of character and the encouragement of integrity, so that they can make a good impression on the Chinese people; (3) A necessary system of assessment, rewards, and punishments must be established for his work, knowledge, ability, and especially his character and behavior, and this system must be more serious than the average. Only under this system and method can we avoid using people carelessly and harming the reputation of the Japanese army, and further increase the degree of Sino-Japanese cooperation because of being good at using people. Secondly, standing from the position of the Chinese people, we sincerely hope that the lower-ranking soldiers and related staff of the Japanese Expeditionary Force will be strengthened in political training, and often lectured on Chinese language, writing, history, customs, habits, and social organization, etc., so that they have a considerable understanding of all aspects. When contacting the Chinese people, they can avoid unnecessary misunderstandings, avoid fraud by interpreters and indirect contacts, and directly help Sino-Japanese cooperation and produce greater effects.</p>
+<p>At the same time, because of Kawabe's article, we are more concerned about studying the attitude that the Chinese people should have toward the Japanese Expeditionary Force and friendly foreign nationals. First of all, we naturally need to have a more complete and thorough understanding and trust of Japan's policy toward China, the mission of the Japanese Expeditionary Force in China, and the mutual relations between the Chinese and Japanese people. This kind of understanding and trust must not be limited to slogans, slogans, speeches, and writing, but must be expressed in practical actions, just as we hope from the Japanese side. However, the education and organization of our country's ordinary people are not very perfect, so we hope that the authorities responsible for this aspect pay special attention to this. What is especially important is not the instillation-style and compulsory work, but the inspiration of the people's automatic requirements and the development of their initiative. Secondly, the people of our country should also have an attitude of neither being humble nor arrogant, like brothers, toward the soldiers of friendly countries and foreign nationals. Not being humble is the proper attitude of the East Asian nations who are rising up and becoming independent after the Greater East Asia War, and it is also the basis for the equal cooperation between the people of the two countries. Not being arrogant is a necessary condition for Sino-Japanese mutual understanding, mutual assistance, and mutual progress. Only by being neither humble nor arrogant can we be like brothers, cooperate, and strive for a bright future. Of course, it is not enough to just achieve this, so we should also treat each other with sincerity. Confucius said: "Do not do to others what you do not want done to yourself." This is what we expect from the Japanese side toward us, and we should do even more so to the Japanese side, especially in taking the lead in doing it, which is the manifestation of the word "sincerity." The foundation of the Chinese people's philosophy lies in the word "sincerity," and we must first set an example for others to see. And being sincere to Japan means using the spirit of sacrifice of sharing hardships today to seek common happiness in the future, that is, to be prepared for greater sacrifices, infinite sacrifices, to cooperate with Japan and jointly strive for the common victory of the two countries—that is, the victory of the Greater East Asia War—and the liberation of the East Asian nations.</p>
+<p>Finally, we want to conclude with the "topic," "Transfer sincere enthusiasm to words and deeds." Both China and Japan should pay attention to avoiding any words or deeds that damage the feelings of the other party in the future, because a thousand articles of friendship and ten thousand slogans of cooperation are often greatly reduced in their effectiveness of friendship and cooperation by a hand or a foot that damages the feelings of the other party—this is what we sincerely expect from the efforts of both sides. Because sincerity, as Kawabe pointed out, is that "if the Sino-Japanese Incident cannot be completely resolved, then the Greater East Asia War will be difficult to achieve complete victory." And the complete resolution of the Sino-Japanese Incident lies in both forces "transferring sincere enthusiasm to words and deeds"!</p>
+<h3>Greater East Asia War Anniversary: Japan Commemorates Solemnly Nationwide; Prime Minister Tojo Delivers Speech, Resolving to Strive for Final Victory</h3>
+<p>Tokyo, 8th (Central News Agency) The Greater East Asia War has reached its one-year anniversary. The resolution of Japan, both government and people, to complete the war and strive for final victory is becoming increasingly firm. On this anniversary, grand and solemn commemoration ceremonies are held throughout Japan. At 11:59 a.m. on the 8th, all transportation agencies and workers across the country stopped working for one minute to pray silently for the war dead and wish the soldiers on expedition a long and prosperous military career. Prime Minister Tojo solemnly read the declaration of war and rebroadcast the speech he gave last year when he paid homage to the declaration of war. Various agencies, groups, and schools also held ceremonies to read the declaration of war separately. At 2:00 p.m., a national assembly was convened across the country, with the central assembly held in front of the Yasukuni Shrine. Each unit in the prefectures and counties also held meetings separately and rebroadcast Prime Minister Tojo's speech at the central assembly. At 1:00 p.m., a grand military music concert was held at the Hibiya Public Hall in Tokyo, and at 6:00 p.m., a commemorative lecture meeting was held there, with lectures by Mayor Kishimoto of Tokyo, Section Chief Hirade of the Navy Press Department of the General Headquarters, and Director-General Tani of the Army Press Department of the General Headquarters. From dawn to dusk, crowds and representatives of groups flocked to the Nijubashi Bridge to pay respects to the Imperial Palace, praying for the Emperor's long life. The emotions were extremely enthusiastic.</p>
+<p>Tokyo, 8th (Central News Agency) The National Assembly for the Anniversary of the Greater East Asia War, organized by the Great Japan Imperial Rule Assistance Association, etc., was convened separately in various parts of the country at 2:00 p.m. on the 8th. The central assembly in Tokyo was held at the Yasukuni Shrine. Prime Minister Tojo attended in person and delivered a speech, which was broadcast to various assemblies via radio. The gist of his speech is as follows: Fellow citizens, today last year was the day when we respectfully received the declaration of war against Britain and the United States. Recalling a year ago, the Empire, in order to maintain world peace and prevent human tragedy, showed the greatest restraint and self-respect, but finally rose up today a year ago. The one hundred million citizens of the Empire believed that the rise and fall of the Empire depended on this battle, and from that day on, with the belief that they would surely win, they vowed to devote all their strength to repay the country. On this day of profound significance, at the Yasukuni Shrine, where the spirits of those who have protected the country are enshrined, the National Assembly for the Anniversary of the Greater East Asia War is convened, and I would like to express my thoughts, which are truly filled with infinite emotion. Looking back at this year, all one hundred million of our compatriots have respectfully observed the imperial edict and devoted all their efforts to fighting bravely. At the beginning of the war, the Imperial Army severely damaged the main forces of the British and American fleets in Hawaii and Malaya respectively. At the same time, the army and navy, through skillful joint operations, successively captured Hong Kong, the Philippines, the Dutch East Indies, and Burma. Wherever the military went, the enemy was defeated and demoralized. The power of the Imperial Army has spread throughout the Greater East Asia region. Our people in the rear have also cooperated and overcome the hardships of wartime life, and each has devoted all their efforts to serving the public in their respective positions. The construction of the Greater East Asia Co-Prosperity Sphere has also been vigorously promoted at the same time as the progress of the war. Not to mention Hong Kong and Malaya, even Burma, the Dutch East Indies, and the Philippines have been freed from the shackles of Britain and the United States. The local residents are deeply grateful for the Emperor's grace and are happy to cooperate, so the construction project is progressing steadily and has achieved great results. In the past year, the Empire has established a solid foundation for victory in both strategic and economic terms, and has continued to expand and strengthen it. We will be able to fight again and win again until Britain and the United States surrender. Furthermore, the cooperation between Germany, Italy, and other European allies and the Empire has become closer since the outbreak of the Greater East Asia War. As a result of fighting bravely in various aspects, they have also repeatedly achieved victories, and are responding to and advancing with the Empire in defeating the forces of Britain and the United States. At the same time, in the Greater East Asia region, Manchuria has devoted all its national strength to cooperating in the war, and the Nationalist Government of China is also cooperating with the Empire with the determination to share weal and woe in coping with the difficult situation. Thailand took appropriate measures at the beginning of the war, and later signed a defensive alliance with the Empire, exerting all its strength to cooperate in the war. Therefore, with the mutual support between the East and the West, and the unity of the various countries and nations in the Greater East Asia, the unprecedented war to defeat the common enemy, Britain and the United States, has entered a true stage. With the great achievements of the Empire in the past year, coupled with the concerted efforts of the allied nations, we are even more confident that we will be able to defeat the offensive of Britain and the United States. I still remember that before the war, the South Seas, which have countless important resources, were the treasure trove of Britain and the United States, but less than half a year after the outbreak of the war, they were liberated from oppression. These regions have now recovered their original appearance and have become the foundation of great war power to protect East Asia. The enemy has lost these abundant war resources, while East Asia has added countless treasures. But if we can make the greatest and best use of these resources to provide for the soldiers on the front lines to be active and successful, then it all depends on the shoulders of you, my fellow citizens. Therefore, the responsibility of our one hundred million citizens is by no means easy. Today's battlefield is no longer limited to the front lines, so it is no exaggeration to say that every move in your daily life will immediately affect the combat effectiveness of the front lines. Therefore, your factories are supply factories for the front lines to win victory, and your farms are the logistics departments for one hundred million citizens to win victory. In short, all of your duties, no matter how small, are battlefields for winning victory. There is also a saying that since ancient times, war has been a war of wills, so only those who can fight stubbornly to the last five minutes can win the glory of victory. Although the Empire has encountered many difficulties, the acquisition of resources in the South Seas is as described above. The weapon of economic blockade that the United States relied on to oppress us before the war has now been used by us. It is not difficult to know the extent of the difficulties faced by the enemy. Therefore, although we and the enemy are both fighting against the greatest difficulties today, the difference is that the enemy has fallen into the abyss of despair and is facing more and more difficulties, while we are growing out of the experience of pain with a bright future. As I have repeatedly stated in the past, this war is followed by a decisive battle after a huge consumption, so the first requirement for winning victory is to first win the current decisive battle. Moreover, we must win this war. If we cannot win, then the construction of the Greater East Asia, which the one billion people of East Asia have been looking forward to for a hundred years, will disappear completely like a beautiful dream. This cannot be answered to the spirits of the Yasukuni Shrine. Therefore, no matter what, we must overcome all difficulties, remove all obstacles, and break through the difficult situation in order to win the complete victory of this war. Now is not the time to issue empty arguments and make random criticisms. All the people of the country must devote all their intelligence, do their best, stick to their posts, and work hard. My personal will to devote myself to repaying the country has been decided. I will first serve the country for my fellow citizens and reassure the Emperor. Today is the anniversary of the war. I would like to express my gratitude to the allied nations for their great cooperation with the Empire, and I deeply hope that we will continue to cooperate closely, support each other, and achieve the common goal of striving for final victory.</p>
+<h2>Page 3</h2>
+<h3>Capital Citizens' Asia Development Conference; Chairman Wang Attends in Person to Deliver Instructions; Cooperate in the Greater East Asia War; Realize Pan-Asianism</h3>
+<p>Nanjing, 8th (Central News Agency) Today (the 8th) is the anniversary of the Greater East Asia War. To express their enthusiastic celebration, the citizens of the capital hung flags throughout the city to mark the occasion and held the Capital Citizens' Asia Development Conference for the Anniversary of the Greater East Asia War at the National Assembly Hall at 9:30 a.m. The National Government attended in person to deliver instructions. At 9:30 a.m., the meeting was declared open to the sound of the national anthems of China and Japan, and the most respectful salutes were paid to the national flags of China and Japan. The audience respectfully listened to the Chairman's instructions, and all the citizens in the audience were extremely moved after hearing them. The ceremony ended at about 11:00 a.m.</p>
+<p>Nanjing, 8th (Central News Agency) Yesterday (8th), Chairman Wang, for the anniversary of the Greater East Asia War, following up on the "Letter to the People of the Whole Country" issued on November 30 for the second anniversary of the Sino-Japanese Treaty, issued another "Letter to the People of the Whole Country," elaborating on the significance of cooperating in the Greater East Asia War and sharing weal and woe. In the morning, the Chairman attended the Capital Citizens' Asia Development Conference in person. First, he explained this meaning, and then made an important extension, pointing out that moving from the peace movement to cooperating in the Greater East Asia War is both progressive and consistent. The full text is as follows:</p>
+<p>Moving from the peace movement to cooperating in the Greater East Asia War, this meaning is progressive, and it is consistent. The true meaning of the peace movement is to return to Sun Yat-sen's Pan-Asianism. Originally, Pan-Asianism was the backbone of the Chinese National Revolution. Although we had this ideal before, we did not get the opportunity to realize it. When the friendly nation of Japan advocated the construction of a new order in East Asia, based on the spirit of Eastern morality, in order to seek the coexistence and co-prosperity of China and Japan, then the opportunity to realize Pan-Asianism has arrived. Therefore, Chinese people of insight immediately abandoned the concept of resistance and engaged in the peace movement. This is not a change, but a return to the original face of the National Revolution. From then on, we recognized that reviving China and reviving East Asia are one thing, not two things. This kind of understanding, especially in the training of the general public, or in the training of the army, navy, and air force, should be a common and profound belief. Some people used to misunderstand peace, thinking that peace is to rest with the people. These misunderstandings are due to not knowing that in today's survival competition, only active progress, not passive retreat, can help. Some people also think that peace is to restore national vitality and cultivate the strength for the people to regenerate. This is only a one-sided view, because progress must have the correct direction and route. If we do not, we will not only be unable to benefit the country, but will also be enough to bring disaster. Today's survival competition is not just a competition between countries, but a competition between country groups. This kind of competition is a total war of the people. After having the spirit of active progress, we must use this spirit in a certain country group, with one mind and unwavering ambition. Only in this way can we win in the competition. Which country group should China stand on? China is a part of East Asia, and undoubtedly should stand on the East Asian country group. The direction and route were clearly indicated by the Father of the Nation in Pan-Asianism. Doing this is being an East Asian comrade, and not doing this is being an East Asian traitor. This meaning was determined at the beginning of the peace movement. Once the Greater East Asia War broke out, the National Government immediately declared that it would share weal and woe with the friendly nation of Japan. It is consistent in belief and progressive in action. Although China has been devastated for several years, the spirit of active progress is the foundation of everything. Engaging in organization, training, and even the creation of materials with this spirit, even if there are thousands of hardships and difficulties at present, once the Greater East Asia War is victorious, the day of East Asia's safety will also be the time of China's liberation. No matter how hard it is, it is worth it. This is a self-awareness that every Chinese person should have. There is another level, the so-called sharing weal and woe, we cannot only think about the gains and losses, especially we must think about what is right and wrong. China is a part of East Asia. If East Asia is to be destroyed by Britain and the United States, how can China survive alone? This is undeniable. For a hundred years, Britain and the United States have wanted to swallow East Asia in one gulp, but they have not been able to do what they wanted because Japan is there. This is also undeniable. Therefore, today, China and Japan are cooperating to seek the victory of the Greater East Asia War, which is truly at ease in China, without any hesitation or hesitation. Except for a few incorrigible traitors in Chongqing, the majority of the people, as long as they think of the Father of the Nation's Pan-Asianism, will definitely look back immediately. We only worry that we are not working hard enough, and we do not worry that overall peace will not be realized. Our pioneers of the peace movement, by setting an example, will surely enable our compatriots throughout the country to eventually move in the same direction and on the same route.</p>
+<h3>Greater East Asia War Anniversary: Commemoration Meetings Held in Various Places; Central Committee Member Chen Bichen Delivers Speech in Guangzhou</h3>
+<p>Guangzhou, 8th (Central News Agency) Fourteen thousand Japanese residents here held a commemoration meeting at the Guangdong Shrine at 8:00 a.m. to commemorate the first anniversary of the Greater East Asia War. On the Chinese side, the Asia Development People's Congress was held at the Sun Yat-sen Memorial Hall starting at 10:00 a.m. Representatives of various circles and students then paraded through the city. In the afternoon, a recreational gathering to comfort the Japanese army and street propaganda were also held. Guangzhou, 8th (Central News Agency) Central Committee Member Chen Bichen attended the Guangdong Asia Development Congress on the 8th and delivered a speech, which roughly said:</p>
+<p>Today last year was the day when the Greater East Asia War began. You all already know clearly about the brilliant results of the Japanese army, navy, and air force, so there is no need for me to say it again. We are all people with brains, and seeing these results, we should understand that this is not a coincidence. Japan's brilliant results are the result of aspirations, preparations, and training over a period of time, and then there is today's achievement. At the same time, the defeats of Britain, the United States, and the Netherlands in the South Seas Islands, Pearl Harbor, and Manila were not defeated in an instant, but were accumulated over time.</p>
+<p>The Greater East Asia War has been going on for a year now. China has not yet joined the war, but China has tried its best to fulfill its statement of sharing weal and woe. After years of devastation in China, material resources are so scarce that some of them must be supplied by the friendly nation of Japan. However, the material resources of China itself, except for the small portion that is barely enough for survival or not even enough for survival, should be supplied to the Greater East Asia War as much as possible.</p>
+<p>Beijing, 8th (Central News Agency) 400,000 Japanese residents in various parts of North China took today as the anniversary of the Greater East Asia War, and prayed silently at noon, praying for the long-lasting military fortune of the wounded and soldiers on expedition, and thanking the military power of the spirits protecting the country. In addition, the people of China and Japan held a Greater East Asia War anniversary meeting at the Huai Ren Tang Hall, and issued a joint declaration to move towards the second year of the war with perseverance, solidarity, and the belief in victory. Tonight, the Sino-Japanese Baojia (community watch) groups convened a friendship meeting to discuss the issue of life reform and determined to practice the construction of North China.</p>
+<h3>Ambassador of Manchukuo Expresses Sentiments: We Should Strive with One Heart and Advance Courageously; Achieving the Objectives of the War Is the Urgent Task</h3>
+<p>Central News Agency, Beijing Dispatch: Lü Ronghuan, the Ambassador of Manchukuo to China, made the following remarks on the occasion of the first anniversary of the Greater East Asia War: "Looking back on this day one year ago, the Japanese army launched a surprise attack on Pearl Harbor in Hawaii and advanced into the Malay Peninsula, Hong Kong, the Philippines, Borneo, and Burma, one after another. All of the important strategic strongholds of Britain and the United States were destroyed. Recently, fierce battles have been fought repeatedly in the southwestern Pacific, repelling the enemy's counter-offensive forces, and the only line of communication between Britain, the United States, and Australia has been severed. At present, the Japanese army, from the Aleutian Islands in the north to the Solomon Islands in the south, is securing a vast front line, as solid as a rock, and completely controls the sea power in the Pacific Ocean. On the mainland, it has inflicted heavy blows on Chongqing for five years, cutting off its supply lines. At the same time, our Manchukuo is responsible for defending the northern border and completing the mission of a major supply base, so that Japan has no worries about the rear. Together with the Republic of China, Vietnam, Thailand, and Burma, we form a solid formation. From this point of view, whether in the Pacific or on the mainland, Japan's strategic position has already gained an invincible position. In particular, Japan's great plan for the revival of East Asia has been gradually realized in the occupied territories in the south, and the various ethnic groups in the south are thoroughly awakened, helping each other and cooperating to build a bright and hopeful future for the Greater East Asia."</p>
+<h3>Japanese Army Press Department Holds Book Exhibition</h3>
+<p>Central News Agency, Beijing Dispatch: The Japanese Army Press Department, in commemoration of the first anniversary of the Greater East Asia War, will hold a book exhibition on the 8th and 9th at the Xingya Hall of the Sino-Japanese Cultural Association. It will display the exquisite masterpieces of Japanese painter Fukusaburo Yoshida, depicting large-scale paintings of Japanese military operations. The exhibition will be open to the public during the exhibition period.</p>
+<h3>Greater East Asia Economic Hall Officially Opens</h3>
+<p>Tokyo, 8th, Domei News Agency: The Greater East Asia Economic Hall officially opened here this morning, the anniversary of the Greater East Asia War. Sponsored by the Greater East Asia Economic League, it will become the hub for various economic studies in the Greater East Asia Co-Prosperity Sphere.</p>
+<h3>Japanese Planes Attack Hengyang</h3>
+<p>Lisbon, 8th, Domei News Agency: According to reports from Chongqing, Japanese planes bombed Hengyang twice yesterday morning.</p>
+<h3>Ministry of Industry Investigates Sericulture in Hubei Province</h3>
+<p>Central News Agency, Beijing Dispatch: The Ministry of Industry believes that the sericulture industry in our country has always been most developed in the provinces near the Yangtze River basin. After the Incident, in the Central China region, in addition to the joint operation of the sericulture industry by the China Central China Silk Company and Chinese businessmen, the Ministry of Industry and Commerce also formulated provisional regulations for the management of small silk factories to supplement it. In the past two years, the sericulture industry in Jiangsu and Zhejiang has gradually improved. Mianyang, Xiantao Zhen, and Herong in Hubei Province had the most abundant fresh cocoon production before the Incident, accounting for about 100,000 dan for the entire province. In order to revive our country's traditional industry, the Ministry has requested the Hubei Provincial Government and the Wuhan Municipal Government to conduct a detailed investigation of the recent situation of the sericulture industry, such as the quantity of production, the number of factories, and their organizational equipment, transportation and sales, as well as a comparison before and after the Incident, and statistical figures.</p>
+<h3>Severe Disaster in Henan</h3>
+<p>Macau, 7th Telegraph: The disaster in Henan Province is extremely severe.</p>
+<h3>Song Ziwen Resigns as President of the Bank of China</h3>
+<p>Lisbon, 8th, Domei News Agency: According to Chongqing news, Song Ziwen, the Minister of Foreign Affairs of the Chongqing regime, has resigned as the President of the Bank of China.</p>
+<h3>Military and Police Hospitals to Be Established in the Second Phase of Clearance Areas</h3>
+<p>Xing, 8th, Central News Agency: The establishment of military and police hospitals in the second phase of the clearance areas has already been ordered by the Zhejiang Office to all hospitals and clinics in the clearance areas to collect funds and quickly prepare for establishment so that they can be used. It is now known that after receiving the order, all districts are working hard to handle it, and it is expected that they will be formally established separately before the end of this month.</p>
+<h3>Glorious War History of the Japanese Army in Various Parts of East Asia (Continued from Yesterday)</h3>
+<p>—Published by the Japanese Army Press Department—</p>
+<p>"Thailand and Burma Front": Landed in Bangkok on December 8, 1941. Peacefully entered Bangkok on the 9th. First air raid on Burma on the 13th. Occupied Victoria Island on the 14th. Two air raids on Rangoon on the 23rd (continued air raids on Hong Kong). Reached Lahein on January 3rd. Repeatedly bombed Ming 機 La敦 on the 4th. Bombed Moulmein on the 7th. Attacked Burma and occupied Dawei on the 19th. Completely occupied Moulmein on January 31st. Occupied Martaban on February 10th. Completely occupied Rangoon on March 8th. Captured Mandalay on May 1st. Occupied the Akyab airport on the 4th. Occupied Longling, Yunnan Province on the 5th. Occupied Myitkyina on the 8th. Occupied Tengyue on the 10th. Enemy forces near Bhamo were completely eliminated on the 11th. Destroyed the main British forces near Kalewa on the 13th. Occupied Katha on the 15th. Captured Kamai Ling on the 23rd. The new government of Burma was established on August 1st, and Dr. Ba Maw was appointed as the Chief Executive.</p>
+<p>"Philippine Islands and Dutch East Indies Front": Bombed key areas of the Philippines on December 8, 1941. Landed near Cagsawa and Vigan in the Philippines on the 10th. Landed in Legazpi, Philippines on the 12th. Landed in Miri, Lutong, and Seria, Borneo on the 16th. Landed on Mindanao Island on the 20th. The main force landed in Lingayen on the 22nd. Occupied Davao on Mindanao Island and occupied Wake Island on the 23rd. Landed in Agusan, Philippines on the 24th, and landed in Kuching, Borneo. Completely occupied Kuching on the 25th. Occupied Zele City on the 31st. Occupied Pu'an on January 1st. Occupied Manila on the 2nd. Landed in Weston, North Borneo on the 3rd. Declared war on the Netherlands on the 11th. Landed at Tarakan, Borneo and Menado, Celebes Island, in front of the enemy. The enemy troops in Tarakan surrendered on the 12th. Completely occupied Menado. Controlled the Menado area of Celebes Island on the 14th. Bombed Sumatra on the 16th. Occupied Loleo on the northern end of Celebes Island. Bombed various parts of Borneo on the 22nd. Landed in Balikpapan, Borneo, and Kendari, Celebes Island, in front of the enemy on the 24th. Completely occupied Balikpapan on the 25th. Occupied Pontianak, Borneo on the 29th. The new Philippine provisional government began administrative affairs on February 5th. Occupied Banjarmasin, Borneo on the 10th. Army paratroopers launched a surprise attack on Palembang, Sumatra on the 14th. Occupied the key points of Menggala on the west coast of Sumatra on the 24th. Landed on the eastern, central, and western parts of Java Island on March 1st. Occupied Batavia on the 5th. Occupied Surabaya on the 7th. Landed in various key areas of northern Sumatra on the 12th. Entered Medan, the capital of Sumatra, on the 13th, and pacified the entire island. Naval aircraft bombed Koepang, Timor Island on the 31st. Launched a general attack on Bataan Peninsula on April 3rd. Landed on Cebu Island on the 10th and launched a mopping-up operation. Occupied Bataan Peninsula on the 11th. Established the Army Supreme Headquarters in North Borneo. Landed on Panay Island on the 16th and occupied Iloilo City. Pacified Panay Island on the 23rd. Surprise attack on Cotabato and Davao on Mindanao Island, implementing enemy landing. Pacified Mindanao Island on May 3rd. Landed in Cagayan de Oro in front of the enemy on the 5th. Landed on Caballo Island and Isla El Fraile at the mouth of Manila Bay on the 8th. Occupied Cagayan de Oro, Camiguin, and Miral in Mindanao Island on the 9th. The US military commander in Mindanao Island surrendered unconditionally on the 10th. Entered Mangarabay, Mindanao Island on the 12th. The Headquarters announced the pacification of the entire Philippine Islands on December 2nd.</p>
+<p>"South Pacific Front": Bombed Midway Island, Guam, and Wake Island on December 8, 1941. Occupied Guam on the 10th. Occupied Wake Island on the 23rd. Attacked Hawaii, Maui Island, and Kauai Island on the 31st. Bombed Rabaul, the capital of New Britain Island, on January 4, 1942. Landed in front of the enemy in the Bismarck Archipelago on the 23rd. Landed in Samarai, New Guinea Island on March 8th. Surprise landing on South Andaman Island on the 23rd. The British army on the island surrendered unconditionally. The Moluccas Islands and the northern half of New Guinea were declared pacified on April 28th. Naval aircraft bombed Horn Island, the northern tip of Australia, on the 30th. Bombed mainland Australia and Port Moresby on May 11th. Bombed Port Moresby and Horn Island on the 12th. Repeatedly bombed Port Moresby on the 14th (and continued to bomb). The 58th bombing of Port Moresby on the 29th (and continued to bomb). Attacked Australia on June 4th. Naval aircraft bombed Darwin on the 13th (and continued to bomb). Naval aircraft bombed Horn Island on July 8th. Naval aircraft raided Darwin on the 25th (continued raids on the 8th and 9th). Naval aircraft bombed Port Moresby on November 30th.</p>
+<p>"India and the Indian Ocean": Completely occupied India's Christmas Island on March 31, 1942. First air raid on the Indian mainland, Kakinada Port, on April 6th. Bombed Imphal, India on May 11th. Bombed key areas of Assam Province on the 16th. Bombed Badarpur and Silchar in Assam Province on the 18th. Raided Chittagong, India on October 25th. Raided Chabua in Assam Province on the 27th.</p>
+<p>"Aleutian Islands": Captured Kiska Island on June 7, 1942. Captured Attu Island on June 8th. "Other": Submarines shelled Sydney and Newcastle on June 8, 1942. Submarines shelled the north coast of Arica Province twice on the 20th. Submarine shelled Vancouver Island on the 21st. (To be continued)</p>
+<h3>Good Relations Between Japan and Vietnam; Decoux Arrives in Saigon</h3>
+<p>Tokyo, 8th, Hai Tong News Agency: Japanese Ambassador to Vietnam, Yoshizawa, met yesterday with a reporter from the "Tokyo Nichinichi Shimbun" stationed in Hanoi and said in a speech that the relations between Japan and Vietnam are good and they are now cooperating smoothly. Japan and Vietnam are determined to prepare everything to deal with any contingencies.</p>
+<p>Hanoi, 8th, Hai Tong News Agency: Vietnamese Governor-General, Admiral Decoux, has arrived in Saigon to preside over the opening ceremony of the 20th Saigon Exposition and the economic conference to be held in Saigon. It is reported that Decoux will return to Hanoi in a month.</p>
+<h2>Page 4</h2>
+<p>Macau Correspondence</p>
+<h3>Current Shortage of Supplies in Chongqing (Continued): Shortage of Supplies Promotes High Prices; Severity No Less Than Currency Inflation</h3>
+<p>Today, the issue of domestic prices is closely related to fiscal finance. However, the factor of insufficient supplies should not be ignored. The domestic wartime price surge began in late March 1940 with the soaring price of yarn. The reason for the soaring price of yarn was due to the shortage of goods. In mid-February 1940, there was not much yarn in stock in the Chongqing market. At the same time, due to transportation obstacles, it was difficult to receive goods, and merchants took the opportunity to hoard, gradually creating a situation where the supply of yarn could not meet the demand. After late March, yarn was extremely scarce, and the price of yarn skyrocketed. For example, the price of 20-count Double Horse brand cotton yarn rose by about 1,000 yuan in one week, and about doubled in one month from February to March. This was the beginning of the serious price problem.</p>
+<p>For example, in the autumn of 1940, the rice harvest was poor, and rice from Hunan and Jiangxi could not meet the needs of Sichuan Province due to transportation difficulties. Large grain merchants saw this situation and refused to sell, while some merchants took the opportunity to purchase and hoard for profit, resulting in a severe grain shortage. The price rose threefold from August to December, and a total of seven and a half times by July of the following year. From this, it can be seen that the factor of insufficient supplies has a sudden and rapid effect on prices, which is most likely to shake people's hearts.</p>
+<p>If we carefully observe the origin and process of the serious price problem in Chongqing in recent years, the above two examples are the most significant events. Now, let's estimate the supply and demand situation of daily necessities such as cotton yarn in order to get a glimpse of the degree of insufficient supplies.</p>
+<p>According to the estimates of Nie Guangyu and Zhu Xianfang, the average annual consumption of cloth per person is 6 yards of coarse cloth, 3 yards of medium cloth, and 1 yard of fine cloth, totaling 10 yards. Usually, each bolt of cloth has about 40 yards. According to the pre-war annual output of power-loom woven and hand-loom woven cloth, the total is 95 million bolts, plus a cloth trade surplus of 500,000 bolts, totaling 95.5 million bolts, which is the total supply, that is, the amount needed. If the total population of the country is 400 million, then the amount of cloth needed per person per year is about one-quarter of a bolt, that is, 10 yards, which is consistent with the estimates of Nie and Zhu. Now, each bale of yarn of 24 counts or less can produce 30 bolts of coarse cloth; each bale of yarn of 32-42 counts can produce about 10 bolts of medium cloth; each bale of yarn of 60-80 counts can produce about 8 bolts of fine cloth. According to this standard, the amount of yarn needed can be obtained from the amount of cloth needed. Each bale of Chinese yarn weighs 420 pounds, or 381.024 catties, and the consumption of cotton spinning is very small, so the spinning of each bale of yarn requires 3.8 catties of cotton, so the amount of cotton needed can be deduced from the amount of yarn needed.</p>
+<p>According to population estimates, taking the twelve provinces of Sichuan, Kang, Yunnan, Guizhou, Guangxi, Hunan, Henan, Shaanxi, Gansu, Ningxia, Qinghai, and Xinjiang as the standard, then:</p>
+<p>(1) Supply of Cloth: According to estimates, there are currently about 4,000 power looms in the interior, and the maximum annual production capacity can reach 2 million bolts. Due to air raids, bombing, or lack of power, only about 1,468,000 bolts were actually produced in the previous few years, plus about 9 million bolts actually produced by hand looms, totaling 10,146,800 bolts. However, according to the estimate of a certain organization, after the relocated factories supplemented equipment and added small weaving machines, it is said that the annual power loom production can reach about 285,449 bolts per month, and about 3,425,388 bolts per year. If 9 million bolts of hand-loom woven cloth are added, the total annual production of power and hand-loom woven cloth in the rear area can reach about 12,425,388 bolts. The above estimates are all similar.</p>
+<p>(2) Supply of Yarn: In 1940, 108,000 power yarn spindles were put into operation in the interior, producing 68,632 bales of yarn. In addition, there were 36,000 "July 7th" and "January 28th" spinning machines, and 525,000 hand-spinning spindles, producing 440,000 bales of yarn, totaling about 508,000 bales. According to a report from a certain organization, as of the end of last year, the number of power yarn spindles had increased to 131,700, with a monthly output of 9,142 bales and an annual output of 110,704 bales. If 440,000 bales of hand-spun yarn are added, a total of 550,700 bales can be produced. However, according to another estimate, power spinning machines can produce about 70,000 bales per year, and hand-spinning can produce about 300,000 bales per year, totaling about 370,000 bales. This number is slightly different from the above estimate. Now, assuming that the former estimate is the highest output and the latter estimate is the lowest output, it seems reasonable.</p>
+<p>(3) Supply of Cotton: According to the estimate of the Chongqing Agricultural Bureau, the cotton production in the interior is 1.2 million dan in the Shaanxi-Henan area, 300,000 dan in the Xiangfan area, 400,000 dan in the Dongting Lake area, 400,000 dan in the Zhejiang East area, and 500,000 dan in the Sichuan Central area, totaling 2.8 million dan. This is also quite similar to the estimate of the Central Agricultural Experiment Station.</p>
+<p>The amount of supply and demand of cotton yarn and cloth has been estimated as above. Let's list and compare the estimated figures as follows:</p>
+<p>According to the estimate of the Secretariat of the Chongqing Ministry of Economic Affairs, the interior population is 200 million, requiring 50 million bolts of cloth and 5 million bolts of military cloth, equivalent to 1.6 million bales of yarn and 6.1 million piculs of cotton. This is similar to the above estimate.</p>
+<p>The estimated amount of demand for cotton yarn and cloth is as above. The estimated amount of supply is as follows: If we compare the lowest amount of demand with the highest amount of supply, the difference is 12,575,000 bolts for cloth, 150,000 bales for yarn, and 200,000 piculs for cotton.</p>
+<p>As can be seen from the above table, the supply of yarn, cloth, and cotton is less than the lowest amount of demand, and their prices rose by more than two times in 1940 and about one and a half times in 1941. However, cotton yarn and cloth are not among the most insufficient supplies, so the severity of the shortage of supplies on price increases is no less than currency inflation. Moreover, at present, foreign supplies cannot be imported, and even if they are imported by plane, the quantity is extremely small, and the prospects are truly worrying.</p>
+<h3>First Anniversary of the Greater East Asia War: Celebrations Held Throughout the City; Social Movement Association Convenes Xingya Conference; Over Three Thousand People from Public and Private Organizations Attend</h3>
+<p>The beginning of a new year, welcoming auspiciousness in all directions. Yesterday was the first anniversary of the Greater East Asia War. Looking back over the past year, construction has been advancing vigorously and revival is expected. On this auspicious occasion, it is necessary to express something. In addition to the municipal government convening senior officials of its various bureaus, committees, and offices to hold a commemorative conference, the Social Movement Association also held a Mass Xingya Conference at the City Chamber of Commerce Auditorium near the Tianhou Palace Bridge at 10:00 a.m. Over three thousand representatives from over three hundred public and private organizations throughout the city attended. The Japanese authorities held a commemorative meeting at the Great Light Theater in the afternoon, which was extremely grand. The details of the two meetings are recorded separately below.</p>
+<p>Municipal Government Commemorative Conference</p>
+<p>The Shanghai Municipal Government convened a commemorative conference in the auditorium of the government at 9:00 a.m. yesterday, gathering officials above the rank of director from various bureaus, offices, and committees. Because Mayor Chen was in Beijing on official business, Secretary-General Zhao Zunyue represented him in presiding over the conference. After performing the rituals, Secretary-General Zhao gave a speech, first saying that the British and American aggressors have been wiped out by our friendly nation, Japan. He also said that in the spirit of shared happiness and hardship shown by the chairman, we should exert our mental strength and strive to do our duty in the second stage, assisting our friendly nation in striving for final victory. The meeting ended at 10:00 a.m.</p>
+<p>Mass Xingya Conference</p>
+<p>At 10:00 a.m., the Social Movement Association held a Mass Xingya Conference at the City Chamber of Commerce Auditorium. Over three thousand representatives from over three hundred public and private organizations and groups, including the municipal government and its various bureaus and offices, the Clearance Association, trade associations, native place associations, trade friendship associations, charitable organizations, Baojia associations, the education sector, the student sector, the agricultural sector, the labor sector, and the cultural sector, attended. Guests included Zhao Zunyue, representative of Mayor Chen, Section Chief Ling Dating, Feng Jie, director of the Propaganda Department's Shanghai Office, Chen Fumu of the Shanghai Branch of the East Asia League China General Association, Sun Mingqi of the Social Movement Association, Prince Heng, director of the Manchukuo Concordia Association's guidance department, and Liu Xiangen, representative of the Manchukuo Embassy in China. Yuan Ludeng, Zhao Zhengping, Zhang Deqin, Yu Chen, Zhang Yichun, Yuan Shixing, and Tang Guanchun formed the presidium. After performing the opening ceremony, Yuan Ludeng delivered the opening remarks. Zhao Zhengping, Yu Chen, Zhang Deqin, and others successively delivered speeches, inviting Secretary-General Zhao, representative of Mayor Chen, to give instructions. Finally, everyone cheered slogans, and the meeting adjourned at 10:00 a.m.</p>
+<p>Japanese Commemoration</p>
+<p>Japanese army and navy units mobilized at 1:00 p.m. for a parade, starting from Sichuan Road in Hongkou, passing through Nanjing Road and Jing'an Temple Road to the racecourse, and returning to Hongkou via Nanjing Road after 4:00 p.m. In addition, the Chinese National Anti-British and Anti-American Association performed the play "Jiang Zhou Weeping Blood" at the Great Light Theater on the 8th and 9th, with the theme of driving the British and Americans out of East Asia. In the afternoon, there was an East Asian National Symposium held by the Shanghai Xingya Association. The Japanese Action Implementation Committee held a commemorative meeting at the Great Light Theater. The entire day's celebrations were grand and unprecedented. Today, "the 9th," Japanese and Chinese organizations and groups in the city will continue to hold celebrations, including a joint discussion meeting hosted by the Shanghai Branch of the East Asia League, a joint speech contest by students from Chinese and foreign middle schools in Central China, and a Greater East Asia War Anniversary Concert held by the Shanghai Music Association.</p>
+<p>Action Implementation Committee</p>
+<p>On the first anniversary of the Greater East Asia War, the Action Implementation Committee, organized by the Japanese in Shanghai, held a commemorative meeting at the Great Light Theater on Jing'an Temple Road at 4:30 p.m. yesterday (the 8th). Japanese Minister Tajiri of the Embassy served as the chairman. Over two thousand people, including heads of various Chinese, Japanese, Manchurian, German, and Italian organizations in Shanghai, as well as social celebrities, attended and participated. After everyone performed the national ritual, Chairman Funatsu of the Xingya Association delivered the opening remarks. Then, representatives of the heads of various Chinese, Japanese, Manchurian, German, and Italian organizations in Shanghai gave speeches, including Lieutenant Colonel Yokoyama of the Army Press Department, who gave a speech on the sacred war to revive the spiritual civilization; Colonel Kamada, director of the Navy Press Department, who gave a speech on welcoming the first anniversary of the Greater East Asia War; Mayor Chen Gongbo of the Municipal Government, whose speech was delivered by Councilor Jin Guozhen on the occasion of the first anniversary of the Greater East Asia War; and Consul General Ye Yaogong of Manchuria, the representative of German Minister Feesh, and the representative of Italian Consul General Bigano successively gave speeches. Then, Director Hattori of the Shanghai General Mobilization Association led everyone in shouting "Banzai" three times, and then gave the closing remarks. The navy band then played music, and the film "The Great Battle of Hawaii and Malaya" was shown until 8:00 p.m.</p>
+<p>National Discussion Meeting</p>
+<p>Yesterday was the anniversary of the Greater East Asia War. The Shanghai Xingya Association held a discussion meeting of representatives of Shanghai Asian national comrades groups at the Cathay Hotel on the ninth floor at 2:30 p.m. yesterday. Representatives from six major nationalities attended, including (1) the East Asia League, (2) the Chinese National Anti-British and Anti-American Association, (3) the Manchu Empire Concordia Association, (4) the Indian Independence League, (5) the Philippine Association, and (6) the Afghan representative, totaling over a hundred people. Nakatani Takeshi, Director of the Shanghai Liaison Office of the Greater Japan Xingya League and Director of the Shanghai Xingya Association Secretariat, presided over the meeting. Chinese guests attending included Shanghai Secretary-General Zhao Zunyue, Propaganda Department Shanghai Office Director Feng Jie, Social Affairs Bureau Director Ling Xianwen, Public Works Bureau Director Ye Xuesong, Rear Admiral Okamura of the Allied Navy, Colonel Kamada, and Lieutenant Colonel Yokoyama of the Army. After the chairman announced the opening of the meeting, everyone first observed a moment of silence for the fallen soldiers of the Greater East Asia War. Then, Nakatani Takeshi delivered a speech, and then representatives of various national groups successively stood up to give speeches. Following this, Chairman Funatsu stood up to lead everyone in shouting slogans, and the meeting adjourned in an atmosphere of enthusiastic emotion.</p>
+<h3>Sugar Merchants' Cooperative Business Office: Supplies More Sugar for Sale; Purchase Limit with Housing Donation Tickets Expected to Be Relaxed</h3>
+<p>The supply problems of edible oil and sugar in Shanghai will be improved so that citizens, who have been anxiously awaiting the long-awaited shortage of edible oil, can hopefully be sold properly distributed soon. The reporter of the Datong News Agency recorded it as follows:</p>
+<p>Relaxing Restrictions</p>
+<p>Regarding the sugar sales method, the Sugar Merchants' Cooperative Business Office believes that the sugar reserves in Shanghai are very abundant and the source is still continuous, so it is considering providing citizens with more sugar. It is expected that they will be able to purchase eight pounds with housing donation tickets. This improvement method can be officially announced so that citizens, the two concessions, as well as the French Concession and Zhabei in Huxi, can adopt the same method.</p>
+<p>Edible Oil Will Be Sold</p>
+<p>The edible oil stored in Pudong has been slightly delayed due to shipping problems. However, 4,500 dan have been shipped to Shanghai and can be distributed to retail oil merchants for sale. The Edible Oil Wholesale Office is also studying ways to send personnel to various sales outlets to closely monitor the method so as to be universal and prevent malpractice. The orders for this month have already been signed, and there will be no problem with shipping, so they can be supplied and sold as usual.</p>
+<h3>The Japanese Authorities Continue to Return Factories</h3>
+<p>A total of eleven factories owned by Chinese merchants</p>
+<p>To put into practice the Sino-Japanese Treaty and to build the East Asia Co-Prosperity Sphere, the friendly Japanese military authorities, yesterday (the 8th) at 2:00 PM, amidst the celebration of the first anniversary of the Greater East Asia War, continued the return of eleven factories managed by the Japanese military.  The handover ceremony was held at the Towa Yoko Company on North Sichuan Road. Government representatives present included Yuan Yuqian, Vice Minister of Industry and concurrently Director of the Shanghai Office, Deputy Director Zhang Jun, Chen Zhong, Director of the Commodity Inspection Bureau, and from the friendly Japanese side, Lieutenant Colonel Fukuyama of the Japanese Army, and Kishida, an investigator from the Embassy Office, as well as representatives from various factories. After the customary formalities, the transfer of factories managed by the Japanese military was officially sealed with signatures from both parties.  First, representative of the Japanese side, Chairman Fukuyama, and Vice Minister Yuan delivered speeches successively, followed by a thank you speech by Guo Shun, representing the factories. The ceremony concluded at 4:00 PM.</p>
+<p>List of Returned Factories:</p>
+<p>Zhanghua Woolen Textile Co., Ltd., Liyong Textile Co., Ltd., Wing On Textile Factory No. 1, Dahua Printing and Dyeing Factory, Shanghai Rongchang Factory, Nanhui Zhonghua Factory, Donggou Gengpian Factory, Suzhou Hongsheng Factory, Zhenjiang Ying Factory, Hangzhou Guanghua Factory, Dazhong Dye Factory, and eleven other factories.</p>
+<h3>20th Period Household Rice</h3>
+<p>One Sheng of Brown Rice, Half Sheng of Broken Rice</p>
+<p>During the period from the 11th to the 19th of this month, rice shops and the Municipal Council's rice distribution points will issue rice and flour upon presentation of the 20th issue coupons.  At that time, the rice shop with the registered number indicated on the coupon will issue one sheng of brown rice and half a sheng of broken rice for each rice coupon, with a total selling price of 3.8 yuan.  For each flour coupon, one and a half jin of flour will be issued, with a selling price of 3.4 yuan.  Furthermore, all rice shops and the Municipal Council's rice distribution points will stop selling on the 20th of this month. The Shanghai Branch of the East Asia Association hosts a banquet this afternoon.</p>
+<h3>Minister Wang of the Concordia Society</h3>
+<p>To welcome Mr. Wang Ziheng, Minister of the Concordia Society of Manchukuo, who has come to China to participate in the first anniversary commemoration of the Greater East Asia War and to exchange speeches, the Shanghai Branch of the East Asia League China General Assembly has arranged a banquet at the International Hotel on Jing'an Temple Road today (9th) at 12:00 noon.  Mr. Chen, the current director and secretary-general of the association, will personally greet the guests with his colleagues. A grand occasion is anticipated.</p>
+<h3>Shanghai-Hong Kong Trade Agreement Officially Signed and Established; Shanghai-Guangdong Trade Will Also Resume Accordingly</h3>
+<p>(Commercial News Agency Report) The agreement on the exchange of goods between Shanghai and Hong Kong has been reached after several consultations between Mr. Kobori, the standing director of the Shanghai Military Supply, and the Hong Kong Governor's Office. According to this agreement, Hong Kong will ship a large quantity of sugar to Shanghai, while Shanghai will export miscellaneous grains, cotton products, and general merchandise to Hong Kong. After signing this agreement, Mr. Kobori went from Hong Kong to Guangdong to discuss the resumption of trade between Shanghai and Guangdong with the Guangdong authorities. He has obtained a concrete plan and has returned to Shanghai.</p>
+<h2>Page 5</h2>
+<h3>Preventing Hoarding: Expanding Warehouse Control; Bank and Money Shop Warehouses May Also Be Required to Report; Unregistered Goods May Not Be Accepted</h3>
+<p>In order to prevent merchants from hoarding goods, the authorities previously implemented the Commercial Warehouse Regulation Rules, stipulating that all commercial warehouses and storage facilities must report their stored goods to the authorities. In order to expand implementation, warehouses also managed by banks and money shops must also comply with these regulations. According to these rules, each warehouse shall report the following matters to the authorities at the end of each month: (1) the merchant's name and business location; (2) which trade association it belongs to; (3) the value of the inventory. In addition, the rules also stipulate that (1) each warehouse shall not store unregistered goods; (2) if they are daily necessities, they must have proof from the trade association; (3) the authorities may send people to investigate when necessary; (4) stored goods must be sold at the prescribed price.</p>
+<p>Business and Industrial Trends</p>
+<h3>The Pioneer of Shanghai's Business Community: New Asia Construction Industry Co., Ltd. (Continued)</h3>
+<p>Now, let's briefly introduce the New Asia factories that New Asia Construction Industry Co., Ltd. is currently investing in: (1) New Asia Chemical Pharmaceutical Co., Ltd., abbreviated as New Asia Pharmaceutical Factory, was founded in 1926 by accountant Mr. Xu Guanqun and pharmacist Zhao Rutiao. Initially, the scale was small, starting with the manufacturing of cosmetics and proprietary medicines. However, due to effective management, after more than ten years, the scope expanded, and business increased daily. Now, it holds the leading position among Chinese pharmaceutical factories. Offices are located throughout China and Southeast Asia, and branch factories are located in North and West China. Its main affiliated businesses include New Asia Glass Factory, New Asia Chemical Pharmaceutical Research Institute, New Asia Biological Research Institute, Guangcheng Pharmaceutical College, Guanqun Amateur Tutoring School, New Asia Library, and New Asia publications, such as English Medical Magazine, New Medicine Journal, National Medicine News, and Healthy Family. (2) New Asia Sanitary Material Factory Co., Ltd. specializes in manufacturing New Asia plasters, which are widely sold at home and abroad. Founded in 1937, by 1941, the business reached more than 1.3 million yuan, exceeding the original capital by four times, and the capital was increased to 1.2 million national currency to increase production and replenish raw materials. (3) New Asia Serum Factory Co., Ltd., was founded in 1938, with an initial capital of 300,000 national currency. It is said that it will soon increase its capital to 2 million yuan. In terms of manufacturing, it is divided into a preventive manufacturing department, a therapeutic product department, and a serum department. (4) New Asia Enzyme Industry Co., Ltd., was founded in 1941, with an authorized share capital of 1 million national currency. In 1942, the capital was increased to 3 million national currency to expand production. The currently produced yeast has been sold throughout the city to meet the fermentation needs of household flour. (5) New Asia Science Co., Ltd., was founded in 1941, with a capital of 1 million national currency. Products include various printed materials, various cardboard boxes, educational supplies, stationery, and instruments. (6) Hong Kong New Asia Chemical Pharmaceutical Co., Ltd., abbreviated as Hong Kong New Asia Pharmaceutical Factory, was established in 1939 by Shanghai New Asia Pharmaceutical Factory in conjunction with overseas Chinese in Hong Kong. The initial capital was 500,000 Hong Kong dollars. A factory building was built in Kowloon, and medicines were made using raw materials produced in the tropics and sold throughout Southeast Asia.</p>
+<p>The New Asia factories mentioned above are the targets that New Asia Construction Industry Co., Ltd. is currently investing in. As for future investment targets, generally speaking, it is to promote new-style industrial and commercial enterprises, and to cope with the new environment and new problems encountered by today's industrial and commercial circles, it is necessary to put materials, methods, spiritual strength, and overall strength together to develop general and socially needed businesses, whether industrial or commercial. In short, the ideal is to alleviate the current difficulties of private enterprises and plan for the post-war construction of private enterprises—and to move from the ideal to the realization—as an object.</p>
+<p>Three. New Asia Construction Industry in Organization and Talent:</p>
+<p>The organization of New Asia Construction Industry Co., Ltd. can be said to be simplified. In addition to its shareholders' meeting, board of directors, and supervisors, its internal structure absolutely adopts the principle of valuing quality over quantity. It absolutely does not follow the habit of setting up positions according to precedents or individuals. Therefore, the company is headed by the chairman of the board serving concurrently as general manager, and there are no titles such as deputy general manager, manager, assistant manager, deputy manager, or assistant manager under the general manager. There are only four departments: business, general affairs, auditing, and design. Each department is divided into sections; the business department manages sales, service, storage, and statistics; the general affairs department manages documentation, general affairs, personnel, and share affairs; the auditing department manages auditing, accounting, and cashier; the design department manages design, research, and writing. In addition, there is a consultant specialist office on the left and right of the general manager, specially for consultation.</p>
+<p>On the day of the opening, a guest said this: "Although the capital of New Asia Construction Industry is nominally 10 million yuan, I am afraid that the talent of New Asia Construction Industry cannot be recruited with this 10 million yuan." In other words, its internal talent can be said to be all-inclusive. Such as Chairman Xu Guanqun, Managing Directors Zhu Boquan, Qiu Liangrong, Directors Zhao Rutiao, Gu Kemin, Hui Guangfang, Chuan Xiangcheng, Zhu Rutang, Xu Xie Kang, Wu Yunzhai, Ye Fuxiao, Xu Baohua, Shi Zuomou, Supervisors Li Bohan, Xu Jingzhi, Shi Quan, Cheng Mu, Cao Yuyu, are all leading figures in Shanghai's industrial and commercial circles, the business community, and the financial community; such as Zhang Guohua, director of the General Affairs Department, Yu Daosun, director of the Auditing Department, Li Tisheng, director of the Business Department, and Liu Yunfang, director of the Design Department, are all experienced specialists. It can be said that talents are gathered together.</p>
+<p>Based on the above description, we can probably get a bird's-eye view of the newly opened New Asia Construction Industry Co., Ltd. We, who are in today's industrial and commercial environment, naturally hold infinite expectations and surge with full enthusiasm for this investment organization with principles, strength, organization, and talent.</p>
+<p>Commercial News</p>
+<h3>Chinese Shares Rise Excessively, Slight Selling Occurs</h3>
+<p>Yesterday's Chinese stock market situation first surged and then suddenly turned back. Investors were both controlled by monetary tightening and, due to the high price soaring in the past two weeks, there was some selling. However, Xin Pharmaceutical Industry was the only one that only rose and did not turn back. New Asia Pharmaceutical Factory rose from 66 yuan to a new high of 68.75 yuan, a further increase of 3 yuan. Minyi rose by 5 yuan, reaching 95 yuan. Wuzhou rose to 510 yuan. Zhongxi soared to 450 yuan. Xinyi Pharmaceutical Factory knocked on the 300 yuan mark. New Asia Enzyme 25 yuan. Da Zhonghua Match continued to see buying momentum, reaching a new high price of 347.5 yuan, up 10 yuan. Nanyang Tobacco 135 yuan, up 5 yuan. The cultural industry was also firm and stable.</p>
+<p>The price of Commercial Press saw 452 yuan and then fell back to 445 yuan, the final transaction price, up 5 yuan each. World Book Company was outside the 120 yuan mark. Public utilities fluctuated greatly. Zhabei Water and Electricity traded at a high of 69 yuan, and was bid over 70 yuan, then fell back to 66 or 67 yuan, a small pullback of 5 jiao, which was a small retreat after a continuous increase of 9 yuan, totaling 17 yuan. Huashang Electric once saw 49 yuan, and fell back to 46 or 47 yuan, breaking even. In the department store industry, only China Underwear briefly surged to 37.75 yuan, and fell back to around 36 yuan, up 5 jiao. Others such as Wing On 142.5 yuan, fell back to 36 or 37 yuan, New New saw 159 yuan, fell back to 152.5 yuan, National Goods Company 87 yuan, each fell back a small 2 or 3 yuan. In the textile industry, Wing On Textile has fallen back a small 30 yuan, falling from 2,000 yuan to 1,950 yuan on the same day. Various new shares with small denominations continue to be stable, and trading is brisk. The market price list is recorded below.</p>
+<h3>Jewelry Gold Prices Are High Again</h3>
+<p>Continuous Increase of Six Major Units, Valued at 600 Yuan</p>
+<p>Yesterday, the retail price of gold jewelry at the Da Xin Tong Hang jewelry store in this city initially settled at 3,250 yuan per tael. At 9:50 AM, the price was raised again by 100 yuan to 3,350 yuan, a continuous increase of 600 yuan over six days. The purchase price was reduced by about 100 yuan, because the unofficial market price among the industry was already higher than the listed price. The initial increase of 100 yuan was 3,350 yuan. In the buying trend, it rose to 3,400 yuan. At noon, the price stopped rising and suddenly fell back. At noon, 3,380 yuan was sold, an increase of 130 yuan and a difference of 50 yuan compared to the previous day. Transactions were sparse. As for the silver content of jewelry, it was still listed at 16 yuan per tael, and the inter-industry price was around 17.5 yuan.</p>
+<p>Yesterday, the Money Shop Association's call loan rate remained unchanged at 1 jiao and 4 fen.</p>
+<p>Yesterday, the foreign exchange market was soft. The inter-industry price of Japanese military scrip fell slightly to 5 yuan, 5 jiao, 5 fen, and 24 li. Small money shops and bank retail prices sold at 5 yuan, 5 jiao, 6 fen, and the purchase price was within 5 fen, also trending weak.</p>
+<h3>Three Money Shops Join the Money Treasury</h3>
+<p>Chun Yuan, Cheng Feng, and Li Cheng three money shops have joined the Money Treasury as members. From December 10th (that is, tomorrow), the payment instruments of the three shops will be handled in the same way as the instruments of other member shops. In addition, Jufeng Money Shop has also joined the Money Treasury as a member and has been handling it according to the member shop method since the 1st of this month. The instruments of Jiuan Bank and China Industrial Bank have also been handled by the clearing house since the 1st of this month. Jiuan is 53-4, and China Industry is 53-5.</p>
+<h3>October Clearinghouse Statistics</h3>
+<p>Interbank Deposits Decreased Compared to Last Month</p>
+<p>The total number of clearing items in the city's clearinghouse in October was 1,410,643,964.86 yuan. The total number of collection items was 1,840,515,145.86 yuan. The average daily amount of interbank deposits was 670,570,449.11 yuan. Compared with September, the total number of clearing items increased by 478,814,694.52 yuan, and the total number of collection items increased by 549,077,745 yuan.89, the two totaled more than 100 million yuan. However, interbank deposits decreased by 48,744,754.81 yuan.</p>
+<h3>Heavyweight Coarse Cloth: Shortages Make It Even More Popular</h3>
+<p>Eastern Cloth Supply Fails to Meet Demand</p>
+<p>Factory Cloth: Yesterday's market initially rose and then weakened, and finally rose again. White Goods, 12-pound Earth Fine Cloth, opened at 195 yuan in the morning and immediately fell to 191.5 yuan. However, the market sentiment was high, and it continued to rise to 194 yuan. The same pound of Dapeng Fugui also followed suit. There was demand but no supply for Dapeng factory singles at 193 yuan, and Fugui was 192 yuan. Heavyweight coarse cloth was even more scarce. 16-pound Earth traded at 266 yuan, Feihong 255 yuan, 14-pound Earth 225 yuan, Jiuwan Xinzi 140 yuan, 8-pound Zhenzhong 136 yuan, Peach Blossom Ladies Lin fell from 318 yuan to 313 yuan, and rebounded in the afternoon, with the highest price trading at 320 yuan. Shuangyu Fuchou was 8.25 yuan, Sanyang Biji 8.2 yuan, Shuangjinding Yuan cloth 203 yuan, Mermaid Yuan twill 205 yuan, all have been sold out.</p>
+<p>Eastern Cloth: Because foreign firms and local industry peers are optimistic, even though retail investors have sold at high prices, the supply still fails to meet the demand. The fine cloth of various middle-grade brands continued to increase by 1 to 2 yuan per bolt. 12-pound Rainbow Ball fine cloth was 198.5 yuan, Flying Fish 197.5 yuan, Yanghe 197 yuan, Trumpet 196.5 yuan, but the Bank of China single Dragon Head was relatively cheap, and the closing price was 197.5 yuan. Sijunzi Biji Red single started at 8 yuan and 1 fen, and fell to 7 yuan and 9 jiao, but the closing price also rose to 7 yuan and 9 jiao, a rise of 1 jiao and 1 fen.</p>
+<h3>Whitebait Market Strengthens</h3>
+<p>Domestic Yantai whitebait has recently arrived in small quantities. Because the market inventory is insufficient, it is very firm. The number plate has been opened at 2,600 yuan, and the line plate is sold at 2,800 yuan. The market is stable and beautiful.</p>
+<h3>Xinghua Longan Follows Loosely</h3>
+<p>Miscellaneous Guilin longan, the opening price has been loosening for days, and then Xinghua goods have also softened. Dozens of boxes were opened yesterday, falling by more than 100 yuan compared to the previous day. However, some guest goods are still waiting and watching without unloading, and the market situation seems difficult to improve.</p>
+<h3>Fennel Continues to Tighten</h3>
+<p>Fennel is now tighter in the market because guest stockpiles have all been received and the drug gang also has a taste for it. The number plate has been seen to rise, opening at 935 yuan, and the line is sold at 4,950 yuan. The market is solid.</p>
+<h3>French Concession: Air Raid Drill Results</h3>
+<p>The French Concession Passive Defense Committee's October report states that during this month, a total of 18 air raid drills (including alarms, bombing, firefighting) were conducted within the French Concession. During the drills, the district police, cleaning squads, rescue teams, and first aid teams were all able to do their best. The speed with which they rushed to the scene of the incident after hearing the alarm was particularly gratifying. Each time, the president of the fire brigade also taught techniques such as climbing ladders and passing water buckets. The health department also sent specialists to the scene to teach basic first aid and methods of transporting the injured on stretchers. During the blackout drills, it was initially discovered that many residents lifted the curtains and turned off the lights. To prevent this phenomenon and to keep residents informed of the alarm at any time, the concession was divided into several small areas (Xiaodongmen divided into two areas, Mailan three areas, Xuhui six areas, Central six areas, Foch four areas, Beidang six areas), and each small area conducted a drill once a week. In November, a total of 118 blackout drills were conducted, with satisfactory results. All of the above drills will continue to be held in December.</p>
+<h3>China Tobacco Company Established</h3>
+<p>The four major cigarette companies in this city, Huasheng, Dongya Gong Sheng, and Asia, have now merged and reorganized into China Tobacco Company, with extremely sufficient capital strength. The main distribution point in this city is located in the newly built building on Hankou Road, which is scheduled to open today. The leaders of the company are Yu Zongxun, Chen Changgeng, and Yuan Hongxun. They advocate fairness in the distribution of cigarettes, and the selling price is very restrained. Their past achievements have been loved by the industry. It is heard that they will continue the original spirit, increase production, and strive to ensure a sufficient supply, eliminate the black market, and benefit the masses of smokers. The international feature articles and local news reporter and feature article fees for this newspaper in November have been settled. Please collect them from the accounting department of this museum on the 10th.</p>
+<p>Editorial Department</p>
+<p>Sports News</p>
+<h3>One Star Cup Awards Ceremony Today; Six Heroic Teams Participate in Performances; 2:30 PM at Guangxia Middle School</h3>
+<p>The One Star Cup small ball league, organized by the Chenzhong Sports Association, has ended. The Zhou team championship was won by Honglian, the first group was won by Yongyi, and the Star group champion was Wenjing. The awards ceremony and closing performance will be held at the Guangxia Middle School stadium starting at 2:30 PM this afternoon. Six heroic teams are invited to participate in the performance. Mr. Yuan Ludeng, Deputy General Manager of the Municipal Council, and Mr. Zhou Yixing will be present at the stadium to preside over the ceremony. The Sino-French Scouts will maintain order, and Mr. Yuan will preside over the auction of the competition balls. The proceeds will be donated to the Shanghai Poor Children's Voluntary School in full. There are three acts, with small ticket sales. Welcome to visit. The first act is the Star Group champion Wenjing team against the first group champion Yongyi team, the second act is the movie star confrontation with the Western Mixed team, and the finale is the current world against Honglian. The current world is the incarnation of the small ball iron army Samsung team, and Honglian has just won the Zhou Group championship of this competition. The order is as follows:</p>
+<p>Wenjing - Yongyi (Performance) 2:30 PM</p>
+<p>Western Mix - Movie Stars (Performance) 3:30 PM</p>
+<p>Current World - Honglian (Performance) 4:30 PM</p>
+<h3>East League Cup Football, Second Act: Friendship Battle, Also the Navy</h3>
+<p>On the 20th of this month at Jiaozhou Park</p>
+<p>The East League Cup charity football match organized by the Shanghai Branch of the East Asia League China General Assembly, the first act was held last Sunday (the 6th) at Jiaozhou Park, by Donghua vs. the Italian Navy. It is learned that the second act is scheduled to be held at the same place next Sunday (the 20th of this month), and the Italian Navy will play against the Friendship team designated by the Western Union Council, the first week of the Scotto Cup, as the charity match. The Italian army has a strong strength and outstanding performance. Tickets will be on pre-sale within days.</p>
+<h2>Page 6</h2>
+<h3>The Greater East Asia War in the Past Year (2)</h3>
+<p>— Chen Binhe</p>
+<p>(7) The Battle of the Philippines</p>
+<p>On December 8th, Japanese army and navy air units launched a sudden attack on the American air force and major airfields in the Philippines, inflicting a fatal blow on the air power that the United States was preparing to use to attack the Japanese mainland. Before dawn on the 10th, they began landing troops ahead of the enemy on the northern shore of Luzon Island near Aparri and on the northwestern coast. The Japanese flag was raised on American territory in the Far East, which the Japanese called a "bloodless landing." On the 12th, Japanese troops also landed near Legazpi at the southeastern tip of Luzon Island. On the morning of the 20th, they occupied Mindanao Island, which is the second largest island in the Philippines after Luzon. From then on, the Philippine defense line was broken through.</p>
+<p>On the 22nd, the main Japanese force landed at Lingayen on the west coast of Luzon Island, 200 kilometers north of Manila. From the 24th to the 27th, other areas were successively landed upon, encircling and attacking Manila. By New Year's Day of this year, Japanese troops had completely occupied Manila, the capital of the Philippine Islands. By early May, Japanese troops had taken complete control of the Philippines.</p>
+<p>(8) The Battle of Borneo</p>
+<p>During the first week of the Greater East Asia War, the three major Anglo-American military strongholds of Hawaii, Singapore, and Manila were attacked, destroying their naval and air power. In the second week, the center of the war shifted to the South China Sea—the main battlefield for Japan's war against Britain and the United States. Originally, Hong Kong to the north, the Philippine Islands to the east, the Malay Peninsula to the west, and British Borneo to the south, with Hong Kong, Manila, and Singapore forming the strategic triangle of the Far East for Britain and the United States, were the main bases for attacking Japan. On the first day of the war, Japanese troops first attacked Hong Kong, and on the third to fifth days, they landed on the northern and southern ends of Luzon Island in the Philippines. Then Vietnam and Thailand signed military agreements and alliances with Japan on the 11th, so the Anglo-American encirclement of Japan in the South China Sea had been broken through in various places. The only remaining base was Borneo. Borneo is the second largest island in the world, with the British-owned portion accounting for two-sevenths of the entire island, and the northern coast being an oil-producing area. Japanese troops landed on Borneo on December 16th, echoing Hong Kong, Malaya, and the Philippines, and controlled the entire South China Sea.</p>
+<p>Japanese troops landed in Miri, Labuan, and Seria in Borneo. After a month of bloody fighting, by February 4th, British Borneo was completely pacified. From then on, the South China Sea, from Hong Kong in the north to Borneo in the south, and the Philippines in the east, were all occupied by Japanese troops; thus, the overall offensive against Malaya, especially Singapore, could be strengthened.</p>
+<p>(9) The Fall of Singapore</p>
+<p>Under the command of General Yamashita, the elite Japanese troops began landing on the Malay Peninsula on December 8th, occupying the Taiping airfield. On the 17th, Penang was occupied. On January 3rd, they captured Kota Bharu, an important air base 280 kilometers north of Singapore, making Singapore a target for Japanese fighter planes.</p>
+<p>After the main force in the capture of Penang won, it continued to attack Perak. On the 23rd, they occupied Taiping, the world's top tin-producing area. On the 23rd, they crossed the Perak River, and on the 28th, they attacked Ipoh, the capital of Perak, securing an air base that directly threatened Singapore. On January 16th of this year, they penetrated into Kluang in central Johor. Then, on January 31st, Johor Bahru was captured. In the 55 days from December 8th to this point, Japanese troops advanced 1,100 kilometers, setting an unprecedented example of speed in the history of war.</p>
+<p>Thus, the battle to capture the Singapore fortress began.</p>
+<p>Singapore, this military base of the British Empire for invading East Asia, was built with a national defense expenditure of 400 million yuan, a long period of time, and painstaking construction, and was known as one of the two major fortresses in the world along with Gibraltar at the western mouth of the Mediterranean. But it finally suffered a ruthless attack by the Japanese army. On January 31st, Japanese troops began to forcibly cross the Johor Strait. On the night of February 7th, they landed on Pulau Ubin northeast of Singapore to contain the enemy. On the night of February 8th, they launched a general attack on Singapore, and at 7:00 PM on the 9th, they occupied Tengah Airfield. On the 11th, they seized Bukit Timah, and the Singapore city streets were within easy reach. On the morning of the 14th, they began operations in the Singapore city streets; on the afternoon of the 15th, they finally occupied Singapore, leaving a stunning page in the history of the Greater East Asia War.</p>
+<p>The occupation of Singapore has significant implications for determining the fate of East Asia. From a military point of view, first, the Anglo-American encirclement of Japan in the South China Sea was completely eliminated, and the British and Americans could no longer carry out a joint defense line in the Southwest Pacific. Second, from then on, the Japanese army not only became the master of the South China Sea, but also had to go on to resolve the fate of the Dutch East Indies, allied with the British and Americans. Third, after the Japanese army occupied Malaya and Singapore, it could go on to control the Indian Ocean and unfold a more ambitious future for the Japanese army.</p>
+<p>From a political point of view, Singapore was the headquarters of the Anglo-American alliance against Japan. Japan's occupation of Singapore not only aroused doubts among the British and American people about the Anglo-American war effort in the Pacific, but also gave the Dutch East Indies a great blow in advance, and the morale of the Dutch East Indies was greatly frustrated as a result. In addition, the small countries of East Asia and the small ethnic groups who had been oppressed by Anglo-American and Dutch imperialists for more than a hundred years suddenly strengthened their confidence in the Asian nation, changing their worship or fear of the British and Americans in the past. This is of great significance in the awakening of the Greater East Asian nation.</p>
+<p>(10) The Battle of the East Indies</p>
+<p>The Dutch East Indies was where the life of Dutch imperialists lay, and on the eve of the Greater East Asia War, it was a major link in the ABCD line. Therefore, when the Japanese army captured Singapore, it immediately launched a general offensive against the Dutch East Indies.</p>
+<p>First, on January 11th, Japanese troops landed in Tarakan on the east coast of Dutch Borneo, and on the 24th, they attacked Balikpapan, an important location on the east coast of Borneo, and completely occupied the city on the 25th. This is an important location in the South Pacific. After the occupation, Japanese troops could control the Makassar Strait, which was tantamount to inserting a sharp dagger into Surabaya, the heart of the Dutch East Indies. In January, on the 17th, they went on to pacify western Borneo, and by mid-March, Dutch Borneo had been completely occupied.</p>
+<p>Secondly, on January 26th, Japanese troops occupied Sebatik Island in the Celebes Islands, controlling the Makassar Strait, forming a major threat to the Dutch East Indies and Australia. The offensive against southern Sumatra began on February 6th. On the 11th, they first defeated the enemy's air force. In less than ten days, Japanese troops had pacified the main areas of southern Sumatra, and Java was completely under the threat of the Japanese army.</p>
+<p>After that, after the naval battle of Java, the Japanese navy and air force again achieved unprecedented victory. When Singapore fell, Dutch Java was isolated. On March 1st, Japanese army units forcibly landed in eastern, central, and western Java under the cover of the navy, immediately achieving great success, and the Southwest Pacific Allied Command was virtually dissolved. By March 5th, the Japanese flag was flying over Batavia, the capital of the Dutch East Indies. The war moved to the eastern front, and on March 8th, the Governor-General of the Dutch East Indies and the commander of the Allied forces bowed their heads and surrendered to the Japanese army.</p>
+<p>From then on, the Anglo-American-Dutch counter-offensive base in the Southwest Pacific was completely destroyed. On the western front, Japanese troops were already facing the Indian Ocean, and on the eastern front, they had isolated Australia.</p>
+<p>(11) The Battle of Burma</p>
+<p>When the Japanese army was galloping across the Southwest Pacific and was invincible, the United Nations, in the midst of defeat, attempted to contain the Japanese army from another direction. The main thing here was to first strengthen aid to Chongqing and launch counter-offensives on the central, southern, and northern China fronts. Second, to realize Anglo-American-Chongqing military cooperation, strengthen the defense of Burma, and then advance into Vietnam and Thailand in an attempt to disperse Japanese forces. In these two strategies, Burma had very important strategic and tactical significance and could pose a major threat to Japan. Thus, Japan began the campaign to capture Burma.</p>
+<p>First of all, in terms of air power, Japanese troops launched a major air raid on Burmese air bases as early as December 13th. After that, the Japanese air force continued to operate in various parts of Burma, with the main purpose of crushing the Anglo-American air force built in Burma.</p>
+<p>When the Japanese army attacked the Malay Peninsula, the Japanese army had already occupied important positions near Tavoy, which belonged to Burma, a key point in the Kra Isthmus, on January 17th, in order to block reinforcements from Burma to Malaya. On January 20th, the Japanese air force heavily bombed Moulmein, the third largest city in Burma, to assist the army in attacking the Moulmein Plain. On January 31st, the city of Moulmein was occupied. Thus, all enemy forces east of Burma were cleared by the Japanese, and the aid route to Chongqing was completely within the Japanese bombing range; at the same time, Rangoon, the capital of Burma, was also isolated.</p>
+<p>On February 10th, Japanese troops began to advance towards Rangoon, and on March 3rd, they launched a general attack on Rangoon, completely occupying it on the 8th.</p>
+<p>After the fall of Rangoon, the British army quickly requested Chongqing to send troops to rescue them, and the Chiang army quickly advanced into Burma. However, before the camp was established, there was a large-scale retreat of British troops, followed by an unexpected flanking maneuver by the Japanese army. On April 29th, the Japanese army suddenly occupied Lashio, and on May 1st, they occupied Mandalay, the second largest city in Burma. Then, on May 3rd, they attacked Bhamo, and the Chiang army was surrounded and divided, even without a way out. On May 5th, the Japanese army rushed into the gate of Yunnan. From then on, Burma was no longer a barrier to India, and the Japanese army had surged to the edge of India, and the fate of the collapse of the British Empire in Asia was imminent. From then on, the Indians also stood up and demanded to decide their own destiny. (To be continued)</p>
+<p>This newspaper originally had three supplements: "Free Talk", "Spring and Autumn", and "Art World". From tomorrow onwards, they will be merged and changed to a comprehensive "Free Talk" supplement, published daily. The submission guidelines are as follows:</p>
+<p>(1) This column welcomes the following types of contributions:</p>
+<p>1.  Short comments or reflections that have positive meaning for society and culture, standing from the perspective of the Chinese people.</p>
+<p>2.  Literary criticism, drama reviews, film reviews, etc. that contain positive and constructive elements.</p>
+<p>3.  Historical sketches and scientific sketches.</p>
+<p>4.  Social portraits—vivid descriptions of people or groups from various strata of society and industries, which must be based on facts.</p>
+<p>5.  Novels, poems, paintings, photography, and local sketches that are suitable for the new era.</p>
+<p>6.  Book and newspaper introductions and reviews.</p>
+<p>7.  Cultural intelligence, simple reports on cultural organizations, figures, and works.</p>
+<p>8.  Cartoons and woodcuts related to society and culture.</p>
+<p>(2) Contributions should be written in vernacular Chinese, with the number of words standardized at no more than 1,000 words. Short articles of about 500 words are especially welcome. The word count of novels and special contributions that are too long are not subject to this rule.</p>
+<p>(3) Except for special relationships, contributions will not be returned. Please do not enclose postage stamps.</p>
+<p>(4) Contributions will generally be paid in cash, or the payment may be transferred for social and cultural public welfare needs as specified by the author.</p>
+<p>(5) This column warmly welcomes contributions, suggestions, and criticisms from all walks of life.</p>
+<p>Due to space limitations, "Free Talk" will be suspended for another issue today and tomorrow. Please pay attention, readers.</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.12.08.html", "next": "1942.12.10.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

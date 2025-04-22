@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.10.09 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 485 - 4924624</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>高加索蘇軍反攻斯達林城北劇戰德稱蘇軍自數處撤退</h3>
+<p>德元首行營八日海通社電</p>
+<p>今午德軍戰報稱高加索區敵軍進攻均被擊退而我軍則繼續深入敵陣地斯適林城敵軍續自數處撤退西北部被包圍之敵軍已被殲滅伏爾加河下游以及裹海內之航運亦遭轟炸卡魯加東德軍以突擊姿態佔領敵方丘陵陣地一處盤據於拉多加湖南森林中之敵軍已被逐出敵反攻均未得逞敵屢次偷渡尼伐河均經擊退德空軍繼續轟炸北路敵方鐵道線拉浦蘭之坎達拉克沙以幫失去據點數處</p>
+<p>羅馬七日哈瓦斯社電</p>
+<p>義國戰地訪員頃自東線來電稱紅軍保衛斯達林城之實力似已稍見荏弱對於軍械彈藥漸見匱乏尤其是重爽快及坦克車惟紅軍仍扼守城北部其接濟來源係由傘兵輸送或於夜間用小船渡伏爾加河但坦克及重砲之補充頗為困難因此其抵抗力大受影響據講壇報記者來電稱頓河流域德義聯軍曾用燃燒彈轟炸蘇聯坦克車頗為得手但最近數日來紅軍到大批新式坦克車駛行甚速並能駛過燃燒彈所布成之火陣安然無恙同時這林城紅軍仍利用伏爾加河左岸之砲隊不斷轟擊德軍陣地而德軍賡續前進與德軍砲隊頗難取得聯絡故不能予以還擊</p>
+<p>里斯本七日中央社電</p>
+<p>德軍四日來集中砲火猛攻斯達林城西北部工場地帶頃據合眾社莫斯科電德軍依然以輸送機繼續增援前曾參加攻擊塞伐斯托波爾之工兵大隊建設大隊亦已參加作戰在德戰車步兵協力下猛攻蘇軍達數十次</p>
+<h3>南京中政會議</h3>
+<p>南京八日中央社電</p>
+<p>中政會於八日上午九時舉行第一一三次會議主席汪兆銘（甲）報告事項略（乙）討論事項㈠主席交議據行政院呈據財政部呈為中央各機關官俸加成實行瞬將一載而現時物價仍復繼漲增高為策勵公務員安心服務起見擬根據上年加成辦法自本年十一月起一律臨時再加一倍發給公役亦仍照原案再加八成並訂定限制辦法七項以免更增國庫負擔一案轉呈鑒核等情請公決案決議通過送國府通飭遵辦㈡主席交議據行政院呈據財政部呈折省府咨請提照蠶絲改進費成例增加乾蘭特捐並擬補徵土絲改進費及特捐一案當以事關變更捐率增加人民負擔先交本院參事審查簽覆復飭據財實兩部會同審議擬具意見呈核經提第一三一次院會決議照財實兩部審議意見通過錄案呈請鑒核等情請公決案決議通過並交立法院將江浙兩省乾爾特捐暫行條例參照修正</p>
+<h3>南京政院令禁米商造謠</h3>
+<p>南京八日中央社電</p>
+<p>行政院訓令（五八八號）令南京特別市市長周學昌首都警察總監鄧祖禹杳厲行糧食統制一事係政府鑒於時局嚴重本國產米不足為幫場食供求平均起見特設立糧食管理委員會綜理全國糧食行政關於產銷及價格加以統制以期酌盈劑虛民食得以平均支配推行以來已有相當成效據報京市近有不肖米商恣意造謠反對統制更有身為士紳不明編制意義不察時代需要亦隨聲附和為奼商張目製造種種似是而非之言混亂聽聞紊惑人心等情似此蓄意破壞與民食為仇殊可痛恨須知從前米商囤積居奇買賣可以自由價格隨意漲落利潤優厚私人獲益民眾受害在平時已多不便在此時局更不能坐聽其病民自利現在改歸政府統制在民眾可得平均甘苦而在若輩則不能維持其非份之利益若任令若輩造謠惑眾遂其私圖民食前途益不堪問應即由該市長總監會同首都警察總監南京特別市政府剴切布告嚴禁奸商造謠生事如敢故違即以破壞糧政壟斷民食論罪嚴行拘究並隨時密查造謠生事之人盡法懲治以重糧睡而維民食除分行外合行令仰遵照辦理仍將遵辦情形具報</p>
+<h3>日輕裝甲車昨日移交</h3>
+<p>南京七日同盟社電</p>
+<p>本日早晨舉行日機移交儀式此根據三萬萬日圓貸款成立者至下午二時在中日高級官吏前又舉行輕裝甲車移交儀式</p>
+<h3>兒玉廉次訪畑總司令官</h3>
+<p>南京八日中央社電</p>
+<p>最近來京之華中振興公司總裁兒玉廉次氏於七日午後二時赴日軍總司令部訪問畑總司令官懇談約三十分鐘始行辭出午後七時重光大使復於大使官邸中歡宴兒玉總裁至十時賓主始盡歡而散</p>
+<h3>二期清鄉政工團出發各區工作</h3>
+<p>嘉興八日中央社電</p>
+<p>太湖東南二期清鄉黨務辦事處政治工作團全體工作人員於六日起全部動員出發赴各特區工作由分團分駐清鄉各重要地區分團長由特區署長兼任另設副分團長一人輔佐團長處理一切事務並設置宣撫隊從事宣撫撫輯事宜</p>
+<p>嘉興八日中央社電</p>
+<p>清委會駐浙辦事處為辦理太湖東南第一期清鄉地區經濟封鎖及物資移直通車懷搬出入暨車船登記等事務之實施業經分別擬訂各項管理規則及辦法訂斯實施經公佈者清鄉地區交通並物資移動及搬出入管理規則各種證明書發給規則違反封鎖演員罰規則沒收物資保管處理暫行辦法與船舶車輛登記規則等</p>
+<h3>義保兩國簽訂商約</h3>
+<p>羅馬八日海通社電</p>
+<p>義大利已與保加利亞簽訂若干協定其目的在求增進兩國間之商務關係此項協定係保加利亞商務部長蔭哈里夫訪問羅馬時所簽訂薩哈里夫在羅馬時曾參觀工廠多家</p>
+<p>羅馬八日海通社電</p>
+<p>墨索里尼昨日接見保國商務部長薩哈里夫據公報宣稱墨索里尼對於義保兩國之談判充滿傳統之友好精神表示滿意</p>
+<h3>擊沉美艦之義潛艇司令晉級上校</h3>
+<p>羅馬八日海通社電</p>
+<p>據此間宣稱在大西洋擊沉美國戰鬬艦之義國潛艇巴巴里哥號艇長格羅錫已由國王頒布命令晉級上校</p>
+<h2>Page 3</h2>
+<h3>傳史丹萊建議三國締新協定蘇提設軍委會要求英美兩國將予同意</h3>
+<p>東京八日中央社電</p>
+<p>據讀賣報知載阿根廷京城特電稱美駐蘇大使史丹萊因斯達林發表聲明後已瘊定立即返國述職故今後英美蘇三國關係之動向頗堪注目茲據華盛頓電傳史丹萊已向羅斯福進言為籠絡蘇聯起見美國方面有在三國間締結新協定手改進對德共同作戰要</p>
+<p>里斯本七日中央社電</p>
+<p>據路透社莫斯科電美駐蘇大使史丹萊最近為向羅斯福有所報告決定三日內歸國七日特謁斯達林義長有所會談</p>
+<p>瑞典京城八日海通社電</p>
+<p>據倫敦消息英國人士已開始討論斯達林關於設立協約國軍事委員會之要求而不復討論第二戰線問題矣英美權衡輕重而擇其易於實行者美駐蘇大使史丹萊上將或攜有斯達林向維斯福敗軍之將建議倫敦人士以為英美將同意設立軍事委員會使蘇聯同樣派遣代表藉以緩和莫斯科之空氣但羅斯福及邱吉爾均無放棄軍事領導權之意向而英美蘇三國之意見紛歧或將愈益顯露目前蘇聯報紙繼續抨擊英美之未能履行援蘇諾言各報並刊載諷刺之溫畫</p>
+<h3>減少軍械接濟各國對美不滿</h3>
+<p>瑞士京城七日哈瓦斯社電</p>
+<p>巴塞爾國民日報頃載有駐倫敦訪員來電稱斯達林最近向美國記者所發表之書面談話純為表示蘇聯國內不滿於美國現所採取之政策查蘇聯駐美國現所採取之政策查蘇聯駐美大使最近曾赴國務院提出交涉要求美美變政策蘇聯大使認為英美兩國應即鼓起勇氣擬就更大膽的作戰計劃緣過去美國軍人向有一項信條認為美國唯有與其協約國通力合作之後始可發動攻勢但時至此際彼等似已放棄此項見解而政界所常見之孤立主義似已傳染至軍事領袖矣截至美國參戰為止美國政策乃在依照民治國援助法之規定以軍械接濟各協約國但至今日由於美國本身需要大批軍械俾能建立龐大軍隊之故因此軍械接濟數是亦已減至最低限度軍事當局對於軍械輸出現已決定一種限額是以各協約國對於此種局面均表不滿僉認為各該國之需要不應因美國重整軍備計劃而有所犧牲即以開闢第二戰場一項問題而論實與以軍械及其他必需品接濟各協約國問題具有密切關係是故美國現行態度頗為各協約國所不滿</p>
+<h3>德方發表擊沉英船名單</h3>
+<p>柏林八日海通社電</p>
+<p>因倫敦與華盛頓方面並未發表沉失商船之船名德軍司令部特於昨日發表德軍擊沉英船十二艘之名單如下帝國戰士號（一·三七五噸）帝國羚羊號（五·六一三噸）帝國運輸號（五·八九六噸）帝國山脊號（二·九二二噸）帝國飛行員號（六·五八六噸）帝國蒲龍達號（五·六九三噸）帝國野牛號（五·六一二噸）帝國工程師號（五·三四五噸）帝國南方號（五·○○○噸）帝國海鳩號（五·七二○噸）帝國幸運號（五·○○○噸）帝國塘鹅號（六四　六三噸）以上商船十二艘皆為德國潛艇所擊沉另有沉失英船十二艘之名單將於數日後公布</p>
+<p>華盛頓七日哈瓦斯社電</p>
+<p>海軍部本日宣稱英國小型商船一艘前於八月中旬在加勒比安海面被濳水艇擊沉全船獲救水手已在美國東部某港登陸</p>
+<h3>加拿大內閣局部改組</h3>
+<p>渥太華七日哈瓦斯社電</p>
+<p>加拿大聯邦內閣總理麥根西金本日談稱內閣為包括奎北克省代表三人起見已實行局部改組（按奎貝克省為法蘭西族聚居之地）其人選如次㈠軍役部次長賴萊許少將晉陞為軍役部長㈡眾議員議員裴爾幹為漁業部長㈢自由黨議員福爾尼埃為海軍建造部長此三新部長當於本日宣誓就職惟此次內閣改組不致使加拿大政治發生任何變化</p>
+<p>瑞典京城八日海通社電</p>
+<p>加拿大首相金氏昨宣布內閣之改組加拿大法人加入內閣前任軍役部次長之拉弗萊區少將升任部長福尼爾任公共工程部長貝德倫任克省閣員五人盎泰里做就處閣員六人加拿大內閣之發生率且係首相應內政上之需要而起嗣後奎北克省之法人在政府中已有適當之代表矣</p>
+<h3>丹睡局仍見緊張</h3>
+<p>丹麥京城七日哈瓦斯社電</p>
+<p>丹麥政局本日仍見緊張大多數報紙均評論德方不滿慶麥若干政治份子之表示就中國民消息報並勸告國人切勿三五成羣以免擴大而成為示威運動同時柏林官方對於丹麥內閣總理布爾昨日之演說並無隻字批評但已獲得一種印象認為丹麥頗有參加新歐洲組織之可能矣</p>
+<h3>杜佛海峽兩岸猛烈砲戰</h3>
+<p>里斯本七日同盟社電</p>
+<p>據本日倫敦宣布杜佛海峽兩岸雙方發生猛烈砲戰英國東南沿海若干城市被砲擊斃命者數人</p>
+<h3>北愛首邑炸案</h3>
+<p>瑞典京城八日海通社電</p>
+<p>據貝爾發斯特息北愛爾蘭首邑某路於星期二晚有炸彈一枚爆炸多人受傷警察逮捕居民十八人其中包括愛爾蘭共和軍多名</p>
+<h3>威爾基已離渝行前再晤史蒂威爾</h3>
+<p>里斯本八日同盟社電</p>
+<p>據重慶訊羅斯福總統之個人特使威爾基已於昨日午後飛離重慶此訊至今日始準報紙刊載威爾基曾於週二中午與重慶區美司令定居點我蒂威爾中將二次會談約歷二十分鐘</p>
+<p>發表訪問各國觀感</p>
+<p>里斯本七日同盟社電</p>
+<p>美特使威爾基七日在渝又發表聲明渠稱此聲明為係說明個人之意見高呼向軸心採取積極攻勢同時並承認聯合國對軍火之分配殊欠公允其聲明大意稱余自美國啟程以來已歷訪十三國詳細考察各國政府及其國民之現狀此等聯合國人民之希望有三㈠聯合國之勝利㈡立即向軸心發動積極攻勢㈢戰後之自由與獨立然至戰後主要民主國家是否實際尊重他國之自由與獨立彼等甚表懷疑然余此次旅行所獲得者僅能以防衛戰必難獲且利我美國人民已一再以數字向世人宣布本國生產之增加情形然一部聯合國稱美國軍火送來甚少若以此認為美國生產之紊亂者則未必無理聯合國宜採取正當之撒旦置將軍火作平均分配予蘇聯及重慶惟僅供給武器實難獲勝吾人必須對於將來抱有希望聯合國中有人懷疑主要民主國對於戰後自由與立所取之態度者足以使各國喪失積極協力作戰之熱忱良以吾人不得一般盟國支持爭取勝利至為困難有某氏等曾與余舉行會談渠對美國所謂大西洋憲章表不悅之色彼等曾提出問題即簽定大西洋憲章之國家是否同意該憲章適用於大西洋乎美國對此應發表簡單且明瞭之聲明助吾答覆</p>
+<h3>馬達加斯加西南英軍佔領兩城</h3>
+<p>維希七日哈瓦斯社電</p>
+<p>殖民部長本日發表公報民斯加島英英日進展甚緩僅在安特西拉布區有斥堠活動該島西南部法軍稀少英軍已佔領薩加拉哈與湯果勃里兩地</p>
+<p>維希七日哈瓦斯社電</p>
+<p>馬達加斯加島總督亞奈將軍日前乘坐汽車曾遭英機掃射幸免於難殖民部長白萊維埃接獲報告後即致電祝賀此外並稱道駐國司令季友梅將軍之指揮若定及馬島軍民之英勇抵抗</p>
+<h3>美參院辯論新稅法案</h3>
+<p>里斯本八日海通社電</p>
+<p>美國參議院於昨日辯論新稅法案估計每年稅收約七十萬萬金元當時參議員拉福萊特要求將公司稅增至百分之五十現行稅法規定每年收入逾二五·○○○元者僅徵稅百分之三十一</p>
+<h2>Page 4</h2>
+<h3>燈火管制成績美滿防空演習業已結束當局發表公報表示滿意</h3>
+<p>同盟社本埠訊燈火管制訓練期已於昨夜結束日陸海軍防空司令部對此被動的防禦辦法之顯著改善表示滿意燈火管制訓練昨夜告終較原定之十天期限提早二天防空司令部昨夜發表公報稱過過入夜防空練習之結果已充分反映上海居民之認識現局及合作之誠意法租界與公共租界之燈火管制均甚良好華區及黃浦江蘇州河上亦頗良好公共租界日來經關係當局之嚴加監管管制辦法已有顯著改善頗可滿意惟楊樹浦區及永安公司以西區域內居民尚須注意改善燈火之管制而南市與浦東區之燈火管制殊不見效今後須特別注意公報復膽舉可使本市防空辦法臻於完善之各點如次㈠居民必須留意區別準備警戒與空襲管制之三個階段於準備燈火管制營業必須照常進行而警戒燈火管制之目的亦不欲使任何營業中止㈡凡居民未有防範及未作遮掩窗戶燈光之準備者均須採取適當之防範與遮蔽燈光辦法不常需用之燈應去燈泡㈢屋宇之後部及天井最易洩露燈光務須特別加以注意㈣汽車燈光亦須留意以一般言車前燈光之管制尚滿意車後燈光則不然㈤居民必須隨時準備於警報發出後數秒鐘內迅速實施一切燈火之管制辦法凡作此種準備而頗費時間者應予先準備就緒俾隨時接得通知施行之㈥若干路燈之反光太強其強烈之光線由牆壁反射入天空關於此點將作進一步之研究八天訓練期內無線電播音管制之成績亦稱滿意</p>
+<p>數百居戶違章受罰</p>
+<p>上海泰晤土報云法租界警務處採取嚴峻手段以實施其對居民所發必須遵守燈火管制條例之警告於星期一與星期二夜處罰違章住戶數百家斷其電流斷電時間從數小時至全夜不等迄今為止當局尚未依照法總領署之防空佈告對違章者處以罰鍰惟法警務處與保甲密切合作警告違章者並告以住戶內遮蔽燈光以免外洩之最佳方法</p>
+<p>肖防演習成績良好</p>
+<p>英文大美晚報云警務處交通幫辦處長兼防寬委員會主任松平氏今（八日）午後初次舉行模擬空襲消防演習時保甲人員熱心從事加以稱道據稱保甲人員訓練此種僅二三天然昨在普陀路舉行之演習成績頗佳而救火會亦再度證明其為頗奏效之團體保甲人員尚係初次從事消防演習故不乏有待改善之處經更多之演習後當可更見功效保甲人員之救護式作亦殊滿意協助負養家傷者至街道旁由衛生處轉送急救處其工作頗可贊揚本市他區亦將繼續消防演習而此種特殊工作訓練現正在保甲人員間進行</p>
+<h3>保甲勸募宣傳音樂大會</h3>
+<p>今日上午在大光明十一日起廣播三日</p>
+<p>公共租界保甲指導部舉辦之保甲自警擴大宣傳勸募週其日期規定自十月五日起至十五日止各項節目日期均經排定今日上午十時在大光明影戲院舉行保甲音樂大會屆時除演唱保甲自警歌外尚有其他精彩節目多項由著名音樂家樂隊率領演奏不售門票入座券須先期向保甲當局索取歡迎市民參加又遊藝各界已定十一十二十三三日假座愛多亞路十九號大美晚報電臺舉行盛大廣播屆時保甲委員會並請大本市知名之士輪流演講保甲自警擴大宣傳以及勸募運動舉辦之意義三日內節目探錄如下十一日下午二時至十時名票名伶大會串由保甲指３部正副主席葉扶霄及王伯元先生演講十二日下午二時至七時為越劇名票名伶廣播由袁履登余華龍兩氏演講七時至十時為滑稽大會串十三日下午二時至六時由彈詞界廣播敦請聞蘭亭及林康侯氏演講門里起至十時為申曲界廣播遊藝節目精彩屆時歡迎各界收聽點唱大美電臺電話為八四○八○及八四○八五至九</p>
+<h3>上海時疫醫院時疫部將結束</h3>
+<p>虞洽卿路上海時疫醫院自七月一日起至十月七日止患眞性霍亂人數共六千五十一人其死亡數約佔百分之十至十五目下染疫者每日仍有二三起時疫門診人數每日亦仍有二百餘人內外科合計則每日約有三四百人又據大能社記者探悉該醫院時疫部定於本月十五日結束</p>
+<h2>Page 5</h2>
+<h3>西報以滿腔熱望向日僑進靜言大陸新報作意義深長之警告泰晤士報引伸其說撰文勗勉</h3>
+<p>上海泰晤士報昨刊社評題為警告在華日人略稱本市日文人陸新報社評攔昨刊一文對在華日僑發一意義賞格工之警告誡具愼勿以戰勝者面目對待華人並謂日本有戰勝者應更緊勒其甲胄之古諺在華日人應守此精神而日常生活出以溫文固不得以傲慢態度對待華人也云云</p>
+<p>幸弗再蹈英美覆轍</p>
+<p>查現行戰爭之目的不容忽視自不待言質言之日人亟應處處防範免蹈美英在華之覆轍如果日本僅在中國替代舊有之英美勢力則其作戰努力之大部份實屬待勞藍日本之眞願厥為協助中國自立並與日本合作以擺脫英美之桎梏而獲取亞洲民族之永久和小與繁榮</p>
+<p>理應增強中國力量</p>
+<p>是故日本理應增強中國之力量而不得蓄意阻撓中國經濟與防衛力之賡續　滋長如欲協助中國更臻強盛務必樹立擺脫帝國主義侵略之新局面庶華人得運用其天然能力為本國以至世界謀最大之利益說日本竟向帝國主義之途誤進一步必將在華成為第二個英美而自敗其目的矣</p>
+<p>日僑當知責任重大</p>
+<p>吾人竊願乘此機會重申日人在華應審愼從事之必要實緣邇來尤其是東亞戰爭勃發以還日僑之行為頗不乏令人懷疑其是否深知重大責任者日本於此已處甚不利之地位上海領袖商人十四人於週二初次往游南京實可表示許多華人領袖對日本或南京政府之在華有何成就為如何疑惑</p>
+<p>務向華人保證誠意</p>
+<p>故日本以對華並無領土與物質圖謀為言時務必向華人羣眾保證其誠意而欲達此目的在華日僑咸應自動協助華人更瞭解日本之政策茍有日僑其行為不合日本所抱之目的則何能盼望華人信任日本之言行耶此言對於在華日僑固頗苛刻抑彼等茍不獲華人之信賴則極難在東亞建立新秩序之共榮圈</p>
+<p>一切必須根本做起</p>
+<p>在華之美英僑民現已失其往日之威望然許多華人似仍默處於英美宣傳勢力之下華人信賴之堅深由此可見日人如欲剷除東亞之美　勢力必須根本做起清除華人迄今仍信日英美之因素關於此點務須採取嚴厲行動使華大不復起美英之影響如取締短波收音機即其一端同時日人亦應竭力博取華人之合作</p>
+<h3>日本圍棋聖手訪問中國棋友</h3>
+<p>日本圍棋聖手瀨越憲作吳清源兩八段橋本守太郎七段諸氏日前應中日文化協會之邀由日來滬備承此間棋界歡迎吳清源八段之名國人已耳熟能則瀨源八段與橋本七段亦為日方棋界東鎭十四年前曾經來滬觀光張澹如曾設宴款待並表示敬柳之意今者瀨越等氏重歷滬濱而藝傾視前更進故人相晤歡然道故情意殷拳瀨諸氏特於日昨同吳清源橋本氏驅車前往張氏寓所就其病楊歷述十餘年來懸念之忱與慰問之意並遞送日本棋院贈於張氏之（四段免狀日方棋界授段至嚴今張氏得此榮稱亦中日團棋界之佳話也</p>
+<h3>申報讀者助學金捐款報告</h3>
+<p>本報讀者助學金昨又收到捐款百餘元謹此誌謝臺銜列後隠名氏（收據號碼一九二八）七十五元周傳甲二十元伍德華二十元朱君十五元郁行中學高三乙一元共計儲券一百三十一元又收到姚母奠儀陳賢齡二十元（按姚母奠儀連　工一萬九千零三十五元）兩共計儲券一百五十一元前存八萬零三百七十四元九角　分總結存八萬零五百二十五元九角二分</p>
+<h3>國慶紀念日工部局休假</h3>
+<p>工部局情報處公告云查十月十日國機紀念日本局各處停止辦公天特此公告</p>
+<h3>融五社講經誌</h3>
+<p>融五講經社六十七期講經沈覺靈君講學易須知經傳分合之異　云漢書藝文志易經十二篇盡上海經地孔子十翼彖上傳家上傳象上傳象卜傳潔辭上傳繫辭卜傳文盲傳說卦傳序卦傳雜卦傳十篇為十二篇也雖統稱為經而傳與經固分也注流本用王弼之易即鄭康成據費直以傳附經之本傳之彖上彖卜象上象卜象文言附於經餘五傳仍與經分也宋朱子用呂祖廉本復十一篇之舊清周易折中用本義本首本義次程傳次集說采自漢迄明監本以本義錄於注流本之下以為非本義則明明本義之注也以為本義則明非本義之本也最淆耳目學易者以厲易　　　豐果　矣聞　　趙</p>
+<h3>新都飯店新猷</h3>
+<p>新都飯店自開幕以來營業鼎盛內且設苑純以客觀要求著想故具成功殊非偶然近因　　交通不便除另闢外送專部外自十月十日起尤注力於中　營業特聘音樂家Gaueyos氏領導演奏爵十音樂　另闢新　舞池供客餐舞以助雅典時間由中午至二時半自二時半起該飯店首創之音樂茶座仍繼續舉行並歡迎茶舞為優待顧客起見茶資菜價一　照舊各界仁女曷興乎來</p>
+<h3>公平自由車廠訉</h3>
+<p>公平自由車廠股份有限公司創立於民九原名公平鋼鐵廠製銷各種鋼鐵器具去冬改組為公平自由車廠創製各式三輪自由車供給各出差車行營業鼎盛剛因業務需要陸續增資達二百萬元事務所及營業處在亞爾培路在三二號第一廠在甘司東路二八八號第二廠在東京路四九二號董事長朱博泉經理呂建康副經理羅文杰廠長呂音諧</p>
+<h3>周懷民畫展</h3>
+<p>北京畫家周懷民氏此次在滬舉行十一日截止周氏之畫直倣宋元而於故宮博物院中揣草原古人作品有年已得其神髓此次在滬展覽藝苑中人極為重視周氏在慶祝雙十佳節新作巨幅多幀在大新展覽下圖即周氏及其作品</p>
+<p>體育新聞</p>
+<h3>保甲杯足球展期一週聯誼體育會昨成立足球隊正式陣容公布</h3>
+<p>為壽募公工租界保甲經費之保甲杯足球義寶邀請異軍突起之聯誼隊及北西童聖芳濟葡萄牙混事組成之西聯隊對壘原定於本月十一日（星期日）晨在逸園展幕據昨晚消息因尚有籌備手續未辦妥十一日已不及舉行現決定展期一週改於十八日開始所有預售門票屆時仍一概通用</p>
+<p>因港星參加而為球迷矚目之聯誼體育會於昨正式宣告成立公推邵式軍為會和談熹錢威烈兩君負責處理會務沈回春為名譽書記張志和為足球了管蔡聲焱為鄰隊足球隊隊長為卓石金副隊長吳祺祥該會組織嚴密對於運動員精神尤為注意將來對本市體育界必有偉大貢獻茲將該會決定出席於保甲杯足球義賽之正式代表陣容錄左</p>
+<p>劉顯漢李天生孟義良張林根鄭英權宋靈聖卓石金孫錦順李義臣瞿永福吳祺祥</p>
+<p>（預備員）江潮費春華高保正金家標</p>
+<h3>明日雙十節足球賽東華戰蘇殼爾</h3>
+<p>雙十節足球友誼賽東華會對蘇殼爾定明日下午四時在畢勛路東華會球場交鋒蘇隊原屬乙組之俊佼者本屆已報名參加西且又東華會招收新隊員甄拔預備組人材今日下午五時為最後測騐希下列各員準時到場金家聲王裕人錢長發張挺唐佐文王文犧周文奎潘福春張國珍徐國福姚崇李竹民陳志坤韓龍根廖世儀朱梅龍李堯蕭子文王菊先雷樹華郭鎭英劉漢興羅素福陸慶祥朱錫祥</p>
+<h3>棋佈乒乓會今開會</h3>
+<p>棋佈乒乓促進會以主辦之硬球盃乒乓賽全部程序業於去冬賽畢冠軍一席由程叔銘胡一萍翁志超三將並列至今遲遲未決當局為提早結束起見定於今日下午四時在該所召開全體會議討論進行聞該會並已接得西人盟主猶太會之挑戰書云</p>
+<p>商業新聞</p>
+<h3>債市不易捉摸</h3>
+<p>公債場外交易昨仍頗為繁忙市價上落仍有二元許之距離初由多方抬價續有多頭出籠入後又有散戶吸收是以倐高倐低丙種在六十元關盤進盤出不下六七次之多多數為市上當日交易最為熱門賣方略佔優勢丙種曾一度破入五十九元見五十八元八角低價雖經數度穿出六十元是後仍為五十九元五角同業中見仁見智各具理由故市價前途尚難捉摸也甲種仍在六十元外為六十元○一角乙種為五十九元丁為五十六元六角戊種為五十七元五角結果除甲種尚漲一角外餘均小二角至五角</p>
+<h3>新亞藥廠股突向高峯推進</h3>
+<p>昨華商股票市況於平疲聲中忽露曙光各方人心轉疲為堅蓋見新藥業中之新亞廠各股票突向高峯迅速推進是以將其他各股票價為之拉起也新亞藥廠一度見四十七元五角高價終為四十七元軋升二元之巨新亞酵素二十五元左右中法隨升一元達八十二元民誼少成交最後價六十五元軋低一元五洲仍三百十元紡織業最為穏定永安紡織仍在一千五百八十元左右餘僅小額票面之宏牲織造升二角半在十一元半左右大中華織造最後十一元五角內衣三十二元半孚昌染織十七元半上海棉織十四元半安大襯衫二十五元均少變動百貨業仍僅一二元高低永安一百十八元升五角新新一百十七元半則低五角國貨仍在一百十三四元間文化業世界書局獨回低五角為七十四元餘如商務三百○五元中华二百十元永祥二十四元半均与前日优同公用业升降亦微闸北水电起伏於三十六元至三十七元半间升二角半华商电气三十元○五角前後低五角南洋烟公司一百○九元小一元大中华火柴低五元退至二百元关口中联三十六七元光中造纸十二元半左右交易不旺各股市价列後</p>
+<p>股名最高最低</p>
+<p>新亞藥廠四八·○○四五·○○</p>
+<p>中法藥房八二·五○八○·○○</p>
+<p>信誼甲優四四○·○○</p>
+<p>新亞酵素二五·二五二四·二五</p>
+<p>國貨公司二三·○一二·○○</p>
+<p>永安公司二九·○○二六·○○</p>
+<p>新新公司三○·○○二五·○○</p>
+<p>中國內衣三二·七五三一·七一</p>
+<p>上海棉織一四·五○一四·○○</p>
+<p>孚昌染織一七·七五一七·二五</p>
+<p>新豐織造二三·五○二三·○○</p>
+<p>大中華織造一一·○○二·二五</p>
+<p>宏牲織造二·七五二·○○</p>
+<p>寗波織造三·七五三·一五</p>
+<p>一元織造一四·五○一四·○○</p>
+<p>商務書館三一○·○○三○○·○○</p>
+<p>中華書局二三·五○三○·○○</p>
+<p>世界書局七五·○○七一·○○</p>
+<p>閘北水電二七·○○三六·○○</p>
+<p>華商電氣三一·○○三○·○○</p>
+<p>公信電器一二·七二一二·五○</p>
+<p>南洋煙草一二·○○一○七·○○</p>
+<p>大中華火柴二○五·○○二○·○○</p>
+<p>中聯影業三七·○○三六·○○</p>
+<p>光中造紙一三·○○一二·二五</p>
+<h3>棉布無甚榮辱東疋銀行單獨俏</h3>
+<p>廠布</p>
+<p>昨市盤堅定無榮辱蓋實銷生意雖仍清寂而濳勢則昂各布喊盤如後十六磅地球粗布一九○元態蜂一九○元飛鴻一八七元九磅新字粗布一一○元半八磅振中一○七元半十二磅地政治協商會議細布一六二元大鵬新單六○元富貴一五五元又銀行單一五○元琴美人元布一三七元美人魚元斜一三七元桃花女士林二五○元後二四九元七角半有成交雛雞士林二四三元則較堅挺</p>
+<p>東布</p>
+<p>市面不脫盤旋之狀惟最近趨勢以蘇州河南之銀行倉庫棧單逐見缺俏以前買戶常顧慮銀行單存棧過久或恐霉漬損壞等情茲已不加思索可見今昔觀感之不同耳昨十二磅龍頭細布新新單一六八元無甚變動而銀行單進出較繁頗為活絡午收價一五九元續升二角半彩球細布一五八元跌二角半飛魚一五六元陽宿主一五四元半四君子嗶嘰紅單交易甚少午收六元九角小二分但銀行單嗶嘰升至六元八角較漲五分價已漸漸軋平矣</p>
+<h3>新豆到滬交易見活</h3>
+<p>豆類近因近郊各地業已相繼出新販戶頗有設法轉輾運滬故交易見活市勢則仍堅挺計開浦東杜豆三十包價二百三十五元平湖黑豆十包價二百二十元吳江揀青五十包價地百元天津赤豆二十包價一百六十九元崇明新沙蠶五十包價一百五十一元</p>
+<p>山芋乾昨仍呈堅昂計開青島山芋乾三十餘包價為一百四十一元</p>
+<p>豆餅近因新貨逐有應市交易漸有增進市面因人心望高而向上昨開昌記豆餅一千片價為六十四元半至六十入元肥字豆餅三車價六十五元半至六十六元</p>
+<h3>飾金拆息兩無更動</h3>
+<p>昨本市銀樓業大新同行首飾金門市每兩兌出價仍掛二千四百五十元（收進減三百元左右）同業互做價先各後稍回晨為二千二百四十元高二十元俄梢升至二千二百五十五元見高售者吐售曾回小二十五元計二千二百三十元至首飾紋銀每兩仍掛十四元同業互做價十三元本五角略疲</p>
+<p>昨錢業公會拆息一角四分仍未變更云又九月份滬埠票據交換總數計二十三萬一千四百四十張金額為二二二三二六六六七○元三一</p>
+<h3>各業簡訊</h3>
+<p>自用品肥皂獨俏</p>
+<p>日用品如肥皂市況漲勢依舊不脫火柴一度高昂昨交易忽冷落計鳳凰牌二千二百元美麗牌二千四百元金鼎牌二千一百五十元雜牌一千七百元與前價格頗同固本皂三百二十五元白祥茂皂二百六十五元黃祥茂皂二百二十五元剪刀皂二百八十元一致趨高白禮氏洋燭仍為一百四十五元藥品市谷如八卦丹稍為向榮計十八元頭痛粉二十二元萬金油二十一元五角鷓菜五十六元龍虎人丹十三元均無上落</p>
+<p>香菰不純而市存較充故近日行盤救治有過好現售三千二百至四五百元惟東貨高莊香菰到存俱稀價格依然高昂售至八千五百元較為堅挺</p>
+<p>桂圓肉軋升</p>
+<p>新貨近日到數較多但其間有因提單未到一時未能提貨以致現貨仍稀昨市開盤又軋升五十元市象緊秀</p>
+<h2>Page 6</h2>
+<p>春秋</p>
+<h3>吃耳光與笑（閒讀隨感）</h3>
+<p>— 惰之餘</p>
+<p>小丑們在舞臺上雖然佔不到甚麼地位然而卻始終為觀眾所歡迎—因為他們能風眾們笑暢快的開心一下娛樂原是解悶小丑們於這一點便傾力的做到了</p>
+<p>小丑們博取到人們的笑法子確實是很多鼻子上按勞分配一塊白搖搖扇子說著詼諧的話是法子爬墻頭跳火車如羅克那樣做著滑稽的動作也是法子不過原則似乎只有一個就是扮小丑的要說出　不合情理的話做不合情理的動作</p>
+<p>但說詼諧的話要轉念頭做滑稽的動作要費手腳為俄國神秘象徵派的安特列地在他的名劇吃耳光的人裹卻提供出了一一簡單的法子那就是一個小丑並不要甚麼武功也不要甚麼文才只要把臉伸出來讓舞臺上別的角色打他的耳光右耳光打過再讓人打左臉打了還要笑還對打的人鞠躬有一回這一個小丑吃了一百個耳光使觀眾們都稱心滿意哈哈的笑了而這位小丑也走了紅</p>
+<p>不過如果這位小丑事情以自己身世的凄涼而一下悲痛的眞哭起來訴說自己下臺後不堪待遇的生活那麼說觀眾一定感到十分掃興的我想在觀眾羣中將會有人這樣的說大爺化錢是來尋樂的不是看你一副哭相</p>
+<p>觀眾們不同情小丑這是不合情理的古羅馬帝皇看人與獸門誰都感到是殘酷的娛樂但我想看小丑吃耳光而笑得出的那也怕是屬於一種殘酷的欣賞的取樂</p>
+<p>然而大家都不覺得在看完小丑吃耳光哈哈大笑之餘餘興還在的話或許人坑喊再亞個這大約是為了人們對有些不合情理的事　過慣了的緣故</p>
+<h3>不能診斷的病</h3>
+<p>— 之乎</p>
+<p>從診察室中出來我始不疑是朋友安慰我故意淡然說我沒有病夜間　我再到一個不相熟的醫生那裹仍斷的結果也是沒有病</p>
+<p>最近幾天來感到非常不舒服但又不能指出是一種什麼不舒服甚至可以說事整個身體機搆都發生窒息狀態可是在聽診器下證明我絕對沒有病</p>
+<p>有位朋友說這是氣候關係人們經過一個夏天的大解放到了落木蕭蕭的秋天猶如一頭自由的烏突然關到籠子裹它雖然能夠飛能夠唱能夠飮食但是它級剝奪了自由人們從夏天到秋天就像頭烏關進籠子裹一樣醫生能診察你的身體但不能診察你的心理狀態</p>
+<p>這是舉例而不量是由我想駁覆他但是我也沒有充份的反理由</p>
+<h3>夜行</h3>
+<p>— 佐拔</p>
+<p>我們下課的時間是下午八點鐘</p>
+<p>她和我是同級而且同路的每當下課以後總見她怱怱地回去走得比我快</p>
+<p>昨夜下課因為防空演習的關係馬路上已是漆黑一團了我照例步行回家</p>
+<p>佐拔突然一個聲音從後邊叫我道請你走得慢一些我們一道走罷</p>
+<p>我看不見是誰但是我聽清是她</p>
+<p>好的我說等了幾稍鐘處此的足音整齊了</p>
+<p>燈火管制演習路上一燈一火都沒有了</p>
+<p>連人影子也不容易看清啊她說</p>
+<p>哦</p>
+<p>下一次應該帶隻電筒來才好她又說</p>
+<p>不必的我答道徐非長亮著否則非但自己還要使人家也弄得眼花瞭亂呢我們應該趁此機會訓練訓練眼睛今天世界的諸大都市如倫敦如柏林如巴黎如羅馬如莫斯維也納如如那一個不如吡呀</p>
+<p>可是在黑暗中走路總究是很糟的</p>
+<p>在鄉下走夜路的人也能過得可況我們都市是這麼好的平的正直的路呀在小地方走夜路沒有路燈人們都是仰頭看天的在兩邊的墻壁之中看出就是監暗的沉靜的天看著天走就不會碰壁了</p>
+<p>那麼壞地方不會跌交麼所以是就熟路講的我答道</p>
+<p>你是說這種黑暗的情形是會熟習起來的麼</p>
+<p>不錯一切都會熟習起來的你不久就會熟習了正如一個不慣於走遠路的都市人到了鄉下動產豐富以無舟車可趁非走不可的時候也能走起遠路來的馘量樣的而且他多走了以後還以為這樣是多得了一種經騐呢</p>
+<p>於是我伴十字街頭指揮交通的紅綠燈射過來眞舒服舒服尤其是光波比較長的綠燈使人疲勞的身體突然得到一種平衡的安慰</p>
+<p>在黯音速看到一盞燈光好像特別快活她說</p>
+<p>是的在寺炬通明的晚上人們並不愛惜燈光燈光的價值大半都被抹殺了那時候有許多燈光都是浪費了</p>
+<p>紅綠燈很快地過過我們又在黑暗中趣聞許久</p>
+<p>有幾分鐘的沉默她又說道</p>
+<p>是的現在比剛從有光的課堂中出來的時候好多了那個時候連人影兒也不易看清現在可連人行道的高低也有見了</p>
+<p>在黑暗中我聽見她的微笑是一種安慰的微笑而目是柔和的</p>
+<h3>生與死</h3>
+<p>— 楊志剛</p>
+<p>最近在報紙上披露豐計多值得注意的新聞像嬰兒王殖率的顯著地減退以及和這相對的路斃棄嬰屍體的激增未已等還有些許多殯儀館傳來的消息近來亦都時常屍滿為患這些交織著的生和死的新聞正是反映現實社會的最好的縮圖</p>
+<p>其中最使人們關心的事莫過於本埠出生嬰兒的劇遽的減少這生殖率的減退當然有它的現實的和複雜的客觀原因存在著但是這卻無疑是一個極嚴重的社會問題</p>
+<p>近代史上亦有不少類似的事情當首次世界大戰展開直到大戰結束以後幾年間歐洲各國的嬰兒生育率亦曾遭到歷史上罕有的減退現象其中尤其是以英國為最甚</p>
+<p>那時英國孟撤斯得導報曾經發表過一篇精闢的評論盲目地希望人口的增加正是野蠻人的迷信試問目前蕓蕓眾生食不飽肚衣不蔽體者比比皆是而終歲辛勞而不獲飽暖者為數尤眾增加這類為幸福的人羣究是缺少意義所以如何設法改善生活在這社會裹的人們的生活這個問題是無論如何比盲目地冀求生育率增加來得重要同時亦正是對生殖率減退對策的先決條件</p>
+<p>我對此是非常同感對這名論起了強烈的共鳴</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（一○）飛來峯</p>
+<p>衛少雲往後倒倒了下去是該突倒了下衣著那人的來勢依著那拳的分量這一倒下去定然是蓬一聲很響的把聲浪傳情遞到東屋裹去把小諸葛那批人驚得直站起來可是不衛少雲倒了下去一些也沒聲息這為什麼呢那打人的人竄過來揑緊了拳頭一拳打下去同時卻把那左手往衛少雲脖子裹一托國慢的讓他倒在地下這不是不會發生響聲了麼這一下打得衛少雲眼是昏花了耳朵裹是隆隆隆的再也聽不出什麼來了嘴裹的一口鮮血也直噴出來了他不自覺地嚷起痛來跟了那口血一張嘴那打人的人倒像是早有準備一團棉花便間不容髪的塞在衛少雲嘴裹衛少雲也就錯了過去也便是再也沒有嚷的機會了</p>
+<p>牀上的翠珍她一共不知道來的是誰只一晃看見衛少雲倒了下去她在想別是以暴易暴來了一個和衛少雲爭風吃醋的人那自己還是受不了再一看時那人光著頭穿一套青布的衣服是個工人模樣的人臉上在盛怒之下有幾條青筋漲了起來可不是猙獰是英武翠珍突然明白這是黃龍她剛把嘴張得一張黃龍眼快手快輕輕的說道快不要說話他說著拿起倒在地下衛少雲的一條胳膊把他路易過干勁沖天　些路易過去了還是把他的胳膊一扔一腳踏到牀前來忙不迭來解翠珍腳上手上的繩子又輕輕的說道你坐起來吧我們趣聞不走還等著什麼來翠珍把手腳舒展了一下搖搖頭道我變了廢人了手和腳都麻木了黃龍從不懂得和人客氣把翠珍的手一扯翟珍借了一些勢倒坐了起來問道一他們門外有人能走嗎（一九八）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.10.09</h1>
+<h3>Caucasus Soviet Counteroffensive in the North of Stalingrad, Fierce Battles, Germany Claims Soviet Troops Retreating from Several Locations</h3>
+<p>German Führer's Headquarters, 8th, Renter News Agency</p>
+<p>Today, the German military communiqué claimed that enemy advances in the Caucasus region were repelled, while our troops continued to penetrate enemy positions. Enemy troops in Stalingrad continued to retreat from several locations. Enemy troops encircled in the northwest have been annihilated. Shipping on the lower Volga River and in the Caspian Sea was also bombed. German troops east of Kaluga, in a surprise attack, captured a hill position from the enemy. Enemy troops entrenched in the forests south of Lake Ladoga have been driven out. Enemy counterattacks have all failed. Enemy attempts to cross the Neva River repeatedly have been repelled. The German Air Force continued to bomb the enemy's northern railway lines. Several strongholds of the enemy have been lost in Kandalaksha, Lapland.</p>
+<p>Rome, 7th, Havas News Agency</p>
+<p>An Italian war correspondent, recently returned from the Eastern Front, reports that the Red Army's ability to defend Stalingrad appears to have weakened slightly, with a gradual shortage of military equipment and ammunition, especially heavy artillery and tanks. However, the Red Army still holds the northern part of the city, supplied by paratroopers or small boats crossing the Volga River at night. However, the replenishment of tanks and heavy artillery is quite difficult, thus greatly affecting their resistance. According to a report from the Giornale d'Italia, German and Italian forces in the Don River region have used incendiary bombs to great effect against Soviet tanks. However, in recent days, a large number of new Soviet tanks have arrived, moving very quickly and able to pass unscathed through the fire lines laid by incendiary bombs. At the same time, the Red Army in Stalingrad continues to use artillery units on the left bank of the Volga River to constantly bombard German positions, and it is difficult for the advancing German troops to make contact with the German artillery units, so they cannot retaliate.</p>
+<p>Lisbon, 7th, Central News Agency</p>
+<p>German forces have concentrated artillery fire for four days, fiercely attacking the factory zone northwest of Stalingrad. According to a United Press Moscow dispatch, German forces continue to reinforce with transport planes. Engineering and construction battalions that previously participated in the attack on Sevastopol have also joined the battle, launching dozens of fierce attacks on Soviet troops with the cooperation of German tanks and infantry.</p>
+<h3>Nanjing Central Political Conference</h3>
+<p>Nanjing, 8th, Central News Agency</p>
+<p>The Central Political Conference held its 113th meeting at 9:00 AM on the 8th. Chairman Wang Zhaoming (A) reported briefly on matters. (B) Matters for discussion: (1) The Chairman submitted for discussion a case from the Executive Yuan, based on a report from the Ministry of Finance, stating that the implementation of increased official salaries for central government agencies will soon reach one year, and that current prices continue to rise. In order to encourage civil servants to work with peace of mind, it is proposed to grant a temporary additional doubling of salaries from November of this year, based on the previous year's increase method. Public servants will also receive an additional 80% as originally planned, and seven restrictive measures will be established to avoid further increasing the burden on the national treasury. The case was submitted for review and decision. The resolution was passed and sent to the National Government for implementation. (2) The Chairman submitted for discussion a case from the Executive Yuan, based on a report from the Ministry of Finance, consulting the provincial government on a proposal to increase the silk improvement fee in accordance with the example of silkworm silk, and to levy a supplementary local silk improvement fee and special tax. Considering that this matter involves changing tax rates and increasing the burden on the people, it should first be submitted to the councilors of this Yuan for review and signature, and then the two ministries of Finance and Industry should jointly review and propose opinions to the National Government for approval. The resolution was passed at the 131st Yuan meeting and the case was recorded and submitted for review. The resolution was passed and the Legislative Yuan was instructed to revise the "Provisional Regulations on the Dried Indigo Tax in Jiangsu and Zhejiang Provinces" with reference to the revisions.</p>
+<h3>Nanjing Executive Yuan Orders Prohibition of Rice Merchants Spreading Rumors</h3>
+<p>Nanjing, 8th, Central News Agency</p>
+<p>Executive Yuan Instruction (No. 588) orders Zhou Xuechang, Mayor of Nanjing Special City, and Deng Zuyu, Chief of the Capital Police Headquarters, to strictly enforce the grain control policy. This is because the government, in view of the serious situation and the insufficiency of domestically produced rice, established the Grain Management Committee to manage national grain administration regarding production, sales, and prices in a comprehensive manner, in order to balance supply and demand and ensure an equal distribution of food for the people. Since its implementation, it has had considerable success. It is reported that recently, unscrupulous rice merchants in the capital city have arbitrarily spread rumors against the control policy. Some gentry, not understanding the meaning of the system and not recognizing the needs of the times, have echoed their sentiments, advocating for the unscrupulous merchants and creating all kinds of seemingly plausible arguments to confuse public opinion and disrupt people's minds. Such deliberate sabotage, hostile to the people's food supply, is extremely reprehensible. It must be known that in the past, rice merchants could hoard and speculate, trade freely, and prices could rise and fall arbitrarily, with generous profits and personal gain at the expense of the people. This was already inconvenient in normal times, but it is even more unacceptable in the current situation to sit idly by while they harm the people and benefit themselves. Now that control has been returned to the government, the people can share the joys and sorrows equally, while these people cannot maintain their undue advantages. If these people are allowed to spread rumors and deceive the public to achieve their selfish goals, the future of the people's food supply will be even more unbearable. The Mayor and the Chief of the Capital Police Headquarters should jointly issue a clear proclamation, strictly prohibiting unscrupulous merchants from spreading rumors and causing trouble. If anyone dares to deliberately violate the order, they will be punished severely as saboteurs of the grain policy and monopolizers of the people's food supply, and those who spread rumors and cause trouble should be secretly investigated and punished to the full extent of the law to emphasize the importance of grain security and maintain the people's food supply. In addition to distribution, it is ordered to comply with this order and report the compliance situation.</p>
+<h3>Japanese Light Armored Vehicles Handed Over Yesterday</h3>
+<p>Nanjing, 7th, Domei News Agency</p>
+<p>This morning, the ceremony for the handover of Japanese aircraft was held. This was established based on the 300 million yen loan. At 2:00 PM, the handover ceremony for light armored vehicles was held in front of senior Chinese and Japanese officials.</p>
+<h3>Renji Kodama Visits Commander-in-Chief Hata</h3>
+<p>Nanjing, 8th, Central News Agency</p>
+<p>Renji Kodama, President of the Central China Revitalization Company, who recently arrived in Nanjing, visited Commander-in-Chief Hata at the Japanese Army Headquarters at 2:00 PM on the 7th for about 30 minutes of talks before leaving. At 7:00 PM, Ambassador Shigemitsu hosted a banquet for President Kodama at the ambassador's residence until 10:00 PM, when the host and guests dispersed in good spirits.</p>
+<h3>Second Phase of Rural Pacification Political Work Teams Depart to Work in Various Areas</h3>
+<p>Jiaxing, 8th, Central News Agency</p>
+<p>All staff members of the political work teams of the Southeast Taihu Second Phase Rural Pacification Party Affairs Office mobilized and departed for various special zones on the 6th. Branch teams were stationed in important areas of the rural pacification zone. The heads of the branch teams were concurrently appointed by the heads of the special zones. A deputy head of the branch team was also appointed to assist the head in handling all matters, and an appeasement team was established to engage in appeasement and resettlement work.</p>
+<p>Jiaxing, 8th, Central News Agency</p>
+<p>The Zhejiang Office of the Pacification Committee, in order to handle the economic blockade of the first phase of the rural pacification zone in Southeast Taihu, the direct transportation of goods in and out, and the registration of vehicles and ships, has drafted various management rules and measures. These have been implemented. The announced measures include management regulations for transportation and movement of goods in and out of the rural pacification zone, regulations for issuing various certificates, regulations for penalties for violating the blockade, provisional measures for the custody and disposal of confiscated goods, and regulations for the registration of ships and vehicles.</p>
+<h3>Italy and Bulgaria Sign Trade Agreement</h3>
+<p>Rome, 8th, Renter News Agency</p>
+<p>Italy has signed several agreements with Bulgaria, the purpose of which is to increase trade relations between the two countries. This agreement was signed during the visit of Bulgarian Minister of Commerce Inhariv to Rome. While in Rome, Sahariv visited many factories.</p>
+<p>Rome, 8th, Renter News Agency</p>
+<p>Mussolini yesterday received Bulgarian Minister of Commerce Sahariv. According to a communiqué, Mussolini expressed satisfaction with the traditional spirit of friendship that filled the negotiations between Italy and Bulgaria.</p>
+<h3>Italian Submarine Commander Who Sank U.S. Ship Promoted to Colonel</h3>
+<p>Rome, 8th, Renter News Agency</p>
+<p>It is announced here that Commander Grozzi of the Italian submarine Barbarigo, which sank an American battleship in the Atlantic, has been promoted to colonel by order of the King.</p>
+<h2>Page 3</h2>
+<h3>Rumor that Stanley Proposed a New Agreement Between Three Countries, Soviet Union Proposed Military Committee, Requests that the United Kingdom and the United States Will Agree</h3>
+<p>Tokyo, 8th, Central News Agency</p>
+<p>According to the Yomiuri Hochi, a special telegram from Argentina to Seoul states that U.S. Ambassador to the Soviet Union Stanley has decided to return home immediately to report on his duties after Stalin issued a statement. Therefore, the future direction of relations between the United Kingdom, the United States, and the Soviet Union is worthy of attention. A telegram from Washington states that Stanley has advised Roosevelt that, in order to win over the Soviet Union, the United States should conclude a new agreement between the three countries to improve joint operations against Germany.</p>
+<p>Lisbon, 7th, Central News Agency</p>
+<p>According to Reuters Moscow, U.S. Ambassador to the Soviet Union Stanley recently decided to return home within three days to report to Roosevelt and paid a special visit to Stalin on the 7th for a meeting.</p>
+<p>Stockholm, 8th, Renter News Agency</p>
+<p>According to London news, British人士 have begun to discuss Stalin's request for the establishment of an Allied military committee and no longer discuss the issue of a second front. The United Kingdom and the United States have weighed the pros and cons and chosen the easier option to implement. U.S. Ambassador to the Soviet Union General Stanley may be carrying Stalin's advice to the defeated generals in Viesfor. London insiders believe that the United Kingdom and the United States will agree to establish a military committee and send representatives from the Soviet Union as well, in order to ease the atmosphere in Moscow. However, neither Roosevelt nor Churchill intends to abandon military leadership, and the differences of opinion between the United Kingdom, the United States, and the Soviet Union may become more and more apparent. Currently, Soviet newspapers continue to criticize the failure of the United Kingdom and the United States to fulfill their promises of aid to the Soviet Union, and the newspapers also publish satirical cartoons.</p>
+<h3>Reduced Military Aid, Dissatisfaction with the United States in Various Countries</h3>
+<p>Stockholm, 7th, Havas News Agency</p>
+<p>The Basler National-Zeitung recently published a dispatch from its London correspondent stating that the written statement recently issued by Stalin to American reporters was purely to express the Soviet Union's dissatisfaction with the current policy adopted by the United States. The Soviet Ambassador to the United States recently went to the State Department to lodge a protest, demanding that the United States change its policy. The Soviet Ambassador believes that the United Kingdom and the United States should immediately muster the courage to formulate a bolder operational plan. In the past, American soldiers had a creed that the United States could only launch an offensive after working with its allies, but at this time, they seem to have abandoned this view, and the isolationism commonly seen in the political world seems to have spread to military leaders. Until the United States entered the war, the U.S. policy was to supply military equipment to its allies in accordance with the provisions of the Lend-Lease Act. However, today, due to the United States' own need for a large amount of military equipment to build a large army, the amount of military equipment supplied has also been reduced to a minimum. The military authorities have now decided on a quota for military equipment exports, so the allies are all dissatisfied with this situation and believe that their needs should not be sacrificed due to the U.S. military reorganization plan. The issue of opening a second battlefield is closely related to the issue of supplying military equipment and other necessities to the allies. Therefore, the current attitude of the United States is quite unpopular with the allies.</p>
+<h3>Germany Announces List of British Ships Sunk</h3>
+<p>Berlin, 8th, Renter News Agency</p>
+<p>Because London and Washington have not announced the names of sunken merchant ships, the German High Command yesterday announced a list of twelve British ships sunk by German forces, as follows: Empire Warrior (1,375 tons), Empire Antelope (5,613 tons), Empire Transport (5,896 tons), Empire Ridge (2,922 tons), Empire Pilot (6,586 tons), Empire Pylonda (5,693 tons), Empire Buffalo (5,612 tons), Empire Engineer (5,345 tons), Empire Southern (5,000 tons), Empire Seagull (5,720 tons), Empire Fortune (5,000 tons), Empire Gannet (6,463 tons). The above twelve merchant ships were all sunk by German submarines. Another list of twelve sunken British ships will be announced in a few days.</p>
+<p>Washington, 7th, Havas News Agency</p>
+<p>The Navy Department announced today that a small British merchant ship was sunk by a submarine in the Caribbean Sea in mid-August. All the rescued sailors have landed in a port in the eastern United States.</p>
+<h3>Partial Reshuffle of Canadian Cabinet</h3>
+<p>Ottawa, 7th, Havas News Agency</p>
+<p>Canadian Prime Minister Mackenzie King stated today that the cabinet has undergone a partial reshuffle in order to include three representatives from Quebec Province (Note: Quebec Province is inhabited by French people). The personnel are as follows: (1) Major General LaFleche, Deputy Minister of National Defense for Army, promoted to Minister of National Defense for Army; (2) Member of Parliament Pergan, Minister of Fisheries; (3) Liberal Party Member Fornier, Minister of Naval Construction. These three new ministers will be sworn in today. However, this cabinet reshuffle will not cause any changes in Canadian politics.</p>
+<p>Stockholm, 8th, Renter News Agency</p>
+<p>Canadian Prime Minister King announced yesterday the reorganization of the cabinet. Canadian legal persons joined the cabinet. The former Deputy Minister of National Defense for Army, LaFleche, was promoted to minister. Fournier was appointed Minister of Public Works. Bedland was appointed to the cabinet of five members of Quebec Province. Six members of the Ontario cabinet were employed. The incidence of the Canadian cabinet was caused by the Prime Minister's need for internal affairs. Later, the legal persons of Quebec Province had appropriate representatives in the government.</p>
+<h3>Danish Political Situation Still Tense</h3>
+<p>Copenhagen, 7th, Havas News Agency</p>
+<p>The Danish political situation remained tense today. Most newspapers commented on the German dissatisfaction with the expression of certain political figures in Denmark. The Chinese Republican News even advised the people not to gather in groups of three or five to avoid escalating into demonstrations. At the same time, the Berlin official did not criticize Danish Prime Minister Buhl's speech yesterday, but it has gained the impression that Denmark is likely to participate in the new European organization.</p>
+<h3>Fierce Artillery Battles on Both Sides of the Strait of Dover</h3>
+<p>Lisbon, 7th, Domei News Agency</p>
+<p>According to an announcement from London today, fierce artillery battles broke out on both sides of the Strait of Dover. Several cities on the southeast coast of England were shelled, killing several people.</p>
+<h3>Bombing Case in the Capital of Northern Ireland</h3>
+<p>Stockholm, 8th, Renter News Agency</p>
+<p>According to a message from Belfast, a bomb exploded on a road in the capital of Northern Ireland on Tuesday night, injuring several people. Police arrested 18 residents, including several members of the Irish Republican Army.</p>
+<h3>Willkie Has Left Chongqing, Met with Stilwell Again Before Departure</h3>
+<p>Lisbon, 8th, Domei News Agency</p>
+<p>According to a message from Chongqing, Roosevelt's personal envoy Willkie flew from Chongqing yesterday afternoon. This news was not allowed to be published in the newspapers until today. Willkie had a second meeting with Lieutenant General Stilwell, commander of the U.S. forces in the Chongqing area, at noon on Tuesday, lasting about twenty minutes.</p>
+<p>Published Views on Visits to Various Countries</p>
+<p>Lisbon, 7th, Domei News Agency</p>
+<p>U.S. Envoy Willkie issued another statement in Chongqing on the 7th, saying that this statement was to explain his personal views and called for an active offensive against the Axis. At the same time, he admitted that the distribution of armaments by the United Nations was unfair. The general idea of his statement was: "Since I departed from the United States, I have visited thirteen countries and carefully examined the current situation of the governments and peoples of these countries. The people of these United Nations have three hopes: (1) Victory of the United Nations; (2) Launching an active offensive against the Axis immediately; (3) Freedom and independence after the war. However, after the war, it is doubtful whether the major democratic countries will actually respect the freedom and independence of other countries. However, what I have gained from this trip is that a defensive war will hardly be won, and the benefits to the American people have been repeatedly announced to the world in numbers regarding the increase in domestic production. However, some United Nations claim that the armaments sent by the United States are very few. If this is considered a disruption to American production, it is not necessarily unreasonable. The United Nations should adopt appropriate plans to allocate the armaments equally to the Soviet Union and Chongqing. However, it is difficult to win by only providing weapons. We must have hope for the future. Some people in the United Nations doubt the attitude of the major democratic countries towards freedom and independence after the war, which is enough to make the countries lose their enthusiasm for actively cooperating in the war. It is extremely difficult for us to win without the support of the general allies. Some people have held talks with me and expressed their displeasure with the American so-called Atlantic Charter. They have raised the question of whether the countries that signed the Atlantic Charter agree that the charter applies to the Atlantic? The United States should issue a simple and clear statement to help me answer."</p>
+<h3>British Forces Occupy Two Cities in Southwest Madagascar</h3>
+<p>Vichy, 7th, Havas News Agency</p>
+<p>The Minister of Colonies announced today that the British progress on the island of Madagascar is very slow, with only scouting activities in the Antsirabé area. The number of French troops in the southwest of the island is small, and British troops have occupied the two cities of Sagharaha and Tongo Bre.</p>
+<p>Vichy, 7th, Havas News Agency</p>
+<p>Governor General Yanai of Madagascar was strafed by British aircraft while traveling by car the other day, but escaped unscathed. Minister of Colonies Brelier sent a telegram of congratulations after receiving the report. In addition, he praised the resolute command of Commander Juyoumay of the national garrison and the heroic resistance of the military and civilians of Madagascar.</p>
+<h3>U.S. Senate Debates New Tax Bill</h3>
+<p>Lisbon, 8th, Renter News Agency</p>
+<p>The U.S. Senate debated the new tax bill yesterday, estimating annual tax revenues of about $7 billion. At that time, Senator La Follette demanded that the corporate tax be increased to 50 percent. Current tax laws stipulate that those with an annual income of more than $25,000 are taxed at only 31 percent.</p>
+<h2>Page 4</h2>
+<h3>Blackout Achieves Satisfactory Results, Air Raid Drill Has Ended, Authorities Issue Communiqué Expressing Satisfaction</h3>
+<p>Domei News Agency, This Port - The blackout training period ended last night. The Japanese Army and Navy Air Defense Command expressed satisfaction with the significant improvement of this passive defense measure. The blackout training ended last night, two days earlier than the originally scheduled ten-day period. The Air Defense Command issued a communiqué last night stating that the results of the blackout exercises conducted after dark fully reflected the Shanghai residents' understanding of the current situation and their sincerity in cooperation. Blackout in the French Concession and the Public Concession was very good. The Chinese areas and the Huangpu River and Suzhou Creek were also quite good. The Public Concession has undergone strict supervision by the relevant authorities in recent days, and the blackout measures have been significantly improved and are quite satisfactory. However, residents in the Yangshupu District and the area west of Wing On Company still need to pay attention to improving blackout measures, while blackout in the Nanshi and Pudong areas is not effective and special attention must be paid in the future. The communiqué further enumerated the following points that can make the city's air defense measures perfect: (1) Residents must pay attention to distinguishing the three stages of preparation, alert, and air raid control. During the preparation blackout, business must continue as usual, and the purpose of the alert blackout is not to suspend any business. (2) All residents who have not prepared for defense and have not made preparations to shield window lights must take appropriate defensive and shielding measures. Light bulbs should be removed from lights that are not commonly used. (3) The back of houses and patios are most likely to leak light and must be given special attention. (4) Automobile lights must also be given attention. Generally speaking, the control of front lights is satisfactory, but the rear lights are not. (5) Residents must be prepared at all times to quickly implement all blackout measures within seconds after an alarm is issued. Anyone who takes a long time to prepare should prepare in advance so that they can implement them immediately upon receiving notification. (6) Some street lights have too much reflection, and their strong light is reflected into the sky from the walls. Further research will be conducted on this point. The results of radio broadcasting control during the eight-day training period were also satisfactory.</p>
+<p>Hundreds of Households Penalized for Violations</p>
+<p>The Shanghai Times reports that the French Concession Police Department took strict measures to implement its warning to residents to abide by the blackout regulations. On Monday and Tuesday nights, hundreds of households were penalized for violations by cutting off their electricity for several hours to the entire night. So far, the authorities have not imposed fines on violators in accordance with the French Consulate General's air defense proclamation. However, the French Police Department is working closely with the Baojia system to warn violators and inform them of the best ways to shield lights in their homes to prevent them from leaking.</p>
+<p>Fire Drill Achieves Good Results</p>
+<p>The English-language Great American Evening News reports that Mr. Matsudaira, Deputy Director of the Police Department's Traffic Bureau and Director of the Defense Committee, praised the Baojia personnel for their enthusiastic participation in the first simulated air raid fire drill held this afternoon (8th). It is said that the Baojia personnel, who had only received two or three days of training, performed well in the drill held on Putuo Road yesterday, and the fire brigade once again proved to be a very effective group. Since the Baojia personnel were participating in a fire drill for the first time, there was no shortage of areas for improvement. After more drills, it will be even more effective. The rescue work of the Baojia personnel was also very satisfactory. They helped to carry the injured to the side of the street, where they were transferred to the first aid station by the health department. Their work was commendable. Fire drills will continue to be held in other areas of the city, and this special work training is currently being carried out among the Baojia personnel.</p>
+<h3>Baojia Fund-Raising Propaganda Music Concert</h3>
+<p>Today morning at the Grand Theatre, Broadcasting for Three Days from the 11th</p>
+<p>The Baojia Guidance Department of the Public Concession is holding a Baojia Self-Defense Expanded Propaganda Fund-Raising Week, which is scheduled to run from October 5th to 15th. The dates of all programs have been arranged. A Baojia music concert will be held at the Grand Theatre at 10:00 AM today. In addition to singing the Baojia Self-Defense Song, there will be many other exciting programs performed by famous musicians and orchestras. Tickets will not be sold, and admission tickets must be obtained from the Baojia authorities in advance. Citizens are welcome to participate. The art and entertainment circles have also scheduled a grand broadcast at the Great American Evening News Radio Station at No. 19 Edward Road on the 11th, 12th, and 13th. The Baojia Committee will invite well-known figures in the city to give speeches in rotation on the meaning of the Baojia Self-Defense Expanded Propaganda and Fund-Raising Movement. The program recordings for the three days are as follows: 2:00 PM to 10:00 PM on the 11th, a grand gathering of famous actors and actresses, with speeches by Ye Fuxiao and Wang Boyuan, Chairman and Vice Chairman of the Baojia 指導 Department. 2:00 PM to 7:00 PM on the 12th, a broadcast by famous Yue Opera actors and actresses, with speeches by Yuan Ludeng and Yu Hualong. 7:00 PM to 10:00 PM, a comic gathering. 2:00 PM to 6:00 PM on the 13th, a broadcast by the Pingtan circle, with speeches by Wen Lanting and Lin Kanghou. From 7:00 PM to 10:00 PM, a broadcast by the Shanghai Opera circle. The art and entertainment programs are wonderful, and all circles are welcome to listen. The telephone numbers for the Great American Radio Station are 84080 and 84085 to 9.</p>
+<h3>The Infectious Disease Department of the Shanghai Epidemic Hospital Will Close</h3>
+<p>The Shanghai Epidemic Hospital on Yuchagqing Road has treated a total of 6,051 people with true cholera from July 1st to October 7th. The mortality rate is about 10% to 15%. Currently, there are still two or three new cases of infection every day, and the number of patients visiting the epidemic disease clinic is still more than 200 per day. The total number of patients in internal medicine and surgery is about 300 to 400 per day. According to a reporter from the Daan News Agency, the Infectious Disease Department of the hospital is scheduled to close on the 15th of this month.</p>
+<h2>Page 5</h2>
+<h3>Western Newspapers Eagerly Encourage Japanese Residents in China, While the Continental New Report Makes a Profound Warning; The Times Elaborates and Encourages</h3>
+<p>Yesterday, the Shanghai Times published an editorial titled "A Warning to Japanese in China," stating that a recent editorial in the Japanese-language Continental New Report issued a significant and earnest warning to Japanese residents in China, urging them not to treat Chinese people as if they were conquerors. It quoted an ancient Japanese proverb that even conquerors should tighten their armor. Japanese in China should uphold this spirit and conduct themselves with courtesy in their daily lives, refraining from arrogant behavior towards the Chinese people.</p>
+<p>Hoping Not to Repeat the Mistakes of Britain and America</p>
+<p>The purpose of the current war should not be overlooked; it goes without saying that Japanese should be vigilant in preventing a repetition of the mistakes made by the United States and Britain in China. If Japan merely replaces the old British and American influence in China, most of its war efforts will have been in vain. Japan's true wish is to help China become independent and cooperate with Japan to break free from British and American shackles and achieve lasting peace and prosperity for the nations of Asia.</p>
+<p>Should Strengthen China's Power</p>
+<p>Therefore, Japan should strengthen China's power and not deliberately hinder the continuation and growth of China's economy and defense capabilities. To help China become stronger, a new situation must be established that eliminates imperialist aggression, so that the Chinese people can use their natural abilities to seek the greatest benefits for their country and the world. If Japan mistakenly takes another step towards imperialism, it will become a second Britain and America in China and defeat its own purpose.</p>
+<p>Japanese Residents Should Know They Bear Great Responsibility</p>
+<p>We would like to take this opportunity to reiterate the need for Japanese residents in China to act with caution. In recent times, especially since the outbreak of the East Asian War, the behavior of Japanese residents has raised doubts as to whether they fully understand their important responsibilities. The fact that fourteen leading merchants from Shanghai visited Nanjing for the first time on Tuesday may indicate the doubts that many Chinese leaders have about Japan or the achievements of the Nanjing government in China.</p>
+<p>Must Assure the Chinese People of Their Sincerity</p>
+<p>Therefore, when Japan states that it has no territorial or material ambitions in China, it must assure the Chinese people of its sincerity. To achieve this goal, all Japanese residents in China should voluntarily help the Chinese people understand Japan's policies better. If some Japanese residents behave in ways that contradict Japan's stated goals, how can it be hoped that the Chinese people will trust Japan's words and actions? This may sound harsh to Japanese residents in China, but if they do not gain the trust of the Chinese people, it will be extremely difficult to establish a new order of co-prosperity in East Asia.</p>
+<p>Everything Must Start from the Ground Up</p>
+<p>American and British residents in China have now lost their former prestige, but many Chinese people still seem to be silently under the influence of British and American propaganda. The depth of Chinese trust in them is evident. If the Japanese want to eliminate American and British influence in East Asia, they must start from the ground up, eliminating the factors that still cause the Chinese to trust Britain and America. Strict measures must be taken to prevent the resurgence of American and British influence, such as banning shortwave radios. At the same time, Japanese should also strive to win the cooperation of the Chinese people.</p>
+<h3>Japanese Go Masters Visit Chinese Chess Friends</h3>
+<p>Japanese Go masters Sakata Eio, Wu Qingyuan, both 8-dan, and Hashimoto Utaro, 7-dan, were invited by the Sino-Japanese Cultural Association to come to Shanghai. The local chess community welcomed them. Wu Qingyuan's name is well-known to the Chinese people, and Sakata Eio and Hashimoto Utaro are also prominent figures in the Japanese chess world. Fourteen years ago, they came to Shanghai as tourists, and Zhang Danru hosted a banquet for them, expressing his respect. Now, Sakata and others have returned to Shanghai, and their skills are even more advanced than before. Old friends met again, and they happily reminisced about the past, their feelings sincere. Yesterday, Sakata and the others, together with Wu Qingyuan and Hashimoto, drove to Zhang's residence to inquire about his illness and express their concern and care over the past ten years. They also presented Zhang with a 4-dan certificate from the Japanese Go Institute. The Japanese chess community is very strict in awarding ranks, and Zhang's receipt of this honor is a wonderful story in the Sino-Japanese chess world.</p>
+<h3>Shenbao Readers' Scholarship Donation Report</h3>
+<p>Yesterday, the Shenbao Readers' Scholarship Fund received another donation of over one hundred yuan. We would like to express our gratitude and list the names below: Anonymous (Receipt No. 1928) 75 yuan, Zhou Chuanjia 20 yuan, Wu Dehua 20 yuan, Yu Xing Middle School Senior Class B 1 yuan, totaling 131 yuan in savings certificates. Also received was Yao Mu's funeral contribution from Chen Xianling 20 yuan (Note: Yao Mu's funeral contribution is connected to 19,035 yuan). The total savings certificate amount is 151 yuan. Previous balance was 80,374 yuan and 9 jiao and 7 fen. Total balance is 80,525 yuan, 9 jiao and 2 fen.</p>
+<h3>Shanghai Municipal Council Holiday for National Day</h3>
+<p>Shanghai Municipal Council Information Office Announcement: The National Day is October 10th. All Shanghai Municipal Council offices will be closed on that day. This announcement is hereby made.</p>
+<h3>Record of Rongwu Society Sutra Lecture</h3>
+<p>In the 67th lecture of the Rongwu Society Sutra Lecture, Mr. Shen Jueling lectured on the differences between the scriptures and commentaries in "Essentials for Studying the Book of Changes." Yunhan Shuyi Wenzhi Book of Changes 12 chapters complete Shanghai classics Confucius' ten wings, commentary, upper biography, family upper biography, image upper biography, image divination, clean words upper biography, commentary divination, text blind biography, gossip biography, sequence biography, miscellaneous gossip biography ten chapters as twelve chapters Although collectively referred to as scriptures, the commentaries and the scriptures are separate. Zhu Liu originally used Wang Bi's Book of Changes, that is, Zheng Kangcheng, according to Fei Zhi, to attach the biography to the scripture, the biography of Xiang Shang, Xiang Bu Xiang Shang Xiang Bu Xiang Wenyan attached to the scripture, and the remaining five biographies are still separated from the scripture. In the Song Dynasty, Zhu Zi used Lu Zuliang's version to restore the old eleven chapters. In the Qing Dynasty, Zhouyi Zhongzhong used Benyi, Benyi first, then Cheng biography, then Jishuo, collected from the imperial editions from Han to Ming, and recorded Benyi below the Zhu Liu Ben, thinking that it was not Benyi. The annotation of Benyi is clear that it is not the original of Benyi. It is the most confusing. Those who study the Book of Changes take Li Yi... Fengguo... I heard... Zhao</p>
+<h3>New Initiatives at the New Capital Hotel</h3>
+<p>Since its opening, the New Capital Hotel has been thriving, with a courtyard designed purely to meet the needs of its guests, ensuring its success is no accident. Recently, due to the inconvenience of transportation, in addition to opening a special delivery department, the hotel has focused on Chinese dining from October 10th. It has specially hired musician Gaueyos to lead a jazz music performance, and a new dance floor has been opened for guests to dine and dance to create an elegant atmosphere. The time is from noon to 2:30 pm. From 2:30 pm onwards, the hotel's original musical tea party will continue to be held, and tea dancing is welcome. To give preferential treatment to customers, the tea fee and food prices will remain the same. Ladies and gentlemen from all walks of life, why not come and enjoy?</p>
+<h3>News from the Gongping Bicycle Factory</h3>
+<p>Gongping Bicycle Factory Co., Ltd. was established in 1920, originally named Gongping Steel Factory, manufacturing and selling various steel appliances. Last winter, it was reorganized into Gongping Bicycle Factory, creating various tricycles and bicycles to supply to various business travel agencies, and its business has been thriving. Due to business needs, it has successively increased its capital to 2 million yuan. The office and business office are located at No. 32 Alburt Road. The first factory is at No. 288 Gansdong Road, and the second factory is at No. 492 Tokyo Road. The chairman is Zhu Boquan, the manager is Lu Jiankang, the deputy manager is Luo Wenjie, and the factory director is Lu Yinxie.</p>
+<h3>Zhou Huaimin Painting Exhibition</h3>
+<p>The Beijing painter Zhou Huaimin's exhibition in Shanghai will end on the 11th. Zhou's paintings directly imitate the Song and Yuan dynasties, and he has studied the works of ancient people in the Palace Museum for many years, gaining their essence. The exhibition in Shanghai is highly valued by people in the art world. Zhou's new large-scale works celebrating the Double Ten Festival are on display at Daxin Exhibition. The picture below shows Zhou and his works.</p>
+<p>Sports News</p>
+<h3>Baojia Cup Football Postponed for One Week, Lianyi Sports Association Football Team Officially Announced</h3>
+<p>For the purpose of raising funds for the Baojia expenses of the public concession, the Baojia Cup Football Charity Invitational Tournament features the emerging Lianyi Team and the Western Union Team composed of the Northern and Western Children's St. Francis Portuguese Mixed Teams. It was originally scheduled to open at Yiyuan on the morning of the 11th of this month (Sunday). According to news last night, due to the fact that some preparation procedures have not been completed, it is too late to hold it on the 11th. It has now been decided to postpone it for one week and change the start date to the 18th. All pre-sold tickets will still be valid at that time.</p>
+<p>The Lianyi Sports Association, which has attracted the attention of fans due to the participation of Hong Kong stars, was officially announced yesterday. Shao Shijun was publicly elected as the chairman, and Tan Xi and Qian Weilie were responsible for handling the association's affairs. Shen Huichun was the honorary secretary, Zhang Zhihe was in charge of football affairs, and Cai Shengyan was the captain of the neighboring team's football team. The captain is Zhuo Shijin, and the vice captain is Wu Qixiang. The association is tightly organized and pays special attention to the spirit of athletes. In the future, it will definitely make great contributions to the sports world in this city. The official representative lineup decided by the association to attend the Baojia Cup Football Charity Tournament is recorded on the left.</p>
+<p>Liu Xianhan, Li Tiansheng, Meng Yiliang, Zhang Lingen, Zheng Yingquan, Song Lingsheng, Zhuo Shijin, Sun Jinshun, Li Yichen, Qu Yongfu, Wu Qixiang</p>
+<p>(Reserves) Jiang Chao, Fei Chunhua, Gao Baozheng, Jin Jiabiao</p>
+<h3>Double Ten Festival Football Match Tomorrow: Donghua vs. Sokel</h3>
+<p>The Double Ten Festival friendly football match between Donghua Club and Sokel is scheduled to take place at 4 pm tomorrow at the Donghua Club Stadium on Bixun Road. The Sokel team was originally a top team in Group B and has registered to participate in the West. The Donghua Club has also recruited new team members and selected reserve team talents. 5 pm this afternoon is the final test. The following members are expected to be present on time: Jin Jiasheng, Wang Yuren, Qian Changfa, Zhang Ting, Tang Zuowen, Wang Wenxi, Zhou Wenkui, Pan Fuchun, Zhang Guozhen, Xu Guofu, Yao Chong, Li Zhumin, Chen Zhikun, Han Longgen, Liao Shiyi, Zhu Meilong, Li Yao, Xiao Ziwen, Wang Juxian, Lei Shuhua, Guo Zhenying, Liu Hanxing, Luo Suofu, Lu Qingxiang, Zhu Xixiang</p>
+<h3>Qibu Table Tennis Association Meeting Today</h3>
+<p>The Qibu Table Tennis Promotion Association's Hardball Cup table tennis tournament was completed last winter. The championship was jointly held by Cheng Shuming, Hu Yiping, and Weng Zhichao. The authorities have decided to hold a general meeting at the venue at 4 pm today to discuss the progress in order to finish the tournament early. It is reported that the association has also received a challenge letter from the Western leader, the Jewish Association.</p>
+<p>Commercial News</p>
+<h3>The Bond Market Is Unpredictable</h3>
+<p>Over-the-counter trading in public bonds was still quite busy yesterday. The market price fluctuated by about 2 yuan. Initially, the bulls raised prices, and then many bulls emerged. Afterwards, retail investors absorbed the bonds, so the price fluctuated. Type C bonds were the most popular, changing hands several times at the 60 yuan level. Sellers were slightly more dominant. Type C bonds once fell below 59 yuan, seeing a low price of 58.8 yuan. Although they broke through 60 yuan several times, they were still at 59.5 yuan afterwards. People in the industry had different opinions and reasons, so it is still difficult to predict the future of the market price. Type A bonds were still outside 60 yuan at 60.01 yuan. Type B bonds were at 59 yuan, Type D at 56.6 yuan, and Type E bonds at 57.5 yuan. As a result, except for Type A bonds, which rose by 1 jiao, the rest all fell by small amounts of 2 jiao to 5 jiao.</p>
+<h3>New Asia Pharmaceutical Stock Suddenly Rises to a Peak</h3>
+<p>Yesterday, the Chinese stock market suddenly showed a glimmer of light amidst the generally sluggish tone. The morale of all parties turned from tired to firm. The stocks of the New Asia Factory in the new pharmaceutical industry suddenly rose rapidly to a peak, pulling up the prices of other stocks. New Asia Pharmaceutical once saw a high price of 47.5 yuan, finally closing at 47 yuan, a huge increase of 2 yuan. New Asia Enzymes were around 25 yuan. Sino-French followed suit, rising 1 yuan to 82 yuan. Minyi had few transactions, with a final price of 65 yuan, falling 1.5 yuan. Wuzhou was still at 310 yuan. The textile industry was the most stable. Wing On Textile was still around 1,580 yuan. Only a small amount of Hong Sheng Textile shares rose by 2.5 jiao to around 11.5 yuan. Dahua Textile was at 11.5 yuan, underwear at 32.5 yuan, Fuchang Dyeing &amp; Weaving at 17.5 yuan, Shanghai Cotton Weaving at 14.5 yuan, and Anda Shirts at 25 yuan. There were only small changes. The department store industry still only fluctuated by 1-2 yuan. Wing On was at 118 yuan, up 5 jiao. Sincere was at 117.5 yuan, down 5 jiao. National Goods was still between 113 and 4 yuan. In the cultural industry, the World Bookstore alone fell by 5 jiao to 74 yuan. The rest, such as Commercial Press 305 yuan, China 210 yuan, and Yongxiang 24.5 yuan, were the same as the previous day. There were also slight ups and downs in public utilities. Zhabei Water &amp; Electricity fluctuated between 36 yuan and 37.5 yuan, up 2.5 jiao. China Electric was around 30.05 yuan, down 5 jiao. Nanyang Tobacco was at 109 yuan, down 1 yuan. Dahua Match fell by 5 yuan, retreating to the 200 yuan level. China United was at 36-7 yuan. Guangzhong Paper was around 12.5 yuan. Transactions were not strong. The stock prices are listed below:</p>
+<p>Stock Name Highest Lowest</p>
+<p>New Asia Pharmaceutical 48.00 45.00</p>
+<p>French Pharmacy 82.50 80.00</p>
+<p>Xinyi A Preferred 440.00</p>
+<p>New Asia Enzymes 25.25 24.25</p>
+<p>National Goods Company 23.01 12.00</p>
+<p>Wing On Company 29.00 26.00</p>
+<p>Sincere Company 30.00 25.00</p>
+<p>China Underwear 32.75 31.71</p>
+<p>Shanghai Cotton Weaving 14.50 14.00</p>
+<p>Fuchang Dyeing &amp; Weaving 17.75 17.25</p>
+<p>Xinfeng Weaving 23.50 23.00</p>
+<p>Dahua Weaving 11.00 2.25</p>
+<p>Hong Sheng Weaving 2.75 2.00</p>
+<p>Ningbo Weaving 3.75 3.15</p>
+<p>Yiyuan Weaving 14.50 14.00</p>
+<p>Commercial Press 310.00 300.00</p>
+<p>China Bookstore 23.50 30.00</p>
+<p>World Bookstore 75.00 71.00</p>
+<p>Zhabei Water &amp; Electricity 27.00 36.00</p>
+<p>China Electric 31.00 30.00</p>
+<p>Public Trust Electric 12.72 12.50</p>
+<p>Nanyang Tobacco 12.00 107.00</p>
+<p>Dahua Match 205.00 20.00</p>
+<p>China United Pictures 37.00 36.00</p>
+<p>Guangzhong Paper 13.00 12.25</p>
+<h3>Cotton Cloth Not Very Prosperous, Only East Coupon Bank Notes Are Popular</h3>
+<p>Factory Cloth</p>
+<p>Yesterday, the market was firm and stable, neither prosperous nor declining. Although actual sales were still sluggish, the underlying trend was upward. The prices of various cloths were as follows: 16-pound Earth coarse cloth 190 yuan, Tai Feng 190 yuan, Flying Hong 187 yuan. 9-pound New Character coarse cloth 110.5 yuan, 8-pound Zhenzhong 107.5 yuan, 12-pound D.P.C. fine cloth 162 yuan, Dapeng New Single 60 yuan, Fugui 155 yuan. Also, Bank Single 150 yuan, Qin Beauty raw cloth 137 yuan, Mermaid Twill 137 yuan, Peach Blossom Lady Shilin 250 yuan, later 249 yuan and 7.5 jiao had transactions, and Chick Shilin 243 yuan was firmer.</p>
+<p>East Cloth</p>
+<p>The market is still in a state of flux. However, the recent trend is that bank warehouse receipts south of Suzhou River are becoming scarce. In the past, buyers were often concerned that bank receipts stored in warehouses for too long might be moldy or damaged. Now, they no longer hesitate, which shows a change in perception. Yesterday, 12-pound Dragon Head fine cloth, Sincere Single, was 168 yuan, with little change, but the bank notes were more actively traded. The closing price at noon was 159 yuan, continuing to rise by 2.5 jiao. Colored Ball fine cloth was 158 yuan, down 2.5 jiao. Flying Fish 156 yuan, Yang Suzhu 154.5 yuan. Four Gentlemen Serge red coupons had very few transactions, closing at 6.92 yuan at noon, down 2 fen, but bank serge rose to 6.8 yuan, an increase of 5 fen, and the price has gradually leveled off.</p>
+<h3>New Beans Arrive in Shanghai, and Transactions Become Active</h3>
+<p>Recently, beans have become more active because new products have been successively produced in various suburban areas, and peddlers have been trying to transport them to Shanghai. However, the market situation is still firm. Pudong Du beans 30 bags priced at 235 yuan, Pinghu black beans 10 bags priced at 220 yuan, Wujiang picked green 50 bags priced at 100 yuan, Tianjin red beans 20 bags priced at 169 yuan, Chongming new sand silkworms 50 bags priced at 151 yuan.</p>
+<p>Yesterday, dried sweet potatoes were still firm and rising. Qingdao dried sweet potatoes more than 30 bags priced at 141 yuan.</p>
+<p>Bean cakes have recently been gradually increasing in transactions as new goods have been coming on the market. The market has been rising due to high expectations. Yesterday, Changji bean cakes opened at 1,000 pieces priced at 64.5 to 60 yuan. Feizi bean cakes three vehicles priced at 65.5 to 66 yuan.</p>
+<h3>Ornaments and Discount Rates Remain Unchanged</h3>
+<p>Yesterday, the price of ornaments sold by jewelry stores in Shanghai was still 2,450 yuan per tael (about 300 yuan less for purchases). The price of inter-dealer trading first varied and then slightly recovered. The morning price was 2,240 yuan, 20 yuan higher. The Russian market rose to 2,255 yuan, and those who saw the high price sold, and the price fell back slightly by 25 yuan, to 2,230 yuan. The price of silver for ornaments was still 14 yuan per tael. The price of inter-dealer trading was 13.5 yuan, slightly weaker.</p>
+<p>Yesterday, the discount rate of the Money Industry Association remained unchanged at 1 jiao and 4 fen. Also, the total number of bills exchanged in Shanghai in September was 231,440, with an amount of 222,326,667 yuan.</p>
+<h3>Industry Briefs</h3>
+<p>Daily Use Soap Sells Well</p>
+<p>The market for daily necessities such as soap continues to rise. Match prices once rose sharply, but transactions cooled off yesterday. Phoenix brand 2,200 yuan, Beauty brand 2,400 yuan, Golden Tripod brand 2,150 yuan, miscellaneous brands 1,700 yuan. The prices were quite similar to the previous prices. Guyuan soap 325 yuan, Bai Xiangmao soap 265 yuan, Huang Xiangmao soap 225 yuan, Scissor soap 280 yuan. The price of Whiteley's candles remained high at 145 yuan. The pharmaceutical market, such as Bagua Dan, was slightly prosperous, priced at 18 yuan. Headache powder 22 yuan, Universal Oil 21.5 yuan, Partridge Vegetable 56 yuan, Dragon and Tiger Ren Dan 13 yuan. There were no changes.</p>
+<p>Fragrant mushrooms are not pure, but the market inventory is relatively sufficient, so the recent trend has been to remedy the situation. Now, they are selling for 3,200 to 4,500 yuan. However, the stock of high-quality fragrant mushrooms from the east is rare, and the price remains high, selling for up to 8,500 yuan, which is relatively firm.</p>
+<p>Longan Meat Rising</p>
+<p>Recently, there have been more new goods arriving, but in some cases, the bills of lading have not arrived, and the goods cannot be picked up temporarily, so the spot goods are still scarce. Yesterday, the market opened and rose by another 50 yuan. The market is tight.</p>
+<h2>Page 6</h2>
+<p>Spring and Autumn</p>
+<h3>Slap and Laugh (Random Reading Thoughts)</h3>
+<p>— In addition to idleness</p>
+<p>Although clowns do not occupy a very important position on the stage, they are always welcomed by the audience - because they can make the audience laugh heartily and relieve boredom. Clowns have done their best in this respect.</p>
+<p>Clowns have many ways to get people to laugh. Pressing a piece of white on the nose and shaking a fan while saying humorous words is one way. Climbing walls and jumping on trains, like Rock, doing funny actions is also a way. But the principle seems to be only one, that is, the clown has to say unreasonable words and do unreasonable actions.</p>
+<p>But saying humorous words requires turning your mind, and doing funny actions requires effort. For the Russian mystic symbolist, Andreyeve, in his famous play "The Slap in the Face," provided a simple way: a clown does not need any martial arts or literary talent. He just needs to stick out his face and let the other characters on the stage slap him. After the right ear is slapped, let others slap the left face. After being slapped, he has to laugh and bow to the slapper. Once, this clown was slapped a hundred times, which made the audience feel satisfied and laugh out loud, and this clown became popular.</p>
+<p>However, if this clown suddenly starts crying sadly because of his own miserable life experience and complains about his intolerable life after stepping down from the stage, then the audience will definitely feel very disappointed. I think someone in the audience will say something like this: "I paid to have fun, not to see you crying."</p>
+<p>Audiences do not sympathize with clowns. This is unreasonable. Ancient Roman emperors felt that watching people and beasts fight was a cruel form of entertainment. But I think those who can laugh after watching a clown being slapped are also indulging in a kind of cruel appreciation for entertainment.</p>
+<p>However, everyone does not feel this way. After watching the clown being slapped and laughing heartily, if the excitement is still there, perhaps someone will shout, "Another one!" This is probably because people are used to some unreasonable things.</p>
+<h3>A Disease That Cannot Be Diagnosed</h3>
+<p>— Zhihu</p>
+<p>Coming out of the consulting room, I did not doubt that my friend comforted me and deliberately said indifferently that I was not sick. At night, I went to an unfamiliar doctor, and the result was still that I was not sick.</p>
+<p>I have been feeling very uncomfortable for the past few days, but I cannot point out what kind of discomfort it is. I can even say that the entire physical mechanism is suffocating, but under the stethoscope, it proves that I am definitely not sick.</p>
+<p>A friend said that this is due to the climate. After a summer of great liberation, people feel like they are entering a cage, just like a free crow suddenly being locked in a cage in the bleak autumn. Although it can fly, sing, and eat, it is deprived of its freedom. People feel like crows being locked in cages from summer to autumn. Doctors can diagnose your body, but they cannot diagnose your mental state.</p>
+<p>This is an example, and it is not measured by my wanting to refute him, but I do not have sufficient reasons to refute him.</p>
+<h3>Night Walk</h3>
+<p>— Zoba</p>
+<p>Our class ends at 8 p.m.</p>
+<p>She and I are in the same grade and go the same way. Whenever class ends, I always see her rushing back, walking faster than me.</p>
+<p>Last night, because of an air-raid drill, the streets were pitch black. As usual, I walked home.</p>
+<p>Suddenly, a voice called me from behind, "Zoba, please walk slower. Let's walk together."</p>
+<p>I couldn't see who it was, but I heard her clearly.</p>
+<p>"Okay," I said, waiting for a few minutes until her footsteps caught up.</p>
+<p>During the blackout drill, there were no lights on the road.</p>
+<p>"It's not easy to even see people's shadows," she said.</p>
+<p>"Oh."</p>
+<p>"We should bring a flashlight next time," she added.</p>
+<p>"There's no need," I replied. "Unless it's always on, otherwise it will not only blind yourself, but also make others dizzy. We should take this opportunity to train our eyes. Every major city in the world today, such as London, Berlin, Paris, Rome, Moscow, Vienna, etc., is practicing."</p>
+<p>"But walking in the dark is always terrible."</p>
+<p>"People who walk at night in the countryside can manage it. Moreover, our city has such good, flat, and straight roads. In small places, people walking at night have no street lights, so they look up at the sky. Between the walls on both sides, what they see is the dark, silent sky. If you walk while looking at the sky, you won't bump into anything."</p>
+<p>"So you won't stumble in bad places?"</p>
+<p>"So it's just for familiar roads that I can answer," I replied.</p>
+<p>"Are you saying that people can get used to this kind of darkness?"</p>
+<p>"That's right. Everything can be gotten used to. You will soon get used to it, just like a city dweller who is not used to walking long distances. When he arrives in the countryside, where production is abundant and there is no boat or car to take, he has to walk. And after walking more, he will think that he has gained a kind of experience."</p>
+<p>Then, the traffic lights shining over the intersection made me feel so comfortable, especially the green light with a longer wavelength, which suddenly gave my tired body a kind of balanced comfort.</p>
+<p>"Seeing a light in the darkness seems particularly happy," she said.</p>
+<p>"Yes, on nights with bright lights, people don't cherish the lights. Most of the value of the lights is obliterated. At that time, many lights are wasted."</p>
+<p>The traffic lights quickly passed, and we ventured in the dark for a long time.</p>
+<p>After a few minutes of silence, she said again.</p>
+<p>"Yes, it's much better now than when we just came out of the brightly lit classroom. At that time, it wasn't easy to see even people's shadows. Now, you can even see the height of the sidewalks."</p>
+<p>In the darkness, I heard her smile, a comforting smile, and it was gentle.</p>
+<h3>Life and Death</h3>
+<p>— Yang Zhigang</p>
+<p>Recently, newspapers have revealed many noteworthy news items, such as the significant decline in infant birth rates, and in contrast, the unabated surge in the number of abandoned infant corpses. Furthermore, there have been frequent reports from funeral parlors indicating that they are often overcrowded with corpses. These interwoven news stories of life and death are the best reflection of the reality of society.</p>
+<p>Among them, the most concerning issue is the drastic decrease in the number of infants born in this city. The decline in birth rates certainly has its realistic and complex objective reasons. However, it is undoubtedly a very serious social problem.</p>
+<p>There have been many similar events in modern history. During the First World War and for several years after its end, the infant birth rates in various European countries also experienced a historically rare decline, especially in Britain.</p>
+<p>At that time, the Manchester Guardian published a profound commentary stating that blindly hoping for population growth is a barbarian superstition. The question is, are there not countless people who are underfed and poorly clothed, and even more who toil year-round without warmth or nourishment? Adding to this population of unhappy people is of little significance. Therefore, how to find ways to improve the lives of people in this society is, in any case, more important than blindly hoping for an increase in birth rates. At the same time, it is also a prerequisite for addressing the decline in birth rates.</p>
+<p>I strongly agree with this and deeply resonate with this famous argument.</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jiazhai</p>
+<p>(10) Flying Peak</p>
+<p>Wei Shaoyun fell backward. He was supposed to fall suddenly. The force of the oncoming person's punch, with that weight, would have made a loud "thud" sound, conveying the sound waves to the east room, startling Little Zhuge and his group to their feet. But Wei Shaoyun fell without making a sound. Why was that? The assailant darted over, clenched his fist, and punched down, while using his left hand to slowly cradle Wei Shaoyun's neck, letting him fall to the ground. Didn't that prevent the sound from happening? This blow made Wei Shaoyun's eyes blur and his ears ring. He couldn't hear anything anymore. A mouthful of blood spurted out of his mouth. He unconsciously cried out in pain. As soon as he opened his mouth with that blood, the assailant seemed to be prepared, stuffing a wad of cotton into Wei Shaoyun's mouth in the blink of an eye. Wei Shaoyun passed out, and he had no chance to cry out again.</p>
+<p>Cui Zhen, on the bed, didn't know who had come. She only saw Wei Shaoyun fall down. She thought, "Could it be someone resorting to violence to resolve a dispute, someone jealous and competing with Wei Shaoyun for my affection?" But then she looked again and saw that the person had a shaved head and was wearing a set of coarse blue clothes, looking like a worker. On his face, in a fit of rage, several veins were bulging. Not menacing, but heroic. Cui Zhen suddenly understood that it was Huang Long. As soon as she opened her mouth, Huang Long quickly and quietly said, "Don't speak!" As he spoke, he picked up one of Wei Shaoyun's arms that had fallen to the ground, intending to lift him over with great energy. Some lifting over, he still threw his arm away, stepped to the front of the bed, and hurriedly untied the ropes on Cui Zhen's hands and feet. He softly said, "Sit up, let's go. What are we waiting for?" Cui Zhen stretched her hands and feet and shook her head, saying, "I've become a cripple. My hands and feet are numb." Huang Long never knew how to be polite with people. He tugged on Cui Zhen's hand. Cui Zhen borrowed some momentum and sat up, asking, "Are there people outside their door who can walk?" (198)</p>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.10.08.html", "next": "1942.10.10.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.12.11 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 536 - 4924675</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<p>社評</p>
+<h3>談歐菲戰局</h3>
+<p>第二次世界大戰發展到今日，主要可分爲四大戰塲：一個是以太平洋爲中心的大東亞戰爭，一個是東部歐洲的德蘇戰爭，一個是西部歐洲的　英戰爭，另一個是從地中海至菲洲的北菲戰爭；此外就是比較居於次要地位的埃及戰爭。這些戰爭中心，比較主要的，就只有東方以日本爲主的大東亞戰爭，和西方以德蘇爲主的東歐戰爭。不過，自從日本發動了大東亞戰爭以後，給德義兩國在歐菲作戰以很大的帮助，而且使歐菲戰爭和亞洲戰爭，一天天趨向於會師的途徑。因此，我們在目前來觀測和研究歐菲戰爭，是非常必要的。</p>
+<p>歐菲戰爭，從去年六月二十二日德蘇戰爭爆發以後，戰事的重心，就移在東歐和蘇聯的境內，雙方演出了歷史上空前的激戰。不過多少還受着季節的影響，觀察德方的攻略，大體上是以冬季爲準備時期，以春季爲進攻時期，到夏季即使戰爭發展到頂點，秋季便成爲鞏固和擴大戰爭的時期。回顧去年德軍自對蘇開戰以後，長驅直入，迫至首都莫斯科城下，列寗格勒也幾乎完全進入德軍掌握；可是，由於季節的關係，蘇聯得别各路軍之助，使德蘇戰爭頓呈膠着狀態，而德軍乃從事於新攻勢的準俯時期。到今年春季之交，德軍又開始發動進攻，攻陷了烏克蘭的首郡哈科夫，和南俄重鎭西紅斯托波爾，至秋季而進迫史太林格勒城。但也由於季節的關係，使德蘇戰爭又入膠着狀態。而史太林則更鄭重地指斥過去一年間英美未開闢第二戰綫以致釀成聯合國處於被動和失敗地位的過錯，唤起關於第二戰綫的展開，以圖改變整個戰爭局面。</p>
+<p>英美對於史太林的第二戰綫的要求，始終是實行着敷衍的態度，口頭上文字上似乎非常熱闹，實際上即始終沒有誠意。因此，自從去年夏季以來，西歐的德英戰爭固然始終消沉，就是北非埃及戰事，英美也只取消極的戰路，而且常處於失敗的地位。可是，自從大東亞戰爭爆發以後，英美在太平洋上的勢力頻於總崩潰的境地，不僅西南太平洋已入於日軍掌握，而且印度的火藥庫邊已開始爆炸，日本的軍事力量頻向印度洋進逼，所謂英帝國之皇冠的印度已處於日本飛機和砲艦的威脅之下，而德義軍隊也有經紅海而與日軍會帥的趨勢。這樣，英國如果再不另作計較，則就有立刻崩潰的危險。這是英美不得不準備在歐菲發動反攻的第一個原因。其次，地中海是英國的生命綫，也是今日英美保持對蘇聯連絡和在土耳其爭取優勢的根據地。可是，由於德義勢力發展的結果，地中海的英國地位已一天一天的走上了末落的過程，英國在那裏的軍略根據地如直布羅陀，馬爾太等，已因義大利空軍的發達而減　了原有的價值，以致在最近一年來直布羅陀與蘇彝士運河的連絡，爲軸心海空軍所阻斷，即英美援蘇和與印度的連絡，已不得不遠繞南非的好望角經過印度洋的遠路。反之，義大利在連絡西西里　泰雷利亞與利此里的特黎波里之綫，及連絡維德斯萊洛斯與利此亞的杜布羅克之綫上，放置了地中海戰略系體的重點，把地中海分成了東西兩　，切斷了英國的生命綫。尤其是西地中海方向，英國的弱點日益顯著，過去已不能不依賴於法國軍事力量，自從它的同盟國法蘭西洛伍以後，西地中海便不能不受到軸心國的威脅，今年六月至八月間西地中海上英國海戰的挫敗，就是最明顯的例子。以上種種現實形勢，已把英國逼到非滅亡即反攻的路上，而蘇聯和美國顯然是更願意幫助英國的反攻的。這是最近北非戰爭的根本原因。</p>
+<p>英美侵入北菲，主要的目的，是企圖由戰略的守勢轉變到攻勢，從軸心方面奪取主動。在牠們的周密的準備和相當大規模的作戰計劃上觀測，牠們這次敢於侵略，自然不容輕視，不容作過低的估價。英美侵略北菲的意圖，顯然是想在那裏打定一個立脚點，以便向歐洲大陸展開攻勢，所以在北菲展開的戰鬥，不能不認爲是具有向地中海一帶擴大的必然性的。這是從整個戰略上的觀察。其次，英美軍的侵略北菲，是企圖奪取法蘭西在地中海上成爲戰略體系中樞之一的阿爾及里亞的奥朗與突尼斯的比塞大，以强化他們在地中海的軍略地位。比塞大是對抗義大利班泰雷利亞的强有力的根據地，突尼斯是從菲洲到義大利本土距離最短的戰略要點，從這裏到班泰雷利亞，祇有六十公里，而從班泰雷利亞到西西里也不過九十六公里。所以英美軍集中攻勢於突尼斯，而　義軍也不惜接連放棄杜布羅克·德爾那·班加齊等地中海要點，集中力量以展開突尼斯的反攻。這是對於目防北菲與地中海戰爭重心的觀察。再次，我們要知道地中海在政治上和經濟上對於歐洲一大半的國家，具有密切的利害關係，特別是法蘭西·西班牙·葡萄牙和東面的土耳其，東北的巴爾幹諸國，他們的立塲，常依着地中海情形而發生深刻的甚至是決定性的影響，英美這次在北菲的攻勢，顯然對這些國家是具有着政治上經濟上某種限度的誘惑力量的。觀乎都倫港內法國海軍參加大叛變的陰謀，便可以推測其更遠大的陰謀了。至於爲了對付蘇聯第二戰綫的要求，自然也是誇大宣傳北菲攻勢的原因之一，這在史太林答美國記者的談話中和邱吉爾在議會的報告中，多少也有若干透露出來。</p>
+<p>當然，在今日推測歐菲戰爭的發展前途還是太早，英美軍雖然侵入北菲，而北菲西菲的法國軍官們也在達助和戴高樂分別領導下成立了叛變的政權；但是，若不能發展到確立他在地中海上的支配，主要是如果不能確保在突尼斯的優勢，則還不加成爲可以支配歐洲戰局的决定的勢力；而且，事情的發展，也和英美的企圖隔着更遙遠的距離：第一，具有決定性的戰爭，在突尼斯和比塞大間進行，德義已經取回了主動到自己這一方面；第二，法國的叛變在德義閃電鎭壓之下平靖了，法國更向「一體化」的途徑和德義合作了；第三，尤其值得注意的是德軍之斷然進駐都倫港，解除了準備叛變的法國陸海軍的武裝，雖然演出了叛亂法水手全部　沉軍艦的悲痛的事件，然而穗義佔領都倫以後，不但保障了法國南部下再有被英美軍侵入的危險，而且也更强化了義大利本國的國防力量，强化了軸心在地中海上的優越形勢，打破了上述英美方面的戰略上和政略上經濟上的企圖。特别值得注意的，就是英美在這孤注一擲的攻勢中，既沒有吸出德方在東綫的任何主要的兵力，也沒有挽救在東方繼續慘敗的羞辱，最近蘇羅門戰役的慘敗，就說明了英美在歐菲攻略的最重要的失敗的因素，已經在太平洋上發現了。</p>
+<h3>三國締盟周年紀念　日首相發表談話　以堅定之戰爭目的　速向勝利之途邁進</h3>
+<p>東京十日中央社電　日本於去年十二月十一日與德·義締結軍事同盟條約、即以是日爲三國　相協力潰滅英·美之紀念日、並自是日起、大東亞戰爭與歐洲戰爭結成一體、向打倒英·美建設世界新秩序之途邁進、於茲週年紀念日　屆之際、日東條首相九日下午四時在首相官邸、接見德·義記者團、特對三國締約、再建世界之高尚信念、重予闡述、並與德·義記者作一小時之間答、茲錄東條首相對記者團問答如次、余今日得與同盟國德·義記者團晤談之機會、實感欣幸、惟開於戰爭機　事件、或有不克答覆者、余爲軍人、尤不能作婉曲言談、只就所知予以率直答覆、（問）敵國英美方面、如邱吉爾等赴莫斯科威爾基亦由莫斯科赴重慶、往來頻繁、首相意見如何、（答）去年十二月十一日、日·德·義三國締結條約、成立堅固締盟、同時確立完成三國對英·美之共同作戰、三國問單獨絕不講和、建設世界新秩序之三太原則、如此則三國間在開戰之時、即已結成事事上·政治上·精神上之完咸共同目的之盟約、並在此基礎下、三國並在最近獲得偉大戰果、而繼續前進、其結果遂使連遭敗北之英·美發生極度恐慌、並往來奔走、期謀挽回颓勢、試觀上述情形、則我三國間·軍事上·政治上·外交上均較敵國佔優勢、原無待言、又附帶尚欲申述者、就此次戰爭本質言之三國作戰之目的、乃在道義之立塲、三國同抱打破以往舊秩序而建設新秩序之堅强決意、爲向相同目的挺進之國家集團、此乃三國之眞義、英美堅欲維持世界舊秩序與保全自己利益、凡利己國家集團之潰滅、當係理之所必然也、（問）大東亞戰爭開始之最初、即以風捲殘雲之勢、將敵國在東亞之根據地予以覆滅、但第二年度之戰爭、又將取何等方式進行、（答）舉凡團對外宣戰、即已有堅定之戰爭目的、無目的之實行開始戰爭者、則得未曾有、日本自大東亞戰爭開始以來、最初之一年中、即將所有東亞敵國英美戰略據點完全奪取殆盡、今後作戰目的、即與德·義協力、而向速獲勝利之途邁進、（問）日本對已佔領南方地區之資源、是否在完成作戰上、已實際應用、（答）日本所獲得之南方資源、現　着應用、於實際作戰之上業收相當成績、（答）頃聞所獲得之南方煤油、已超過最初所期之數量、然乎否乎、（答）南方煤油、確已超過最初所期之數量、據戰爭勃發時之推測、敵軍勢必將油田予以全部破壞、故日軍於佔傾時、即抱有再度施以鑿掘之決意、但在奪取油田地帶時、即竭力防止敵軍之破壞、故對此次之超過預定數量、亦不無相富關係、總之、關於煤油一事、日與德義協力下、在完成東亞方面戰爭上、即毫無缺乏之虞、</p>
+<p>日德義三外長分別廣播演說</p>
+<p>柏林十日哈瓦斯社電　日·德·義三國依三角同盟精神、討伐大戰戎首羅斯福總統、已屆一週年之期、三國外長、即谷正之、里賓特洛浦、齊亞諾、定於本日向同盟國人民發表廣播演說、以誌紀念、此間無綫電台定於午後七時十五分至四十五分、轉播三氏演說、日·義及歐亞兩洲其他聯盟團電台、亦當予以轉播、</p>
+<p>米蘭城十日哈瓦斯社電　日本首相東條英磯大將、曾以致義大利人民電文一件、交由「義大利日報」駐東京訪員轉發、頃由該報予以揭　、內稱、日本與義大利、今日正與德國並肩作戰、以促共同的理想之實現、理想云何、即樹立亞洲與歐洲新秩序、剷除英·美之野心及覇權是也、日本全體人民、對於義大利人民之團結精神及堅決態度、表示無限欽佩、日本當竭盡所能、繼續獲取勝利、增强日·德·義三國間之友誼、並征服前途上一切困難、以達最後勝利之目的、</p>
+<h3>日調查研究聯盟　昨舉行成立大會　推企劃院總裁鈴木任會長</h3>
+<p>東京十日中央社電　日政府爲期增進計劃經濟之運營效率起見、對於各種樹立國策基礎材料、認爲有澈底加以調查倂究之必要、傳能以　成　、作綜合利用、故曾於八月二十八日　議決定、由公私各主要調查研究機關、共同合作組織調查研究聯盟、其後即由企劃院及技術院等積極籌備、迄今人事機構均已決定、因於十日上午十一時在首相官邸正式舉行調查研究聯盟成立典禮及大會、出席者有東條首相及各關係機關官只等三百餘人、總計該聯盟包括調查研究團體·有政治·經濟·文化·科學·技術·等百八十八單位及各種公共團體、統制會、輕重工業、農林團體等王要機關、公推企劃院總裁鈴木任會長、企劃院次長安信源基、及技術院次長和田小六任副會長、</p>
+<h2>Page 3</h2>
+<h3>東線托洛貝資區　德軍順利進展中　已佔領重要據點多處　頓河套蘇軍亦被擊退</h3>
+<p>德元首行營十日海通社電　今午德軍戰報稱、伏爾加河與頓河之間、敵先鋒隊被包圍殲滅、蘇軍數度反攻、損失慘重、無功而退、前日某一區內、蘇軍損失坦克車一百零四輛、頓河套內之德軍、擊退進犯之敵軍、毀敵坦克車十六輛、東歐中路、我軍進攻頗爲得手、俘敵數百、奪獲軍械軍需甚多、敵雖企圖反攻無效、德戰鬥機及急降轟炸機羣、猛炸敵軍及鐵路設施、德空軍敢死隊、擊毀敵碉堡五十九處、洛賽夫區內、蘇軍損失坦克車七十二輛、</p>
+<p>柏林十日海通社電　德軍在東綫中部托洛貝資區域反攻、正開始包圍蘇軍十師、蘇軍據點多處、已入德軍手中、據最後消息、裝備齊全與訓練優越之斯達林軍團、亦有被包圍之虞、蘇軍司令部正調兵赴托洛貝資區域、抵禦德軍之巡攻、</p>
+<p>柏林九日哈瓦斯社電　據此間軍界消息、（一）德軍昨日在中路托洛貝資區大舉反攻大獲成就、德軍節節推進、獲得大塊土地、並佔據多數人烟稠密之區及重要陣地、紅軍若于陣地雖縱深配備、仍被佔據、紅軍後方交通綫、亦被切斷、目下戰事雖難斷言、但可預料、各該後結果、或可殲减紅軍十師左右、此項軍隊係由專事攻勢戰之「斯達林集團軍」及混合精銳部隊所組成、德軍所摧毀之坦克車、大砲、汽車及重兵器、其數目尚難估計、但此項數字隨時在增加中、俘虜人數、亦在增加、德國空軍、冒惡劣氣候、不斷襲擊敵軍、予陸軍以重大助力、（二）頓河大河套區、德軍鐵甲部隊向進攻之紅軍反攻、擊毀其坦克車四十六輛、內有五十二噸以上者數輛、德軍坦克車隊衝過紅軍衝鋒隊伍、在廣大區域、擊潰紅軍、紅軍被迫倉皇退走、空軍追擊、頗為得力、該區戰事刻仍進行中、（三）伏爾加及頓河間、紅軍以大隊坦克車更番進攻、聲勢浩大、但到處受挫、敵方損失坦克車五十六輛（四）伊爾門湖南面、敵軍實力有限、攻勢不强、未能突破德軍主要防綫、德方重炮擊潰該區敵方坦克車、使其不能集中、數日前在裴萊城以南被圍紅軍一支、現已完全殲滅、僅有少數部隊、突圍而出、竄入附近森林區域、（五）爾齊夫南北兩方面德軍陣地亦已增强、（六）喀拉基區德軍偵察機報告、紅軍步兵已渡過凍結河面增援、並建築各砲台、據紅軍逃兵談稱、證實紅軍當局刻正準備在該區發動攻勢、（七）高加索前綫、紅軍在泰雷克以北集中大軍、以便保衛東北路前綫右翼、德軍昨日又予敵軍重創、敵軍數隊被包圍殲滅、</p>
+<p>柏林十日海通社電　德軍於十一月四日至十二月二日間、在東綫中路後方之森林沼澤區內、從事肅淸工作、殲滅蘇軍殘部甚多、計繫斃九九二名、佔領軍火庫十五處、當地居民曾盡力與德軍合作</p>
+<h3>日政府核准　明年度概算　歲入歲出近百億圓</h3>
+<p>東京十日中央社電　日昭和十八年度總豫算、十日閣議已決定發表、總額計歲入歲出共九十九億九千五百萬圓、較十七年度計增加十一億餘萬圓、茲誌詳細數字如次、昭和十八年度歲入歲出年概算（單位千圓）、歲入經常部六、四五二·〇〇〇、計普通歲入一、九三八·〇〇〇、公債金一、二七四·〇〇〇、前年度滾存金編入三三〇、〇〇〇、總計九、九九五·〇〇〇、歲出經常部四、九三二·〇〇〇、臨時部五、〇六三·〇〇〇、總計九、九九五·〇〇〇、歲入歲出相等、昭和十八年度各省歲出概算（單位千圓）、皇室費經常部四·五〇〇、臨時部無、總計四·五〇〇、外務省經常部一三·〇〇〇、臨時部三一·〇〇〇、總計四四·〇〇〇、內務省經常部六三四·〇〇〇、臨時部三三九·〇〇〇、總計九七四·〇〇〇、大藏省經常部三·一四八·〇〇〇、臨時部二九二·五〇〇、總計六·〇七四·〇〇〇、陸軍省經常部六〇〇、臨時部無、總計六〇〇、海軍省經常部一·〇〇〇、臨時部無、總計一·〇〇〇、司法省經常部五七·〇〇〇、臨時部一二·〇〇〇、總計七〇·〇〇〇、文部省經常部二六四·〇〇〇、臨時部一一一、〇〇〇、總計三七五、〇〇〇、農林省經常部七一、〇〇〇、臨時部五〇九、〇〇〇、總計五八〇、〇〇〇、工商省經常部九、〇〇〇、臨時部七二三、〇〇〇、總計七三二、〇〇〇、遞信省經常部五〇三、〇〇〇、臨時部一〇六、〇〇〇、總計六〇九、〇〇〇、厚生省經常部一八〇、〇〇〇、臨時部一五一、〇〇〇、總計三三二、〇〇〇、大東亞省經常部四二、〇〇〇、臨時部一五一、〇〇〇、總計一九四、〇〇〇、以上各省總計經常部四、九三二、〇〇〇、臨時部七、〇六三、〇〇〇、總計九、九九六、〇〇〇、</p>
+<p>東京十日中央社電　日明年度一般會計歲入預算槪算中、經常部份爲六十四萬萬五千二百萬圓、臨時部份爲三十五萬萬四千二百萬圓、經常部份及臨時部份之租稅收入爲六十九萬萬六千八百萬圓、較本年度之五十九萬萬二千一百萬圓、增加十萬萬四千七百萬圓、較現行稅率約增收百分之十七、又普通歲入明年度爲十四萬萬二千三百萬圓、較本年度之十三萬萬三千六百萬圓、增加八千六百萬圓、又公債方面明年度爲十二萬萬七千四百萬圓、較本年度二十五萬萬二千六百萬圓、减少二萬萬五千一百萬圓、僅以赤字公債而觀、减少二萬萬五千二百萬圓、又去年度一般會計之剩餘金三萬萬三千萬圓滾入明年度內、本年度歲入預算編入五千四百萬圓、此次無借入金編入、要之、明年度歲入預算、因以增加租稅收入、支付歲出增加額之大部份、故明年度歲入、以剩餘金收入而减少赤字公債發行額、即租稅收入明年度六·九六八（單位百萬圓以下同）、本年度五九二、兩相比較、增加一·〇四七、其他普通歲入、明年度一四·二二、本年度一•三三六、兩相比較、增加八六、公債金明年度一·二三四、本年度一·五二六、兩相比較、减少二五一、道路公債明年度一八、本年度一七、增加一、赤字公債明年度一·二五五、本年度一·五〇七、减少二五二、本年度剩餘金滾入明年度三三〇、本年度無、增加三三〇、借入金明年度無、本年度五四、减少五四、合計明年度爲九九·九五〇、本年度爲八·八三七、兩相比較、增加一·一五七、</p>
+<h3>立法院　舉行七十六次會議　通過議案八件</h3>
+<p>南京十日中央社電　立法院於十日舉行七十六次會議、通過議案八件、（一）審議民國卅一年甲種糧食庫券條例案、決議照案修正通過、（二）審議民國卅一年乙種糧食庫券條例案、決議照案修正通過、（三）本院經濟法制兩委員會會同呈報審査中央物價對策委員會暫行組織條例案、決議照審査修正案修正通過、（四）本院經濟法制兩委員會會同呈報審查地方物價對策委員會暫行組織條例案、決議照審查修正案修正通過、（五）本院經濟法制兩委員會會同呈報審査實業部物價管理總局暫行組織條例案、決議照審查修正案修正通過、（六）本院經濟法制兩委員會會同呈報、審査地方物價管理局暫行組織條例案、決議照審査修正案修正通過、（七）本院財政法制兩委員會會同呈報、審查修正棉紗統稅條例案、決議照審查案修正通過、（八）本院財政法制兩委員會會同呈報審査火柴統稅條例案、決議照審查修正案通過、</p>
+<h3>魯南　食糧增產概況</h3>
+<p>濟南十日中央社電　魯省在華北處於重要地位、故於食糧自給自足體制、關係頗鉅、本年一月、爲實施緊急食糧增產對策起見，特於省公署內設立山東省緊急食糧增產實行委員會、茲誌一年來魯省食糧增產概况如左、（一）鑿井、本年度之分配總數計三萬六千口、九月底業已完成百分之九十、如加以各縣自行開鑿者、則至九月底止、即已超過分配數目百分之十六、故迄本年底止、勢將達四萬四千口、屆時可供約百萬畝田園之灌溉面積、由此推測、小麥及雜糧均可增收不少、（二）改良土地、土地改良結果、旱田每畝約增收小麥百五十斤、水田每畝約增收稻米一石零八升、關於土地改良工作、自本年三月起、以一百三十六萬元之巨資、實施水田四百九十公頃之改善工作</p>
+<h3>大東亞戰爭博覽會　昨晨閉幕</h3>
+<p>南京十日中央社電　大東亞戰爭博覽會、於十日上午十一時舉行閉幕禮、到宣傳部林部長、郭次長、內政部李次長、及日本岩崎報道部長、日大使館松平書記官等二十餘人、由日本高僧舉行祈禱式、儀式完畢後、該會幷設宴招待參加來賓、於是轟動東亞之博覽會、於此告一結束、</p>
+<h3>中儲行廢除　滬漢滙款限制</h3>
+<p>漢口九日中央社電　中儲行漢口支行、上月因滬市銀根奇緊、滬漢間滙水昂騰、曾將滙款之最高額、由新幣五千元、改爲五百五十元、茲自八日起復將滙款限制恢復原額五千元、凡五千元以下者、並不需要申請許可手續云、</p>
+<h3>改期舉行全國　司法行政會議</h3>
+<p>南京十日中央社電　司法行政部爲强化全國司法行政機構、舉行全國司法行政會議、會期現已決定延改至一月十一、十二、十三、計三日、已呈報行政院備案外、並已分別通飭所屬知照、又該部已將各地議案彙集、總計有八十餘件、正作初度審查、</p>
+<h3>滿交換講師　昨北上返國</h3>
+<p>南京十日中央社電　滿洲國來華交換演講講師張煥相、曲秉善、王學三氏、刻以使命完畢曲王二氏、業已由蘇滬來京、十日中午十二時褚外交部長、林部長、周市長等、特假國際飯店設宴款待、即於當日下午三時五十五分乘津浦車北上返滿、</p>
+<h3>渝方在閩計劃　建設飛機塲</h3>
+<p>日軍發言人之觀察</p>
+<p>南京十日海通社電　此間日軍發言人指陳、渝方在福建省內建造飛機塲及防禦工程之計劃、目前無重大之意義、於必要時、日軍有力摧毀之、</p>
+<h3>英機再侵犯　瑞典中立</h3>
+<p>瑞典京城十日海通社電　此間昨日宣稱、英機於星期二夜又侵入瑞典領空、越過海爾辛堡上空、當時瑞典及丹麥高射砲均發砲轟擊、按英政府對瑞典政府前次抗議之覆牒、保證不再有侵犯瑞典領空事發生、甫於一日前送達瑞典政府、不料翌日又有類似事件發生、</p>
+<h3>突尼西亞境內　僅有局部戰事　軸心軍業已獲得援兵　埃及被攻危機未消除</h3>
+<p>德元首行營十日海通社電　今午德軍戰報稱、突尼西亞境內、氣候惡劣、祇有局部戰爭、敵坦克車隊襲擊泰布爾巴西南之我軍陣地、但被擊退、損失不小、布吉港內商船一艘、被我機投彈擊中、我機復　轟炸敵空軍基地、完成使命而返、英轟炸機飛過義軍西歐佔領區時、被擊落三架、</p>
+<p>羅馬十日海通社電　義軍司令部今午文告稱、德機轟炸德雨那飛機塲時、擊毀地上停放之英機七架、突尼西亞境內、我軍之巡邏隊四出偵査、泰布爾敵巴迤西、坦克車一度進攻、被擊退、敵坦克車數輛、吐林昨夜又被敵機轟炸，屋宇多處起火、損失相當重大、該城上次遭遇空襲時、市民殞命者七十五人、受傷者一百十二名、昨夜傷亡人數尚未確悉、昨日氣候雖劣、我機猛炸阿爾及爾泊船所、敵船二艘（一萬六千噸及一萬噸各一艘）中彈、我機與敵機交綏、擊落寇蒂斯式驅逐機一架、我機咸安返原防、</p>
+<p>柏林十日海通社電　據此間消息突尼西亞前綫之德義飛機、冒雨轟炸敵軍陣地、德機在阿特拉斯山區、襲繫協約軍給養站、運輸隊及路綫、地面僅有小接觸、軍界人士對於協軍在梅傑達陷於困境之傳說、拒不加以評論、渠等力言、突尼西亞前綫之軸心軍、已自比塞大與突尼斯獲得援兵、西列內加西部有空戰、</p>
+<p>瑞士京城九日哈瓦斯社電　開羅訊、挨及內閣總理那哈斯、頃向國民黨黨員發表演說稱、「我人對於北非洲戰事、不可過於樂觀、截至目前止、尚未有何決定結果、英美聯軍在北非洲登陸、並未能消弭軸心國攻入埃及之危機、是故我人猶應團結一致、注意時局之發展、」</p>
+<h3>蘇最高幹部委員　任期延長</h3>
+<p>瑞典京城十日中央社電　據莫斯科廣播稱、蘇聯最高幹部委員會委員任期、頃決定延期至明年年末、再行改選、</p>
+<h3>印度辛德省　發生叛變</h3>
+<p>盤谷十日海通計電　據新德里消息、印度辛德省之胡爾部落發生叛變、印度政府頗感困難、擬派警察二·〇〇〇名、加以彈壓、渠等携有馬匹及駱駝、因叛變區域有沙漠云、</p>
+<p>盤谷十日海通社電　新德里來電、阿美達巴特動亂未已、昨有示威者向警察擲石、政府公署數所被人縱火、市政廳職員五人、不願在辦公室辦公、已遭逮捕、</p>
+<h3>英美戰費　支出浩大</h3>
+<p>里斯本十日中央社電　自此次大戰勃發以來、英國戰費即與日俱增、平均每日約爲千三百萬鎊、但頃據倫敦來電稱、英財政部於九日發表、自十一月十九日至十二月五日至一週間、英國戰費每日平均已達二千萬鎊之鉅、</p>
+<p>里斯本十日中央社電　據華盛頓來電、羅斯福總統於九日聲稱、美國自參戰以來所耗戰費、已達四百六十億美元、</p>
+<h3>羅斯福在白宮　召開會議</h3>
+<p>里斯本十日中央社電　據華盛頓電稱、羅斯福總統九日在白宮召開太平洋軍事會議、到英大使哈利法克斯及其他各國代表等、曾就達朗派與特戈爾派互相傾軋一事、討論對策、事後紐西蘭代表那斯招待記者稱、羅斯福總統曾即席就世界各戰綫之戰局加以說明。那斯機稱。余對另設太平洋憲章一事表示反對。因余認為大西洋憲章之原則、可適用於全世界、</p>
+<h3>仰光華僑大會</h3>
+<p>仰光十日中央社電　此間舉行之大東亞戰爭一週紀念會週、今日爲最末日、華僑二千餘人、於上午隆重舉行第一次華僑大會、各代表相繼講演、披瀝擁護祖國和建國策、及協力日本之決意、並舉行打倒英美游行、</p>
+<h3>土耳其輪船一艘　在黑海被擊沉</h3>
+<p>安加拉十日海通社電　土耳其輪「喜樞波格魯號」（一百七十噸）前日由伐爾那啟碇赴斯丹埠、昨夜在距離土耳其黑海沿岸五哩、被國籍不明之潛艇擊沉、水手皆已獲救、數人受傷</p>
+<h2>Page 4</h2>
+<p>澳門通信</p>
+<h3>物價高壓下　內地小學教師之生活　教師服務情緒遭受影響　各校延聘教師極感困難</h3>
+<p>近年內地物價上漲過速，從事教學事業者之生活，愈趨清苦。即以小學而言，教師待遇，雖云提高，然以有限之數額，與無限之物價相較，則落後殆屬必然。其受艱苦壓迫，實不難想像。</p>
+<p>廣東民間有一句俗語，形容小學教師之清苦：「晤窮晤教學，哦餓晤吃壳。」實思是：非窮至萬不得已時，決不教學；非餓至萬不得已時，決不吃壳。以吃壳比教學，何等令人感慨之事！</p>
+<p>小學教師生活之清苦，不獨影響現任教師之服務情緒，甚目影響新教師之延聘。現在內地小學校長最感痛苦者，莫若聘不到教師。有若干小學，學期將近結束，而教師缺額，仍無法補充，此種情形，相當普遍，其性質之嚴重，實不容忽視。</p>
+<p>廣西省素爲注重基層教育之省份，對於基層教育人員之待遇，亦不時予以改善，並採用徵發實物制度。例如若干縣份之小學教師，每月除由縣政府領取生活費三十餘元外，並得向鎭公所領取由各民戶徵抽而來之稻穀八十市斤。（五六十斤者亦有）如此待遇，維持最低限度個人生活，尚有困難，但村街長往往延不繳納稻穀，致各教師飯食，無法解決，祇有向廚房賒欠，久後，廚房同樣無法支持，其結果必然影響全校教務之進行。甚至有表面開門，實際停頓者。至於不發實物，改發代金之縣市，情形亦多類是。此種現象，不獨廣西一省如此，其他省份，亦復如此，茲舉出實例數則，以覘一斑：</p>
+<p>（一）臨桂縣蘇橋鄉中心學校，一教師報告：「……此間生活問題，難於解決，我的薪水，每月由縣政府發給生活費三十六元，另由各村抽來食米五十斤，但自今年二月以後，即不能收到一粒米，同事們大都是本地人，還能够向家庭想法，而我是外鄉人，並且囊空如洗，如何過得去呢？」</p>
+<p>（二）永福縣中心學校一教師報告：一……我們每月的生活費，一方面靠政府發給幾十元薪金，一方面靠學生捐繳一些食米或貸金，但許多窮學生，都無力辦到、在目前是不够維持必要之營養的，我們已經不敢希望吃蔬菜，更不敢希望吃肉類，而祇希望吃白飯，但因爲飯煮的不多，在每天上午和下午最後一課搖下課鈴後，教室裏教師們，不管書講完沒有，都飛跑到膳　裏來搶飯吃，影響學生的學業和心理，是非常　大的。」</p>
+<p>（三）柳江縣一督學的報告「……城中鎭中心校校長，因鎭長不能照發食米，於是率領全校教師向鎭長興問罪之師，結果被縣政府撤職。」</p>
+<p>廣東小學教師收入，高者每月約八九十无，低者僅三四十元，內中還有「直屬」與「非直屬」之分別，「直屬」學校之教學，當然比較易於　到優待。此外，廣東亦有「學米」制度，向學生每人每月徵收一市斤，但因徵收方法，各地頗不一致，困難甚多，不易匀允，致教師生活，仍難安定。</p>
+<p>其次，因小學經費之不裕，致設備亦無法求全，若干偏僻縣分，除破屋　橡外，簡直毫無設備之可言　甚至報紙亦付闕如，教師身處閉塞之鄉間，與外界一無接　，國內大勢與國際動態，均茫無所知，其精神上之痛苦，實不下於物質上之困難。</p>
+<p>重慶政權教育部，年來屢次發表注重教育，提倡國民教育，改善教師待遇之文告，洋洋灑灑，頭頭是道，所耗教育經費，更是可觀。而於負有基層教育使命之小學教師待過，仍是口惠而　不至，提倡云何？改善云何？</p>
+<h3>食油今日出售　購糖放寬限制　油店歸併出售以便監視　憑房捐票每戶得購糖四十元</h3>
+<p>關於日用品油糖兩項、供給已有辦法、油已由浦東運滬、今日出售、購糖限制、亦已放寬、茲誌詳情如下、</p>
+<p>食油</p>
+<p>上海食油同業批發處業將上月定貨食油一萬擔、配給五千五百擔、剩餘之四千五百擔、於日前山浦東堆棧裝備運滬、配給各食油零售店、本擬昨日由各食油店門市發售、因手續不能即時辦理就緒、故準於今日繼續門市發售、</p>
+<p>豆油菜油同時出售</p>
+<p>辦法仍照舊、每人每日限購半斤、各食油店配給之食油、按每日應售數量完全售　爲止、該處爲防止零售商作弊起見、將將按日銷量在一擔以上之另售店八百多家、歸併爲三百餘家、分别派員予以監視出售、至於範圍較小之另售店、則採取巡查制度、望市民儘量檢舉、此次出售之油、分爲豆油即菜油兩種、豆油每半斤售三元六角、菜油三元一角、</p>
+<p>食糖</p>
+<p>糖商合作營業處、爲維持上海食糖起見、竭力疏通食糖來源、除食糖六萬餘包已運抵滬外、菲糖五十萬包及香港存糖、均已商妥分批運滬接濟、關於食糖配給與甲種另售商及乙種用戶、決予設法增加、以維市上正當需要、對於各零售商獲售食糖辦法已予改善、增加售量、並規定經購人應照分給所住附戶、準今日起實行、茲錄其通告云、查本處前訂門售臨時辦法、除憑市民證購糖仍照原規定外、關於憑房捐票購糖、本　制定應就全戶人數支配、當然包括附戶（即三房客）在內、現在第二期開始發售、本處爲普及食戶用糖起見、於本月十一日起、得再規定辦法如下：</p>
+<p>憑房捐票購糖辦法</p>
+<p>（一）食戶所持購糖之房捐票規定於左、並於購買時由監售員在捐票空白角上加蓋三角式戳記、以免重複、甲、凡居住共同租界及虹口滬西區域者、仍憑本牵秋季房捐票、乙、居住法租界者、仍憑九十月房捐票、丙、居住閘北者、仍憑秋季房捐票、其無房捐票者、得憑戶藉證、丁、本期只限購第二期之糖、如第一期末購者、概不得再行補購、</p>
+<p>每戶得購糖四十元</p>
+<p>（二）食戶憑上開房捐票、每張可購糖至多以中儲券四十元爲度、並爲包紮及携带便利起見、准由各該店分作每十元一包、（連百分之二零售捐在內）共計四包、每包白糖計重二斤四兩、或赤糖二斤六兩、但閘北憑戶籍證購買者、每張戶籍證仍祇限購五元、計白糖一斤二兩、或赤糖一斤三兩、</p>
+<p>購得之糖應予均派</p>
+<p>（三）經購人憑房捐票購得之糖、如有附戶者、應依照所有戶數平允分派、不得有取巧情事、倘或不允照分、准由各該附戶（即三房客）向本處報告、（法租界洋行街彤雲街二十三號、電話八三三〇〇、）或就近　屬報告、以照查究、</p>
+<p>零售商店發售数量</p>
+<p>（四）凡憑房捐票售糖之商店、業經本處依照所受配給量、定爲每日出售或分單　日出售、各店門首、均應自行標明「本店每日售糖」、「本店愛日售糖」、或「本店單日售糖」宇樣、以咨識別、其每日出售者、仍照所受配給總額售出三十分之一、分單每日出售者、每次照所受配給總額、售出十五分之一、</p>
+<h3>銀錢業繳解　存款準備　依照每月末日結存　核定支付存款準備</h3>
+<p>銀錢業通告會員行莊云、逕啟者、查財部管理金融機關暫行辦法第六條之規定、「金融機關英依照規定、將支付存款之準備金、存入中央儲備銀行、」並查管理金融機關暫行辦法施行細則第一條內開、金融機關應依左列規定、將其支付準備金存於在中央儲備銀行所開之準備帳戶、其數額定期存款及特種活期存款爲百分之五以上、前項各種存款、依照每月末日結村額核定、其支付存款準備金、應於每次月末日前行之、凡會員行莊均應一律辦理、用特具函通知、希各　莊即行照辦爲荷、</p>
+<h3>工部局標記不久將更改</h3>
+<p>現時工部局之標記及臂章、係於一八七〇年起製成、惟據前晚工部局會議結果、將予更改　樣、並將不久發表、通告施行南市人力車輛准駛入法租界自公共租界及法租界人力車先後驶入南市後、使租界與南市交通、益臻便利、直接間接均屬助長南市繁榮、頃悉南市車輛、現已獲得法公董局之核准、領得車照後、准許駛入界内、是以連日來南市方面之大批人力車輛、業已駛入法租界全境、</p>
+<h3>滬物資統制會改組　決定物價新對策　與既定通貨政策相輔而行　飭各工商業團體一體實施</h3>
+<p>市政府頃奉院令頒佈中央物價對策委員會组織條例、及地方物慣對策委員會組織規程草案等件、當以本市原有之物資統制委員會已不適合、特令飭根據地方物價對策委員會组織規程、舉行改組、并决定物價管理對策之基本方針如下</p>
+<p>建立儲券統制基礎</p>
+<p>（一）物價管理之對策、應與新幣制政策之推進相輔而行、其主要目的、在求物資配給管理之合理、維持公正平穩之物價、以資安定民生、增加生產、（二）在新法幣流通區域、根據推行新幣制政策之既定方针、努力打破舊法幣之自由主義、積極建樹新法幣之統制經濟基礎、使通貨政策與物價對策互爲表裏、形成安定物價之軸心、（三）爲安定民生、宜實行相當之低物價政策、同時對於阻止物資流往物價較高之異區、除軍事方面應有之措施外、亟應講求其佈特殊之經濟封鎖辦法、</p>
+<p>工商團體一律施行</p>
+<p>（四）物價對策、以維持公允價格爲中心工作、應隨時考慮各方面實際情形、維持公正穩妥之物價、不宜墨守固定不變之低價政策、致礙物資之暢流、助長　積居寄之風、甚至促進物資流往異區、（五）物價對策上尤應考慮者、即從來仰给於海外輸入之物資、來源已絕、故應積極努力增產、以資代替、而對於生活必需品之增產、尤屬必要、同時對於愛護資源節約消費、亦應澈底實行、（六）物價管理對策、應採重點主義、逐漸推行、其施行區域先由主要都市着手、實施物資、就生活必需品軍需品對外輸出品以及有關開發資源之重要物資等、次第切實施行、至管理措導之對象、應就各種上商團體一律施行、</p>
+<h3>調解房租無效實行斷水　历東入不敷出　房客反對加租</h3>
+<p>倍令戴司路（此路係新築在蒲石路霞飛路四）、六六至七六號房屋、每宅房租、原爲六十元一月、旋以大房東入不敷出、向二房東要求酌予加租、惟遭拒絕、大房東遂提請法當局要求居間調解、惟結果該處二房東均取不合作態度、致法富局不得已、於九日起、停止供給其自來水、以作警告、</p>
+<p>調解失敗</p>
+<p>據悉該處租金問題、於數月前、曾經法當局調查、結果知大房東非惟不能獲得利益、並因水費之高昂、而反致虧折、蓋房客之月租六十元、殊與佔領七萬元之房屋、每月消費額太不相稱、是以經法警方之研究、以爲每宅房屋、應以屋內人數計算、每人增加一元三角、然此建議、終　全部房客（若輩大多數是華籍富商）拒絕、</p>
+<p>斷水警告</p>
+<p>大房東方面以不能再付高昂之水費、又要求法當局調查、謂彼實不願再繼續每月受其虧折、最後經法當局之協助、於昨日起、向該處房客實行斷水、促令若輩略加租金、否則　有若輩自行負担水費、據法捕房房租調解委員會某員解釋、當局此次之採取嚴峻行動、在於警告一般不服從合理調　者、</p>
+<h3>滬淸分會飭屬舉辦　訓練鄕鎭保甲</h3>
+<p>滬清分會飭屬舉辦訓練鄉鎭保甲滬清分會爲使保甲組織益臻嚴密起見、除已於清鄉開始時、一度訓練鄉鎭保甲長之外、茲再定於十二月二十日起至十二月二十五日止、令飭清鄉地區辦事處、暨各特區公署、再度實施鄉鎭保甲長訓練、務期達到預定成效、預料清鄉地區保甲、將愈趨健全、</p>
+<h3>中國木刻作者協會第二次徵求</h3>
+<p>並出版「中國木刻」月刊中國木刻作者協會、自成立以來、已屆二月、成績頗爲良好、近悉該會現在二次徵求會員俾使木刻藝術普及全國、（章程函索即寄）並出版有「中國木刻」月刊一種、內容精湛、創刊號要目有中國青年與版畫（中山一三）、中國木刻的前途（洛神）、木刻講座（王迎曉）、木刻座右銘（田川憲）、木刻精品多幀、聞已於即日起開始發售、每册一元四角、愛好木刻者如須購閱、可逕画上海河南路三〇八號轉該會當能寄奉一冊云、</p>
+<h2>Page 5</h2>
+<h3>警戒管制業已存在　保甲方面注意各點　窗帘應照窗戶面積每邊放寬　瞭望台應注意擲下之代表物</h3>
+<p>公共租界各區保甲辦事處、均接奉警察署緊急通告、自即日起、宣布警戒管制狀態、而老閘區總聯保、亦經通知各聯保、轉知各保甲長、應行特別注意七項要點、以臻管制上之週密</p>
+<p>遮蔽天窗</p>
+<p>計（一）查上次演習時、各家之窗帘、大多不合格　、至少應依照窗戶面積、每邊放寬一尺、使燈光不向外露、爲第一要義、（二）凡室內開有天窗而並未加以遮蔽者甚多、須知天窗而不掩蔽、雖共他窗戶如何週到、其效果仍與毫無設備者相等、此點希嚴密注意、（三）旅館百貨公司等大建築中、窗戶必多、面積旣大、則管理上亦較困難、務須於事前分成各個小範圍、每處指派一人、專司共事、一聞警報、立即同時遮蔽窗帘、或息滅燈光、即不致臨時倉皇失措矣、（四）當馬路常燈熄減後、惟有時於里衖必要須留一二少數新裝防空燈、請事前酌定最低數量之隻數、報由總聯保轉告警署決定辦理、</p>
+<p>瞭望要點</p>
+<p>（五）防空演習時、出電台播送消息、故每一保辦事處須設備收音機一架、（如米購　、向保內居民中借用）、以便隨時收聽各項命令、轉飭甲長通知各住戶、（六）前次防空演習時、曾於每聯保內、設一個模範保、現須於原有一個外、再添兩個模範保、限即速成立、（七）關於設立瞭望台辦法、業於前發臨時防空燈火管制綱要內說明在案、惟以前專司各戶燈火之掩蔽事宜、現更須注意防空演習時飛機上擲下之炸彈代表物、共有幾件、必須注意其落點、而逐一尋獲云、</p>
+<h3>在滬日當局　舉行紀念茶會</h3>
+<p>今日在華懋飯店</p>
+<p>在滬友邦日本當局此次爲慶祝大東亞戰爭一週年紀念特組織行事實行委員會、從事舉行慶祝順序、由日本大使館田尻公使擔仟委員長、頃該會並定今十一日星期五下午三時半至六時、假南京路華懋飯店八樓、舉行紀念茶會、同時並放映電影、節目爲「空軍傘兵」、事前由該會柬邀本市中日各機關長官社會名流、屆時參加盛會、</p>
+<h3>上海市政府　檢舉貪污暫行辦法</h3>
+<p>本市市府爲整飭官常、嚴懲貧汚、以淸吏治起見、特製定上海特別市檢舉食汚暫行辦法、公布施行、並令全屬遵照、茲將該項辦法錄下、上海特別市檢舉貪汚暫行辦法、一、凡本市政府暨所屬各機　公務人員如有舞弊營私授受賄賂及一切違法貪汚行爲、　屬確實者、無論市民或公務員、均得向市長提出檢舉、二、檢舉之案件有左列之一、即予受理、甲·由市民告發、乙·由公務員告密、丙·由本市政府派員澈查報告、三、檢舉人提出告發、告密或報告之文件須載明姓名籍貫年歲住址職業、以便傳訊查核、凡匿名詭名及偽住址之檢舉不予受理、四、本市政府對檢舉人嚴守秘密、必要時並予以保護、五、檢舉文件須臚列眞　事實、不得摭拾傳聞　事抨擊、以能舉出來歷或人證物證、足資根據者爲適合六、檢舉案件如經本市致府査明屬實、考其情節之輕重、關係之大小、而定其奬勵、有如下兩種、（甲）對市民之告發屬實者、給以獎金（其金額臨時規定之）、（乙）對公務員之告密屬實者、獎以陞級、七、檢舉人如有意圖他人受刑事處分而爲虛僞之告發告密報告者、按其情節之輕重、依法反坐、僞證之懲罰亦同之以嚴誣告僞證之罪、八、檢舉文件應逕寄市長室、以重關防、九、本市政府收受檢舉文件後之調查處理、得由市長臨時指定專員、或組織委員會辦理之、十、凡公務員貪污案件一經檢舉、調查　實、即行移送法院從嚴辦理、其案情重大者並由本市政府將其姓名案山特別公布、十　、本辦法如有未盡事宜得隨時修正之、十二、本辦法自公布日施行、</p>
+<h3>蟲害及預防法演講</h3>
+<p>上海靑年會農業演講、已經適第二講、每次聽衆均　踴羅、本星期（十二日）値第三講、特請南　學院農科主任尤逸農主講　害及預防法、時間爲下午三時半、地點　在八仙橋該會大禮堂、不收座券、</p>
+<h3>社會服務</h3>
+<p>茲啟　、鄙人於上月二十一日下午四時乘坐往兆豐公園之二十路電車、在坐位下拾得白色黃皮帶大圓形男用手錶一只、當時交與五五一號賣票人、什麽牌子未曾看過、失落者可向該賣票人領取、此致執事先生台鑒、夏苑　手啟、</p>
+<p>本　收到太原氏送來久大服裝廠棉衣券三張、囑爲轉發貧民、已托上海市貧病救濟協會　發、幷向太原氏誌謝、</p>
+<h3>各界簡訊</h3>
+<p>南國酒家創立會　雲南路南京路口南國酒家、係由殷商李玉書君、及粵菜巨子前味雅酒樓主　何月池、及其少君何學琛·暨黃瑞鱗·劉永熙·簡逸民·伍馥華等籌辦組織、集中經騐豐富之人才、內部設備力趨新型、昨開創立會、擇定十五日正式開幕、</p>
+<p>太平三輪車公司　太平三輪客車股份有限公司、係本市交通界先　姚永齡張宗錤范一葦吳國棟等所創辦、專　出租製造修理買賣三輪車爲業、電話九〇〇〇〇號、定於本月十二日上午開業先以出差三輪轎車二百　間世、</p>
+<p>體育新聞</p>
+<h3>中校排球聯賽結束　明晚在中青決賽　甲組維他富白隊爭盟主</h3>
+<p>中校排球聯賽、已屆最後關頭明日舉行四組決賽、上午二時學校組正光對沛東爭　冠軍、在南陽路濱海中與舉行、晚七時半起在八仙橋青年會健身房則有甲乙及女子三組決賽三塲、乙組公用局遇CW、女子維他富對民友、甲組白隊戰維他富、各隊咸勢均力敵、未卜錦標誰屬、兩處均不售門票、歡迎參觀、又星期日在濱海有女子及乙組最後四塲交鋒、勝負無關大局、茲將明日秩序分誌於下、</p>
+<p>正光—浦東（校決）下午二時</p>
+<p>回明西—海星（乙組）二時三刻</p>
+<p>白鵝—震旦（女組）三時卅分</p>
+<p>（以上在濱海）</p>
+<p>公用局—CM（乙決）七時卅分</p>
+<p>維他富—民友（女決）八時一刻</p>
+<p>維他富—白隊（甲決）下午九時</p>
+<p>（以上在中靑）</p>
+<h3>東聯盃足球賽　華聯改戰西聯</h3>
+<p>下周末二十日舉行</p>
+<p>東亞聯盟中國總會上海分會發起之東聯盃足球義賽、再戰東華義海軍、已於上週在膠州公園會師、第二戰本定聯誼對義海軍、昨據西聯會書記處發表稱、此賽已作罷論、現改華聯出戰西聯、定下周末（二十日）下午三時、仍在膠州公園舉行、華聯陣綫乃集東華聯誼兩隊精銳成軍、西聯隊大體以義海軍爲主體、輔以葡商會聖芳濟猶太諸隊、</p>
+<h3>全滬公開籃球賽　限四十隊參加</h3>
+<p>上海特別市體育會及中靑年會聯合主辦之全滬公開籃球聯賽、報名於昨日開始、分男子甲乙及女子組、限四十隊、定下星期一（十五日）截止、已經錄取之球隊、應於聯賽開始前、將全體球員名單及照片送交幹事部註冊、並應隨繳註冊費五十元、及保證金五十元、棄權一次即行沒收、註冊球員每隊以十二人爲限、一經註冊後、不得增减或更改、未註冊球員不得參加比賽、比賽規則採用全國適用之男女籃球規則、男子爲國際規則、女子爲美國規則、全部比賽均在八仙橋靑年會健身房舉行</p>
+<p>商業新聞</p>
+<h3>銀根有緊難鬆　華股一致下跌</h3>
+<p>昨華商股票市况、業已普遍下跌、乃銀根有緊難她、且近月來之漲勢過巨、趁機脫手求現者日衆、致回跌之風亦烈、雖有新老投資者活動、已成强弩之末、國曆年關將屆、亦爲下跌原因、前途恐未易轉機、跌勢以公用業之華商　氣最烈、一度退至四十元關口、閘北水電小二元五角、紡織業因紗價下挫、亦一蹶不振、永安紡織軋小四十元、大生一三兩廠賣戶、獨趨堅、小額票面各股亦重轉軟化、百貨業新新交稀價平、國貨新股猛跌六元、大中華火柴亦起回風、小二元半、南洋烟草猛跌四元、入一百三十元內、華成烟公司三百五十五元、新藥業中僅五洲藥房升五元、餘多回落、信誼入三百元內、民誼小六元至九十元關口、中法降二角半、新亞小二元、國華銀行成交價在一百六七十元間、梅林食品一千一百元有買戶、文化業中華獨升二元半、商務世界均見下挫、交易不旺、今誌市價表於後、</p>
+<h3>公債行市回落</h3>
+<p>公債日來雖無市、而其價格則又時有發現、但不足爲標準耳、因祗極少數人互做現貨交易而已、是以市價每東西互異、各樓不同、大概日內做過最大六十元有零、最小做過五十五元、昨則爲五十七八元之譜、距五十元限價不遠矣、</p>
+<h3>飾金有供少求</h3>
+<p>昨本市銀樓業大新同行首飾金門市每兩兌出掛脾未更、仍三千三百五十元、收進减三百元光景、拔開復巨、乃同業非正式行市續跌益勁也、晨初即低四十元、爲三千二百七十元、俄在有供少求狀况中、步降至午刻三千二百元尚不易售出、比前日軋小一千一百元、有七十元差度、成交淸稀、首飾紋銀每兩仍掛十六元、同業五做十八元半及十九元爲出入價云、　錢業公會拆息一角四分、未更、</p>
+<p>日軍票穩堅、同業互做價五元五角五分三五厘、致銀行與小錢莊門市售出仍五元五角六分、收進亦拾至五分、</p>
+<h3>布業忙於登記　交易甚少做開</h3>
+<p>廠布　昨布市因同業中人、皆忙於存貨登記事宜、而　戶手貨、續有吐售、致市盤步軟、交易甚稀、十六磅地球粗布二五三元、十四磅地球二二二元、九磅新字一三八元、八磅振中一三五元、十二磅地球細布晨市一八八元七角半、後市一八八元有成交、大鵬富貴細布　須一八八元至九元間、色布桃花女士林最小價跌至二九五元午收三〇二元、下午以所跌過鉅、回升至三〇六元半、</p>
+<p>東布　昨仍繼續下游、十二磅龍頭細布新單一九一元、銀行單一九二元七角半、續跌每疋二角半至五角、彩球一九三元二角半，飛魚一九一元半、陽鶴一九一元、喇叭一九一元、五福一九〇元五角、中檔各牌尚稱平穩、惟四君子嗶嘰紅單散戶浮額太多、欲升反挫、最後價做七元六角三分、較七跌分、</p>
+<h3>柿餅京市突漲</h3>
+<p>柿餅因產價步升、申市客貨均守而不出、昨據南京快函、該處辦價突升四五十元、已達三百五十元、申市有隨緊可能、</p>
+<h3>葵子銷活轉緊</h3>
+<p>葵花子初以產價劃申較宜、曾見回鬆、茲去化漸活、因此轉緊、昨市號盤已開一批、價爲四百五十元、黑瓜子靜寂少動、客貨雖叫升仍乏呀手、</p>
+<h3>日用品騰漲頗厲</h3>
+<p>公會禁業外人入塲交易　香烟·火柴·皂燭市面、近來激漲頗厲，公會有鑒於物價漲無止境、攸關平民生計、故於昨日起嚴禁業外人入內交易、但一般市儈、依然在塲外互相賣買、價仍昂騰、如大央牌九千四百元、老刀牌八千四百元、品海牌八千三百元、仙女脾七千五百元、五華牌六千六百元、日烟金槍牌三千一百元、金大樓三千五百五十元、指南牌二千四百五十元至五百元、全祿牌三千一百五十元、國烟金字塔六千四百元、美麗牌六千一百允、日用品市價美麗牌火柴三千五百元、鳳凰脾三千四百元、固本皂五百念元、白祥茂皂四百八十五元、黃祥茂皂四百念五元、剪刀皂五百元、白禮氏洋燭三百八十元、堅漲不一、</p>
+<h3>新舊鋼板交易兩清</h3>
+<p>市上流通無論二厘半起之新鋼板與舊油池鋼板兩貨交易、俱異常淸淡蓋客幫納胃全停、本埠船廠幫及鐵工廠等去化亦寥若晨星、故鋼板市象陷於蕭條之境、昨市如二厘平至七厘半貨每噸售二萬元、一分以上厚花色每噸售一萬八千元、（厚貨市存有絕跡之虞）舊　池鋼板每噸亦開一萬四　元左右、二千磅黑鐵坯子　梱須一萬六千元光景、</p>
+<h2>Page 6</h2>
+<p>自由談</p>
+<h3>「江舟泣血記」觀感</h3>
+<p>（一）</p>
+<p>— 梅伯</p>
+<p>「江舟泣血記」原名爲「怒吼吧中國」，據說以前在上海曾兩度演出過，可惜沒有躬逢其盛，不能將兩者印象地加以比較。這次强調反英美一點，內容上似乎刪改了許多。若干塲面因此就不免單調。例如第一幕第二景，寫美國人阿斯來與船夫爭吵以至溺水殞命，全最對話不過五六句，演出至多不過五分鐘，按說只要艦長（嚴俊飾）一句話表過就算了，現在把牠獨立成爲一景，似乎太不經濟。也許原作就是這樣；那便是原作者的疏忽了。</p>
+<p>綜觀全劇，我以爲第一幕與第二幕姣强於其他二幕　也許這是我的偏愛；我總覺得一部藝術作品，與比揷人許多演講詞，寗肯訴之觀衆的直覺，扣動他們的心弦，使他們整個兒被作品陶醉，例如第一幕中，有許多諷刺的對話，非常巧妙，觀衆聽了，時時會浮上會心的微笑。第三幕中幾個船夫的對話，親切而有人情味，也値得我們細細　回味。</p>
+<p>導演方面，李萍倚先生相當費了些苦心，但是電影明星演話劇，我　覺得有點一差勁兒」。一個顯明的事實，就是這次參加演出的明星中，以話劇爲「娘家」　，一般地都比眞正老牌的明星成績好。這不正說明了話劇的特殊性麽？</p>
+<p>至於演員個別的演技，我對嚴俊的艦長是特別愛好的。嚴俊的臺詞，極盡抑揚頓挫之致，足够把個艦長不可一世的聲勢氣派表現了出來二璐珊臺詞也很流暢，可惜戲不多。張琬飾胎夫乙的妻，始終把握住一貫的情緒，是難能可貴的。徐立的老船夫，不瘟不火，適可而止，似乎比演老　的那位（我看的不是姜明）强得多。演員表中最莫明其妙的就是老費這個角色。這樣一個知書達禮的船夫，在中國的現實里似乎找不出幾個。餘如道尹（那天似乎是周文彬？），黃翻譯，人物都不如前面幾個特出，此地就略而不論了。未人</p>
+<p>（二）</p>
+<p>— 未人</p>
+<p>「江舟泣血記」是蕭平根據蘇聯未來派詩人屈萊泰角夫原著「怒吼吧！中國」所改編，導演李萍倩，全劇共四幕，第一幕軍艦，第二幕道尹公署，第三幕船夫公會，第四幕墓地和刑塲，參加演出的，除路　外，大部都是「中聯」的演員。</p>
+<p>故事發生於一九二四年六月的萬縣，爲了一個船夫計長興，由爭吵而不幸打翻舢板，把可憐的那不懂泅水的美國紳士阿勘來淹死了，於是　　人提出「哀的美敦書，要求中國官廳接受四項苛刻條件，共　的一項是：必須處決二個沒有經過法律裁判的無辜船夫。</p>
+<p>憶二十二年九月的秋天，我在黃金大戲院看上　戲劇協社演出的「怒吼吧！中國」，是應雲衛導演的，演員陣容旣緊强，劇本的質量父健全，因此很使我滿意，那時我還只十六歲，我的然情橫溢，爲了這戲的最後一幕二個船夫的絞決，我幾乎眞的在戲院裏哭了！</p>
+<p>這一回，我再看「江舟泣血記」，已經整整地過了十年，十年來，我在被壓迫的生活的鬥爭裏摸索，我在痛苦的環境裏掙扎，我牽記「怒吼吧！中國」。</p>
+<p>從第一幕到第四幕，我是始終給嚴肅的情緒包圍着，這裏，有血，有淚，更有年靑人的一顆跳躍的心。</p>
+<p>導演手法，頗見輕鬆，演員方面，以姜明的老費，和嚴俊的艦長，最見成功。姜明在第二幕中同道尹的那段對白，眞所謂「聲淚俱下」，而嚴浚的一貫洋派的傲氣，把洋人的輪廓，個性，動作等等，都描摩得維妙維肖。其他如呂玉　的船夫，徐立的老船夫，顧也魯的黃翻譯，張琬的船夫妻，周女彬的道尹，路珊的艦長妻，也能合乎身份，並且穩練得很。洪警鈴，秦桐，周起，徐莘園，倉隱秋，關宏達，韓蘭根，章志直，陳琦等，戲不多，沒有甚麽妙揮。</p>
+<p>布景和道具是考究的，第一幕第二景的浪潮，第三幕的浮雲，燈光打得聰明之至，效果也很好，如風聲，拋錨聲，狗吠聲，都能像眞。</p>
+<p>「江舟泣血記」，是今年話劇界的特殊收穫。</p>
+<h3>陳大濩赴故都</h3>
+<p>靑年劇人陳大獲，前月出演天蟾，初試身手，口碑良好，與論界認爲新進京劇界的奇材。自天蟾之局打住後，其知友胡國喬婁隆後及評劇界蘇少卿·　花館主·鄭過宜。范石人等，一致力主陳君應北上觀摩，從師研討，以求深造，茲悉陳君已決定於本月十一日離滬赴故都，專事研究京劇，一面從師，一面演唱，期以一年，然後組班南返，再與滬上人士相見，以陳君的天賦與毅力，將來定能在京劇界放一異彩，本月六日震旦大學寒衣勸募委員會舉行慈善平劇大會串，陳君被邀上演戰太平一劇，作爲臨別紀念，木報申社同人會於日前設　爲陳君餞行，以壯　色，名票范石人君，不口　將隨陳君北上云。</p>
+<h3>申報復刊後之願望</h3>
+<p>— 黃警頑</p>
+<p>余生長上海，已四十九年矣。平素愛讀書報，業餘歸家時輙挾報而返，以便夜靜細讀。讀後，必以分類剪貼，三十年如一日，未曾中輟。後因戰事及環境關係，均先後付丙，殊覺可惜。上海日報以申報爲最早，余與之爲友已三十餘年，平‘從其所得之益，不可勝計。故申報不啻爲余之良師益友。日前復刊，一面慶良師益友之復得常親，一面略述願望，聊以互相勗勉。</p>
+<p>（一）以建立人格平等之保障爲原則，促進中日之眞正親善，盡復興文化之使命。</p>
+<p>（二）研究平和之道，以安定整個上海人民之生活。</p>
+<p>（三）發揚東方固有之文化，作爲亞洲文化之中心。</p>
+<p>（四）中報爲當代最有歷史之日報，宜利用時機，盡宣傳之天職。</p>
+<p>（五）全館一體，親和協作，共謀報業　展，增進人羣福利。</p>
+<p>（六）磨鍊各個心身，實踐新國民運動。</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（二）　仇家</p>
+<p>黃龍向他道了謝，父問王順　在那裏，那夥計一指道：「前面便是，門口有一盞玻璃燈，玻璃上寫着紅字，一個王字，大一些，順興兩字小一些，你們識字不識？」維城在後邊說道：「識字。好了，我們自己我去，謝謝你。」維城說了，他就走在黃龍前面。街上兩旁的商店，一家一家在收市，把門戶裏僅有的燈光，給排門遮蔽了，兩人一脚高一脚低的闖過去，到了十字路口。黃龍抬起手來，拍，打在腦袋上，維城回過臉來問道：「做什麽？」黃龍道：「什麼王順興李順興，原來是王瘋子茶館，我倒記起來了。往北拐彎，我認得。」黃龍搶任維城的前面，拐了彎，笑道：「前面便是，再也不用看燈上的什麽字了，我在這裏打過人。走過去沒幾步，維　還是仰起頭看了一看，果然有燈，燈沒亮，可不知道上邊寫些什麼字。從半張桌子在簷下，半張桌子在戶內的一個戶檻裏走進去，恍然於這王順興客棧的門面，是茶館：王瘋子茶館的內部，是王順興客棧。</p>
+<p>黃龍在前，走在黯淡無光的壁燈下，引維城進了一道玻璃門。玻璃很光亮，光亮得一道道的裂痕上，看得出滿貼着十三四個膏藥。黃龍對門裏的人點點頭，帳桌上坐着個老頭兒來招待。黃　道：「我們要一間房，幾張牀倒是隨使。」那老頭兒說：「有有有。」引　屛後一間房裏，黃龍道：「燈呢？那老　兒道：「來了來了，客人別忙。你們從那裏來？」黃龍道：「白天在賭錢，從賭錢的地方來。」燈來了，照見房裏剛是兩張牀，黃龍去推開了兩扇矮窗看看，是一條狹弄，燈光反映到窗外的牆上。維城連說：「很好很好，你是掌櫃的吧？我們去吃了晚飯再來。那老頭兒笑道：「是的，我是王瘋子，其實一些也不瘋，人家這樣喚，我就這樣應。客人到外邊是吃晚飯，那怕沒有地方吃。」　（二三九）</p>
+<h3>馬來敗戰回顧錄　（）</h3>
+<p>— 帕雪維爾中將手記</p>
+<p>前馬來英陸　司令官　帕雪維爾中將手記</p>
+<p>馬來，星加坡的攻略戰，是大東亞戰爭中我們作戰的第一個目標，同時也是這一年中登峯造極的最大成就。星加坡陷落以後，英國才開始了在東亞的全面退却的第一步，我們才也邁進了光耀萬丈的勝利的第一步。開戰前，英美以此爲堅强不拔的據點之一，自誇防禦是十分完備的。但宣戰大詔頒下後，曾幾何時，我忠勇的將士已在馬來半島東海岸辛各拉，柯達巴爾等地完成了決死的　敵前上陸」；更進一步，在史利姆，季圖拉，菊化洲等處，不顧氣候的酷熱，繼續排擊着敵方頑强的牴抗。或則深入人跡未到的蠻荒森林，到星加坡爲止一千一百餘基羅米特（亦即東京。下關間的等距離），僅以五十五日的短時期，就被突破。一路勢如破竹，連星加坡的要塞攻略戰包括在內，七十日間，就完成了歷史性的大攻略戰！戰爭揭幕後，到現在正好是一年，投降了的馬來英陸軍司令宮A.B.。柏雪維爾中將，以在某地俘虜之身，發表了以下揭載的一馬來作戰回顧錄一全文，正如柏雪維爾所述，「我車的防禦已臻完美之絕境」，而在這固若金湯的英軍陣地中，我忠勇的將七居然完成了上陸作戰，該文對這一點描摹盡致，是値得我們注目的。此外，柯達巴爾方面佗美部隊的奮戰，開達戰綫上佐伯等部隊的季圖拉綫「獨　突破」，還有，抵抗最頑强的菊化洲北部一帶，經我軍海上機動部隊，航空部隊加以進擊後，敵軍的節節敗退，這些情形，該文都有生動的記述。這敵軍敗退的經路，就是我們勝利的畫卷。撫今追昔，我們吏非加強擊滅英美之決心不可。</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.12.11</h1>
+<h3>Discussion on the European and African War Situation</h3>
+<p>The Second World War, as it has developed to this day, can be mainly divided into four major battlefields: one is the Greater East Asia War centered on the Pacific Ocean, one is the German-Soviet War in Eastern Europe, one is the British-German War in Western Europe, and the other is the North African War from the Mediterranean Sea to Africa; in addition, there is the Egyptian War, which is relatively secondary. Among these war centers, the more important ones are only the Greater East Asia War in the East, dominated by Japan, and the Eastern European War in the West, dominated by Germany and the Soviet Union. However, since Japan launched the Greater East Asia War, it has greatly helped Germany and Italy in their operations in Europe and Africa, and has made the European and African Wars and the Asian War move closer to convergence day by day. Therefore, it is very necessary for us to observe and study the European and African War at present.</p>
+<p>Since the outbreak of the German-Soviet War on June 22 last year, the focus of the European and African War has shifted to Eastern Europe and the territory of the Soviet Union, where the two sides have staged an unprecedented fierce battle in history. However, it is still affected by the seasons to some extent. Observing the German strategy, it is generally based on winter as the preparation period, spring as the offensive period, and even if the war develops to its peak in summer, autumn becomes the period for consolidating and expanding the war. Looking back, after the German army launched a war against the Soviet Union last year, it drove straight in and approached the capital Moscow, and Leningrad was almost completely under the control of the German army; however, due to seasonal factors, the Soviet Union was assisted by various armies, which made the German-Soviet War suddenly become deadlocked, and the German army was engaged in the preparation period for a new offensive. At the turn of this spring, the German army began to launch an offensive again, capturing Kharkov, the capital of Ukraine, and Sevastopol, an important town in southern Russia, and approaching Stalingrad in autumn. However, also due to seasonal factors, the German-Soviet War entered a deadlock again. Stalin more solemnly denounced the mistakes of the United Kingdom and the United States in failing to open up a second front in the past year, which led to the passive and failed position of the United Nations, and called for the development of the second front in an attempt to change the entire war situation.</p>
+<p>The United Kingdom and the United States have always adopted a perfunctory attitude towards Stalin's demand for a second front. The verbal and written statements seem very lively, but in fact there has never been any sincerity. Therefore, since last summer, the British-German War in Western Europe has always been sluggish, and even in the North African Egyptian War, the United Kingdom and the United States have only adopted a passive strategy and have often been in a position of failure. However, since the outbreak of the Greater East Asia War, the power of the United Kingdom and the United States in the Pacific has frequently collapsed. Not only has the Southwest Pacific fallen into the hands of the Japanese army, but also the gunpowder depot of India has begun to explode. The Japanese military power has frequently advanced towards the Indian Ocean, and India, the so-called crown of the British Empire, is under the threat of Japanese planes and gunboats, and the German and Italian troops also have a tendency to meet with the Japanese army through the Red Sea. In this way, if the United Kingdom does not make other plans, it will be in danger of collapsing immediately. This is the first reason why the United Kingdom and the United States have to prepare to launch a counter-offensive in Europe and Africa. Secondly, the Mediterranean Sea is the lifeline of the United Kingdom, and it is also the base for the United Kingdom and the United States to maintain contact with the Soviet Union and strive for advantages in Turkey today. However, due to the development of German and Italian forces, the British position in the Mediterranean has been declining day by day. The British military bases there, such as Gibraltar and Malta, have been reduced in value due to the development of the Italian air force, so that in the recent year, the connection between Gibraltar and the Suez Canal has been blocked by the Axis air and sea forces, and the connection between the United Kingdom and the United States to aid the Soviet Union and India has had to bypass the Cape of Good Hope in South Africa and pass through the distant route of the Indian Ocean. On the contrary, Italy has placed the focus of the Mediterranean strategic system on the line connecting Sicily and Terrelia with Tripoli in Libya, and the line connecting Vedesleslos with Dobruk in Libya, dividing the Mediterranean into east and west, and cutting off the lifeline of the United Kingdom. Especially in the western Mediterranean, the weakness of the United Kingdom is becoming increasingly obvious. In the past, it had to rely on French military power. Since its ally France, Luo Wu, the western Mediterranean has to be threatened by the Axis powers. The failure of the British naval battle in the western Mediterranean from June to August this year is the most obvious example. All the above-mentioned realistic situations have forced the United Kingdom to either perish or counter-attack, and the Soviet Union and the United States are obviously more willing to help the British counter-attack. This is the root cause of the recent North African War.</p>
+<p>The main purpose of the British and American invasion of North Africa is to try to change from a strategic defensive to an offensive, and seize the initiative from the Axis powers. Judging from their careful preparations and considerable large-scale combat plans, their daring to invade this time should not be underestimated or underestimated. The intention of the British and American invasion of North Africa is obviously to establish a foothold there in order to launch an offensive against the European continent. Therefore, the battle in North Africa must be regarded as having the inevitability of expanding to the Mediterranean region. This is an observation from the entire strategy. Secondly, the British and American troops invaded North Africa in an attempt to seize Algiers, Oran, and Bizerte in Tunisia, which have become one of the strategic system hubs in the Mediterranean, in order to strengthen their military strategic position in the Mediterranean. Bizerte is a powerful base against Pantelleria in Italy, and Tunis is the strategic point with the shortest distance from Africa to the Italian mainland. From here to Pantelleria, it is only 60 kilometers, and from Pantelleria to Sicily, it is only 96 kilometers. Therefore, the British and American forces concentrated their offensive on Tunisia, and the German and Italian forces did not hesitate to give up the Mediterranean strongholds such as Dobruk, Derna, and Benghazi, and concentrated their forces to launch a counter-offensive in Tunisia. This is an observation on the focus of the defense of North Africa and the Mediterranean War. Again, we must know that the Mediterranean Sea has close interests with more than half of the countries in Europe in terms of politics and economy, especially France, Spain, Portugal, and Turkey in the east, and the Balkan countries in the northeast. Their positions often have a profound or even decisive impact depending on the situation in the Mediterranean. The British and American offensive in North Africa obviously has a certain degree of political and economic temptation for these countries. Judging from the conspiracy of the French navy in Toulon to participate in a major rebellion, one can infer its more far-reaching conspiracy. As for dealing with the Soviet Union's demand for a second front, it is naturally one of the reasons for exaggerating the North African offensive. This is also revealed to some extent in Stalin's conversation with American reporters and Churchill's report in Parliament.</p>
+<p>Of course, it is still too early to predict the development prospects of the European and African War today. Although the British and American forces have invaded North Africa, and the French military officers in North Africa and West Africa have also established rebellious regimes under the leadership of Dazhu and De Gaulle; however, if they cannot develop to establish their dominance in the Mediterranean, especially if they cannot ensure their advantage in Tunisia, they will not become a decisive force that can dominate the European war situation; moreover, the development of the situation is even more distant from the British and American attempts: first, the decisive war is being carried out between Tunis and Bizerte, and Germany and Italy have taken back the initiative to their side; second, the French rebellion has been quelled under the lightning suppression of Germany and Italy, and France has further cooperated with Germany and Italy on the path of "integration"; third, what is particularly noteworthy is that the German army resolutely stationed in the port of Toulon and disarmed the French army and navy that were preparing to rebel. Although the tragic incident of all the rebellious French sailors sinking the warship was staged, after the Suiyi occupied Toulon, not only was the danger of the French south being invaded by the British and American forces again, but also the national defense strength of Italy itself was further strengthened, and the superior situation of the Axis powers in the Mediterranean was strengthened, breaking the above-mentioned strategic, political and economic attempts of the British and American sides. What is particularly noteworthy is that in this desperate offensive, not only did the United Kingdom and the United States not draw out any major forces from the German side on the eastern front, but they also failed to save the humiliation of continuing to be defeated miserably in the East. The recent disastrous defeat in the Solomon Islands battle shows that the most important factor in the failure of the British and American strategies in Europe and Africa has been discovered in the Pacific.</p>
+<h3>Anniversary of the Tripartite Pact Japanese Prime Minister Issues Statement To Advance Rapidly Towards Victory with a Firm War Goal</h3>
+<p>Tokyo, 10th Central News Agency Electric Japan signed a military alliance treaty with Germany and Italy on December 11 last year, that is, this day is the anniversary of the three countries working together to destroy the United Kingdom and the United States, and since then, the Greater East Asia War and the European War have been integrated, and advanced towards the road of defeating the United Kingdom and the United States and building a new world order. On the occasion of the anniversary, Japanese Prime Minister Tojo Hideki met with the German and Italian journalist groups at the Prime Minister's official residence at 4 pm on the 9th, and reiterated the noble belief of the three countries in signing the treaty and rebuilding the world, and answered questions with the German and Italian journalists for an hour. Now I record the questions and answers of Prime Minister Tojo to the journalist group as follows: I am very happy to have the opportunity to meet with the journalist groups of the allied countries Germany and Italy today. However, there may be some cases that cannot be answered about war opportunities. I am a soldier, and I cannot speak euphemistically. I will only answer frankly to what I know. (Question) The enemy countries United Kingdom and the United States, such as Churchill, went to Moscow, and Willkie also went to Chongqing from Moscow. How frequent are the exchanges? What is the Prime Minister's opinion? (Answer) On December 11 last year, Japan, Germany, and Italy signed a treaty to establish a solid alliance, and at the same time established the three major principles of completing the joint operation of the three countries against the United Kingdom and the United States, and the three countries will never make peace alone, and build a new world order. In this way, at the beginning of the war, the three countries had formed an alliance with complete common goals in everything, politically, and spiritually. Based on this, the three countries have recently achieved great results and continue to move forward. As a result, the United Kingdom and the United States, which have suffered repeated defeats, have become extremely panic and are running around, hoping to reverse the decline. If we observe the above situation, then the military, political, and diplomatic advantages of our three countries are superior to those of the enemy countries, which is needless to say. In addition, I would like to add that, in terms of the nature of this war, the purpose of the three countries' operations is based on morality. The three countries share a strong determination to break the old order of the past and build a new order, and are a group of countries advancing towards the same goal. This is the true meaning of the three countries. The United Kingdom and the United States are determined to maintain the old world order and preserve their own interests. The collapse of all selfish country groups is inevitable. (Question) At the beginning of the Greater East Asia War, the enemy's bases in East Asia were destroyed with the momentum of a whirlwind. What way will the war be conducted in the second year? (Answer) All groups have a firm war purpose when declaring war on foreign countries. Those who start a war without a purpose have never been seen. Since the start of the Greater East Asia War, Japan has completely captured all the strategic strongholds of the enemy countries United Kingdom and the United States in East Asia in the first year. The purpose of future operations is to cooperate with Germany and Italy and advance towards rapid victory. (Question) Has Japan actually applied the resources of the occupied southern region to complete the operation? (Answer) The southern resources obtained by Japan are currently being applied, and considerable results have been achieved in actual operations. (Answer) I heard that the amount of southern oil obtained has exceeded the initial expected amount. Is this true? (Answer) The amount of southern oil has indeed exceeded the initial expected amount. According to the speculation at the time of the outbreak of the war, the enemy forces would inevitably destroy all the oil fields. Therefore, the Japanese army was determined to re-excavate them when it occupied them. However, when seizing the oil field areas, it tried its best to prevent the enemy forces from destroying them. Therefore, it is not unrelated to the fact that the amount exceeded the expected amount this time. In short, with the cooperation of Japan, Germany, and Italy, there is no need to worry about the lack of oil in completing the war in East Asia.</p>
+<p>Japanese, German, and Italian Foreign Ministers Give Broadcast Speeches Separately</p>
+<p>Berlin, 10th Havas News Agency Electric In accordance with the spirit of the Triangular Alliance, Japan, Germany, and Italy will launch a campaign against the war leader President Roosevelt, which will mark the first anniversary. The foreign ministers of the three countries, namely, Masaki Tani, Joachim von Ribbentrop, and Galeazzo Ciano, are scheduled to deliver broadcast speeches to the people of the Allied countries today to commemorate the anniversary. The local radio station is scheduled to rebroadcast the speeches of the three at 7:15 pm to 7:45 pm. Radio stations in Japan, Italy, and other allied groups in Europe and Asia will also rebroadcast them.</p>
+<p>Milan, 10th Havas News Agency Electric General Tojo Hideki, Prime Minister of Japan, sent a telegram to the Italian people, which was forwarded by the Tokyo correspondent of the "Italian Daily". The telegram was recently published in the newspaper, stating that Japan and Italy are now fighting side by side with Germany to promote the realization of common ideals. What are the ideals? It is to establish a new order in Asia and Europe, and eliminate the ambitions and hegemony of the United Kingdom and the United States. The entire Japanese people express unlimited admiration for the spirit of unity and the firm attitude of the Italian people. Japan will do its best to continue to achieve victory, enhance the friendship between Japan, Germany, and Italy, and conquer all the difficulties on the road ahead to achieve the goal of final victory.</p>
+<h3>Japanese Research Alliance Held Inaugural Meeting Yesterday Elected Suzuki, President of the Planning Board, as Chairman</h3>
+<p>Tokyo, 10th Central News Agency Electric In order to improve the efficiency of the planned economy, the Japanese government believes that it is necessary to thoroughly investigate and study various materials that establish the foundation of national policy, and to use them in a comprehensive manner. Therefore, on August 28, it was decided to jointly organize a research alliance by major public and private research institutions. After that, the Planning Board and the Technology Board actively prepared for it. By now, the personnel organization has been decided. Therefore, the inaugural ceremony and general meeting of the Research Alliance were officially held at the Prime Minister's official residence at 11 am on the 10th. More than 300 people, including Prime Minister Tojo and officials from various relevant agencies, attended the meeting. In total, the alliance includes 188 research groups in political, economic, cultural, scientific, and technological fields, as well as various public groups, control associations, light and heavy industries, and agricultural and forestry groups. Suzuki, President of the Planning Board, was elected as Chairman, and Yasunobu Motoki, Vice President of the Planning Board, and Wada Shoroku, Vice President of the Technology Board, were elected as Vice Chairmen.</p>
+<h2>Page 3</h2>
+<h3>In the Toropetz Region on the Eastern Front, the German Army is Making Smooth Progress Has Occupied Many Important Strongholds Soviet Troops in the Don River Bend Are Also Repelled</h3>
+<p>Headquarters of the German Leader, 10th Havas News Agency Electric This afternoon, the German military report stated that the enemy's vanguard between the Volga River and the Don River was surrounded and annihilated. The Soviet army launched several counterattacks, suffering heavy losses and failing. In a certain area the day before yesterday, the Soviet army lost 104 tanks. The German army in the Don River bend repelled the attacking enemy forces and destroyed 16 enemy tanks. In the central section of Eastern Europe, our army's offensive has been quite successful, capturing hundreds of enemy soldiers and seizing a large number of military weapons and supplies. Although the enemy attempted to counterattack, it was ineffective. German fighter planes and dive bombers bombed enemy troops and railway facilities. The German Air Force commando destroyed 59 enemy bunkers. In the Losev area, the Soviet army lost 72 tanks.</p>
+<p>Berlin, 10th Havas News Agency Electric The German army's counterattack in the Toropetz area in the central section of the Eastern Front is starting to surround the Soviet army's ten divisions. Many Soviet strongholds have fallen into the hands of the German army. According to the latest news, the Stalin Corps, which is well-equipped and well-trained, is also in danger of being surrounded. The Soviet command is transferring troops to the Toropetz area to resist the German army's patrol offensive.</p>
+<p>Berlin, 9th Havas News Agency Electric According to military sources here: (1) The German army launched a large-scale counterattack in the Toropetz area in the central section of the Eastern Front yesterday and achieved great success. The German army advanced steadily, gaining large tracts of land and occupying many densely populated areas and important positions. Although some positions of the Red Army were deeply deployed, they were still occupied. The Red Army's rear transportation line was also cut off. Although it is difficult to draw a conclusion on the current battle, it can be predicted that the results may be to annihilate about ten divisions of the Red Army. This army is composed of the "Stalin Group Army" specializing in offensive warfare and mixed elite troops. The number of tanks, artillery, automobiles, and heavy weapons destroyed by the German army is still difficult to estimate, but this number is constantly increasing. The number of prisoners is also increasing. The German Air Force, braving the bad weather, continuously attacked the enemy troops, giving the army a major boost. (2) In the Don River bend area, the German armored forces counterattacked the attacking Red Army, destroying 46 of its tanks, including several weighing more than 52 tons. The German tank force rushed through the Red Army's assault teams and defeated the Red Army in a large area. The Red Army was forced to retreat in panic. The air force pursued and achieved good results. The battle in the area is still in progress. (3) Between the Volga and Don Rivers, the Red Army repeatedly attacked with large teams of tanks, with great momentum, but was defeated everywhere. The enemy lost 56 tanks. (4) On the south side of Lake Ilmen, the enemy's strength is limited and the offensive is not strong, failing to break through the main German defense line. The German heavy artillery defeated the enemy tanks in the area, preventing them from concentrating. A Red Army unit that was surrounded south of Perai City a few days ago has now been completely annihilated. Only a few troops broke through and fled into the nearby forest area. (5) The German positions north and south of Erzhev have also been strengthened. (6) A German reconnaissance plane in the Kalaki area reported that Red Army infantry had crossed the frozen river surface to reinforce and build artillery platforms. According to Red Army deserters, it was confirmed that the Red Army authorities are currently preparing to launch an offensive in the area. (7) On the Caucasus front, the Red Army concentrated a large army north of the Terek River in order to defend the right wing of the northeast front. The German army again inflicted heavy damage on the enemy yesterday, and several enemy teams were surrounded and annihilated.</p>
+<p>Berlin, 10th Havas News Agency Electric From November 4 to December 2, the German army carried out a mopping-up operation in the forest and swamp area behind the central section of the Eastern Front, annihilating many remnants of the Soviet army, killing 992 people, and occupying 15 arsenals. The local residents did their best to cooperate with the German army.</p>
+<h3>Japanese Government Approves Next Year's Budget Revenue and Expenditure Nearly 10 Billion Yen</h3>
+<p>Tokyo, 10th Central News Agency Electric The general budget for the 18th year of Showa has been decided by the cabinet meeting on the 10th and announced. The total amount of revenue and expenditure is 9.995 billion yen, an increase of more than 1.1 billion yen compared to the 17th year. The detailed figures are as follows: General budget for revenue and expenditure in the 18th year of Showa (unit: 1,000 yen), regular revenue 6,452,000, including general revenue 1,938,000, public debt 1,274,000, previous year's rolled-over funds incorporated 330,000, total 9,995,000, regular expenditure 4,932,000, temporary expenditure 5,063,000, total 9,995,000, revenue and expenditure are equal, general budget for expenditure of various ministries in the 18th year of Showa (unit: 1,000 yen), Imperial Household expenses regular 4,500, temporary none, total 4,500, Ministry of Foreign Affairs regular 13,000, temporary 31,000, total 44,000, Ministry of Home Affairs regular 634,000, temporary 339,000, total 974,000, Ministry of Finance regular 3,148,000, temporary 292,500, total 6,074,000, Ministry of the Army regular 600, temporary none, total 600, Ministry of the Navy regular 1,000, temporary none, total 1,000, Ministry of Justice regular 57,000, temporary 12,000, total 70,000, Ministry of Education regular 264,000, temporary 111,000, total 375,000, Ministry of Agriculture and Forestry regular 71,000, temporary 509,000, total 580,000, Ministry of Commerce and Industry regular 9,000, temporary 723,000, total 732,000, Ministry of Communications regular 503,000, temporary 106,000, total 609,000, Ministry of Health and Welfare regular 180,000, temporary 151,000, total 332,000, Ministry of Greater East Asia regular 42,000, temporary 151,000, total 194,000, the total regular expenditure of the above ministries is 4,932,000, the temporary expenditure is 7,063,000, and the total is 9,996,000.</p>
+<p>Tokyo, 10th Central News Agency Electric In the general accounting revenue budget estimate for the next year, the regular part is 645.2 billion yen, the temporary part is 354.2 billion yen, the tax revenue for the regular part and the temporary part is 696.8 billion yen, an increase of 104.7 billion yen compared to the current year's 592.1 billion yen, an increase of about 17% compared to the current tax rate. In addition, the general revenue for the next year is 142.3 billion yen, an increase of 86 million yen compared to the current year's 133.6 billion yen. In addition, the public debt for the next year is 127.4 billion yen, a decrease of 25.1 billion yen compared to the current year's 152.6 billion yen. Judging only from the deficit public debt, the decrease is 25.2 billion yen. In addition, the surplus of 330 million yen in the general accounting of the previous year is rolled into the next year. The revenue budget for the current year is incorporated into 54 million yen. This time, there is no incorporation of borrowed funds. In short, the revenue budget for the next year is mainly based on increasing tax revenue to pay for most of the increase in expenditure. Therefore, the revenue for the next year is reduced by the revenue from the surplus to reduce the issuance of deficit public debt, that is, the tax revenue for the next year is 696.8 (unit: million yen), the current year is 592, and the comparison shows an increase of 104.7. Other general revenue for the next year is 142.2, and the current year is 133.6, and the comparison shows an increase of 86. The public debt for the next year is 127.4, and the current year is 152.6, and the comparison shows a decrease of 251. The road public debt for the next year is 18, and the current year is 17, an increase of 1. The deficit public debt for the next year is 125.5, and the current year is 150.7, a decrease of 252. The surplus of the current year is rolled into the next year by 330, the current year is none, an increase of 330. There is no borrowing in the next year, and the current year is 54, a decrease of 54. The total for the next year is 999.50, and the current year is 883.7, an increase of 115.7.</p>
+<h3>Legislative Yuan Holds 76th Meeting, Passes Eight Bills</h3>
+<p>Nanjing, 10th (Central News Agency) - The Legislative Yuan held its 76th meeting on the 10th, passing eight bills: (1) Deliberation of the "Regulations on the 31st Year of the Republic (1942) Class A Food Treasury Bonds" which was resolved to be passed with amendments as proposed; (2) Deliberation of the "Regulations on the 31st Year of the Republic (1942) Class B Food Treasury Bonds," which was resolved to be passed with amendments as proposed; (3) Joint report by the Economic and Legal Systems Committees of the Yuan on the examination of the "Provisional Organizational Regulations of the Central Commodity Price Countermeasures Committee," which was resolved to be passed with amendments as proposed; (4) Joint report by the Economic and Legal Systems Committees of the Yuan on the examination of the "Provisional Organizational Regulations of the Local Commodity Price Countermeasures Committee," which was resolved to be passed with amendments as proposed; (5) Joint report by the Economic and Legal Systems Committees of the Yuan on the examination of the "Provisional Organizational Regulations of the Price Management General Bureau of the Ministry of Industry," which was resolved to be passed with amendments as proposed; (6) Joint report by the Economic and Legal Systems Committees of the Yuan on the examination of the "Provisional Organizational Regulations of the Local Price Management Bureau," which was resolved to be passed with amendments as proposed; (7) Joint report by the Finance and Legal Systems Committees of the Yuan on the examination of the "Amended Regulations on the Unified Tax on Cotton Yarn," which was resolved to be passed with amendments as proposed; (8) Joint report by the Finance and Legal Systems Committees of the Yuan on the examination of the "Regulations on the Unified Tax on Matches," which was resolved to be passed with amendments as proposed.</p>
+<h3>Food Production Increase in Southern Shandong Province: Overview</h3>
+<p>Jinan, 10th (Central News Agency) - Shandong Province occupies an important position in North China, so a self-sufficient food system is critical.  In January of this year, to implement emergency food production increase measures, the Shandong Provincial Emergency Food Production Increase Implementation Committee was established within the Provincial Government.  The following is a summary of the situation of food production increase in Shandong Province over the past year: (1) Well drilling: The total number of wells allocated for this year is 36,000. By the end of September, 90% had been completed. Adding the number of wells drilled independently by various counties, the number had exceeded the allocated number by 16% by the end of September. Therefore, by the end of this year, it is expected to reach 44,000 wells, which can irrigate approximately one million mu of farmland. From this, it is estimated that there will be a considerable increase in the yield of wheat and miscellaneous grains. (2) Land improvement: As a result of land improvement, the yield of wheat per mu of dry land has increased by approximately 150 jin, and the yield of rice per mu of paddy field has increased by approximately one shi and eight sheng. Regarding land improvement work, since March of this year, 1,360,000 yuan has been invested in improving 490 hectares of paddy fields.</p>
+<h3>Greater East Asia War Exposition Closed Yesterday Morning</h3>
+<p>Nanjing, 10th (Central News Agency) - The Greater East Asia War Exposition held a closing ceremony at 11:00 AM on the 10th. Among the twenty or so attendees were Minister Lin of the Propaganda Department, Vice-Minister Guo, Vice-Minister Li of the Ministry of Interior, as well as Mr. Iwasaki, the director of the Japanese News Agency, and Secretary Matsudaira of the Japanese Embassy. A prayer service was conducted by a high-ranking Japanese monk. After the ceremony, the association hosted a banquet for the participating guests. Thus, the exposition that caused a sensation in East Asia came to an end.</p>
+<h3>Central Reserve Bank Abolishes Restrictions on Remittances Between Shanghai and Hankou</h3>
+<p>Hankou, 9th (Central News Agency) - The Hankou branch of the Central Reserve Bank, due to the unusually tight money supply in Shanghai last month, which led to soaring remittance rates between Shanghai and Hankou, had reduced the maximum amount for remittances from 5,000 new currency units to 550 yuan. Now, from the 8th, the restrictions on remittances have been restored to the original amount of 5,000 yuan, and remittances below 5,000 yuan do not require an application for permission.</p>
+<h3>National Judicial and Administrative Conference Rescheduled</h3>
+<p>Nanjing, 10th (Central News Agency) - In order to strengthen the national judicial and administrative institutions, the Ministry of Judicial Administration will hold a National Judicial and Administrative Conference. The conference dates have now been postponed to January 11, 12, and 13, for a total of three days.  The matter has been reported to the Executive Yuan for record, and all subordinate offices have been notified separately.  In addition, the ministry has compiled the proposals from various regions, totaling more than eighty items, and is currently conducting preliminary review.</p>
+<h3>Manchukuo Exchange Lecturers Depart Northward Yesterday to Return Home</h3>
+<p>Nanjing, 10th (Central News Agency) - Zhang Huanxiang, Qu Bingshan, and Wang Xuesan, lecturers from Manchukuo who came to China for exchange lectures, have completed their mission. Qu and Wang have already arrived in Nanjing from Suzhou and Shanghai. At 12:00 noon on the 10th, Foreign Minister Chu, Minister Lin, Mayor Zhou, and others specially hosted a banquet at the International Hotel to entertain them. They then boarded the Jinpu Railway train at 3:55 PM that afternoon to return to Manchukuo.</p>
+<h3>Chongqing's Plans in Fujian: Construction of Airfields</h3>
+<p>Observations of Japanese Military Spokesperson</p>
+<p>Nanjing, 10th (Haitong News Agency) - The Japanese military spokesperson here pointed out that Chongqing's plan to build airfields and defense works in Fujian Province is currently of no significant importance and that the Japanese army can forcefully destroy them if necessary.</p>
+<h3>British Planes Invade Swedish Neutrality Again</h3>
+<p>Stockholm, 10th (Haitong News Agency) - It was declared here yesterday that British planes again invaded Swedish airspace on Tuesday night, crossing over Helsingborg. At that time, both Swedish and Danish anti-aircraft guns fired on them. According to the British government's reply to the previous protest from the Swedish government, they guaranteed that there would be no further violations of Swedish airspace. The reply was delivered to the Swedish government just one day prior, but another similar incident occurred the next day.</p>
+<h3>Only Localized Battles in Tunisia: Axis Forces Have Received Reinforcements: Crisis of Egypt Being Attacked Not Eliminated</h3>
+<p>Headquarters of the German Leader, 10th (Haitong News Agency) - This afternoon, the German military communiqué stated that due to the harsh climate in Tunisia, there are only localized battles. Enemy tank units attacked our positions southwest of Tebourba but were repelled with considerable losses. A merchant ship in the port of Bugeaud was hit by bombs dropped by our planes. Our planes also bombed enemy air bases, completing their missions and returning. Three British bombers were shot down while flying over the Italian-occupied areas of Western Europe.</p>
+<p>Rome, 10th (Haitong News Agency) - This afternoon's communiqué from the Italian military headquarters stated that German planes bombed the German-controlled Aerdena airfield, destroying seven British planes parked on the ground. In Tunisia, our patrols are out conducting reconnaissance. Enemy tanks once attacked west of Tebourba but were repelled. Several enemy tanks. Turin was again bombed by enemy planes last night, with fires breaking out in many houses, causing considerable damage. During the previous air raid on the city, 75 civilians were killed and 112 were injured. The number of casualties last night has not yet been confirmed. Although the weather was poor yesterday, our planes fiercely bombed the Algiers docking area, hitting two enemy ships (one of 16,000 tons and one of 10,000 tons). Our planes engaged enemy aircraft, shooting down a Curtiss fighter. Our planes returned safely to their original positions.</p>
+<p>Berlin, 10th (Haitong News Agency) - According to sources here, German and Italian aircraft on the Tunisian front bombed enemy positions in the rain. German aircraft attacked Allied supply stations, convoys, and routes in the Atlas Mountains. There were only minor ground skirmishes. Military figures refused to comment on rumors that Allied forces were in dire straits in Méjéda. They emphasized that the Axis forces on the Tunisian front had received reinforcements from Bizerte and Tunis. There was aerial combat in western Cyrenaica.</p>
+<p>Bern, Switzerland, 9th (Havas) - A dispatch from Cairo states that Egyptian Prime Minister Nahas, in a recent speech to members of the Wafd Party, said, "We should not be overly optimistic about the North African battles. As of now, there has been no decisive outcome. The landing of British and American forces in North Africa has not eliminated the crisis of the Axis powers attacking Egypt. Therefore, we should still unite and pay attention to the development of the situation."</p>
+<h3>Term of Supreme Soviet Extended</h3>
+<p>Stockholm, 10th (Central News Agency) - According to a Moscow broadcast, the term of the members of the Supreme Soviet of the Soviet Union has been extended until the end of next year, when new elections will be held.</p>
+<h3>Revolt in Sindh Province, India</h3>
+<p>Bangkok, 10th (Haitong Telegram) - According to a New Delhi dispatch, a revolt has occurred among the Hurs in the Sindh province of India, causing considerable difficulty for the Indian government, which plans to dispatch 2,000 police officers to suppress it. They are equipped with horses and camels because the revolt area includes a desert.</p>
+<p>Bangkok, 10th (Haitong News Agency) - A dispatch from New Delhi reports that unrest in Ahmedabad continues. Yesterday, demonstrators threw stones at the police, and several government offices were set on fire. Five municipal staff members who refused to work in the office have been arrested.</p>
+<h3>Enormous British and American War Expenses</h3>
+<p>Lisbon, 10th (Central News Agency) - Since the outbreak of this war, British war expenses have been increasing daily, averaging approximately 13 million pounds per day. However, according to a London dispatch, the British Treasury announced on the 9th that in the week from November 19 to December 5, British war expenses averaged as high as 20 million pounds per day.</p>
+<p>Lisbon, 10th (Central News Agency) - According to a Washington dispatch, President Roosevelt stated on the 9th that the war expenses incurred by the United States since its entry into the war have reached 46 billion US dollars.</p>
+<h3>Roosevelt Convenes Meeting at the White House</h3>
+<p>Lisbon, 10th (Central News Agency) - According to a Washington dispatch, President Roosevelt convened a Pacific military conference at the White House on the 9th.  British Ambassador Halifax and other representatives attended. They discussed countermeasures to the infighting between the Darlan faction and the Giraud faction. Afterwards, New Zealand representative Nash told reporters that President Roosevelt gave an on-the-spot explanation of the war situation on various fronts around the world. Nash said, "I oppose the establishment of another Pacific Charter because I believe that the principles of the Atlantic Charter can be applied to the entire world."</p>
+<h3>Overseas Chinese Congress in Rangoon</h3>
+<p>Rangoon, 10th (Central News Agency) - Today is the final day of the Greater East Asia War first anniversary celebration held here. More than 2,000 overseas Chinese solemnly held the first Overseas Chinese Congress in the morning. Representatives delivered speeches one after another, expressing their support for the motherland and national construction policies, as well as their determination to cooperate with Japan.  A march was also held to overthrow Britain and America.</p>
+<h3>Turkish Ship Sunk in Black Sea</h3>
+<p>Ankara, 10th (Haitong News Agency) - The Turkish ship "Hitzubogru" (170 tons) departed from Varna for Istanbul the day before yesterday. Last night, it was sunk by a submarine of unknown nationality five miles from the Turkish Black Sea coast. All sailors have been rescued, with several injured.</p>
+<h2>Page 4</h2>
+<p>Macau Correspondence</p>
+<h3>The Lives of Inland Elementary School Teachers Under High Commodity Prices: Teacher morale is affected, and schools face extreme difficulty in hiring teachers</h3>
+<p>In recent years, the rapid rise in commodity prices in the mainland has made life increasingly difficult for those engaged in education. Taking elementary schools as an example, although teacher salaries have nominally increased, they inevitably lag behind the unlimited rise in commodity prices. The hardship they endure is not difficult to imagine.</p>
+<p>There is a Cantonese saying that describes the hardship of elementary school teachers: "If you're not desperately poor, don't teach; if you're not starving, don't eat leftovers." To compare teaching to eating leftovers is truly a cause for sorrow!</p>
+<p>The hardship of elementary school teachers' lives not only affects the morale of current teachers but also greatly affects the hiring of new teachers. The greatest pain for elementary school principals in the mainland now is their inability to hire teachers. Some elementary schools are nearing the end of the semester, but teacher vacancies still cannot be filled. This situation is quite common, and its severity cannot be ignored.</p>
+<p>Guangxi Province has always valued grassroots education, and it constantly improves the salaries of grassroots education personnel and adopts a system of requisitioning goods in kind. For example, in some counties, elementary school teachers receive a living allowance of more than 30 yuan per month from the county government and are also entitled to receive 80 jin of rice (some receive 50 or 60 jin), collected from households by the town office. Such treatment makes it difficult to maintain even a minimum standard of personal living, but village and street chiefs often delay the payment of rice, so teachers are unable to solve their food problems and have to borrow from the kitchen. After a long time, the kitchen is also unable to support them, which will inevitably affect the teaching progress of the entire school. Some schools even open their doors in name only but are actually at a standstill. As for counties and cities that do not issue goods in kind but instead issue cash allowances, the situation is often similar. This phenomenon is not unique to Guangxi Province; other provinces are also like this. Here are a few examples to show a glimpse of the situation:</p>
+<p>(1) A teacher from the Suqiao Township Central School in Lingui County reported: "...The problem of living here is difficult to solve. My salary is 36 yuan per month paid by the county government, and I also receive 50 jin of rice collected from various villages. But since February of this year, I have not been able to receive a single grain of rice. Most of my colleagues are locals and can still get help from their families, but I am from another town and am penniless, so how can I survive?"</p>
+<p>(2) A teacher from a central school in Yongfu County reported: "…Our monthly living expenses rely on the government providing a few dozen yuan in salary and on students donating some rice or loaning money, but many poor students cannot afford it. At present, it is not enough to maintain the necessary nutrition. We no longer dare to hope to eat vegetables, let alone meat, and only hope to eat white rice. But because not much rice is cooked, after the last class bell rings every morning and afternoon, the teachers in the classroom, regardless of whether they have finished the lesson, all rush to the dining hall to grab rice to eat. The impact on students' studies and psychology is very great."</p>
+<p>(3) A supervisory official in Liujiang County reported: "...The principal of the central school in the town was dismissed by the county government because the town chief could not issue rice as promised, so he led all the teachers of the school to question the town chief."</p>
+<p>The income of elementary school teachers in Guangdong Province is about 80 or 90 yuan per month for those who are paid well, and only 30 or 40 yuan for those who are paid less. There is also a distinction between "directly affiliated" and "non-directly affiliated" schools. Teaching in "directly affiliated" schools is naturally more likely to receive preferential treatment. In addition, Guangdong also has a "school rice" system, which collects one catty of rice per month from each student, but because the collection methods vary greatly from place to place and there are many difficulties, it is not easy to achieve fairness, so the lives of teachers are still difficult to stabilize.</p>
+<p>Secondly, due to the lack of funds for elementary schools, it is impossible to achieve complete equipment. In some remote counties, in addition to broken-down buildings, there is simply no equipment to speak of. Even newspapers are missing. Teachers are in closed countryside and have no contact with the outside world. They are ignorant of the major domestic situation and international trends. The spiritual pain is no less than the material difficulties.</p>
+<p>In recent years, the Ministry of Education of the Chongqing government has repeatedly issued announcements emphasizing education, promoting national education, and improving teacher salaries. The pronouncements are voluminous and logical, and the educational expenditures are even more considerable. However, the treatment of elementary school teachers, who bear the mission of grassroots education, is still just lip service, with no action taken. How can it be called promoting education? How can it be called making improvements?</p>
+<h3>Cooking Oil on Sale Today: Sugar Purchase Restrictions Relaxed: Oil Stores Merged for Sale to Facilitate Supervision: Each Household Can Purchase 40 Yuan Worth of Sugar with Housing Tax Receipt</h3>
+<p>Regarding the supply of the two daily necessities, oil and sugar, solutions have been found. Oil has been transported from Pudong to Shanghai and will be sold today. Restrictions on sugar purchases have also been relaxed. Details are as follows:</p>
+<p>Cooking Oil</p>
+<p>The Shanghai Cooking Oil Industry Wholesale Office has already allocated 5,500 dan out of the 10,000 dan of cooking oil ordered last month. The remaining 4,500 dan were recently loaded at the Pudong warehouse and transported to Shanghai for distribution to various retail oil stores. It was originally planned to be sold by various oil stores yesterday, but because the procedures could not be completed immediately, permission was granted to continue retail sales today.</p>
+<p>Soybean Oil and Rapeseed Oil Sold Simultaneously</p>
+<p>The method remains the same, with each person limited to half a jin per day. The cooking oil allocated to each oil store must be completely sold out according to the daily sales quantity. In order to prevent retailers from cheating, the office will merge more than 800 retail stores with daily sales volume of more than one dan into more than 300, and send personnel to supervise the sales separately. As for smaller retail stores, an inspection system will be adopted. Citizens are encouraged to report any violations. The oil sold this time is divided into two types: soybean oil and rapeseed oil. Soybean oil sells for 3.6 yuan per half jin, and rapeseed oil sells for 3.1 yuan.</p>
+<p>Sugar</p>
+<p>In order to maintain the supply of sugar in Shanghai, the Sugar Merchants Cooperative Business Office is making every effort to smooth the sugar supply channels. In addition to the more than 60,000 bags of sugar that have already arrived in Shanghai, 500,000 bags of Philippine sugar and sugar stored in Hong Kong have been agreed upon to be transported to Shanghai in batches for supply. The sugar allocation to Class A retail merchants and Class B users will be increased to maintain the legitimate needs of the market. The method for retailers to obtain sugar for sale has been improved, the sales volume has been increased, and it is stipulated that purchasers should distribute it to the attached households in their residences. This will be implemented starting today. The announcement is recorded as follows: "It has been found that in addition to the purchase of sugar with citizen certificates still following the original regulations, regarding the purchase of sugar with housing tax receipts, this office has formulated that it should be distributed based on the number of people in the entire household, naturally including attached households (i.e., three-room tenants). Now that the second phase has begun, in order to popularize the use of sugar for food households, this office will stipulate the following methods starting from the 11th of this month:"</p>
+<p>Sugar Purchase Method Based on Housing Tax Receipt</p>
+<p>(1) The housing tax receipts used by food households to purchase sugar are stipulated on the left and will be stamped with a triangular stamp by the sales supervisor on the blank corner of the receipts at the time of purchase to avoid duplication. A. Those residing in the International Settlement and the Hongkou and West Shanghai areas will still use the current autumn housing tax receipt. B. Those residing in the French Concession will still use the September-October housing tax receipt. C. Those residing in Zhabei will still use the autumn housing tax receipt. Those without housing tax receipts may use household registration certificates. D. This period is limited to purchasing sugar from the second phase. Those who did not purchase sugar from the first phase will not be allowed to purchase it retroactively.</p>
+<p>Each Household Can Purchase 40 Yuan Worth of Sugar</p>
+<p>(2) With the above housing tax receipts, each food household can purchase sugar up to 40 yuan in Central Reserve Bank notes. For the convenience of packaging and carrying, each store is allowed to divide it into four packages of 10 yuan each (including 2% retail tax). Each package contains 2.4 jin of white sugar or 2.6 jin of brown sugar. However, those in Zhabei who purchase with household registration certificates are still limited to 5 yuan per household registration certificate, equivalent to 1.2 jin of white sugar or 1.3 jin of brown sugar.</p>
+<p>Purchased Sugar Should Be Evenly Distributed</p>
+<p>(3) If there are attached households in the household of the person who purchased the sugar with the housing tax receipt, it should be distributed fairly and evenly according to the number of households. There should be no taking advantage. If there is a refusal to distribute fairly, the attached households (i.e., three-room tenants) are allowed to report to this office (23 Tongyun Street, French Concession, telephone 83300) or to the nearby authorities for investigation.</p>
+<p>Retail Stores Sales Volume</p>
+<p>(4) Stores that sell sugar with housing tax receipts have already been designated by this office as either "selling sugar every day" or "selling sugar every other day" based on the amount allocated. Each store should clearly mark "This store sells sugar every day," "This store sells sugar every other day," or "This store sells sugar on odd days" on the storefront for identification. Those selling sugar every day will still sell one-thirtieth of the total amount allocated to them. Those selling sugar every other day will sell one-fifteenth of the total amount allocated to them each time.</p>
+<h3>Silver and Money Businesses Remit Deposit Reserves: Determined and Paid Based on Month-End Balance</h3>
+<p>The Silver and Money Industry Association issued a notice to its member banks and money houses: "Dear Sirs/Madams, According to Article 6 of the Provisional Measures for the Management of Financial Institutions by the Ministry of Finance, 'Financial institutions shall deposit the reserve for payment deposits into the Central Reserve Bank in accordance with regulations.' Also, according to Article 1 of the Detailed Rules for the Implementation of the Provisional Measures for the Management of Financial Institutions, financial institutions shall deposit their payment reserves in the reserve account opened at the Central Reserve Bank in accordance with the following regulations. The amount of fixed deposits and special current deposits shall be more than 5%. The payment deposit reserves for the various deposits mentioned above shall be determined according to the closing balance at the end of each month and shall be made before the end of each month. All member banks and money houses shall comply with this regulation. This notice is specially issued, and it is hoped that all banks and money houses will comply accordingly."</p>
+<h3>The Shanghai Municipal Council Mark Will Soon Be Changed</h3>
+<p>The current Shanghai Municipal Council mark and armband were created in 1870. However, according to the results of the Shanghai Municipal Council meeting the other night, the style will be changed and will soon be announced and implemented. Manpower vehicles in Nanshi are allowed to enter the French Concession. After manpower vehicles from the Public Concession and the French Concession successively entered Nanshi, the traffic between the concessions and Nanshi has become more convenient, which directly and indirectly helps the prosperity of Nanshi. It is learned that vehicles in Nanshi have now been approved by the French Municipal Council and, after obtaining vehicle licenses, are allowed to enter the concession. Therefore, a large number of manpower vehicles from Nanshi have already entered the entire French Concession in recent days.</p>
+<h3>Shanghai Materials Control Committee Reorganized: New Commodity Price Countermeasures Determined: Implemented in Conjunction with Established Currency Policy: All Industrial and Commercial Organizations Ordered to Implement</h3>
+<p>The Municipal Government recently received an order from the Executive Yuan to promulgate the Organizational Regulations of the Central Commodity Price Countermeasures Committee and the draft Organizational Rules of the Local Commodity Price Countermeasures Committee. Considering that the existing Shanghai Materials Control Committee is no longer suitable, a special order was issued to reorganize it in accordance with the Organizational Rules of the Local Commodity Price Countermeasures Committee and to determine the basic guidelines for commodity price management countermeasures as follows:</p>
+<p>Establish the Foundation of Reserve Currency Control</p>
+<p>(1) Commodity price management countermeasures should be implemented in conjunction with the promotion of the new currency system policy. The main purpose is to seek reasonable material allocation management and maintain fair and stable commodity prices in order to stabilize people's livelihoods and increase production. (2) In the New Legal Tender circulation area, in accordance with the established policy of promoting the new currency system, efforts should be made to break the liberalism of the old legal tender and actively establish the controlled economic foundation of the new legal tender so that currency policy and commodity price countermeasures complement each other to form a stable core for commodity prices. (3) In order to stabilize people's livelihoods, it is appropriate to implement a considerable low-price policy. At the same time, in order to prevent materials from flowing to different areas with higher commodity prices, in addition to the necessary military measures, special economic blockade methods should be sought.</p>
+<p>All Industrial and Commercial Organizations Should Implement</p>
+<p>(4) Commodity price countermeasures, with the maintenance of fair prices as the central task, should consider the actual situation in all aspects at any time to maintain fair and stable commodity prices. It is not appropriate to adhere to a fixed low-price policy, which will hinder the smooth flow of materials, encourage the accumulation of hoarding, and even promote the flow of materials to different areas. (5) What should be especially considered in commodity price countermeasures is that the source of materials that have always relied on overseas imports has been cut off. Therefore, we should actively strive to increase production to replace them, and the increase in the production of daily necessities is especially necessary. At the same time, we should thoroughly implement the protection of resources and the conservation of consumption. (6) Commodity price management countermeasures should adopt a key-point approach and gradually promote them. The implementation area should start with major cities. The implementation of materials should be carried out step by step in a practical manner for daily necessities, military supplies, export products, and important materials related to resource development. The objects of management and guidance should be all industrial and commercial organizations.</p>
+<h3>Ineffective Mediation of Rent Leads to Water Shutoff - Landlord Unable to Cover Costs - Tenants Oppose Rent Increase</h3>
+<p>Houses numbered 66 to 76 on Beiling De Si Road (newly built at the intersection of Rue Petain and Avenue Joffre) originally had a monthly rent of 60 yuan per unit. However, due to the landlord's inability to cover expenses, they requested a rent increase from the sub-landlords, which was refused. Consequently, the landlord appealed to the French authorities for mediation. However, the sub-landlords in that area adopted a non-cooperative attitude, forcing the French Municipal Council to suspend water supply starting from the 9th as a warning.</p>
+<p>Mediation Failure</p>
+<p>It is reported that the rent issue in that area was investigated by the French authorities several months ago. The investigation revealed that the landlord was not only unable to profit but was also incurring losses due to high water costs. The tenants' monthly rent of 60 yuan was disproportionately low compared to the value of the 70,000 yuan properties they occupied. Therefore, after research by the French police, it was suggested that the rent per house should be calculated based on the number of occupants, with an increase of 1.30 yuan per person. However, this proposal was rejected by all tenants (most of whom are wealthy Chinese merchants).</p>
+<p>Water Shutoff Warning</p>
+<p>The landlord stated that they could no longer afford the high water costs and requested another investigation by the French authorities, stating that they were unwilling to continue incurring monthly losses. Finally, with the assistance of the French authorities, the water supply to the tenants was cut off yesterday to urge them to increase the rent slightly or bear the water costs themselves. According to an official from the French Concession's Rent Mediation Committee, the authorities' strict action was a warning to those who disobey reasonable mediation.</p>
+<h3>Shanghai Qingxiang Branch Orders the Holding of Township and Baojia Training</h3>
+<p>The Shanghai Qingxiang Branch ordered the holding of township and baojia training. To further strengthen the baojia system, the Shanghai Qingxiang Branch, in addition to the training for township and baojia heads during the Qingxiang campaign, has scheduled another training session from December 20th to December 25th. The Qingxiang Area Offices and Special District Administrations are ordered to implement the township and baojia head training again, aiming to achieve the desired results. It is expected that the baojia system in the Qingxiang area will become even more sound.</p>
+<h3>The Chinese Woodcut Artists Association Issues a Second Call for Submissions</h3>
+<p>And Publishes the "Chinese Woodcut" Monthly Magazine Since its establishment two months ago, the Chinese Woodcut Artists Association has achieved considerable success. It is learned that the association is now issuing a second call for members to popularize woodcut art throughout the country (the charter will be sent upon request). It also publishes a monthly magazine called "Chinese Woodcut," which is known for its exquisite content. The main articles in the inaugural issue include "Chinese Youth and Printmaking" (Zhongshan Yisan), "The Future of Chinese Woodcut" (Luoshen), "Woodcut Lectures" (Wang Yingxiao), "Woodcut Aphorisms" (Takawa Ken), and multiple woodcut masterpieces. It is said to be available for sale from today, priced at 1.40 yuan per copy. Those who love woodcut art can purchase it directly from the association at No. 308 Henan Road, Shanghai, and a copy will be sent to them.</p>
+<h2>Page 5</h2>
+<h3>Alert and Control Measures Already in Place - Baojia Should Pay Attention to the Following Points - Curtains Should be Wider Than Windows - Lookout Towers Should Be Aware of Objects Dropped</h3>
+<p>The baojia offices in all districts of the Public Concession have received an urgent notice from the police station announcing a state of alert and control from today. The General Baojia of the Zhabei District has also notified all Lianbao (joint baojia) to inform their respective baojia heads to pay special attention to seven key points to ensure thorough control.</p>
+<p>Cover Skylights</p>
+<p>(1) During the last drill, most of the curtains in each household were substandard and should be at least one foot wider than the window on each side to prevent light from escaping. (2) Many rooms have skylights that are not covered. Failure to cover skylights negates the effectiveness of other window coverings. Strict attention should be paid to this. (3) Large buildings such as hotels and department stores have many windows, making management difficult. These buildings must be divided into smaller areas, each assigned to a person responsible for covering the windows or turning off the lights upon hearing an alert to prevent chaos. (4) After the street lights are dimmed, only a few newly installed air-raid lights should be left on in the alleys. The minimum number of lights needed should be determined in advance and reported to the General Baojia, which will then inform the police station for approval.</p>
+<p>Lookout Points</p>
+<p>(5) During air-raid drills, announcements are broadcast by radio stations, so each baojia office must have a radio (borrowed from residents if not purchased) to receive orders and relay them to the jia heads and residents. (6) During the previous air-raid drill, one model bao was established in each Lianbao. Two more model bao must be established quickly in addition to the existing one. (7) The method for establishing lookout towers was explained in the previously issued Provisional Guidelines for Air Raid Lighting Control. Previously, the focus was on covering the lights in each household, but now, attention must also be paid to the bomb proxies dropped from the aircraft during the air-raid drill. The total number of items must be identified, the location of each noted, and retrieved as possible.</p>
+<h3>The Japanese Authorities in Shanghai Hold a Commemorative Tea Party</h3>
+<p>Today at the Cathay Hotel</p>
+<p>To celebrate the first anniversary of the Greater East Asia War, the Japanese authorities in Shanghai have organized an implementation committee to hold a series of commemorative events. Minister Tajiri of the Japanese Embassy serves as the chairman of the committee. The committee has scheduled a commemorative tea party for Friday, the 11th, from 3:30 PM to 6:00 PM on the eighth floor of the Cathay Hotel on Nanjing Road. A film, "Airborne Paratroopers," will be screened. The committee has sent invitations to officials from Chinese and Japanese organizations and prominent figures in the city to attend the grand event.</p>
+<h3>Temporary Measures for Reporting Corruption in the Shanghai Municipal Government</h3>
+<p>The Shanghai Municipal Government has formulated and promulgated the "Temporary Measures for Reporting Corruption in the Shanghai Special Municipality" and instructed all departments to comply, in order to rectify official conduct, severely punish corruption, and clean up the government. The measures are as follows: Temporary Measures for Reporting Corruption in the Shanghai Special Municipality. 1. Anyone, whether a citizen or a public official, may report to the Mayor any public official of this Municipal Government and its subordinate agencies who engages in fraudulent practices, private dealings, acceptance of bribes, or any other illegal or corrupt conduct, provided that the facts are verified. 2. Reports will be accepted in any of the following cases: a. Reports from citizens; b. Reports from public officials; c. Reports from investigators sent by the Municipal Government. 3. The reporting party must provide their name, place of origin, age, address, and occupation in the reporting documents for verification. Anonymous, fictitious, or false addresses will not be accepted. 4. This Municipal Government will keep the reporting party strictly confidential and provide protection when necessary. 5. The reporting documents must list the true facts and should not rely on rumors or personal attacks. Documents should provide the source of the information or provide supporting witnesses or evidence. 6. If the reported case is verified by the Municipal Government, the reporting party will be rewarded based on the severity and scope of the case, as follows: a. Citizens who report truthfully will receive a bonus (the amount to be determined on a case-by-case basis). b. Public officials who report truthfully will be rewarded with a promotion. 7. Reporting parties who intentionally make false reports to cause others to be subject to criminal penalties will be punished according to the severity of their actions, as will those who give false evidence. 8. The reporting documents should be sent directly to the Mayor's Office to ensure confidentiality. 9. The Municipal Government may designate a special commissioner or establish a committee to investigate and handle the reported cases. 10. Once a case of public official corruption is reported, investigated, and verified, it will be immediately transferred to the court for strict handling. In cases of significant severity, the Municipal Government will publicly announce the name and case. 11. These measures may be amended at any time. 12. These measures will take effect on the date of promulgation.</p>
+<h3>Lecture on Insect Pests and Prevention Methods</h3>
+<p>The Shanghai YMCA's agricultural lecture series has already reached its second installment. The attendance at each lecture has been enthusiastic. This week (the 12th) marks the third lecture, and Mr. You Yinong, Director of the Agricultural Science Department of Jinling University, has been invited to speak on insect pests and prevention methods. The lecture will be held at 3:30 PM in the auditorium of the YMCA at the Eight Immortals Bridge. Admission is free.</p>
+<h3>Community Service</h3>
+<p>Notice: On the 21st of last month at 4:00 PM, I found a large, round, white-dialed men's wristwatch with a yellow leather strap under a seat on Route 20 tram heading towards Zhaofeng Park. I handed it over to ticket seller number 551. I did not see the brand. The owner can claim it from the ticket seller. Respectfully, Xia Yuanqi.</p>
+<p>This publication has received three cotton clothing vouchers from Mr. Taiyuan of the Jiuda Clothing Factory, requesting that they be distributed to the poor. They have been entrusted to the Shanghai Poor and Sick Relief Association for distribution. We thank Mr. Taiyuan for his generosity.</p>
+<h3>Brief News from All Sectors</h3>
+<p>The Inauguration of the Nanguo Restaurant. The Nanguo Restaurant, located at the intersection of Yunnan Road and Nanjing Road, was jointly established by wealthy businessman Mr. Li Yushu, Cantonese cuisine master Mr. He Yuechi (formerly of the Weiya Restaurant), his son He Xuechen, and others including Huang Ruilin, Liu Yongxi, Jian Yimin, and Wu Fuhua. The restaurant has gathered experienced professionals and is equipped with modern facilities. The inauguration ceremony was held yesterday, and the official opening is scheduled for the 15th.</p>
+<p>Taiping Tricycle Company. Taiping Tricycle Passenger Car Co., Ltd. was founded by pioneers in the city's transportation sector such as Yao Yongling, Zhang Zongqi, Fan Yiwei, and Wu Guodong. The company specializes in renting, manufacturing, repairing, and selling tricycles. The telephone number is 90000. The grand opening is scheduled for the morning of the 12th of this month. Initially, 200 tricycles for business travel will be available.</p>
+<p>Sports News</p>
+<h3>Closing of the Middle School Volleyball League - Finals Tomorrow Night at the YMCA - Group A: Weitada vs. White Team for Championship</h3>
+<p>The Middle School Volleyball League has reached its final stage. The finals of the four groups will be held tomorrow. At 2:00 PM, in the school group, Zhengguang will compete against Peidong for the championship at Binhai Middle School on Nanyang Road. Starting at 7:30 PM tomorrow night, there will be three final matches for Groups A, B, and Women's at the YMCA Gymnasium at the Eight Immortals Bridge. In Group B, the Public Works Bureau will face CW; in the Women's group, Weitada will face Minyou; and in Group A, the White Team will battle Weitada. All teams are evenly matched, and the winner is yet to be determined. Admission to both venues is free, and spectators are welcome. On Sunday, there will be the final four matches for the Women's and Group B at Binhai, the outcome of which does not affect the overall results. The schedule for tomorrow is listed below:</p>
+<p>Zhengguang vs. Pudong (School Final) 2:00 PM</p>
+<p>Huiming West vs. Haixing (Group B) 2:30 PM</p>
+<p>White Goose vs. Zhendan (Women's) 3:30 PM</p>
+<p>(Above at Binhai)</p>
+<p>Public Works Bureau vs. CM (Group B Final) 7:30 PM</p>
+<p>Weitada vs. Minyou (Women's Final) 8:15 PM</p>
+<p>Weitada vs. White Team (Group A Final) 9:00 PM</p>
+<p>(Above at YMCA)</p>
+<h3>Donglian Cup Football Tournament - Hualian to Battle Xilian</h3>
+<p>To be Held Next Weekend on the 20th</p>
+<p>The Shanghai Branch of the East Asia League China General Association's Donglian Cup Charity Football Tournament had its first match between the East China Charity Navy last week at Jiaozhou Park. The second match was originally scheduled between Lianyi and the Charity Navy. However, according to the secretariat of the Western League, the match has been canceled. Now, Hualian will play against Xilian. The match is scheduled for 3:00 PM next weekend (the 20th) and will still be held at Jiaozhou Park. The Hualian team will be composed of the best players from both the East China and Lianyi teams. The Xilian team will consist primarily of the Charity Navy players, supplemented by players from the Portuguese Chamber of Commerce, St. Francis, and Jewish teams.</p>
+<h3>Shanghai Open Basketball Tournament - Limited to 40 Teams</h3>
+<p>Registration for the Shanghai Open Basketball League, jointly organized by the Shanghai Special Municipality Sports Association and the YMCA, began yesterday. The league is divided into Men's Groups A and B and a Women's Group, limited to 40 teams. The deadline for registration is next Monday (the 15th). Registered teams must submit a list of all players and photographs to the organizing committee before the start of the league and pay a registration fee of 50 yuan and a deposit of 50 yuan, which will be forfeited if the team withdraws from the competition. Each team is limited to 12 registered players, and no additions or changes may be made after registration. Unregistered players are not allowed to participate in the competition. The competition rules will follow the nationally applicable basketball rules for men and women. Men's games will follow international rules, and women's games will follow American rules. All matches will be held in the YMCA Gymnasium at the Eight Immortals Bridge.</p>
+<p>Business News</p>
+<h3>Tight Monetary Policy Remains - Chinese Stocks Fall Across the Board</h3>
+<p>The Chinese stock market experienced a widespread decline yesterday due to the continued tight monetary policy. The recent surge in prices prompted many to sell and cash out, intensifying the downward trend. Despite activity from new and old investors, the momentum has waned. The approaching Lunar New Year is also a factor in the decline. The outlook is unlikely to improve easily. The decline was most pronounced in the public utilities sector, with Chinese stocks once falling to the 40 yuan level. Zhabei Water and Electricity fell by 2.5 yuan. The textile industry also suffered a setback due to falling yarn prices. Wing On Textiles fell by nearly 40 yuan. Dasheng Mills Nos. 1 and 3 saw selling pressure and bucked the trend, maintaining strength. Small-denomination stocks also softened again. The department store sector was quiet, with Xinhua stocks trading flat. Xinhua new shares plunged by 6 yuan. The Great China Match also rebounded slightly by 2.5 yuan. Nanyang Tobacco plunged by 4 yuan, falling below 130 yuan. Huacheng Tobacco was at 355 yuan. In the new pharmaceutical sector, only Five Continents Pharmacy rose by 5 yuan, while most others retreated. Xinyi fell below 300 yuan. Minyi fell by 6 yuan to nearly 90 yuan. Zhongfa fell by 0.25 yuan. Xinya fell by 2 yuan. The transaction price for Guohua Bank was between 160 and 170 yuan. Meilin Food had buyers at 1,100 yuan. In the cultural sector, Zhonghua alone rose by 2.5 yuan, while Commerce and World both declined. Trading was weak. The market price list for today is recorded below.</p>
+<h3>Government Bond Prices Fall</h3>
+<p>Although there has been no market for government bonds recently, prices have fluctuated from time to time, but these are not standard prices, as only a very small number of people are doing spot transactions. Therefore, market prices vary greatly from place to place and from building to building. The highest price traded within the day was slightly over 60 yuan, and the lowest was 55 yuan. Yesterday's price was around 57 or 58 yuan, not far from the ceiling price of 50 yuan.</p>
+<h3>There is Little Demand for Gold Ornaments</h3>
+<p>Yesterday, the gold ornament retail price at the Dahsin Gold Shop and other shops in the city was 3,350 yuan per tael, unchanged. The buy-back price was reduced by about 300 yuan. The price difference was significant, indicating a further decline in the unofficial market price among traders. The price opened at 3,270 yuan in the morning, down 40 yuan. The situation was characterized by little demand. By noon, it was difficult to sell even at 3,200 yuan, a difference of 1,100 yuan from the previous day. Transaction volume was low. The price of silver ornaments remained at 16 yuan per tael, with traders buying and selling at 18.5 and 19 yuan, respectively. The money changers' association interest rate remained unchanged at 1.4 fen.</p>
+<p>Military scrip remained stable and firm. The inter-dealer price was 5 yuan, 5 jiao, 5 fen, 3 li and 5 hao. The retail selling price at banks and small money changers remained at 5 yuan, 5 jiao, 6 fen, with the buy-back price also rising to 5 fen.</p>
+<h3>The Cloth Industry is Busy with Registration, With Very Few Transactions</h3>
+<p>Factory Cloth Yesterday, the cloth market saw little trading as traders were busy registering inventory. Sellers continued to release stock, causing the market to soften. 16-pound Earth brand coarse cloth was 253 yuan, 14-pound Earth brand was 222 yuan, 9-pound Xinhua brand was 138 yuan, and 8-pound Zhenzhong brand was 135 yuan. In the morning market, 12-pound Earth brand fine cloth traded at 188.75 yuan, and later traded at 188 yuan. The price of Dapeng Fine Cloth also needed to be between 188 yuan and 9 yuan. The price of peach-colored ladies' poplin fell to as low as 295 yuan, closing at 302 yuan at noon. In the afternoon, the price rebounded to 306.5 yuan due to the excessive decline.</p>
+<p>Eastern Cloth Yesterday, the downward trend continued. 12-pound Dragon Head fine cloth new orders were 191 yuan, and bank orders were 192.75 yuan, a further decline of 0.25 to 0.5 yuan per bolt. Colorful Ball was 193.25 yuan, Flying Fish was 191.5 yuan, Yang Crane was 191 yuan, Trumpet was 191 yuan, and Five Blessings was 190.5 yuan. Mid-range brands remained relatively stable. However, the Four Gentlemen beaverteen red order had too many floating quantities from retail customers, causing it to decline despite attempts to increase the price. The final price traded at 7.63 yuan, a decline of 7 fen.</p>
+<h3>Dried Persimmons Suddenly Surge in Price in Beijing</h3>
+<p>Dried persimmons prices have suddenly increased in Beijing to 350 yuan, climbing by 40 to 50 yuan due to rising production costs. This has caused Shanghai merchants to keep to their stock.</p>
+<h3>Sunflower Seeds Become More Active</h3>
+<p>Sunflower seeds were initially loose in Shanghai because the production price was more appropriate in Shanghai. However, as sales became more active, the market tightened. Yesterday, the price was 450 yuan. Black melon seeds were quiet and inactive. Although merchants called for higher prices, there was little demand.</p>
+<h3>Daily Necessities Rise Sharply</h3>
+<p>The Guild Forbids Non-Industry People from Entering the Market Recently, the prices of cigarettes, matches, and soap have risen sharply. The guild, concerned about the endless rise in prices and its impact on the livelihoods of ordinary people, has banned non-industry people from entering the market since yesterday. However, common merchants still buy and sell outside the market, and prices remain high. The price of the Da Yang brand is 9,400 yuan, the Lao Dao brand is 8,400 yuan, the Pinghai brand is 8,300 yuan, the Xiannv brand is 7,500 yuan, and the Wuhua brand is 6,600 yuan. Japanese Jin Qiang brand cigarettes are 3,100 yuan, Jin Dalou brand is 3,550 yuan, Zhinan brand is 2,450 yuan to 2,500 yuan, Quanlu brand is 3,150 yuan, and Guoyan Jinzita brand is 6,400 yuan. The prices of daily necessities are Beautiful brand matches 3,500 yuan, Phoenix brand 3,400 yuan, Guben soap 540 yuan, Baixiangmao soap 485 yuan, Huangxiangmao soap 495 yuan, Scissors soap 500 yuan, and White Rice foreign candles 380 yuan, all with varying degrees of firm increases.</p>
+<h3>New and Old Steel Plate Transactions are Both Clear</h3>
+<p>There is extraordinarily minimal transactions of steel plates, 2.5-cent to 7.5-cent plates and old oil-pool plates. Shipyards and ironworks are hardly drawing down. The steel market has dropped off into depression. Yesterday's price for 2.5 to 7.5-cent plates was 20,000 per ton and thin patterned plates was 18,000 yuan per ton (due to the potential for supplies to run out). Old steel from oil ponds was 14,000 yuan per ton. 2,000 lb black billets were 16,000 yuan per bundle.</p>
+<h2>Page 6</h2>
+<p>Free Talk</p>
+<h3>Thoughts on "Jiang Zhou Weep Blood Record"</h3>
+<p>(1)</p>
+<p>— Mei Bo</p>
+<p>"Jiang Zhou Weep Blood Record" was originally called "Roar, China!". It is said that it has been performed twice in Shanghai before, but unfortunately, I didn't have the opportunity to attend, so I can't compare the impressions of the two. This time, it emphasizes the anti-British and American aspect, and it seems that many contents have been deleted. Some scenes are therefore inevitably monotonous. For example, in the second scene of the first act, the American Aslai quarrels with the boatman and even drowns. The whole conversation is only five or six sentences, and the performance is at most five minutes. It stands to reason that it would be enough for the captain (played by Yan Jun) to say a word, but now it is made into an independent scene, which seems too uneconomical. Maybe that's how the original work was; that would be the original author's negligence.</p>
+<p>Looking at the whole play, I think the first and second acts are better than the other two acts. Maybe this is my preference. I always think that an artistic work, rather than inserting many speeches, would rather appeal to the audience's intuition, move their hearts, and make them completely intoxicated by the work. For example, in the first act, there are many satirical dialogues, which are very clever. The audience will often smile knowingly when they hear it. The dialogue of several boatmen in the third act is intimate and humane, and it is also worthy of our careful aftertaste.</p>
+<p>In terms of directing, Mr. Li Pingyi has put in a lot of effort, but I think it's a bit "poor" for movie stars to perform dramas. An obvious fact is that among the stars who participated in this performance, those who took drama as their "mother's home" generally performed better than the real old stars. Doesn't this just illustrate the particularity of drama?</p>
+<p>As for the individual acting skills of the actors, I especially like Yan Jun's captain. Yan Jun's lines are extremely intonated, enough to express the captain's invincible power. Lu Shan's lines are also very smooth, but unfortunately, there are not many scenes. Zhang Wan, who plays the wife of Boatman B, always grasped the consistent emotions, which is commendable. Xu Li's old boatman is not tepid and stops at the right time, which seems to be better than the one who played the old man (I didn't see Jiang Ming). The most inexplicable character on the cast list is Lao Fei. It seems that it is difficult to find such a knowledgeable boatman in the reality of China. As for the Taoist Yin (seems to be Zhou Wenbin that day?), the Huang translator, the characters are not as prominent as the previous ones, so I will not discuss them here. Unmanned</p>
+<p>(II)</p>
+<p>— Unmanned</p>
+<p>"Jiang Zhou Weep Blood Record" is adapted by Xiao Ping based on the original "Roar, China!" by the Soviet futurist poet Cui Lai Tai Jiaofu, directed by Li Pingqian. The whole play has four acts. The first act is a warship, the second act is the Taoist Yin's office, the third act is the boatman's association, and the fourth act is the cemetery and execution ground. The performers, in addition to Lu _, are mostly actors from "Zhonglian".</p>
+<p>The story took place in Wanxian in June 1924. Because of a boatman, Ji Changxing, a quarrel unfortunately capsized the sampan and drowned the poor American gentleman, Ah Kanlai, who did not know how to swim. So, the _ _ people put forward an "ultimatum" and demanded that the Chinese authorities accept four harsh conditions. One of the conditions was: Two innocent boatmen must be executed without legal trial.</p>
+<p>I remember in the autumn of September 22, I watched the "Roar, China!" performed by the Shanghai Drama Association at the Golden Grand Theater, directed by Ying Yunwei. The cast was tight and strong, and the quality of the script was sound, so I was very satisfied. At that time, I was only sixteen years old, and my emotions were overflowing. For the last scene of the play, the execution of two boatmen, I almost really cried in the theater!</p>
+<p>This time, I watched "Jiang Zhou Weep Blood Record" again. Ten years have passed. In the past ten years, I have groped in the struggle of being oppressed, I have struggled in a painful environment, and I remember "Roar, China!".</p>
+<p>From the first act to the fourth act, I was always surrounded by serious emotions. Here, there is blood, there are tears, and there is a young man's jumping heart.</p>
+<p>The directing technique is quite easy. In terms of actors, Jiang Ming's Lao Fei and Yan Jun's Captain are the most successful. Jiang Ming's dialogue with Daoyin in the second act is truly "tearful", and Yan Jun's consistent foreign-style arrogance vividly portrays the outlines, personality, and actions of foreigners. Others such as Lu Yuzhi's boatman, Xu Li's old boatman, Gu Yelu's Huang translator, Zhang Wan's boatman's wife, Zhou Weibin's Daoyin, and Lu Shan's captain's wife can also be in line with their identities and are very stable. Hong Jingling, Qin Tong, Zhou Qi, Xu Xinyuan, Cang Yinqiu, Guan Hongda, Han Langen, Zhang Zhizhi, Chen Qi, etc., did not have many scenes and did not perform well.</p>
+<p>The sets and props are exquisite. The waves in the second scene of the first act and the floating clouds in the third act are very cleverly lit, and the effect is very good. For example, the sound of the wind, the sound of throwing anchors, and the sound of dogs barking are all like the real thing.</p>
+<p>"Jiang Zhou Weep Blood Record" is a special harvest for the drama circle this year.</p>
+<h3>Chen Dawei Goes to the Old Capital</h3>
+<p>Young actor Chen Dawei performed in the Tianchan Theater last month and made his debut. His reputation was good, and the media regarded him as a prodigy in the Peking Opera world. Since the performance at Tianchan ended, his friends Hu Guoqiao, Lou Longhou, and Ping Opera artists Su Shaoqing, _ Huaguanzhu, Zheng Guoyi, and Fan Shi Ren have all advocated that Chen should go north to observe, learn from teachers and discuss, in order to further his studies. It is reported that Chen has decided to leave Shanghai for the old capital on the 11th of this month to specialize in Peking Opera, learn from teachers, and sing. He plans to form a troupe and return to the south in a year to meet with the people of Shanghai again. With Chen's talent and perseverance, he will surely shine in the Peking Opera world in the future. On the 6th of this month, the Aurora University Winter Clothing Solicitation Committee held a charity Peking Opera concert, and Chen was invited to perform the play "Battle of Taiping" as a farewell memorial. The colleagues of this newspaper set up a banquet for Chen to bid him farewell and strengthen his courage. It is said that the famous amateur actor Fan Shiren will accompany Chen to the north.</p>
+<h3>Desires After the Resumption of Publication of Shen Bao</h3>
+<p>— Huang Jingwan</p>
+<p>I have lived in Shanghai for forty-nine years. I have always loved reading newspapers and books. After work, I would always bring a newspaper back home to read carefully in the quiet of the night. After reading, I would classify and clip them, and I have done this every day for thirty years without interruption. Later, due to the war and environmental factors, they were all lost in fires, which I find very regrettable. Shanghai Daily's Shen Bao was the earliest newspaper. I have been friends with it for more than thirty years, and the benefits I have gained from it are countless. Therefore, Shen Bao is nothing less than my good teacher and helpful friend. Now that it has resumed publication, I am both celebrating the return of my good teacher and helpful friend to my side and briefly outlining my hopes, hoping that we can encourage each other.</p>
+<p>(1) To take the establishment of equal personal rights as the principle, promote genuine friendship between China and Japan, and fulfill the mission of restoring culture.</p>
+<p>(2) To study the way of peace in order to stabilize the lives of the entire population of Shanghai.</p>
+<p>(3) To promote the inherent culture of the East and serve as the center of Asian culture.</p>
+<p>(4) As the most historical newspaper of the current era, Zhong Bao should seize the opportunity to fulfill its duty of publicity.</p>
+<p>(5) All members of the company should be united, friendly, and cooperative, jointly seeking the development of the newspaper industry and promoting the welfare of the people.</p>
+<p>(6) To temper each person's mind and body and practice the New Life Movement.</p>
+<h3>Sharing the Same Boat in Storms</h3>
+<p>— He Jia Zhi</p>
+<p>(2) The Enemy</p>
+<p>Huang Long thanked him. The father asked Wang Shun where he was. The helper pointed and said, "It's just ahead. There's a glass lamp at the door with red characters written on the glass. A big character 'Wang', and the two smaller characters 'Shun Xing'. Do you recognize the characters?" Wei Cheng said from behind, "I recognize the characters. Okay, we'll go ourselves, thank you." Wei Cheng said and walked ahead of Huang Long. The shops on both sides of the street were closing, blocking the meager lamplight from the doorways with their doors. The two stumbled past, one foot high, one foot low, until they reached the crossroads. Huang Long raised his hand and slapped his head. Wei Cheng turned around and asked, "What are you doing?" Huang Long said, "What Wang Shun Xing, Li Shun Xing, it's actually Wang Crazy's teahouse, I remember now. Turn north, I recognize it." Huang Long rushed ahead of Wei Cheng, turned the corner, and laughed, "It's just ahead, no need to look at the characters on the lamp anymore. I've fought here before." He walked a few steps past, and Wei Cheng still looked up to take a look. Sure enough, there was a lamp, but it wasn't lit, and it was impossible to tell what was written on it. He walked in from a threshold where half of a table was under the eaves and half of the table was inside. He suddenly realized that the facade of this Wang Shun Xing Inn was a teahouse, and the inside of Wang Crazy's teahouse was the Wang Shun Xing Inn.</p>
+<p>Huang Long was in front, walking under the dim wall lamp, leading Wei Cheng into a glass door. The glass was very bright, so bright that you could see thirteen or fourteen plasters plastered all over the cracks. Huang Long nodded to the person inside the door. An old man sitting at the counter came to greet them. Huang Long said, "We want a room, any number of beds will do." The old man said, "Yes, yes, yes." He led them to a room behind a screen. Huang Long said, "Where's the lamp?" The old man said, "Coming, coming, don't be in a hurry, guests. Where are you from?" Huang Long said, "We were gambling during the day, we came from the gambling place." The lamp came, illuminating the room, which had only two beds. Huang Long went to push open two short windows to take a look. It was a narrow alley, and the lamplight reflected onto the wall outside the window. Wei Cheng kept saying, "Very good, very good, are you the owner? We'll go get dinner and come back." The old man laughed and said, "Yes, I'm Wang Crazy, but I'm not crazy at all. That's what people call me, so that's what I answer to. If the guests are going out for dinner, don't worry about not finding a place to eat." (239)</p>
+<h3>Memoirs of the Defeat in Malaya （）</h3>
+<p>— Lieutenant General Percival's Memoirs</p>
+<p>Memoirs of Lieutenant General Percival, Former Commander of the British Army in Malaya</p>
+<p>The campaign to capture Malaya and Singapore was our first objective in the Greater East Asia War and also the greatest achievement of the year. After the fall of Singapore, Britain began the first step in a complete retreat in East Asia, and we also took the first step towards a brilliant victory. Before the war, the United Kingdom and the United States regarded this as one of their strongholds and boasted that the defense was very complete. However, before long after the declaration of war, my brave soldiers had completed the desperate "landing in front of the enemy" on the east coast of the Malay Peninsula, such as Singora and Kota Bharu; furthermore, in Slim, Jitra, and Kukup, they continued to repel the stubborn resistance of the enemy, regardless of the severe heat. Or they went deep into the untouched wilderness forests. The 1,100-kilometer distance to Singapore (which is the same distance between Tokyo and Shimonoseki) was breached in a short period of only fifty-five days. The advance was like a hot knife through butter, and the historic capture of the fortress, including the siege of Singapore, was completed in seventy days! It has been exactly one year since the war began. Lieutenant General A.B. Percival, the surrendered commander of the British Army in Malaya, published the following full text of "Memoirs of the Malayan Campaign" as a prisoner of war in a certain location. As Percival said, "The defense of my car has reached the ultimate state of perfection." In this impregnable British position, my loyal generals actually completed the landing operation. This article describes this point vividly, which is worthy of our attention. In addition, the fierce fighting of the Tobi unit in the Kota Bharu area, the "breakthrough" of the Saeki and other units on the Jitra line on the Kedah line, and the gradual defeat of the enemy forces after the naval mobile units and air force attacked the most stubbornly resistant northern part of Kukup area were all vividly described in this article. This path of the enemy's retreat is the scroll of our victory. Looking back on the past, we must strengthen our determination to destroy Britain and the United States.</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.12.10.html", "next": "1942.12.12.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

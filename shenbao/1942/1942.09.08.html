@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.09.08 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 457 - 4924596</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>德方宣佈佔領　諾弗洛西斯克港　蘇聯有力部隊大量增援　斯達林前線展開反攻</h3>
+<p>德元首行營七日海通社電　德軍司令部昨晚發表特別文告稱、黑海沿岸之諾伏洛西斯克業已陷落、</p>
+<p>柏林六日哈瓦斯社電　官方頃發表特別公報稱、「黑海沿岸紅軍耍塞諾伏洛斯克城及其港口、巳爲我軍佔領、此項重大成就、係我巴頓·烏爾丹堡、弗朗古尼亞·及赫森各部隊數日來在羅馬尼亞軍隊協助下不斷苦戰之結果·紅軍曾在該城四周死力抵抗、查自塞伐斯托波爾港陷落以還、　港爲蘇聯黑海艦隊唯一可利用之海軍港云。</p>
+<p>熊城七日同盟社電　强大之蘇聯增援部隊、據報告已折斯達林格勒前綫、德方指揮部預料、紅軍得援後、將作堅强抵抗、目下德軍已將紅軍以猛烈砲火掩護下之反攻擊退、反攻地區在伏爾加河及頓河之間、新增軍隊爲機關槍隊十師團、坦克車隊七旅、</p>
+<p>瑞典京城二十七日哈瓦斯社電　德蘇戰爭巳屆第六十四星期、此時足資紀念者、厥爲德軍佔領黑海重耍港口諾伏洛西斯克、惟該港之陷落、較之斯達林城爭奪　戰猶屬次耍性質、斯達林城爲南部戰區之關鍵、二十四小時以來、該處戰鬥之猛烈實爲前所罕見、德方昨承認蘇聯方面已自不知何處調到大批生力軍、並已於上星期六發動反攻、其猛烈情形亦爲前所未有、反攻地點係在斯達林城北面、其兵力約有步兵十師及戰車七　、星期六及星期日、兩軍惡戰竟日、此次反攻雖謂已被遏阻、但戰區已成修羅塲、其驚心動魄之慘狀、較之上屆歐戰中最可怖之戰塲無甚軒輊、據蘇聯方面昨日宣稱、德軍在斯達林城西南之攻勢、共用戰車一百餘輛、步兵四萬人、轟炸機一百五十架、平射砲多尊、迄未獲得何種結果、惟亦未緩和其攻勢、莫斯科方面承認戰局仍甚嚴重、而德國負責方面咋亦聲明、該國軍隊迄未攻入斯達林城、外傳守軍　擬逃過伏爾加河之說、亦經認爲不確云、</p>
+<p>柏林七日海通社雷諾伏洛西斯克陷落後、巳使蘇聯失却黑海艦隊之最後根據地、至仍在蘇聯　手中之都浦斯港與巴統港、則因地形關係及設備不全、蘇軍未能利用之停泊巨型戰艦、諾伏洛西斯克有一海灣、深十五公里、闊十一公里、終年不凍、且有長約四公里之現代港務設備、該城人口十五萬、煉油廠及其他工處林立、故在經濟上頗爲重要、此次德羅聯軍攻入該城並非第一次、前在一九一八年十月十日英法義日四國之艦隊會駛入該港、一九二〇年反布爾雪維克革命失敗後台　金將軍所率領之白俄羅斯軍隊、會自諾港登船逃逸、該港建於一八三八年、北高加索之行政官署亦設在該成、</p>
+<h3>日機空襲衡陽　零陵寶慶同時被襲</h3>
+<p>日空軍根據地七日同盟社電昨晨拂曉、日機空襲湖南省之衡陽零陵及寶慶空軍根據地、共計四次、日機未遇抵抗、美機一半以上被擊毀、僅在衡陽上空遇美機一架、該機即向雲端逸去、九日三日日機襲桂林及零陵時、擄官方宣布、美機損失七架、現證　爲十架、同日江西省某處、美機亦被擊落一架、</p>
+<h3>孟買市民　遊行示威</h3>
+<p>里斯本七日同盟社電　據路透社孟買電、孟買市內六日傍晚民衆再度遊街示威、市內一三處同時　起、電車公共汽車因遭民衆以石子擲擊、均告停駛、警官向羣衆開槍、並在十字路口對麕集之民衆投擲催淚彈、騷亂達二小時、民衆始行四散、當時有二人負傷、二十人被捕、</p>
+<p>斯城外圍鏖战德軍攻勢受挫</p>
+<p>莫斯科七日同盟社電　蘇聯情報局午夜宣佈、斯達林城西北西南及高加索方面、本月六日仍在激戰中、</p>
+<p>柏林七日海通社電　海通社訪員咋夜自軍事負資方面探悉、蘇軍以所有後備兵力作戰、始獲在斯達林格勒某某數點阻拒德軍之進展、昨日斯城郊外、自朝至晚雙方短兵相接、展開白刃戰、相持不決、蘇軍在斯城北面之攻勢尤爲猛烈、計有步兵十師及坦克車七旅、拼力作戰、其目的乃欲阻止德軍坦克車隊沿伏爾加河間南面之進展、但蘇軍遭遇德軍砲兵及飛機之轟擊、終未獲逞、是役搫毀蘇坦克車不下八十四輛、數處地形崎嶇不平、致德軍不能以重砲推進、另調步兵及工兵爲先鋒、掃除敵軍抵抗巢穴、故未能作迅速之進展、羅馬尼亞軍隊作戰英勇、冒猛烈砲火突入敵軍陣地、同時德機羣迭在斯城一帶轟炸其防禦工程及北面之鐵路與公路、</p>
+<h3>岩崎大佐廣播</h3>
+<p>東京七日同盟社電　此間廣播電台於本日下午播送日駐華派遣軍報道部長岩崎大佐之播音演說、題爲「關於浙贛作戰之種種」、茲錄其演詞如次、本年六月至七月、華中雨量特別之多、揚子江屢有決潰之虞、大江南北河川、迭次泛濫、平地化城沼澤、人畜及農作物損失慘重、七月中旬起、華中炎暑、為數十年來所罕見、當斯時也、正進行漸贛作戰、前後歷時四閱月、派遣軍自大東亞戰爭勃發以來、在華中華北並將在華甫活潑展開進攻作戰、五月中旬起、對第三戰區進行一進攻作戰、第三戰區之地位、豐於農鑛產物、尤其在地理上、接近南京上海、且被重視爲渝方之接濟路、日軍於秘密中準備、於五月中旬自杭州寗波方面突然開始行動、各處猛烈進擊、於金華蘭谿一帶、對守軍數師、予以打擊、繼續冒雨進搫、遂佔據第三戰區根據地上　、同時在南昌附近準備中之各部隊爲協九作戰起見、呼應浙東方面戰事、一度開始進攻、縱橫於洪水爲災已化為大湖沼之江西原野、予第九戰區以打擊、兩日軍隊進行貫通浙贛鐵路之作戰、東自上饒方面西進之部隊與自東鄉方面東進之部隊、於七月一日在橫峯完成貫邇作戰、邇來兩軍成功麗水溫州攻陷作戰、松陽作戰、並於各該地附近、實施作戰、予守軍以致命打擊、並將各種軍事設施毀滅、特別値得奉告者、爲澈底破壞對日空襲根據地衢州麗水等飛機塲、以及破壞浙贛鐵路、此可謂本作戰第二目的、蔣以各方面實施之進攻作戰、尤其漸東作戰之規模宏大、認爲日軍進攻至某種程度、則將退守舊陣地命顧祝同先守金華蘭谿、再死守衢州附近、但在日軍猛攻之下、即告潰滅、其後竟手足無措、完全喪失如長沙作戰當時之反攻勇氣、由此亦可見本作戰對此次浙贛作戰、其規模之宏大、時間之長久、爲歷來進攻作戰所未見者、又此次作戰對該戰區之居民、並予以深刻之影響、但欲依然確保攻陷之廣大地區、在作戰上爲不可能者、因此達到作戰後、即於八月十九日起、爲整理戰綫開始撤退、而此次撤退與過去僅退至原有陣地不同、蓋須整頓有利且適當之新姿態、以便隨時防止第三戰區之再起、於此點上具有新之意義、派遣軍將士、今日繼續作戰、向完成作戰目的之途邁進、</p>
+<h2>Page 3</h2>
+<h3>羅國矢忠軸心　政策始終不變　寤寐不忘收復失土　東綫參戰所獲幾何</h3>
+<p>丘羅馬尼亞京城六日哈瓦斯社電　內閣總理安托納師古將軍頃乘秉政一週年之便、發表告國民　、略謂、余感謝上帝、使余　導羅馬尼亞軍隊在東綫向　利夕途邁進、我軍現正與德　　肩作戰、以淸算吾人之血賣、此乃歷史上最恐怖之戰爭人類文明存亡、唯其結果是視、吾人巳全力以赴、但因去冬發生種種困難、致吾人所作努力未能有所收獲、情勢若此、吾人務須處以鎮靜、　節衣縮食、俾日後無人受困、而使我軍繼續履行其職責、</p>
+<p>羅馬尼亞京城六臼哈瓦斯社電　內閣協理兼外長米契爾安托納師古多奈斯哥頃在此間發表演說、闡明政府當前政策、略謂羅馬尼亞政府對於軸心政策亦步亦趨、同時並與瑞士·土耳其·法國·丹麥·葡萄牙·芬蘭瑞典·保加利亞·克羅　及斯洛伐克邦等、維持最誠摯之關係、我國外交政策、係全國一致的外交政策、吾人所從事之戰爭、旣非侵略亦非黷武、至以外錫爾伐尼亞問題而　、（該地業爲匈牙利所兼併）吾人爲喀爾巴阡山麓一帶土地之保衛者、已二千年於茲、此項土地不僅常爲吾人所有、且爲吾人困苦奮鬥之發祥地、數世紀來、我民族生機之得以維持不墮者、亦即在此、</p>
+<p>外鍚爾伐尼亞　少數民族問題</p>
+<p>匈牙利京城六日哈瓦期社電　一九四〇年匈牙利與羅馬尼亞八月間在維也納成立之德義仲裁委員會、於軍劃界綫之後、復着手調查兩國境內之少數民族問題、最近曾於兩個月前、往外錫爾伐尼亞進行調查、頃巳返抵此間、衆信該會將於明日開會、討論匈羅兩國政府對於各該國少數民族遭受虐待之伸訴、並擬就方案、以便提交雙方政府核准施行、按匈牙利政府係因南錫爾伐尼亞（仍爲羅國所有）匈牙利少數民族被徵發而提起伸訴、德義仲裁委員會前往調查眞相後、將以調查結果、爲該委員會草擬解決方案之基礎、</p>
+<p>羅財政輿工業　均受德國控制</p>
+<p>羅京六日哈瓦斯社電　德國經濟部長芬克博士最近來此、與此間當局舉行經濟談判、羅德兩國貿易關係因而爲之步入新階段、查一九一八年凡爾賽和約成立後、羅德貿易幾等於零、一九三五年雙方訂立商約、貿易始有起色、一九三五年羅國對德輸出總値爲六千七百萬馬克、一九三九年增至一萬萬一千九百萬馬克、至德國對羅輸出總值、一九三五年爲八千萬馬克、一九三九年增至一萬萬八千萬馬克、現行大戰爆發前夕、德羅叉曾簽訂新約、使德國得以開始積極干涉羅國財政工業及農業、並合資設立公司數家、一九四〇年羅國內閣總理恩多奈斯哥上將聘問柏林、重申此項　策、至此、德國經營工業在羅國十年計劃中、已估據重要部份、九四〇年初、羅京設立德羅合辦鋼鐵產銷公司、即其一例、作戰三年以來、德羅經濟關係更不斷在增進中、其主耍原因、殆爲煤油已成爲大戰中最重要之原料、衆信芬克博士此行、將再度促進德羅貿易、從而增加兩國聯繫、</p>
+<h3>邁斯基　發表演說　承認蘇損失重大　促英作切實援助</h3>
+<p>倫敦六日哈瓦斯社電　蘇聯駐英大使邁斯基本日在此間發表演說、承認蘇聯損失重大、略謂蘇聯每日所喪失之兵員、不下六七千人·吾人雖蒙受重大損失、但仍堅强作戰到底、吾人所求於英國者、厥爲不斷猛炸德國各地云、</p>
+<h3>葡萄牙海岸外　英德海空大戰　德宣佈潛艇最近戰果</h3>
+<p>里斯本六日哈瓦斯社電　葡葡牙　岸西納斯（Sineg)角附近數英里處、刻正發生英艦與德國潛艇大會戰、兩國飛機亦出動助戰、葡萄牙海岸能聞强烈爆炸聲、</p>
+<p>柏林七日海通社電　權威方面息、德潛艇又擊沉敵船十七艘、共一〇八·〇〇〇噸、</p>
+<p>柏林六日哈瓦斯社電　軍息、偵潛艇擊沉載運　國軍工業原料之貨　三艘、其中一艘原　希臘　　　位之商船、於戰爭爆發時、即爲美國政府所扣用、</p>
+<p>柏林七日海　社電　此間負責方面今日宣　、德潛艇一艘在加里比安　擊沉英國中型商船一艘、該船羅裝有砲兩門、但被襲時一無　抗、船員於事後立即乘小艇駛沿海其港登陸、另有懸加拿大旗戰橡皮駛美之中型商船一艘、在弗洛里達州海岸外、與德潛艇一艘相値、雙方開砲瓦擊、不移時該船即被擊沉、</p>
+<h3>遙隔海峽　砲戰猛烈</h3>
+<p>英國福克期頓城七日哈瓦斯社電　英德兩國大砲昨夜隔英吉利海峽砲戰、戰况空前劇烈、英方開砲一百餘發、鄧扣克·加萊·及格　納茲各地德國砲彈亦有多枚越過海峽落於杜佛附近、</p>
+<p>兩國飛機　互施轟炸</p>
+<p>維希六日哈瓦斯社電　淪陷區不設防城市盧昂、昨日又遭英機轟炸、此爲最近三日來之第二次、英機於昨日上午十一時三十分飛至該城一萬至一萬二千英尺高空、向住宅區及工業區紛亂投彈百餘枚、物質損失重大、房屋被毀五十餘所、大半係貧民區住宅、居民死八十人、重傷一百十七人、其中以婦孺爲多、</p>
+<p>柏林七日哈瓦斯社電　英國轟炸機多架咋夜飛越德國西部上空、投下炸彈及燃燒彈多枚、物質受有損失、英機六架被搫落、</p>
+<p>倫敦七日哈瓦斯社電　航空部今晨宣佈、德機多架昨夜飛越英格蘭北部某城、投擲炸彈多枚、物質略有損失、並有死傷、無家可歸者若干人、德機兩架被擊落、</p>
+<p>柏林七日海通社電　德軍最高司令部昨日發表如下之袖充戰報稱、德機至杜弗低飛轟炸其軍事設備、炸毀建設多處、通往康特堡之公路亦有多處中彈、英吉利東岸之諾維區亦遭空襲、倫教北面之工廠及英吉利南岸某港亦遭德機轟炸、英格蘭南部某車站遇炸、受創甚重、</p>
+<h3>威爾基　赴埃及前綫視察　謂此行任務在鼓勵民氣</h3>
+<p>土耳其京城七日同盟社電美總統羅斯福特使威爾基咋偕英國第八軍軍長孟高梅將軍視察埃及前錢、旋到亞力山大港向報界談稱、「余已太老太肥、不能作戰矣、余所能爲者、奔波全球、鼓勵民氣而已、埃及方面協約國軍隊尚　需某某種酊備、至於所需何種配備、則未便言明、威爾基即將來此訪問、然後取道伊朗京城赴蘇聯、再赴重慶一行、</p>
+<p>安加拉六日同盟社電　羅斯福特使威爾基訪問土耳其爲期已近、此間英美方面宜傳人員大肆活躍、惟土政府對此態度頗爲冷靜、</p>
+<h3>法海軍官兵　自美抵非</h3>
+<p>馬賽七日哈瓦斯社電　美國境內法國海軍軍官五十二員及水兵八十三名、已分乘輪船兩艘到達非洲加薩勃朗加港、其中一批計軍官二十二員水兵四十六名、已於本日自　奧朗港乘坐、「約那爾總督」號輪船扺此、在紐約港失火擱淺之法國巨船」諾曼第」號船長里埃特及該船醫生均在其內、該船副船長及工程師數人仍留美國、以便參加該船起火原因調查工作、按本日返國之一批官兵、自一九四〇年六月起即逗留美國、</p>
+<h3>葡殖民部長　巡視東非屬地</h3>
+<p>葡京七日海通社　電葡萄牙殖民部長馬嘉多博士、繼續巡視葡屬東非、前日抵馬古多、莫三鼻給總督伴同視察當地關於社會福利之設施、聞馬氏於抵達馬古多之前、會視察翁貝魯齊區、</p>
+<h3>南斯拉夫境內　遊擊隊仍活躍　襲擊事件層出不窮　義克聯軍進行痛剿</h3>
+<p>匈京六日哈瓦斯社電　頃悉自上月二十二日至本月二日一旬間、達爾馬西亞沿海一帶、施行淸鄉結果、計擊斃游擊隊百名、傷數百名云、</p>
+<p>阿格朗七日海通社電　義大利及克羅地軍隊、由東南北三面進攻達爾馬西亞中部單沃柯佛伏洛格拉茲兩區內之共產軍第二旅、擊斃共產兵一千零八十八名，受傷者數百名、聞第二旅長及營長兩員已被擊斃、</p>
+<p>匈京六日哈瓦斯社電　克羅地邦鐵路管理局因上週間波斯尼亞南部鐵路沿綫、迭次發生襲擊事件、巳通令柴勒格至斯比里特及柴格至蘇薩克間之火車暫行停駛、</p>
+<p>丹京破獲　秘密電臺</p>
+<p>丹京七日海通社電　丹京郊外有一秘密廣播電台、已爲丹京警察破獲、當時該非法電台之電務員會開槍拒捕、致有警官一名飲彈斃命、該電務員後即畏罪自殺、至其身份則未能查明、據丹麥發表之官報稱、丹京郊外設有秘密電台、警察聞風已久、直至九月四日始查明其地點、乃派大隊警察前往搜捕、卒　破案云、</p>
+<p>德勗勉佔　領區人民</p>
+<p>東京七日同盟社電據「朝日新聞」載柏林特電稱、德凍部佔領地行政長官洛森培克、於六日在納粹黨機關報「人民觀察報」發表論文、說明對歐洲各佔領國之根本方針、頗値得注目、大意稱、在此次大戰中、德國國民爲歐洲之建設、正在前綫盡其最大之犧牲、在後方者自當忍耐其一切不便、因此要求會爲吾人敵國之佔領地各國盡其最大之犧牲、亦屬當然、一部份彼等忘却戰敗之事實、有時仍顯示對德反感、然在現在之戰爭中、其能要求優先之地位者、惟德國及其直接之盟國耳、德國今日正爲全歐洲除去井產主義之危險、故　成爲歐洲之代表國、其目的在使法比荷等國人民免被共產主義所征服、故並不欲奪取彼等之士地、彼等今日除繼續工作、維持生存外、自當爲德國及其同盟國而努力、當此新歐洲建設期中、亦惟有與德國相協力、始能得到生存、過去希特勒元首已屢次顯示寬大之態度、乃此種情形、彼等猶未完全理解、至爲遺憾、歐洲大睦各國國民爲其自身命運、自當積極與德國及其同盟國協力、亦惟有如此、始能使歐洲問題之解決及大戰之結束、更可早日到來云、</p>
+<h3>南非副揆反對　議會改選</h3>
+<p>開浦鎭六日哈瓦斯社電　南非聯邦副總理黎茲上校今日發表演說、說明南非政局、略謂南非議會明年初原當改選、惟在此戰時、選舉如果照常進行、必在全國引起小規模之政治戰、殊非所宜、政府常局不問選舉結果如何、決不准許對德主和派出而統治國家、現政府之反對派、原望德國獲勝、若　如竟以一二票之多數者改選中取得優勢、則吾國成何局面、　不堪設想、抑吾國軍人在海外作戰者爲數甚衆、未能參預選舉、則選舉結果、勢必不能代表眞正民意、自更不必多此一舉路透社訪員頃就此項演說發表意見稱、南非聯邦政府官員反對議會改選、當以此公爲　矢、按之聯邦憲法、議會每隔五年至少應改選一次、上屆選舉、係在一九三八年舉行、</p>
+<h3>北愛暴動事件　層出不已</h3>
+<p>倫敦六日哈瓦期社電　北愛爾蘭首府貝爾法斯　特港來電、日來愛爾蘭共和軍　革命運動、蔓延甚熾、使當地美國駐軍爲之驚愕不置、查愛爾蘭國家主羲黨陰謀起事、巳數年於　、但至最近數星期、始大見活動、目下全境各地、每日均有嚴重事件發生、查共和軍素來主張合併愛爾蘭北部六郡、組成獨立邦、並以南北愛爾蘭之不可分裂性及團結一致、爲革命黨之口號、但此項革命團體擴大行動才結果、即在南愛共和邦人士、亦已認爲非法、至於共和軍此次起事、則更以反對英美在愛爾蘭領土駐軍爲目標、尤爲一般所不解、最近貝爾法斯特附近、發現秘密軍火庫一處、警察當局巳嚴加提防、</p>
+<p>貝爾法斯特六日哈瓦斯社電北愛爾蘭特萊斯郡克拉特鎮、咋又發生槍擊警察事件、緣有暴徒數人、向北愛警察開槍射擊、警察亦拔槍回擊、結果死警察一人、傷平民二人、</p>
+<h3>南愛舉行　燈火管制演習</h3>
+<p>杜白林六日哈瓦斯社電　今夜南愛爾蘭全境、將舉行燈火制管演習、</p>
+<h3>阿根廷前總統　訪問巴西</h3>
+<p>阿根廷京城七日海通社電阿根廷前總統吉斯托將軍前往巴西一事、極引起此問人士之注意、關於吉斯托將否加入巴西陸軍一事、現仍爲衆人推測之事、據悉吉斯托係乘巴西陸軍飛機前往巴西京城、由巴西總統之機師駕駛、吉斯托此行曾引起急進派　衆議員之抗議、倘吉斯托接受巴西陸軍之職務、應即褫奪　其阿根廷公民資格務、此事現正在司法委員會之研究中、</p>
+<p>阿根廷京城七日海通社電巴西京城電訊、今日爲巴西獨立一百二十週年紀念、巴西克城將舉行閱兵典禮、阿根廷前總統吉斯托將爲巴西政府之外賓、參加閱兵、但德義僑民將留守戶內、不得出外、</p>
+<h3>墨西哥頒佈　軍訓法令</h3>
+<p>阿根廷京城七日海通社電昨夜墨西哥城傳來消息稱、總統卡瑪卓頒佈法令、凡墨西哥年在十八歲至四十五歲之男子、均須受軍事訓練、</p>
+<h2>Page 4</h2>
+<h3>法租界民警團　已經開始服役　自二十五歲至三十五歲　每聯保抽籤派出七十名</h3>
+<p>法租界當局根　保甲制度編組民警團後、調查界內華籍男丁二十歲以上四十五歲以下者已竣、均得令其參加民警團、頃各聯保均已奉警察署命令、每一聯保各派廿五歲至卅五歲男丁七十名、以粗通文字體格壯健爲合格、惟因各聯保上述年齡男子勢必超過定數、爲公允計、用抽籖辦法、即日抽定、名單務須於十七日上午九時、送交各警察署、並定下列各男丁得予免役、　公務員、　教員　　掛牌醫師、　保甲辦事人員、惟中央區警察署民警團巡崗、已於昨日開始試辦、規定每保挨甲輪流、時間自晨八時起至午夜十二時止、每班規定爲二小時、並命令各保甲長轉告民警團員、應密切注意下列各點、　如奉分隊長傳喚、須速即向其報到、　如遇有事件發生、立即舉警、　協助警察署搜捕非法份子、　勸導居民遵守法律警章、　供給警察署有關治安之各項消息、　在巡邏時注意形跡可疑者、</p>
+<h3>夜總會延遲打烊　未會核准</h3>
+<p>英文泰晤士報云、因秋季業已來臨、滬西各夜總會主均開始增多其塲所之管弦樂隊、及租進更多之新宴席設置、若輩同時並盼望當局、能允許彼等延長營業時間至淸晨二時半至三時、前星期六晚上、滬西盛傳華界當局及潘達、即將於本週中、對該區域內夜總會所提出之延遲打烊時間之要求、將公告予以核准、但昨日潘達對於此種請　、並未能加以證實、惟夜總會主及其雇用者、均極渴望能得新穎消息、聆得新穎消息、俾使彼等自身及其依賴者、獲得生活上之靠賴、滬西夜總會所僱用人數、雖懂六百餘鳴、但其應用於夜間接送　容之車輛、則甚多、</p>
+<h3>申報助學金　捐款報名</h3>
+<p>本報讀者助學金昨收到鞠呂才三百元、雅觴叙同人（恭賀吳君壽機移助）三百元、呂二聯二百元、　耕老人一百元、一言五十元、王君（拾遺及蔡女士酬謝金）十五元八角、宗一（稿酬）十五元、共計儲券九百八十元〇八角、</p>
+<p>又收到姚母奠儀計張嘉甫二十元、前存一萬八千〇九十五元、總共一萬八千一百十五元！昨收兩共計儲蓄券千元〇八角、前存二十萬八千八百十三元五角七分、總結共存二十萬九千八百十四元三角七分、</p>
+<h3>移運煤球四擔　毋庸許可證</h3>
+<p>工部局情報處公告云、本局頃發布告第六〇七號略稱、查未領許可證而准運之煤球數量、前經本局於本年一月三十一日以第五七六四號布告規定以一擔爲限、茲定自本月八日起上項限制數量、准自一擔提增至四擔、此謂在公共租界內、移運煤球四擔、可母須請領許可證、</p>
+<h3>法租界八月份　罪案減少　盜案僅一起</h3>
+<p>八月份法租界內罪案大見减少、强盜案僅發生一起、（七月份兩起、六月份六起、去年同時期內計有四十一起、）其經過情形如下、</p>
+<p>盜案</p>
+<p>八月十一日上午九時半、有強盜二人（其一持槍）停於蒲石路四五二號鐘錶店門口、空手之强盜在外守望、而持槍之盜則進店內、索看値價六百五十元之三個手錶、迨攫取到手後、即出槍威嚇　但店主早窺出其非善類、立由强盜手中搶回手錶、並大聲呼喊、於是强盜立即拔步而逃、但持槍之盜離該地不遠、即被巡邏是處之警捕追趕捕獲、至其同黨則被逃逸、現此案已解法院、正在審理中、</p>
+<p>殺人</p>
+<p>此外八月份有殺人未遂一起、及殺人二起、茲述其經過情形如下、八月十六日上午十一時、　建路救火會有一隊員、在賈西義路二七四號門口、遇其舊姘婦兩人、談數語後、該隊員遽以刀斫其相好頭部及左臂、其本人即登屋頂、以剪刀自刺腹部、受傷後、自任其由屋頂　於弄內、傷勢極重、其被害女人、因僅外部輕傷、經在醫院敷紮後即返家、八月二十三日上午七時四十五分、捕房接報告、有人被刀斫傷、送仁濟醫院、進院不久即死該院經調查被害人係一無固定住所之小販其兇手係其同夥、住中國地界、現捕房依此綫案、繼續調查、以期緝到該兇、八月三十一日上午八時、有一華籍少年、因某女拒絕與其結婚、乘其離金神父路家中時、以刀斫傷少女左太陽穴及背部計四下、受有重傷、但少女仍能勉走數步、至其家門首時撲倒地上、旁人睹此慘劇、立呼巡捕、兇手因之立即被捕、現此案正在法院審理中、</p>
+<h3>歸鄉證將全日簽發</h3>
+<p>工　局簽發特別歸鄉證辦事處、已定本月十四日全日辦公、簽發回鄉證、以便離滬回籍久居者之申請、在目前仍以上午爲限、</p>
+<h3>寗波旅滬同鄉會　舉辦小資本貸金　貧苦同鄉均可申請</h3>
+<p>寧波旅滬同鄉會舉辦之小本貸金、日屬貧苦同鄉無力經營小本謀生者、均可申請貸給、小本數額最多以三百元爲限、申請手續簡便、甚望貧苦同鄉欲謀小本經營者、勿失此機會、</p>
+<h3>扶病煮粥　被火灼傷立斃</h3>
+<p>麥琪路十一號弁內司閽捕（一一二六號）山東人劉永楊之妻江北人劉王氏、十八歲、同居於該弄口小房間內、近數日王氏忽患病、於前日上午五時半、天尚未明、氏腹饑扶病起床煮粥、．不料遺火焚燒、氏病體不及避開致被火灼傷、不及醫救、片刻身死、報告捕房、將尸　入騐尸所、</p>
+<h3>弋獲盜犯十二名</h3>
+<p>匯司捕房　總探長馮百順等、前弋　搶刧南京路品珍珠寶店價値六七萬元之鑕戒六十餘只之盜犯洪麻皮一名、茲叉續獲同黨潘南根·郭應槐許忠榮三名、</p>
+<p>父該捕房在界內弋獲盜犯徐福林周其玉吳錦章盧福海沈玉海劉世弼劉玉成婦人沈殷氏等八名、吊岀購物頗多、現正在偵查犯案、</p>
+<p>虹口捕房　探目陳大寶仇明才、前日拘獲盜犯甬人何春年一名、查得曾於廿五年六月廿五日下午九時三十分、搶刦愛多亞路二三六號丁鑫和家價値一萬一千四百　之飾物等，以上各案、均因調查尚未完畢、故均予暫押、候查明解究、</p>
+<h3>限價鮮肉　尚未直接供給</h3>
+<p>公共租界內肉莊肉攤、自工部局限制售價爲八元六角後、而肉商以市塲尚未能直接將猪隻普通供給、仍有人壟斷、致黑市未泯、故出售鮮肉、雖照限價出售、惟暗中係將好肉及次肉搭配混售、</p>
+<h3>黃母方太夫人生西</h3>
+<p>前日爲峻化聚善堂董事黃渭樵之萓堂方太夫人在滬設奠之期、各界人士紛往　　　渭樵文字金石、家學淵源、復致力社會事業、豪俠好義、有古道風、太夫人長齋禮佛、嚴持五戒、日誦金剛彌陀諸大乘　、幷勤誦聖號、三十年如一臼、六月十七日偶感不適合、自知不起、頂　身後事、宜節喪事之資、為慈善之舉、家人爲延道侶　佛號、神志淸明、隨聲和誦、翌日未時忽自朗誦佛號、安詳西逝、車壽九十有七歲、識者謂決生西方净土、是日午刻由聚善堂董事長　蘭亭主祭、副董　長朱燮臣、襄祭、悉以賻儀如數撥充該堂基金、</p>
+<h3>美國總統輸船公司　整理帳目準備移交　由大阪商船株式會社接管</h3>
+<p>自去年十二月八日以來、對於英美商財產、日方已於分別接管、英美各航業機關怡和·太古兩輸公司、業早接收、大英·天祥·昌輿等因無不動產、故無從接管、但美國總統輸公司、為美國在華最大航業機關、本市白　涇自備碼頭機房、廣東路五十　號自建九層大廈、規模宏大、太平洋戰爭爆發後、　即被封閉、停止營業、迄今適巳九月、該公司現由日海軍當局指派大阪商船株式會社接管、該公司昨巳派員整理賬目、檢貼物件、準備移交、大反公司昨亦派日員至總統公司監察、該公司由大阪公司接收後、航務方針、尚未發表、</p>
+<h2>Page 5</h2>
+<h3>食品店售價　當局已予監視</h3>
+<p>各種物品將訂固定價值</p>
+<p>英文大美晚報云、官方今日對於即將於不久期間公佈之抑價辦法、仍在慎重研究、本埠市面、現時頗無規律、一般商店、對於各大百貨公司極少部分商店之減價　仍持觀望態度、而並未追隨於後、本埠大部分小規模食品店、業正被當局注意監視、於一週前、因日當局特別通告夕公布彼等業受影當、</p>
+<p>當局仍在　深刻研究</p>
+<p>官方今晨表示、在最近數天內、頗有可能有另一關於抑價之公告宣佈、甚指稱、當局對此事項、仍在予以深刻慎重硏究、同時、又謂當局現頗欲思得一暫行之實施辦法、現時所硏究者、其範謂頗廣、共涉及製造商·批發商·以及零售商三方面、並　透露、固定及抑制物價之「不變的溶液」、定能製造成功、並以代替前時所施行之僅為統制零售商之辦法</p>
+<p>公司顧客　擁擠未減</p>
+<p>昨晨前往南京路各大白貨公司購買廉貨者、仍極擁擠、一般售貨者對於反常衆多之顧客應付均極感忙碌、此等顧客擁擠情形、頗似聖誕節時營業、中國國貨公司門前、於昨晨八時即有大批巾民鵠等於該處、人行道上男女二行列之編排、均由巡捕維持鑒於上週之情形、昨晨南京路各大公司鬥前、均已由捕房派員照管、</p>
+<p>銀錢業允　合作平價</p>
+<p>茲悉當局巳徵得銀錢業之合作、規定凡銀錢業各行莊、不得以商品作保、放款於未經呈准登記之商店行號、如以商品為担保放款時、應就左項各事按日具報於當地銀錢業同業公會、每周彙報該管主管官署備查、　借款人之公司行號名稱及其代表人之姓名、　放款金額、　放款期限、　担保商品之品名數量、　担保商品之堆存塲所、　借款人公司行號之登記證號數、或所屬同業公會之證明、銀錢業方面同意對於同業公會以外之任何個人或團體、不為商品担保之放款、如違反此三規定者、得由當局以一千元以上處以罰金、而無論在任何塲所堆保商品、匿不呈報者、除將其担保商品沒收外、並得科以一千元以上千元以下之罰金、</p>
+<h3>靜安寺佛學講座</h3>
+<p>靜安等路一一·九弄第二十九號、於昨晚十時侵人盜匪數人、取出花絮、將主婦小孩等嘴部塞住、任意搶刦、一哄而逸、聞損失甚鉅、惟確數未詳、靜安寺佛敎學術星期講座、前日孫翔仲居士主講三環哲學與各教之關係、闡釋「三環哲學對於佛之禪密修持、儒之孔孟精神、康德夕純實理性相互一貫之道、講解透闢、聽衆動容，</p>
+<h3>公共租界工部局　衛生報告</h3>
+<p>磚染病統計一九四二年九月五日午夜前一星期內患病及死亡人數表</p>
+<h3>上海貧兒院訪問記</h3>
+<p>在上海社會中，有三十多年歷史的上海貧兒院，成立在紀元二年以前（前淸宣統元年）。院址是在南市局門路五○四號，院舍可容院生數百人，可惜現在一部分院舍，已是毀損了。他們的創辦人，是以前熱心於社會事業的實行家會少卿盛杏蓀施子英等，第一任院長，就是施子英先生·他們設立的宗旨，是收容貧苦兒童，予以適當敎養，分期授以各級敎育，實用技能，使他們成功一個能够生產而健全的公民。</p>
+<p>記者去參觀的那天，恰正是他們在考試新生，所以我見到許多投考的男女小學生。</p>
+<p>記者塡過會客單後，只隔一分鐘光景，有位小朋友導引我到會客室，那時，已經有位精神飽滿，和顏悅色的職員等在門首。</p>
+<p>彼此通問姓名之後，我知道他姓何名瑾，是某大學敎育系畢業生，在該院担任工作，已有四年多，我想，一所貧兒院，負責者肯聘請專門家擔任敎導主任，足證他們做事的認眞。</p>
+<p>現在我將他所述的和我所目覩的種種，，分為次列五點。</p>
+<p>該院組織　該院以董事會爲中心，由董事會推選兩位董事兼任院長與院務主任，執　全院院務，所以該院應與應革的種種問題，以及日常院務，差不多就是由董事會直接管理，一切隔閡之弊，可以完全免除。現在兼任院長的是趙晋卿先生，兼任院務主任的是鍾志剛先生。</p>
+<p>入院手續　凡是貧苦兒童願入該院者，他們的家族或是親族，都可以直接向該院總務處領取入院請求書和調查表，若能當時塡就，當時交還最好，否即可由郵寄。該院在短期內，派人調查其家庭實况，若是合格，同時又有餘額，那末就可以入院。倘若沒有餘額，必須等待，不過對於入院院生的保證人資格，因有責任關係，十分慎重，</p>
+<p>敎護優點　敎護兒童，尤其是敎護貧苦兒童，在現代社會問題中，是最最　要問題。該了該院所擬的卅一年度院務設施大　之後使我不勝驚奇，我想處在目前艱難的時代，他們還是不肯得過目過，他們責任心，眞是可敬之至。講釗他們在「敎字上，採取（甲）凡是天資敏慧的，也可以受到小學而中學，中學而大學的敎育。（乙）凡是天資平常的，在五六年級小學時代，就注重手腦並用，敎以實用技能。（丙）凡　低能的，只敎以國「算」，同時敎以一項手藝，像縫級，農作等。他們的方式，以因智制宜為　則，旣可節省光陰與精神，亦可適台於各個個性。至於該院附設的院生職業指導處，凡是該院院生，隨時可以講求匡助，如此永久性的愛護院生，希望他們不致墮落。</p>
+<p>師生苦幹</p>
+<p>我和何君參觀該院各種設備時，看十多位小弟弟，各各都拿着鋤頭鐮刀，有的在鋤地，有的在割草，活潑健康，誰能看得出他們是孤苦兒童？我走到他們的毀損院舍時，只見一位職員，在指導着十多位小弟弟搬連舊磚。師生肯如此苦幹，該院復興的前途，眞是大有希望。</p>
+<p>經濟實况　據何君云，該院在事變前，有住院生二百人，通學生十百　十餘，，敎職員技師等三十餘人，全年支出二萬餘元。從事變到現在，時時在苦撑出過日子，趙鐘兩君竭力負貴，眞是可敬。不過，最近物價的高漲，住院生與通學生，雖然只有三百餘人，而支出總數，比較過去，反而增加數倍，所以該院決定，向各界大善士，公開募捐。我想這種社會事業，任何人們，都有同樣的責任，想熱心好善之士，人人告願解囊慨助。</p>
+<h3>國華殯儀館承辦　疏散浙東寄柩</h3>
+<p>疏散全市的寄柩。是一件艱鉅的工作、它需要不少的人力和物力、正因為這個原故、屍柩從本市搬運到外埠、費收取不適能當的運費、不能說是額外的需索、然而本市寄柩的柩屬、並不是每個人都有足够的金錢、來供運柩的費用、而且說不定這類柩屬、佔有全部柩屬的大部分、本着防杜疫癘的宗旨、以及疏散全部寄柩的目的、這樣的情形、顯然障碍了工作的展開、於是國華殯儀館運柩部、便開始辦理貧寒柩屬登記、採用免費或减費的辦法、以幫　貧寒柩屬疏散上海的寄柩、</p>
+<p>登記手續</p>
+<p>國華殯儀館運廳柩對部面設華在安跑大馬廈的東首、關於貧寒柩屬的登記、手續很簡單、第一、是申請人須具備請求書一件、上面寫明家庭人口以及經濟實况等等其次、是申請人尋覓妥保、作一保證書、於是第三步、聽候該部派昌調查屬實後、准予减費或免費、</p>
+<p>調查敏捷</p>
+<p>據該運柩部的負責人談、貧寒登記　的人、都是勞工階級、所以手續力求簡單、不致浪費他們寶”貴的時間、其次、是因為要幫助防疫工作、務使全滬寄柩速即疏散、所以調查的工作也力求敏捷、絕不容許有延擱或敷衍的現象、這是該辦事處對於辦理貧寒登記的二個基本工作觀念、</p>
+<p>扶助貧寒</p>
+<p>「可以免費—做夢也想不到」一個工友這樣說、申請人的職業、無奇不有、例如、有做學徒的、，有做娘姨的、有接綫生、木匠、報販、有司閣捕、包車夫、搖襪女工、更有掃弄堂的、做日用品掮客的、甚至也有碼頭工人、以及沒有固定的適當職業的、綜凡上海灘上勞工階層的各種人物、應有盡有、他們是以服務社會扶助貧寒為目的、從扶助貧寒的精神以達到服務社會的目的、僅僅這一點、已是値得的稱道、何况目前上海的環境、正需要着這類疏散寄柩的組織、</p>
+<p>職指所徵求人才</p>
+<p>華龍路八十號職業指導所徵求各種人才、　女家庭敎師一人、敎授初中英文數理、每日二小時、有數學經騐、月薪八十元，　日文翻譯一人、月薪二百餘元、年終有紅利、　高級會計及統計專門人才三人、男性、經騐豐富、月薪面議、又文書調查營業員數人男性、有經騐、誠實耐勞、月薪面談、又女保管員三人、具有相當經騐、月薪吻洽、以上均須赴上海鄰縣服務、　練習生二人、初中畢業程度、有耐性誠實耐苦、供膳宿外、月給津貼十餘元、　專做點心技師一人、不論廣式或揚式、須確有經騐、月薪面議、高三生物學敎師一人、有敎學經騐、住近大陸商塲、月薪面談、　徵者往該所面洽、星期日停、</p>
+<p>昨日本報發報時間六點四十分</p>
+<p>體育新聞</p>
+<h3>足球季節開始先聲　西聯會通告報名</h3>
+<p>十九日截止一切悉仍舊例</p>
+<p>時巳新秋足球季節蒞臨、上海西聯足球會昨發布通告、開始報名、並定本月十九日截止、報名通訊處為郵政信箱一九六五號轉上海西人足球會、會昌費五元、加入聯賽費十元據該會聲稱、一切仍舊例、並將分四組比賽、一組為預備組、報名結束後之兩星期、將召開年會、並決定一切杯賽事宜云、</p>
+<p>全美女綱單打決賽　寶琳女士冠軍</p>
+<p>里斯本七日同盟社電　據紐約消息美國全美女子單打網球錦標決賽、昨在林山鑼行、結果寶琳培芝女士以四對六、六對一、六對四擊敗路易沙巴洛女士、獲得冠軍、觀衆八千餘人、</p>
+<h3>同仁乒乓聯賽　靑聯大破華順</h3>
+<p>今日靑聯戰西警</p>
+<p>同仁盃乓乒聯賽、前日同組勁旅出戰華順於西警球室、靑聯實力殊强擁有黃敏楊昌熙張孚璋等小將華順、雖係沙傷久戰之師、球藝則尙未高妙、雙方接戰之下、靑聯勇邁前進勢如破竹、結果竟以七對〇全勝華順、另幕郵務對抗新興勁旅三星、郵務猛將如雲、然三星戰來努力、分數接近、因經騐不足、以二對五失利、郵務告勝、今日共計四傷、仍在海格路西警球室、本日以靑聯對西警、將有劇戰、今日秩序如下、北美洲—全綠（仁）六時、靑聯—西警（同）六時、北美洲—華捕（仁）八時、靑聯—三星（同）八時、</p>
+<h3>運動簡訊</h3>
+<p>本市熱心體育之陳中·蔣吟僧·陳霖笙·方榮富·胡希逖等、聯合發起舉辦一盛大之小足球聯賽、</p>
+<p>維他富盃慈善排球賽、定本週末舉行給獎禮、並請興仁隊出戰混合隊、</p>
+<h3>學校訊</h3>
+<p>精勤業餘袖習學校新閘路麥特赫司脫路東首精勤業餘補習學校、設有國文、日文·英文·商業等科、每晚自六時半至九時半、授課三小特、敎員熱心、學費低廉、且設减費免費額、</p>
+<p>商業新聞</p>
+<h3>資金轉向於華股</h3>
+<p>百貨業為唯一目標　造成求過於供局面</p>
+<p>昨華商股票市况、在沒機絕跡聲中、資金轉句華股方面投入、百貨業更為唯目標、在求過於共淸況中、中國國貨及新新公司曾叩百元大關、永安最高九十八元半、始有賣戶活動稍回下、比上週未前者均升五元、後者加六元、國貨公司隨之向榮、內衣最高見三十二元半、後三十一元半、亦升五角、公用業闡北水電亦在買勢中見三十二元半、上升尤勁、終爲三十二元、升一元牛為最巨、華商電氣亦高半元、新藥業中、新亞最為活潑、由四十四元哄達四十五元七角半、後回下元許、尙軋升　七角半、中法升半元、民誼等市勢呆平、文化業商務步升達二　百七十元、與中華害局各升五元、世界交稀價平、大中華火柴回升二元半、南洋烟草爲買戶提升三元、最高六十七元半、新股孚昌染織及大中華織造、價鮮變化、隱伏堅勢、冠生園已升至二百元關口、照各方人心多向上、今分記各股市價表於後、</p>
+<p>公債爭逐　愈演愈烈</p>
+<p>昨統一公債市况、免起鶻落、雙方傾軋猛烈、當上午開出、先以多方承週末之餘氣、仍多力進、加以賣方抵補、權面異常激昂、各債再度挺進、均又升一元左右、第以收槃時、賣買角逐愈烈、並以一般老多獲利力塞丙種、雖有拉檯、但終不敵賣者之湧、致被抑入三元關內收市、觀走勢雖籌碼仍緊、但獲利大戶、似稍有吐出、故市氣未能冉昂、或有回頭之象、結果一致續升七角至一元、惟丙種略昂三角、茲列表於後、</p>
+<h3>類別　最高　最低　收盤　比前日</h3>
+<p>雜糧堅穩</p>
+<p>豆　因派貨有限、本街店戶頗有添胃故市呈激昂、昨開天津茶豆四十包、價二百三十六元、</p>
+<p>山芋乾零銷不衰、市勢猶呈秀色、計開江北山芋乾單綫袋六十包、價一百十七元至一百十七元半、</p>
+<p>紅糧供求頗平、價乏變化、昨開明光紅糧一車、價一百十三元、</p>
+<p>銀樓鉓金</p>
+<p>互倣價格提升</p>
+<p>昨銀樓業大新同行首飾金鬥市每兩兌出掛脾二千一百元未更、（收進减三百元弱）、乃同業換金價已做高也、初低五元、為一千八百七十一元、俄見一千八自六十元低價、繼在買勢中提上至一千九百元、即爲限價　戶所壓落、正午一千八百九十元、比上週六價高十五元、有四十尤差度、成交淸稀、首飾紋銀每兩仍掛十叫元、同業互做價十一元及十一元二角、</p>
+<p>軍票拆息平定</p>
+<p>昨日軍票同業互做行情在五元五角五分四八釐間、銀號與錢莊幫鬥市收進五元五角四分半、售出五元五角六分牛、有討七分者、</p>
+<p>錢業公會拆息仍掛一角三分未更、</p>
+<p>香煙交易清淡</p>
+<p>香烟趨勢頗呈盤旋局面、益以當局嚴禁囤積、同業不得售與業外、以致囤風較往時寂靜、交易淸淡、市價乍升乍降、昨市為大央牌開小至八千元、老刀牌五千七百五十元、品海牌五千五百元、仙女牌四千四百元、五華牌四千五百元、日烟金槍牌二千二百八十元、金大樓牌二千四百元、紅玫瑰牌一千六百元、全祿牌二千三百五十元、念枝二千三百元、指南牌一千九百五十元、國烟美麗牌三千七百五十元、金鼠牌二千七百元、金字塔牌四千四百元、白金龍三千二百元、賣價堅疲不一、</p>
+<p>粵枝正在談價中</p>
+<p>二三批金山元枝扁枝以及糯米枝、號方所到之貨、大部份已次第轉棧、昨市十分之四業已談妥、此次評價極為認眞、上中檔約有一二十元上落、特別較高者酌加、元枝扁枝比前約小百分之二十五元、糯米枝降度約百分之十五、正式售盤尙未決定云、</p>
+<p>紅　動銷轉緊</p>
+<p>紅棗近以甯波崇明廣東等均有採辦、市態頓　活絡、並趨緊秀、行號間交易亦見增加、昨市行槃新規　如頭戶在二百二十元一關、棗王棗頭照加、徠市尙有緊勢、</p>
+<p>黑鐵皮斷擋</p>
+<p>三六尺止號黑鐵皮市上流通貨、已將搜盡、目該貨來源已絕、滬埠存底有限、現貨勢必斷擋、沂以無貨應市、即有　担現貨者、亦以領取許可證不易之故、無心應市、市塲呈有行無市之象、搪瓷廠印鐵廠以及製坯廠等亦有改辦頭子貨及黑鐵坯子者、故此等副號貨交易絡繹、而同業喊價亦因搜而見挺、昨如頭子貨每市担沽喊一千二百元、二千磅黑鐵坯子一萬六千元、由是價開出者殊稀、結果亦呈有行無市之象、</p>
+<p>華達呢哩嘰</p>
+<p>趨勢均佳</p>
+<p>厚薄嗶嘰日來均見轉好、元色藏靑草綠等薄素嗶嘰中厚嗶嘰、趨勢均佳、行情告頗堅挺因其生產减少、舊存有限、求　於供、同業中鑒於零售限價已規定閒出不能補進、大牛俱皆不願躉批脫手、甯願陸續應酬門市顧客耳、</p>
+<p>華特呢因亦係細毛綫所織成、原料昂缺已斷貨　底自亦缺乏、故市氣　續轉好、每碼大牛齊售一百九十元以至二百二十兀、草綠色更見缺俏、因其染色顏料早告斷檔　刻所流通買賣者、完全係為數有限之存貨也、邇受南京幫及日商行號之搜羅、貨更軋缺、趨勢更佳、苟然富局限價漲風早已隨之而起矣、</p>
+<h2>Page 6</h2>
+<p>春秋</p>
+<h3>學習的「自動」和「被動」</h3>
+<p>— 育萬</p>
+<p>請匡成君的「自動求學與被逼讀書」一文，他解釋現代學生的求學態　，可分為「自動的　和被動的」兩種，確是至當。然而為什麼會有這樣的區別呢，我覺得還需要進一步的硏究。</p>
+<p>人是一種有生命的東西，他能生長營養生殖和適應；並且，每個人還有一價人格，造成了他生命的原動力。從這個觀點上看來，我們解釋人類學習的活動，有「自動的」和「被動的」區別，顯然是很大的錯誤了。個學生當他在敎窒裹不願上課的時候，並不是靜坐着，他會畫人頭，看小說，做他喜歡做　工作呀。如果我們硬要說他懶惰，不肯用功，非逼着勞力不成，那是有什麼理由呢？</p>
+<p>有許多家長們，在埋怨着現代的學校敎育了。他們甚至說：「我的孩子將來預備做醫生的，為什麼耍學習代數化學呢？至於勞作呀，美術呀，那簡直是荒唐了。」這幾句話，我們當然不能贊同；但是在事實上卻也設得有理。只要我們把現代的敎育來分折一下，就可以知道了。</p>
+<p>人類在很早的時候，為了個體的適應和種族的傳遞，敎育的需要就產生了。共後社會上形成了兩種階級，一種是有開的，一種是勞動的，於是敎育的事業便被有間階級所佔有着。等到印刷術發明了，大量的書，一批批印出來，敎育只要讀書，讀了害，便是知識分子上層階級的人。西洋是如此，中國也是這樣。古人說：「萬般皆下品，惟有讀書高！」那便是這種思想，達到　高的階段了。十六世紀後，實業革命和民主思想澎湃地發展起來，於是我們要談普及敎育職業敎育和公民敎育，然而現代的敎育，還只是階級的有閒的和個人的。</p>
+<p>在這個遍地烽火的時代，我們的生活都急促地變動着了。少爺小姐的階級觀念已被打破，靠遺產恃積蓄來過生活已不可能了。就是有了錢，做一個投機商，也要能够看一點經濟新聞。也有許多做學生的，課後要找些工作，才能維持生活。然而學校裏的功課，還只是敎人寫八股文章算父子年齡。這樣我們要敎學生學習，自動的學習，誰有興味呢！難怪有的人會說：「不識字可以吃飯，不識人不能吃飯了。」過去讀了書，有個資格，算是上等人。現在呢，這種裝飾的東西，已很使人懷疑。</p>
+<p>美國魯濱孫敎授，在「心理的改造二書裹說：「現代敎育的失敗，一是文具敎育，二是職　敎育，三是公民敎育。」因為這許多東西，還依然敎人讓書追求知識製造些一兩脚書櫥罷了。杜威傳士的「連續論」主張智慧知識和活勸相銜接的。換句話說：我們的舉習，是一種有目的的活動，智識，它並不是一種裝飾品，不過是達到這個目的的工具罷了，所以，我們何必說着，學習有「自動的和「被動的區別呢。</p>
+<h3>鈔票兩價論</h3>
+<p>— 之乎</p>
+<p>「長陀陣」禍延百貨公司，似乎是做夢也想不到的事。號稱「百貨」，也不過是些衣料，皮鞋，汗衫，絲襪而已，在富有之家，「身外之物」自然不致短少，胖手　足之輩，亦無閑顧及所謂「體面」；皮蛋雖然削價四角五分，有些人正不願吃「這種東西」，有些人也甯可「鹽　荳腐」，何况擠得一身臭汗，祇是「限購一隻」。</p>
+<p>然而聽聽買者的與論，卻耶穌自有道理。其言曰：店家是願意罰款，停業，而不願削碼的，因之失之桑榆，收之東宇，羊毛出在羊身上，何　之有！此番是迫於　不得已，真正「忍痛犧牲」，說不定風頭一過，又來一個藉口，爬過了上一次碼價以上，你有什嚒辦法呢？况自鈔票不值錢，賣點貨色在家里，可是積　防飢之道呢。</p>
+<p>這是有錢人的說法，自然言之有理。窮人呢，聽說鮮肉限價，似乎頗為與奮，可是那一天的餐桌上最放著一碗紅燒肉，排骨，甚至燒肉絲！</p>
+<p>「鈔票不値鐘」，是一種說法：「鈔票不够用」，是另一種說法。</p>
+<h3>我們的午餐</h3>
+<p>— 叔延</p>
+<p>我們的公司裏是供給午膳的，在這米珠薪貴的時代，如此優待，頗屬難得，但是同事們，卻並不十分感激，他們以為這是職員們應享的權利。我的朋友們，都表示羨慕，他們說目前在外面自吃飯，非常不經濟，就是光顧小飯攤吧，三碗飯和一小碟素菜，至少要三叫塊錢，這樣算來，我們同人方每個月的薪水，無形中多了一百餘塊錢。</p>
+<p>幾年以來，我們吃飯的時候，總要鬧幾出笑話，譬如每天中午，大家都覺得肚子空虛起來，個個停止工作，不時譙著掛在壁上的那只自鳴　。有時候，等得不耐煩了，便叫茶房去催廚子開飯，好容易聽得鈴響，如餓鬼似地一窩蜂衝了出去，綽號叫長脚的小陸第一個到飯廳，伸長了頭頸看看桌上有幾樣好小菜，不一刻，大家坐定了，取子碗筷子搬起飯碗，狼吞虎嚥　將菜和飯大嚼一空。</p>
+<p>最近，祇聽見廚子叫苦，每天開兩桌飯，包給　是一千四百元一個月，以半數錢買米，其餘一半是煤啊，油鹽啊，小菜啊，算下來總是不够，根本談不到賺錢。</p>
+<p>於是廚子不得不多多打算了，每天二素一葷的小菜，盛在碗裏，挾了三筷子便可見底，每天三桶飯，吃完了是沒有添的，至於那碗肉絲湯，還不如喝幾口白開水。</p>
+<p>我們這幾位同事，個個是食量大的，小王小李每頓要吃四碗飯，現廚子每膳僅供給三桶飯，平均每人祇能吃兩碗半。最初兩天，小王吃得兩碗，便聽見飯桶空了，眞是氣得發昏。後來，柿們倆人便實行「快」的辦法，他們恨不得嘴能變成一個洞，把飯倒下去豈不省事，人家剛吃了一碗，他們已是兩碗了；人家兩碗吃罷，，他們已是四碗，便覺得心滿意足，丟下碗筷走了，惟有那吃飯最慢的老何，老徐，老林，飯給人家搶先吃了，每人祇多一碗半到口。</p>
+<p>至於吃菜，老許最不識　，每下一筷子，便捲去三分之一，桌上的人對他都不高興。有一天，大家聯合起來對付他，當他還沒有舉起筷子時，每人一筷子，將那碗葷菜就捲空了，老許祇得挾了一筷子素菜，司是大家又不約而同地再來一筷子，那碗素菜又光了，老許心裏也就明白，第二天，他什麼菜都不吃，吞了兩碗牛白飯。</p>
+<p>現在聽說公司當局要將午膳取消了，每人津貼五十塊錢，同事們都一致叫苦起來，難然是一頓菲薄的午飯，可是要自己出錢，五十隻洋吃什麼呢？這大概是受了、平價的影響罷！</p>
+<h3>受苦</h3>
+<p>— 林善聲</p>
+<p>「受苦」乃是人類所以為人類的界綫，牠是一種永遠的法即上　做母親的應「受苦」然後她的兒子才能出生，「生命」是從死來的……</p>
+<p>沒有一個國家沒有經過苦難的磨煉的。我們不能消滅這條件——受苦的法則，牠是我們生存的，一種免不了的條件</p>
+<p>進步是應以所經過的「痛苦」之量來測量，這痛苦的創傷愈大，則進步也愈偉大。——甘地——（卻酬）</p>
+<h3>風雨同舟</h3>
+<p>— 何家支</p>
+<p>（八）　奈若何</p>
+<p>這幾間屋子，原是衛云卿家的積　倉，這是最東的一間，三分之一的地位，還堆著篩子，東還有著臨時舖設起來的兩張狀，　前是一張桌子，桌子上果然放著熱氣騰騰的一碗赤豆湯。下翠珍臉上的淚痕，還隱約可以看得出來，她站在　前，勉強一笑。衛雲卿早迎了上去道：「下小姐，難為你了，對不起，對不起曹媽，你怎麼不端個凳子給下小姐坐？　翠珍聲了彎腰道：一衛老爺面前，我不敢坐。」衛雲卿道：「那是什麼話？曹媽……」曹媽忙從桌子底下，拖出兩個凳子來，把衣襟胡亂在凳面上擦着，一個送到翠珍面前，一個送到衛雲卿面前。衛雲卿先傍着桌子坐下，說：「坐坐坐。」翠珍也坐下來。</p>
+<p>衛雲卿笑道：「卞小姐，以前常見面的，自從你上了世德堂去，便不大見面了。你的舅舅費長河，把你請了來。我早說請的方法不對，倒讓卞小姐受了　個虛驚。啊！你這手上紅印子，是什麼，給繩子縛得這樣的嗎？可憐可憐！但是話得說回來，不能全怪費長河。卞小姐一定是倔强過來，要是不倔强，繩子也用不着了，哈哈哈。翠珍說道：「過去的事，也不談了。現在我只求衛老爺，把我放回世德堂去，世德堂的二太太和大少爺，承他們瞧得起，把我當做客人似的，我到這裹來，他們是不知道。怕就怕不知道，倘然知道我在衛老爺府上，倒叉沒什麼了，他們很放心的。」衛雲卿把手一擺，笑道：「他們是知道的。葉二太太才來過，和我吵了嘴的。卞小姐，我老實告訴你：不要鬧着回去。我知道得一明二白，你沒有家，後來把費家當做家，再後來把葉家當做家，現在你是該把衛家當做家了。」（一七五）</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.09.08</h1>
+<h3>German Announcement of the Occupation of Novorossiysk Port; Soviet Union Powerfully Reinforces; Stalin Launches Counteroffensive on the Front Lines</h3>
+<p>German Führer's Headquarters, July 7th, Havas Agency Dispatch: The German High Command issued a special communiqué last night stating that Novorossiysk on the Black Sea coast has fallen.</p>
+<p>Berlin, July 6th, Havas Agency Dispatch: The official announcement has just been released, stating, "The Red Army guarding Novorossiysk city and its port on the Black Sea coast has been occupied by our forces. This significant achievement is the result of continuous hard fighting over the past few days by our Patton-Urdanburg, Franconia, and Hesse divisions, assisted by Romanian troops. The Red Army put up a desperate resistance around the city. Since the fall of Sevastopol, the port has been the only naval port available to the Soviet Black Sea Fleet."</p>
+<p>Bear City, July 7th, Allied Press Dispatch: Powerful Soviet reinforcements have reportedly reached the Stalingrad front. The German command anticipates that the Red Army, having received reinforcements, will put up strong resistance. Currently, German forces have repelled the Red Army's counterattack under heavy artillery cover. The counterattack area is between the Volga and Don rivers. The newly added troops consist of ten machine gun divisions and seven tank brigades.</p>
+<p>Stockholm, Sweden, July 27th, Havas Agency Dispatch: The German-Soviet war has reached its 64th week. At this time, what is noteworthy is the German occupation of the strategically important Black Sea port of Novorossiysk. However, the fall of this port is secondary in nature compared to the battle for Stalingrad, which is the key to the southern theater. Over the past 24 hours, the intensity of the fighting there has been unprecedented. The Germans admitted yesterday that the Soviets had transferred a large number of fresh troops from an unknown location and launched a counteroffensive last Saturday, the intensity of which was also unprecedented. The counteroffensive took place north of Stalingrad, with a force of approximately ten infantry divisions and seven tank brigades. The two armies fought fiercely throughout Saturday and Sunday. Although this counteroffensive is said to have been contained, the battlefield has become a hellish place, its shocking and horrific conditions not much different from the most terrifying battlefields of the previous European war. According to Soviet claims yesterday, the German offensive southwest of Stalingrad used more than 100 tanks, 40,000 infantry, 150 bombers, and numerous flat-trajectory guns, but achieved no results, nor did it ease their offensive. Moscow acknowledged that the situation remains very serious, and German officials also stated that their troops have not yet entered Stalingrad. Rumors that the defending forces planned to escape across the Volga River were also deemed inaccurate.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: The fall of Novorossiysk has caused the Soviet Union to lose its last base for the Black Sea Fleet. As for the ports of Tuapse and Batumi, which are still in Soviet hands, the Soviet army cannot utilize them to dock large warships due to topographical reasons and incomplete facilities. Novorossiysk has a bay 15 kilometers deep and 11 kilometers wide, which is ice-free year-round and has approximately 4 kilometers of modern port facilities. The city has a population of 150,000 and is full of oil refineries and other industrial sites, making it economically quite important. This is not the first time German and allied forces have entered the city. Previously, in October 1918, the fleets of the four nations of Britain, France, Italy, and Japan sailed into the port. In 1920, after the failure of the anti-Bolshevik revolution, General 台金's White Russian army escaped from the port by boat. The port was built in 1838, and the administrative office of the North Caucasus is also located in the city.</p>
+<h3>Japanese Planes Bomb Hengyang; Lingling and Baoqing Attacked Simultaneously</h3>
+<p>Japanese Air Force Base, July 7th, Allied Press Dispatch: At dawn yesterday morning, Japanese planes bombed the air force bases in Hengyang, Lingling, and Baoqing in Hunan Province a total of four times. The Japanese planes encountered no resistance, and more than half of the American planes were destroyed. Only one American plane was encountered over Hengyang, and it escaped into the clouds. When Japanese planes attacked Guilin and Lingling on July 3rd and 9th, the official announcement was that seven American planes were lost, but now it is confirmed to be ten. On the same day, an American plane was also shot down somewhere in Jiangxi Province.</p>
+<h3>Bombay Citizens Demonstrate</h3>
+<p>Lisbon, July 7th, Allied Press Dispatch: According to a Reuters dispatch from Bombay, citizens in Bombay City took to the streets again to demonstrate on the evening of the 6th. It started in thirteen locations simultaneously. Streetcars and buses were stopped due to being pelted with stones by the crowd. Police officers opened fire on the crowds and threw tear gas at the assembled masses at intersections. The riot lasted for two hours before the crowd dispersed. At that time, two people were injured and twenty were arrested.</p>
+<p>Fighting Outside Stalingrad; German Offensive Thwarted</p>
+<p>Moscow, July 7th, Allied Press Dispatch: The Soviet Information Bureau announced at midnight that fierce fighting continued on July 6th in the northwest, southwest, and Caucasus areas of Stalingrad.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: A Havas Agency reporter learned last night from military officials that the Soviet army, fighting with all its reserves, managed to impede the German advance at several points in Stalingrad. Yesterday, in the suburbs of Stalingrad, the two sides engaged in close combat from morning to night, engaging in bayonet fighting with no resolution. The Soviet offensive north of Stalingrad was particularly fierce, with ten infantry divisions and seven tank brigades fighting desperately, their purpose being to prevent the advance of German tank columns southward along the Volga River. However, the Soviet army was subjected to German artillery and aircraft bombardment and ultimately failed. No fewer than 84 Soviet tanks were destroyed in this battle. The terrain was rugged and uneven in several places, preventing the Germans from advancing with heavy artillery, so infantry and engineers were dispatched as vanguards to clear out enemy resistance nests, thus failing to make rapid progress. Romanian troops fought bravely, breaking into enemy positions under heavy fire. At the same time, German aircraft repeatedly bombed the defensive works and the railway and highway north of Stalingrad.</p>
+<h3>Colonel Iwasaki's Broadcast</h3>
+<p>Tokyo, July 7th, Allied Press Dispatch: This radio station broadcast this afternoon the broadcast speech of Colonel Iwasaki, Director of the Press Department of the Japanese Expeditionary Force in China, entitled "Various Aspects of the Zhejiang-Jiangxi Operation." The text of his speech is as follows: From June to July of this year, the rainfall in Central China was particularly high, and the Yangtze River was repeatedly in danger of breaching. The rivers north and south of the Yangtze River flooded repeatedly, turning flat land into swamps, causing heavy losses to people, livestock, and crops. From mid-July onwards, Central China experienced a heat wave unprecedented in decades. At that time, the Zhejiang-Jiangxi operation was underway, lasting four months. Since the outbreak of the Greater East Asia War, the Expeditionary Force has been vigorously launching offensive operations in China, Central China, and North China. From mid-May, an offensive operation was launched against the Third War Zone. The Third War Zone is rich in agricultural and mineral products, and geographically, it is close to Nanjing and Shanghai and is valued as a supply route for Chongqing. The Japanese army prepared in secret and suddenly began operations in mid-May from Hangzhou and Ningbo, launching fierce attacks in various places, inflicting blows on several divisions of the defending forces in the Jinhua and Lanxi areas, and continuing to advance in the rain, thus occupying the base areas of the Third War Zone. At the same time, the troops preparing near Nanchang, in order to coordinate the operation, echoed the battles in eastern Zhejiang and launched an offensive, traversing the flooded plains of Jiangxi, which had been turned into large lakes, inflicting blows on the Ninth War Zone. The two Japanese armies carried out the operation to connect the Zhejiang-Jiangxi Railway. The troops advancing westward from Shangrao and the troops advancing eastward from Dongxiang completed the connection operation at Hengfeng on July 1st. Recently, the two armies successfully carried out the Lishui and Wenzhou capture operations, the Songyang operation, and implemented operations near these locations, inflicting fatal blows on the defending forces and destroying various military facilities. What is particularly worth reporting is the thorough destruction of the air raid bases in Quzhou, Lishui, and other airfields, as well as the destruction of the Zhejiang-Jiangxi Railway. This can be said to be the second objective of this operation. Chiang Kai-shek, given the large scale of the offensive operations implemented in various aspects, especially the eastern Zhejiang operation, believed that if the Japanese army advanced to a certain extent, it would retreat to the old positions and ordered Gu Zhutong to first defend Jinhua and Lanxi, and then to defend Quzhou to the death, but under the fierce attacks of the Japanese army, it collapsed, and then became completely at a loss, completely losing the courage to counterattack as in the Changsha operation. From this, it can also be seen that this operation, compared to the previous offensive operations, is unprecedented in its scale and duration. Also, this operation has had a profound impact on the residents of the war zone. However, it is impossible in operational terms to continue to secure the captured vast area. Therefore, after achieving the operational objectives, the withdrawal was started on August 19th in order to reorganize the front line. And this withdrawal is different from the past withdrawals to the original positions. It is necessary to reorganize a favorable and appropriate new posture in order to prevent the resurgence of the Third War Zone at any time. On this point, it has a new meaning. The soldiers of the Expeditionary Force continue to fight today, moving towards the completion of the operational objectives.</p>
+<h2>Page 3</h2>
+<h3>Romania Vows Loyalty to the Axis; Policy Remains Unchanged; Never Forgets to Recover Lost Territory; How Much Was Gained from Participating in the Eastern Front?</h3>
+<p>Romanian Capital, July 6th, Havas Agency Dispatch: Prime Minister General Antonescu recently took the occasion of the first anniversary of his administration to issue a message to the nation, stating, "I thank God for allowing me to lead the Romanian army on the Eastern Front towards a beneficial path. Our army is now fighting shoulder to shoulder with Germany to settle our blood debts. This is the most terrifying war in history, concerning the survival of human civilization. We have made every effort, but due to various difficulties last winter, our efforts have not been fruitful. Given the situation, we must remain calm and frugal so that no one will suffer in the future and so that our army can continue to fulfill its duties."</p>
+<p>Romanian Capital, July 6th, Havas Agency Dispatch: Deputy Prime Minister and Foreign Minister Mihail Antonescu Donescu recently delivered a speech here, clarifying the government's current policy, stating that the Romanian government is closely following the Axis policy and maintaining the most sincere relations with Switzerland, Turkey, France, Denmark, Portugal, Finland, Sweden, Bulgaria, Croatia, and Slovakia. Our foreign policy is a national consensus. The war we are engaged in is neither aggressive nor militaristic. As for the issue of Outer Transylvania (which has been annexed by Hungary), we have been the defenders of the lands at the foot of the Carpathian Mountains for two thousand years. This land is not only always ours, but also the birthplace of our arduous struggles. It is also the reason why our national vitality has been maintained for centuries.</p>
+<p>The Issue of Ethnic Minorities in Outer Transylvania</p>
+<p>Hungarian Capital, July 6th, Havas Agency Dispatch: The German-Italian Arbitration Committee established in Vienna in August 1940 between Hungary and Romania, after demarcating the military boundary line, began investigating the ethnic minority issues within the two countries. Recently, it conducted an investigation in Outer Transylvania two months ago and has now returned here. It is believed that the committee will meet tomorrow to discuss the complaints of the Hungarian and Romanian governments regarding the mistreatment of ethnic minorities in each country and to draft a plan for submission to the two governments for approval and implementation. The Hungarian government filed a complaint because Hungarian minorities in Southern Transylvania (still owned by Romania) were being conscripted. After investigating the truth, the German-Italian Arbitration Committee will use the results as the basis for drafting a solution.</p>
+<p>Romanian Finance and Industry are Under German Control</p>
+<p>Romanian Capital, July 6th, Havas Agency Dispatch: German Economics Minister Dr. Funk recently came here for economic talks with local authorities, thus bringing Romanian-German trade relations into a new stage. After the establishment of the Treaty of Versailles in 1918, Romanian-German trade was almost zero. Trade began to improve when the two sides signed a commercial treaty in 1935. In 1935, Romania's total exports to Germany were 67 million marks, increasing to 119 million marks in 1939. As for Germany's total exports to Romania, they were 80 million marks in 1935, increasing to 180 million marks in 1939. On the eve of the current war, Germany and Romania signed a new treaty, allowing Germany to begin actively intervening in Romanian finance, industry, and agriculture, and jointly establishing several companies. In 1940, Romanian Prime Minister General Antonescu visited Berlin and reaffirmed this policy. At this point, German industrial operations occupied an important part of Romania's ten-year plan. The establishment of the German-Romanian joint steel production and sales company in the Romanian capital in early 1940 is one example. In the three years since the war, German-Romanian economic relations have continued to grow, mainly because oil has become the most important raw material in the war. It is believed that Dr. Funk's trip will further promote German-Romanian trade and increase the ties between the two countries.</p>
+<h3>Maisky Delivers Speech; Acknowledges Heavy Soviet Losses; Urges Britain to Provide Substantial Assistance</h3>
+<p>London, July 6th, Havas Agency Dispatch: Soviet Ambassador to Britain Maisky delivered a speech here today, acknowledging heavy Soviet losses, stating that the Soviet Union is losing no fewer than 6,000 to 7,000 soldiers every day. Although we have suffered heavy losses, we are still fighting to the end. What we ask of Britain is to continuously bomb various parts of Germany.</p>
+<h3>British-German Naval and Air Battle off the Coast of Portugal; Germany Announces Recent Submarine Achievements</h3>
+<p>Lisbon, July 6th, Havas Agency Dispatch: A major battle between British warships and German submarines is taking place several miles off Cape Sines (Sineg) on the Portuguese coast. Aircraft from both countries have also been dispatched to assist in the battle. Strong explosions can be heard on the Portuguese coast.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: According to authoritative sources, German submarines have sunk another seventeen enemy ships, totaling 108,000 tons.</p>
+<p>Berlin, July 6th, Havas Agency Dispatch: Military sources report that a submarine has sunk three freighters transporting military industrial materials to the United States. One of them was originally a Greek merchant ship, which was seized by the US government when the war broke out.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: Responsible officials here announced today that a German submarine in the Caribbean sank a medium-sized British merchant ship. The ship was equipped with two cannons, but offered no resistance when attacked. The crew immediately boarded small boats and landed in a nearby coastal port. Another medium-sized merchant ship flying the Canadian flag, sailing to the United States, encountered a German submarine off the coast of Florida. The two sides opened fire, and the ship was sunk shortly thereafter.</p>
+<h3>Fierce Artillery Battle Across the Strait</h3>
+<p>Folkestone, England, July 7th, Havas Agency Dispatch: British and German artillery engaged in a fierce battle across the English Channel last night, the most intense yet. The British fired more than 100 rounds. Several German shells from Dunkirk, Calais, and Guînes also crossed the Channel and landed near Dover.</p>
+<p>Aircraft of Both Countries Bomb Each Other</p>
+<p>Vichy, July 6th, Havas Agency Dispatch: Rouen, an undefended city in the occupied zone, was bombed again yesterday by British planes, the second time in the past three days. British planes flew over the city at an altitude of 10,000 to 12,000 feet at 11:30 yesterday morning, randomly dropping more than 100 bombs on residential and industrial areas, causing significant material damage. More than 50 houses were destroyed, mostly in poor residential areas. Eighty residents were killed and 117 seriously injured, mostly women and children.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: Several British bombers flew over western Germany last night, dropping several bombs and incendiary bombs, causing some material damage. Six British planes were shot down.</p>
+<p>London, July 7th, Havas Agency Dispatch: The Air Ministry announced this morning that several German planes flew over a city in northern England last night, dropping several bombs, causing minor material damage, as well as deaths and injuries. Several people were left homeless. Two German planes were shot down.</p>
+<p>Berlin, July 7th, Havas Agency Dispatch: The German Supreme Command issued the following abridged war report yesterday, stating that German planes flew low over Dover, bombing its military facilities, destroying several constructions. The road to Canterbury was also hit in several places. The Norvic area on the east coast of England was also bombed. Factories north of London and a port on the south coast of England were also bombed by German planes. A station in southern England was bombed and heavily damaged.</p>
+<h3>Willkie Visits the Egyptian Front Lines; Says His Mission is to Boost Morale</h3>
+<p>Turkish Capital, July 7th, Allied Press Dispatch: US President Roosevelt's envoy Willkie inspected the Egyptian front lines with British Eighth Army Commander General Montgomery yesterday and then told reporters in Alexandria, "I am too old and too fat to fight. All I can do is travel the world and boost morale." The Allied forces in Egypt still need certain equipment, but it is not convenient to specify what kind of equipment is needed. Willkie will visit here soon, then travel to the Soviet Union via the Iranian capital, and then to Chongqing.</p>
+<p>Ankara, July 6th, Allied Press Dispatch: As Roosevelt's envoy Willkie's visit to Turkey is approaching, British and American propaganda personnel are actively working here, but the Turkish government's attitude towards this is quite calm.</p>
+<h3>French Naval Officers and Soldiers Arrive in Africa from the United States</h3>
+<p>Marseille, July 7th, Havas Agency Dispatch: Fifty-two French naval officers and eighty-three sailors in the United States have arrived at the port of Casablanca, Africa, on two ships. One group, consisting of twenty-two officers and forty-six sailors, arrived here today from Oran on the "Governor-General Jonart" ship. Captain Riette and the doctor of the French giant ship "Normandie," which caught fire and ran aground in New York Harbor, are among them. Several of the ship's deputy captains and engineers remain in the United States to participate in the investigation into the cause of the fire. The officers and soldiers returning today have been staying in the United States since June 1940.</p>
+<h3>Portuguese Colonial Minister Inspects East African Territories</h3>
+<p>Portuguese Capital, July 7th, Havas Agency Dispatch: Portuguese Colonial Minister Dr. Machado continues to inspect Portuguese East Africa. He arrived in Magude yesterday, accompanied by the Governor-General of Mozambique, to inspect local social welfare facilities. It is reported that before arriving in Magude, Mr. Machado inspected the Umbeluzi District.</p>
+<h3>Guerrilla Warfare Still Active in Yugoslavia; Attacks Occur Frequently; Italian-Croatian Allied Forces Conduct Suppression</h3>
+<p>Hungarian Capital, July 6th, Havas Agency Dispatch: It has been learned that as a result of the clearing operation in the coastal area of Dalmatia from the 22nd of last month to the 2nd of this month, 100 guerrillas were killed and hundreds wounded.</p>
+<p>Agram, July 7th, Havas Agency Dispatch: Italian and Croatian troops, advancing from the east, north, and south, attacked the Second Communist Brigade in the Dan Voikovac and Vrhovgrad areas of central Dalmatia, killing 1,088 communist soldiers and wounding hundreds. It is reported that the Second Brigade Commander and two Battalion Commanders have been killed.</p>
+<p>Hungarian Capital, July 6th, Havas Agency Dispatch: Due to repeated attacks on the railway line in southern Bosnia last week, the Croatian Railway Administration has ordered the temporary suspension of trains between Zagreb and Split and between Zagreb and Susak.</p>
+<p>Secret Radio Station Uncovered in Denmark</p>
+<p>Danish Capital, July 7th, Havas Agency Dispatch: A secret radio station in the suburbs of Copenhagen has been uncovered by the Copenhagen police. At that time, the operator of the illegal radio station opened fire to resist arrest, resulting in the death of a police officer. The operator then committed suicide to evade punishment. His identity could not be determined. According to the official gazette published by Denmark, the police have long heard that there is a secret radio station in the suburbs of Copenhagen, but they did not identify its location until September 4th, and then dispatched a large number of police to search and arrest, finally solving the case.</p>
+<p>Germany Encourages the People of the Occupied Territories</p>
+<p>Tokyo, July 7th, Allied Press Dispatch: According to the "Asahi Shimbun," a special dispatch from Berlin stated that Rosenberg, the Administrative Officer of the German Occupied Territories in the East, published an article in the Nazi Party's newspaper "People's Observer" on the 6th, explaining the fundamental policy towards the occupied countries of Europe, which is worthy of attention. The general idea is that during this war, the German people are making the greatest sacrifices on the front lines for the construction of Europe, and those in the rear should endure all the inconveniences. Therefore, it is natural to demand that the countries of the occupied territories, which were once our enemy countries, make their greatest sacrifices. Some of them have forgotten the fact of defeat and sometimes still show antipathy towards Germany. However, in the current war, only Germany and its direct allies can demand priority. Germany is now removing the danger of Communism from all of Europe, so it has become the representative country of Europe. Its purpose is to prevent the people of France, Belgium, and the Netherlands from being conquered by Communism, so it does not want to seize their land. Today, in addition to continuing to work and maintain their survival, they should also work for Germany and its allies. During this period of the construction of the new Europe, they can only survive by cooperating with Germany. In the past, Führer Hitler has repeatedly shown a generous attitude, but it is regrettable that they have not fully understood this situation. The people of all countries in Europe should actively cooperate with Germany and its allies for their own destiny. Only in this way can the solution of European problems and the end of the war come sooner.</p>
+<h3>South African Deputy Prime Minister Opposes Parliamentary Re-election</h3>
+<p>Cape Town, July 6th, Havas Agency Dispatch: South African Deputy Prime Minister Colonel Reitz gave a speech today explaining the South African political situation, stating that the South African Parliament was originally scheduled for re-election early next year, but during this time of war, if the election proceeds as usual, it will inevitably cause a small-scale political war throughout the country, which is not appropriate. Regardless of the outcome of the election, the government will never allow the pro-peace faction to rule the country. The opposition of the current government originally hoped that Germany would win. If they gain an advantage in the re-election by a small majority, what will be the situation in our country? It is unimaginable. Moreover, a large number of our country's soldiers are fighting overseas and cannot participate in the election, so the outcome of the election will inevitably fail to represent the true public opinion, so it is not necessary to do it again. A Reuters reporter recently commented on this speech, saying that the South African Federal Government officials oppose parliamentary re-election, and this public official should be the first to speak out. According to the Federal Constitution, Parliament should be re-elected at least once every five years. The last election was held in 1938.</p>
+<h3>Repeated Outbreaks of Riots in Northern Ireland</h3>
+<p>London, June 6th, Havas News Agency - A telegram from Belfast, the capital of Northern Ireland, reports that the Irish Republican Army's revolutionary movement has been spreading rapidly, astonishing the stationed American troops. Investigations reveal that the Irish Nationalist Party has been plotting uprisings for several years, but their activities have only become prominent in recent weeks. Serious incidents are occurring daily throughout the region. The Republican Army has long advocated for the unification of the six counties of Northern Ireland to form an independent nation, with the indivisibility and unity of Northern and Southern Ireland as their revolutionary slogan. However, the expansion of this revolutionary group has resulted in its being deemed illegal even by people in the Republic of Southern Ireland. Furthermore, the Republican Army's current uprising is particularly perplexing, as it aims to oppose the stationing of British and American troops on Irish territory. Recently, a secret armory was discovered near Belfast, and the police authorities have been taking strict precautions.</p>
+<p>Belfast, June 6th, Havas News Agency - Another shooting incident against the police occurred in Clutter, a town in Trelease County, Northern Ireland. A group of rioters opened fire on Northern Irish police officers, who returned fire. As a result, one police officer was killed and two civilians were injured.</p>
+<h3>Southern Ireland Holds Blackout Drill</h3>
+<p>Dublin, June 6th, Havas News Agency - A blackout drill will be held throughout Southern Ireland tonight.</p>
+<h3>Former Argentine President Visits Brazil</h3>
+<p>Buenos Aires, Argentina, July 7th, Huitong News Agency - The visit of former Argentine President General Justo to Brazil has attracted great attention. Speculation continues as to whether Justo will join the Brazilian army. It is reported that Justo traveled to the Brazilian capital on a Brazilian army plane, piloted by the Brazilian President's pilot. Justo's trip has provoked protests from radical members of Congress. If Justo accepts a position in the Brazilian army, his Argentine citizenship should be revoked. This matter is currently under review by the Judicial Committee.</p>
+<p>Buenos Aires, Argentina, July 7th, Huitong News Agency - News from the Brazilian capital reports that today marks the 120th anniversary of Brazilian independence. A military parade will be held in Brazil's capital, and former Argentine President Justo will attend as a foreign guest of the Brazilian government. However, German and Italian residents will remain indoors and are not allowed to go out.</p>
+<h3>Mexico Promulgates Military Training Decree</h3>
+<p>Buenos Aires, Argentina, July 7th, Huitong News Agency - News from Mexico City last night reported that President Camacho has issued a decree requiring all Mexican men between the ages of 18 and 45 to undergo military training.</p>
+<h2>Page 4</h2>
+<h3>The French Concession Civilian Police Corps Has Begun Service: 70 Members Selected by Lottery from Each Lienpao Aged 25-35</h3>
+<p>Following the French Concession authorities' organization of the Civilian Police Corps based on the Pao-Chia system, the investigation of Chinese male residents aged 20 to 45 within the concession has been completed. All are required to participate in the Civilian Police Corps. Recently, each Lienpao has received an order from the Police Department to select 70 men aged 25 to 35, with literacy and robust physique as qualifications. However, since the number of men in each Lienpao within the aforementioned age range is bound to exceed the quota, a lottery method will be used for fairness. The selection will be made immediately, and the list must be submitted to each police station by 9:00 AM on the 17th. The following men are exempted from service: Public officials, Teachers, Licensed doctors, Pao-Chia officers. However, the patrol duty of the Civilian Police Corps of the Central District Police Station has already begun on a trial basis yesterday. It is stipulated that each Pao will take turns, from 8:00 AM to 12:00 midnight, with each shift lasting two hours. The Pao-Chia chiefs are ordered to inform the members of the Civilian Police Corps to pay close attention to the following: Report to the squad leader immediately upon receiving a summons. Immediately raise an alarm if an incident occurs. Assist the police station in searching for illegal elements. Advise residents to abide by laws and police regulations. Provide the police station with information related to public security. Pay attention to suspicious individuals while patrolling.</p>
+<h3>Nightclubs' Request to Extend Closing Hours Not Yet Approved</h3>
+<p>The English-language "Shanghai Times" reports that with the arrival of autumn, the owners of various nightclubs in western Shanghai have begun to increase the size of their orchestras and rent more new banquet facilities. At the same time, they are hoping that the authorities will allow them to extend their business hours until 2:30 AM to 3:00 AM. Last Saturday night, it was widely rumored in western Shanghai that the Chinese authorities and the Municipal Council would announce approval this week for the nightclubs' request to extend closing hours in that area. However, yesterday, the Municipal Council was unable to confirm this request. Nevertheless, the nightclub owners and their employees are extremely eager to hear new information so that they and their dependents can secure their livelihoods. Although the number of people employed by nightclubs in western Shanghai is said to be over 600, the number of vehicles used to transport customers at night is very large.</p>
+<h3>Shen Bao Scholarship Fund: Donations and Registrations</h3>
+<p>The Shen Bao Scholarship Fund received 300 yuan from Ju Lucai yesterday, 300 yuan from the Yashang Narrative Association (congratulating Mr. Wu on his birthday and donating the gift money), 200 yuan from Lv Erlian, 100 yuan from Old Man Geng, 50 yuan from Yi Yan, 15.8 yuan from Mr. Wang (found money and Ms. Cai's thank you money), and 15 yuan from Zong Yi (manuscript fee), totaling 980.08 yuan in savings certificates.</p>
+<p>Also received funeral money from Yao's mother, totaling 20 yuan from Zhang Jiafu. Previously saved 18,095 yuan, totaling 18,115 yuan! Yesterday, 1,000.08 yuan in savings certificates were received. Previously saved 208,813.57 yuan, totaling 209,814.37 yuan.</p>
+<h3>Transporting Four Bundles of Coal Briquettes Does Not Require a Permit</h3>
+<p>A public notice from the Public Works Department states: Notice No. 607, recently issued by this bureau, states that the quantity of coal briquettes allowed to be transported without a permit was previously limited to one bundle, as stipulated in Notice No. 5764 on January 31 of this year. It is now decided that, starting from the 8th of this month, the aforementioned quantity limit will be increased from one bundle to four bundles. That is to say, within the Public Concession, transporting four bundles of coal briquettes does not require a permit.</p>
+<h3>Crime Decreases in the French Concession in August: Only One Robbery Case</h3>
+<p>Crimes in the French Concession decreased significantly in August. Only one robbery case occurred (two in July, six in June, and 41 in the same period last year). The details are as follows:</p>
+<p>Robbery Case</p>
+<p>At 9:30 AM on August 11, two robbers (one armed) stopped in front of a watch shop at 452 Rue Puei Shih. The unarmed robber stood guard outside, while the armed robber entered the shop and asked to see three watches worth 650 yuan. After seizing them, he threatened the shop owner with a gun. However, the shop owner had already suspected that they were not good people and immediately snatched back the watches from the robber's hand and shouted loudly. The robbers immediately fled, but the armed robber was chased and captured by patrolling police officers not far from the scene. His accomplice escaped. This case has been handed over to the court and is currently under trial.</p>
+<p>Murder</p>
+<p>In addition, there was one attempted murder and two murders in August. The details are as follows: At 11:00 AM on August 16, a firefighter from the Jiang Jian Road Fire Brigade encountered two of his former lovers in front of 274 Rue Cardinal Mercier. After a few words, the firefighter suddenly slashed one of his lovers in the head and left arm with a knife. He then climbed onto the roof and stabbed himself in the abdomen with scissors. After being injured, he fell from the roof into the alley, suffering severe injuries. The victim suffered only minor external injuries and returned home after receiving treatment at the hospital. At 7:45 AM on August 23, the police received a report that someone had been stabbed and sent to Renji Hospital. The victim died shortly after arriving at the hospital. An investigation revealed that the victim was a peddler with no fixed address, and the murderer was his accomplice, who lived in Chinese territory. The police are continuing to investigate this case in order to apprehend the murderer. At 8:00 AM on August 31, a Chinese youth, because a certain woman refused to marry him, stabbed the girl in the left temple and back four times with a knife as she was leaving her home on Rue Pere Robert. The girl suffered serious injuries but managed to walk a few steps to her doorstep before collapsing. Witnesses to this tragedy immediately called the police, and the murderer was immediately arrested. This case is currently under trial in the court.</p>
+<h3>Return Home Permits Will Be Issued All Day</h3>
+<p>The Public Works Department's office for issuing special return home permits has decided to be open all day on the 14th of this month to issue return home permits, so that those who have been away from Shanghai for a long time and wish to return to their hometowns can apply. Currently, it is limited to mornings only.</p>
+<h3>The Ningbo Native Association in Shanghai Offers Small Business Loans: Poor Fellow Villagers Can Apply</h3>
+<p>The small business loans offered by the Ningbo Native Association in Shanghai are available to poor fellow villagers who are unable to operate a small business to make a living. The maximum amount of the loan is 300 yuan. The application process is simple. It is hoped that poor fellow villagers who wish to start a small business will not miss this opportunity.</p>
+<h3>Cooking Porridge While Sick: Burned to Death in an Accident</h3>
+<p>Liu Wangshi, 18, from Jiangbei, the wife of Liu Yongyang (No. 1126), a Shandong native and watchman at No. 11 Mackenzie Road, Lane 11, lived in a small room at the entrance of the lane. Ms. Wang suddenly fell ill in recent days. At 5:30 AM the day before yesterday, before dawn, she got out of bed while still sick to cook porridge because she was hungry. Unexpectedly, a fire broke out. Ms. Wang was too sick to escape and was burned to death. The police were notified, and the body was sent to the mortuary.</p>
+<h3>Twelve Thieves Arrested</h3>
+<p>Chief Detective Feng Baishun of the French Concession Police, and others, previously arrested Hong Mapipi, a thief who robbed the Pinzhen Jewelry Store on Nanjing Road of over 60 diamond rings worth 60,000-70,000 yuan. Now they have arrested three more accomplices: Pan Nangen, Guo Yinghuai, and Xu Zhongrong.</p>
+<p>The French Concession police have also arrested eight thieves in the concession: Xu Fulin, Zhou Qiyu, Wu Jinzhang, Lu Fuhai, Shen Yuhai, Liu Shibi, Liu Yucheng, and a woman named Shen Yinshi. They have recovered a large amount of stolen goods and are currently investigating the crimes.</p>
+<p>Detectives Chen Dabao and Qiu Mingcai of the Hongkou Police Department arrested He Chunnian, a Ningbo native, the day before yesterday. It was found that he robbed Ding Xinhe's home at 236 Rue Edouard on June 25, 1936, at 9:30 PM, stealing jewelry worth 11,400 yuan. All of the above cases are still under investigation and the suspects are temporarily detained pending further investigation and prosecution.</p>
+<h3>Limited Price of Fresh Meat: Not Yet Directly Supplied</h3>
+<p>Since the Public Works Department limited the selling price of fresh meat to 8.6 yuan, meat merchants have complained that the market is not yet able to directly supply pigs, and some people are still monopolizing the market, so the black market has not disappeared. Therefore, although fresh meat is sold at the limited price, good meat and inferior meat are secretly mixed and sold together.</p>
+<h3>Madam Huang Fang, Mother of Huang Weiqiao, Passes Away</h3>
+<p>The day before yesterday was the day when a memorial service was held in Shanghai for Madam Fang, the mother of Huang Weiqiao, a director of the Junhua Jushantang (Charitable Hall). People from all walks of life came to pay their respects. Huang Weiqiao is knowledgeable in literature, epigraphy, and classics, and has been dedicated to social causes. He is a generous and chivalrous person with an ancient spirit. Madam Fang observed vegetarianism, worshipped Buddha, strictly adhered to the five precepts, and recited the Diamond Sutra, Amitabha Sutra, and other Mahayana sutras every day. She diligently recited the holy name of Buddha for thirty years without interruption. On June 17, she suddenly felt unwell and knew that she would not recover. She instructed her family to economize on funeral expenses and use the money for charitable deeds. Her family invited Buddhist monks to recite the name of Buddha. She remained clear-minded and chanted along with them. The next day, at the hour of Wei (1-3 PM), she suddenly recited the name of Buddha aloud and passed away peacefully. She was 97 years old. Those who knew her said that she would definitely be reborn in the Western Pure Land. On that day, the chairman of Jushantang, Lan Ting, presided over the memorial service, and the vice-chairman, Zhu Xiechen, assisted. All the funeral donations were allocated to the hall's fund.</p>
+<h3>U.S. President Lines Prepares to Hand Over Assets: To Be Taken Over by Osaka Shosen Kaisha</h3>
+<p>Since December 8 of last year, the Japanese side has been taking over British and American commercial properties separately. The British and American shipping agencies Jardine Matheson and Butterfield &amp; Swire have already been taken over. Because Great Britain, Tianjin, and Changyu do not have real estate, there was no way to take them over. However, the American President Lines is the largest American shipping agency in China. It has its own wharf and engine room in Baiganding, and a nine-story building on Guangdong Road. It is a large-scale operation. After the outbreak of the Pacific War, it was sealed off and stopped operating. It has now been nine months. The company is now being taken over by Osaka Shosen Kaisha, which has been designated by the Japanese naval authorities. The company sent personnel yesterday to sort out the accounts, inspect the properties, and prepare for the handover. The Great Anti Company also sent Japanese personnel to the President Lines to supervise. The shipping policy of the company after being taken over by Osaka Shosen has not yet been announced.</p>
+<h2>Page 5</h2>
+<h3>Authorities are Monitoring Food Store Prices</h3>
+<p>Various Items will have Fixed Values</p>
+<p>The English-language "Shanghai Evening Post and Mercury" reports that officials are still carefully studying the price suppression measures that will be announced in the near future. The market in Shanghai is currently quite unregulated. Most stores are taking a wait-and-see attitude towards the price reductions by major department stores and a small number of other stores, and have not followed suit. A large number of small food stores in Shanghai are being monitored by the authorities, and the authorities have issued special notices to inform them that they are being watched.</p>
+<p>Authorities are Still Deeply Studying</p>
+<p>An official stated this morning that another announcement regarding price suppression is likely to be made in the next few days. He indicated that the authorities are still studying this matter deeply and carefully. At the same time, he said that the authorities are currently looking for a temporary implementation method. The scope of the current study is quite broad, involving manufacturers, wholesalers, and retailers. He also revealed that a "constant solution" to fix and suppress prices will definitely be successfully manufactured and will replace the previous method of only controlling retailers.</p>
+<p>Crowds at Company Stores Have Not Decreased</p>
+<p>Yesterday morning, the crowds of people going to major department stores on Nanjing Road to buy cheap goods were still very large. The salespeople were very busy dealing with the unusually large number of customers. This crowding was similar to the business during Christmas. In front of the China National Products Company, a large number of citizens gathered at 8:00 AM. The organization of the lines of men and women on the sidewalks was maintained by the police. In view of the situation last week, police officers were stationed in front of major companies on Nanjing Road yesterday morning.</p>
+<p>Money Dealers Agree to Cooperate with Fair Prices</p>
+<p>It is learned that the authorities have obtained the cooperation of the money dealers, stipulating that all money dealers shall not use goods as collateral to make loans to stores or firms that have not been registered. If goods are used as collateral for loans, the following matters shall be reported daily to the local Money Dealers Association and weekly to the competent authorities for record: Name of the borrowing company or firm and the name of its representative. Amount of the loan. Term of the loan. Name and quantity of the collateralized goods. Location where the collateralized goods are stored. Registration number of the borrowing company or firm, or certification from its trade association. Money dealers agree not to make loans secured by goods to any individual or group outside of the trade association. Those who violate these three regulations will be fined by the authorities with a fine of more than 1,000 yuan. Anyone who hides the collateralized goods without reporting them will have their collateralized goods confiscated and may be fined more than 1,000 yuan and less than 1,000 yuan.</p>
+<h3>Buddhist Lecture at Jing'an Temple</h3>
+<p>At 10:00 PM last night, several robbers broke into No. 29, Lane 119, Jing'an Temple Road. They took out cotton wool and stuffed the mouths of the housewife and children, and robbed them at will before fleeing in a panic. It is said that the losses were very large, but the exact amount is unknown. At the Buddhist Academic Weekly Lecture at Jing'an Temple, Layman Sun Xiangzhong lectured on the relationship between the Three-Ring Philosophy and various religions the day before yesterday. He explained the interconnectedness of the Three-Ring Philosophy with the Zen and Esoteric practices of Buddhism, the Confucian and Mencian spirit of Confucianism, and Kant's pure and practical rationality. The lecture was insightful and moved the audience.</p>
+<h3>Public Concession Public Works Department Health Report</h3>
+<p>Statistics on infectious diseases: Number of illnesses and deaths in the week before midnight on September 5, 1942.</p>
+<h3>A Visit to the Shanghai Poor Children's Home</h3>
+<p>The Shanghai Poor Children's Home, which has a history of more than 30 years in Shanghai society, was established before the second year of the Republic (the first year of the Xuantong era of the late Qing Dynasty). The address of the home is at No. 504 Jumen Road in Nanshi. The home can accommodate hundreds of children, but unfortunately, part of the building has been damaged. Their founders were Mr. Sheng Xingsun and Mr. Shi Ziying, who were enthusiastic practitioners of social work in the past. The first director of the home was Mr. Shi Ziying. Their purpose was to take in poor children, provide them with appropriate education and care, and gradually teach them various levels of education and practical skills so that they could become productive and healthy citizens.</p>
+<p>The day the reporter visited was precisely when they were testing new students, so I saw many boys and girls taking the entrance exams.</p>
+<p>After the reporter filled out the visitor's slip, only a minute passed before a child led me to the visitor's room. At that time, there was already a spirited and kind-faced staff member waiting at the door.</p>
+<p>After introducing ourselves, I learned that his name was He Jin, and he was a graduate of the Department of Education of a certain university. He has been working in the home for more than four years. I thought that a poor children's home that was willing to hire a specialist to serve as the director of education was enough to show their seriousness in doing things.</p>
+<p>Now I will divide what he said and what I saw into the following five points.</p>
+<p>Organization of the Home: The home is centered on the board of directors. The board of directors elects two directors to concurrently serve as the director and the director of administrative affairs, who are responsible for all affairs of the home. Therefore, the various problems of the home and the daily administrative affairs are almost directly managed by the board of directors, and all the disadvantages of barriers can be completely avoided. The current director is Mr. Zhao Jinqing, and the director of administrative affairs is Mr. Zhong Zhigang.</p>
+<p>Admission Procedures: Any poor children who wish to enter the home, their families or relatives can directly obtain an admission request form and an investigation form from the general affairs office of the home. If they can fill it out at the time, it is best to return it at the time, or they can send it by mail. The home will send someone to investigate their family situation within a short period of time. If they are qualified and there is a vacancy, they can be admitted. If there is no vacancy, they must wait. However, the qualifications of the guarantor of the admitted students are very cautious due to the relationship of responsibility.</p>
+<p>Advantages of Education and Care: Educating and caring for children, especially poor children, is the most important issue in modern social problems. After reviewing the home's facilities plan for the 31st year, I was pleasantly surprised. I thought that in the current difficult times, they were still unwilling to take things lightly. Their sense of responsibility is truly admirable. Speaking of their "education," they adopted the following methods: (A) Those who are naturally intelligent can receive education from elementary school to middle school, and from middle school to university. (B) Those who are of average intelligence focus on the combination of hands and brains in the fifth and sixth grades of elementary school and teach practical skills. (C) Those who are mentally challenged are only taught "Chinese" and "arithmetic," and at the same time, they are taught a craft, such as sewing and farming. Their method is based on adapting to each individual's intelligence, which can save time and energy and is also suitable for each individual's personality. As for the home's affiliated student vocational guidance center, any student in the home can seek help at any time. Such permanent care for the students hopes that they will not fall into depravity.</p>
+<p>Teachers and Students Work Hard</p>
+<p>When Mr. He and I visited the various facilities of the home, we saw more than a dozen little brothers, each holding a hoe and a sickle, some hoeing the ground, some cutting grass, lively and healthy. Who could tell that they were orphaned children? When I walked to their damaged building, I saw a staff member guiding more than a dozen little brothers to carry old bricks. With the teachers and students willing to work so hard, the future of the home's restoration is truly promising.</p>
+<p>Economic Situation: According to Mr. He, before the incident, the home had 200 boarding students, 170 commuting students, and more than 30 teachers, staff, and technicians. The annual expenditure was more than 20,000 yuan. From the incident to now, they have been struggling to make ends meet. Mr. Zhao and Mr. Zhong have been working hard to take responsibility, which is truly admirable. However, with the recent rise in prices, although there are only more than 300 boarding and commuting students, the total expenditure has increased several times compared to the past. Therefore, the home has decided to publicly solicit donations from philanthropists from all walks of life. I think that such social undertakings are the responsibility of everyone, and I hope that those who are enthusiastic and benevolent will be willing to donate generously.</p>
+<h3>Guohua Funeral Home Undertakes the Evacuation of Coffins from Eastern Zhejiang</h3>
+<p>Evacuating the coffins of the entire city is an arduous task, requiring a lot of manpower and resources. Precisely because of this reason, the transportation costs for coffins from the city to other places cannot be said to be excessive demands. However, not every family of coffins in the city has enough money to pay for the transportation costs. Moreover, these families may account for the majority of all families. In order to prevent the spread of epidemics and to evacuate all coffins, this situation obviously hinders the progress of the work. Therefore, the coffin transportation department of Guohua Funeral Home began to register poor families, adopting free or reduced-fee methods to help poor families evacuate coffins from Shanghai.</p>
+<p>Registration Procedures</p>
+<p>The coffin transportation department of Guohua Funeral Home is located in the east end of the Huian Building on Datta Road. The registration procedure for poor families is very simple. First, the applicant must have a written request, stating the number of family members and the economic situation, etc. Secondly, the applicant must find a guarantor to make a guarantee. Then, the third step is to wait for the department to send someone to investigate and verify the facts before approving a reduction or exemption of fees.</p>
+<p>Prompt Investigation</p>
+<p>According to the person in charge of the coffin transportation department, the people who register for poverty assistance are all laborers, so the procedures are kept as simple as possible so as not to waste their precious time. Secondly, because it is necessary to help prevent epidemics and evacuate all coffins from Shanghai as soon as possible, the investigation work is also as prompt as possible, and no delays or perfunctory actions are allowed. These are the two basic working concepts of the office for handling poverty registration.</p>
+<p>Helping the Poor</p>
+<p>"Free of charge—I never dreamed of it," said one worker. The occupations of the applicants are all kinds of things, such as apprentices, maids, switchboard operators, carpenters, newspaper vendors, police officers, rickshaw drivers, stocking knitters, street sweepers, daily necessities brokers, and even dock workers and people without fixed and suitable occupations. In short, all kinds of people from the laboring class on the Shanghai Bund are present. They aim to serve the society and help the poor, and achieving the purpose of serving the society from the spirit of helping the poor is worthy of praise alone. Moreover, the current environment in Shanghai needs this kind of organization to evacuate coffins.</p>
+<p>Job Openings at the Vocational Guidance Center</p>
+<p>The Vocational Guidance Center at No. 80 Hualong Road is recruiting various talents: One female family teacher to teach junior high school English, mathematics, and science for two hours a day. Experience in mathematics is required. Monthly salary is 80 yuan. One Japanese translator. Monthly salary is more than 200 yuan. There will be a year-end bonus. Three senior accounting and statistics specialists, male, with rich experience. Salary is negotiable. Several male document clerks, investigators, and salesmen with experience, honesty, and hardworking spirit. Salary is negotiable. Three female custodians with considerable experience. Salary is negotiable. All of the above must go to neighboring counties of Shanghai to serve. Two trainees, with junior high school graduation level, patient, honest, and hardworking. In addition to food and lodging, a monthly allowance of more than ten yuan will be provided. One chef specializing in dim sum, whether Cantonese or Yangzhou style, with proven experience. Salary is negotiable. One senior high school biology teacher with teaching experience. The residence should be near the mainland market. Salary is negotiable. Applicants should go to the center for an interview. Closed on Sundays.</p>
+<p>Yesterday's Newspaper Publication Time: 6:40 PM</p>
+<p>Sports News</p>
+<h3>Football Season Begins with an Announcement: Western Union Notice of Registration</h3>
+<p>Deadline is the 19th; Everything Remains as Usual</p>
+<p>As the new autumn football season approaches, the Shanghai Western Union Football Club yesterday issued a notice announcing the start of registration, with a deadline of the 19th of this month. The registration address is Shanghai Foreigners Football Club, P.O. Box 1965. The membership fee is five yuan, and the league joining fee is ten yuan. According to the club's announcement, everything remains as usual, and the competition will be divided into four groups, one of which is the reserve group. Two weeks after the registration deadline, an annual meeting will be held to decide on all cup competition matters.</p>
+<p>All-American Women's Singles Final: Ms. Pauline Wins the Championship</p>
+<p>Lisbon, 7th (Allied News Agency) - According to news from New York, in the All-American Women's Singles Tennis Championship final yesterday at the Forest Hills stadium, Ms. Pauline Betz defeated Ms. Louise Brough by scores of 4-6, 6-1, 6-4 to win the championship. The audience numbered over 8,000.</p>
+<h3>Tongren Table Tennis League: Qinglian Overwhelms Huashun</h3>
+<p>Qinglian to Play West Police Today</p>
+<p>In the Tongren Cup table tennis league, Qinglian, a strong team in the same group, played against Huashun at the West Police hall the day before yesterday. Qinglian has a strong lineup, including young players such as Huang Min, Yang Changxi, and Zhang Fuzhang. Although Huashun is a veteran team, their skills are not yet outstanding. In the match, Qinglian advanced bravely and forcefully, ultimately defeating Huashun 7-0. In another match, the postal team fought against the rising team Samsung. The postal team has many strong players, but Samsung played hard and the scores were close. Due to lack of experience, they lost 2-5, and the postal team won. There are a total of four matches today, still at the West Police hall on Haig Road. Today, Qinglian will play against West Police, which will be a fierce battle. The schedule for today is as follows: North America - Quanlv (Ren) at 6:00 PM, Qinglian - West Police (Tong) at 6:00 PM, North America - Huabu (Ren) at 8:00 PM, Qinglian - Samsung (Tong) at 8:00 PM.</p>
+<h3>Sports Briefs</h3>
+<p>Chen Zhong, Jiang Yinseng, Chen Linsheng, Fang Rongfu, Hu Xidi, and others in this city who are enthusiastic about sports have jointly launched a large-scale mini-football league.</p>
+<p>The Vita-Wealth Cup charity volleyball match is scheduled to hold an awards ceremony this weekend, and the Xingren team will play against a mixed team.</p>
+<h3>School News</h3>
+<p>Jingqin Amateur Supplementary School, located at the east end of Newgate Road on Mathesus Road, offers courses in Chinese, Japanese, English, and Commerce. Classes are held every evening from 6:30 PM to 9:30 PM, with three lessons each. The teachers are enthusiastic, and the tuition is low. Reduced and free tuition are also available.</p>
+<p>Business News</p>
+<h3>Funds Shift to Chinese Stocks</h3>
+<p>Department Stores are the Sole Target, Creating a Situation of Demand Exceeding Supply</p>
+<p>Yesterday, the Chinese stock market saw funds shift towards Chinese stocks amid the disappearance of speculative voices. Department stores were particularly targeted, creating a situation of demand exceeding supply. China National Products and Sincere Company once hit the 100 yuan mark. Wing On reached a high of 98.5 yuan before some sellers emerged, causing a slight pullback. Compared to the end of last week, the former rose five yuan, and the latter increased by six yuan. China National Products Company followed suit, with underwear reaching a high of 32.5 yuan before settling at 31.5 yuan, also up by five jiao. In the public utilities sector, Chupei Water and Electricity also saw buying interest and reached 32.5 yuan, a strong increase, ultimately closing at 32 yuan, up 1.5 yuan, the largest increase. Chinese Electrical also rose by half a yuan. In the new pharmaceutical sector, New Asia was the most active, surging from 44 yuan to 45.75 yuan before pulling back by about one yuan, still up 7.5 jiao. Sino-French rose by half a yuan, while Minyi and others remained flat. In the cultural sector, Commercial Press rose to 270 yuan, and China Book Company each rose by five yuan. World Book was thinly traded and flat. Great China Match rose by 2.5 yuan, and Nanyang Brothers Tobacco was boosted by buyers by three yuan, reaching a high of 67.5 yuan. The new shares, Fuchang Dyeing and Weaving and Great China Weaving, saw little price change but showed underlying strength. Guanshengyuan has risen to the 200 yuan mark. Most people expect further increases. The stock price list for each market is recorded below.</p>
+<p>Public Bonds Competition Intensifies</p>
+<p>Yesterday, the unified public bond market fluctuated wildly, with fierce competition between buyers and sellers. At the opening in the morning, the buyers continued their strength from the weekend, pushing prices higher. Sellers also covered their positions, leading to an unusually strong market. All bonds rose again, each up about one yuan. However, as the closing approached, the competition between buyers and sellers intensified. Some large holders took profits, selling category C bonds. Although there was some upward pressure, it was ultimately overwhelmed by the influx of sellers, pushing the price down into the three-yuan range at the close. Although the trend suggests that the supply of bonds remains tight, large holders seem to be selling off some of their holdings, so the market may not rise further or may even reverse. As a result, unified bonds continued to rise by 7 jiao to one yuan, while category C bonds rose slightly by three jiao. The list is as follows:</p>
+<h3>Category Highest Lowest Closing Change from Previous Day</h3>
+<p>Grains Steady</p>
+<p>Beans: Due to limited supply, local shops were eager to replenish, so the market was bullish. Yesterday, 40 bags of Tianjin tea beans opened at a price of 236 yuan.</p>
+<p>Dried sweet potatoes are selling well, and the market remains promising. 60 bags of single-line Jiangbei dried sweet potatoes opened at a price of 117 yuan to 117.5 yuan.</p>
+<p>Red sorghum supply and demand are relatively balanced, and prices remain unchanged. Yesterday, one truckload of Mingguang red sorghum opened at a price of 113 yuan.</p>
+<p>Jewelry Gold</p>
+<p>Mutually Imitating Price Increases</p>
+<p>Yesterday, the jewelry industry's Daxin and other peers' jewelry gold market was exchanging at 2,100 yuan per tael (purchase price reduced by slightly less than 300 yuan). The peers' gold exchange price has already been raised. The initial low was five yuan less, at 1,871 yuan. A low price of 1,860 yuan was seen, followed by a rise to 1,900 yuan amid buying interest, which was then suppressed by limit-order sellers. At noon, it was 1,890 yuan, 15 yuan higher than last Saturday, with a difference of 40 yuan. Transaction volume was light. Jewelry silver remained at 10 yuan per tael. Peers were trading at 11 yuan and 11.2 yuan.</p>
+<p>Military Notes Discount Rate Steady</p>
+<p>Yesterday, the interbank rate for military notes was between 5.5 yuan, 5 jiao, 5 fen, and 4.8 li. Banks and money shops were buying in the market at 5.5 yuan, 5 jiao, 4 fen, and a half, and selling at 5.5 yuan, 5 jiao, 6 fen and one cattle.</p>
+<p>The interest rate of the Money Industry Association remains unchanged at 1 jiao and 3 fen.</p>
+<p>Cigarette Trading Quiet</p>
+<p>The cigarette trend is rather stagnant. In addition, the authorities are strictly prohibiting hoarding, and peers are not allowed to sell to outsiders, so hoarding is quieter than in the past. Trading is quiet, and market prices fluctuate. Yesterday's market prices were: Great Central Brand opening small at 8,000 yuan, Old Knife Brand at 5,750 yuan, Pinhai Brand at 5,500 yuan, Fairy Brand at 4,400 yuan, Wuhua Brand at 4,500 yuan, Japanese Tobacco Golden Gun Brand at 2,280 yuan, Golden Building Brand at 2,400 yuan, Red Rose Brand at 1,600 yuan, Quanlu Brand at 2,350 yuan, Nianzhi at 2,300 yuan, Guide Brand at 1,950 yuan, National Tobacco Beauty Brand at 3,750 yuan, Golden Rat Brand at 2,700 yuan, Pyramid Brand at 4,400 yuan, White Gold Dragon at 3,200 yuan. Selling prices varied.</p>
+<p>Cantonese Branches are Currently Negotiating Prices</p>
+<p>Most of the second and third batches of Jinshan Yuanzhi, Bianzhi, and Nuomizhi that the companies have received have been transferred to warehouses. 40% of the market was negotiated yesterday. This valuation is very serious. Top and middle grades fluctuate by about 10 to 20 yuan. Especially higher grades are slightly increased. Yuanzhi and Bianzhi are about 25 yuan smaller than before, and Nuomizhi is about 15% lower. The official sales offer has not yet been determined.</p>
+<p>Red Dates Sales are Tightening</p>
+<p>Recently, Ningbo, Chongming, Guangdong, and other places have been procuring red dates, and the market has suddenly become active and trending tighter. Transactions between firms have also increased. Yesterday, the new market started with first-grade dates at 220 yuan. The king of dates and the head of dates will be increased accordingly. The market still has a tightening trend.</p>
+<p>Black Iron Sheet is in Short Supply</p>
+<p>36-inch Zizhi-brand black iron sheets have been exhausted on the market. The source of this product has been cut off, and Shanghai has limited inventory. Spot goods are bound to be in short supply. There are currently no goods available on the market. Even those who have spot goods are unwilling to sell because it is difficult to obtain a permit. The market has a "price but no goods" situation. Enamel factories, printing factories, and blank factories are also switching to making Touzi goods and black iron blanks, so the transactions of these secondary goods are frequent, and the shouting prices of peers are also rising due to scarcity. Yesterday, Touzi goods were selling for 1,200 yuan per market dan, and 2,000-pound black iron blanks were selling for 16,000 yuan. Therefore, those who opened prices were rare, and the result was also a "price but no goods" situation.</p>
+<p>Whadda Woolen Fabric and Serge</p>
+<p>Both Trends are Good</p>
+<p>Thick and thin serge have been improving in recent days. Yuan-colored, dark green, grass green, and other thin plain serge and medium-thick serge are all trending well, and prices are quite firm because production has decreased, old inventory is limited, and demand exceeds supply. Peers, aware that retail price limits have been set and that it is impossible to replenish goods after they are sold, are generally unwilling to wholesale and sell, preferring to gradually serve retail customers.</p>
+<p>Whadda woolen fabric, also woven from fine wool yarn, has become more and more popular in the market because raw materials are expensive and scarce, and inventory is also lacking. Each yard sells for 190 yuan to 220 yuan wholesale. Grass green is even more scarce because the dyeing pigments have long been out of stock, and the current trading is entirely for the limited inventory. Nanjing gangs and Japanese firms are searching for goods, making them even scarcer and the trend even better. If the price limits were not in place, price increases would have already begun.</p>
+<h2>Page 6</h2>
+<p>Spring and Autumn</p>
+<h3>The "Automatic" and "Passive" in Learning</h3>
+<p>— Yu Wan</p>
+<p>I would like to comment on Mr. Kuang Cheng's article "Automatic Learning and Forced Studying." He explains that modern students' attitudes towards learning can be divided into "automatic" and "passive," which is indeed very accurate. However, why are there such distinctions? I think further research is needed.</p>
+<p>Humans are living beings. They can grow, nourish, reproduce, and adapt. Furthermore, each person has a unique personality, which creates the driving force of their lives. From this point of view, it is a big mistake to explain human learning activities as having "automatic" and "passive" distinctions. When a student is unwilling to attend class in the classroom, they are not sitting still. They will draw heads, read novels, and do the work they like to do. What reason do we have to insist that they are lazy, unwilling to work hard, and must be forced to work?</p>
+<p>Many parents are complaining about modern school education. They even say, "My child is preparing to become a doctor in the future, so why do they have to learn algebra and chemistry? As for labor and art, that's simply ridiculous." Of course, we cannot agree with these words, but in fact, they are also somewhat reasonable. We can understand this by analyzing modern education.</p>
+<p>In ancient times, education was needed for individual adaptation and the transmission of the species. Later, two classes formed in society, a leisured class and a working class, and the business of education was occupied by the leisured class. When printing was invented, large quantities of books were printed, and education only required reading. Those who read well were intellectuals and members of the upper class. This was the case in the West, and it was the same in China. The ancients said, "All occupations are inferior, only studying is superior!" That was the highest stage of this kind of thinking. After the 16th century, the Industrial Revolution and democratic thought developed rapidly. Then we wanted to talk about universal education, vocational education, and civic education. However, modern education is still just for the leisured class and individuals.</p>
+<p>In this era of widespread war, our lives are changing rapidly. The concept of a young master and young lady class has been broken, and it is impossible to live on inheritance and savings. Even if you have money and become a speculator, you must be able to read some economic news. There are also many students who need to find some work after class to maintain their lives. However, the lessons in school still teach people to write stereotyped essays and calculate the ages of fathers and sons. How can we expect students to learn automatically with such a curriculum? No wonder some people say, "You can eat without knowing how to read, but you can't eat without knowing people." In the past, reading gave you a qualification and made you an upper-class person. But now, this kind of decorative thing is very suspicious.</p>
+<p>Professor Robinson of America said in his book "The Mind in the Making," "The failure of modern education is threefold: literary education, vocational education, and civic education." Because these things still teach people to read books, pursue knowledge, and create a few bookworms. Dewey's "Continuity Theory" advocates connecting wisdom, knowledge, and action. In other words, our learning is a purposeful activity. Knowledge is not a decoration, but a tool to achieve this purpose. Therefore, why should we talk about learning having "automatic" and "passive" distinctions?</p>
+<h3>The Two-Price Theory of Banknotes</h3>
+<p>— Zhi Hu</p>
+<p>It seems unthinkable that the "long queue" crisis would spread to department stores. Even though they are called "department stores," they only sell some clothing, shoes, shirts, and stockings. Wealthy families naturally do not lack "external possessions," and those with swollen feet have no time to care about so-called "appearances." Although the price of preserved eggs has been reduced by 4 jiao and 5 fen, some people are unwilling to eat "this kind of thing," and some would rather have "salt and tofu." Besides, squeezing in with a sweaty body only gets you "one item per purchase."</p>
+<p>However, listening to the opinions of the buyers, there is a reason to believe them. They say that shopkeepers are willing to be fined and suspend business rather than lower prices. As a result, they lose in one area but gain in another. The wool comes from the sheep, so what's the difference? This time they are forced to "sacrifice painfully." Maybe the storm will pass and they will find another excuse to raise prices even higher than before. What can you do? Besides, since banknotes are worthless, selling some goods at home is a way to save up and prepare for hard times.</p>
+<p>This is what wealthy people say, and of course it makes sense. Poor people, upon hearing that fresh meat prices have been capped, seem quite excited. But that day's dinner table is most likely to have a bowl of braised pork, ribs, or even shredded pork!</p>
+<p>"Banknotes are worthless" is one saying. "Banknotes are not enough" is another.</p>
+<h3>Our Lunch</h3>
+<p>— Shu Yan</p>
+<p>Our company provides lunch, which is a rare benefit in this era of expensive rice and wages. However, my colleagues are not very grateful, and they think that this is a right that employees should enjoy. My friends all express envy. They say that eating out is very uneconomical at the moment. Even if you patronize small food stalls, three bowls of rice and a small plate of vegetarian dishes will cost at least three yuan. In this way, our colleagues are effectively getting an extra hundred yuan or so in salary each month.</p>
+<p>For several years, we have always had some funny situations during our lunch. For example, every noon, everyone feels hungry, stops working, and constantly glares at the cuckoo clock hanging on the wall. Sometimes, when they can't wait any longer, they ask the tea boy to urge the cook to serve the food. Finally, when the bell rings, they rush out like hungry ghosts. Little Lu, nicknamed "Long Legs," is the first to reach the dining hall, stretching his neck to see how many good dishes there are on the table. Soon, everyone is seated, picking up bowls and chopsticks, grabbing rice bowls, and wolfing down the dishes and rice.</p>
+<p>Recently, I only heard the cook complaining that he is paid 1,400 yuan a month to prepare two tables of food each day. Half of the money is used to buy rice, and the other half is used for coal, oil, salt, and side dishes. It is never enough, and there is no way to make a profit.</p>
+<p>So the cook had to make more plans. The two vegetarian and one meat dishes each day were served in bowls, and three chopsticks could reach the bottom. There were only three buckets of rice each day, and there were no refills after they were eaten. As for that bowl of shredded pork soup, it was better to drink a few mouthfuls of plain water.</p>
+<p>Our colleagues all have big appetites. Little Wang and Little Li eat four bowls of rice each meal. Now the cook only provides three buckets of rice per meal, so on average each person can only eat two and a half bowls. The first two days, Little Wang ate two bowls and heard that the rice bucket was empty. He was really furious. Later, the two of them implemented the "fast" method. They wished their mouths could turn into a hole and pour the rice in, wouldn't that be easier? Others had just eaten one bowl, and they had already eaten two. Others had eaten two bowls, and they had already eaten four. Then they felt satisfied, put down their bowls and chopsticks, and left. Only Lao He, Lao Xu, and Lao Lin, who ate the slowest, had their rice snatched away, and each only got a bowl and a half.</p>
+<p>As for eating the dishes, Lao Xu was the most ignorant. Every time he used his chopsticks, he would scoop away one-third of the dish. Everyone at the table was unhappy with him. One day, everyone united to deal with him. Before he could even pick up his chopsticks, everyone took a chopstickful and emptied the bowl of meat dish. Lao Xu had to pick up a chopstickful of vegetarian dish, but everyone coincidentally came back with another chopstickful, and the bowl of vegetarian dish was also gone. Lao Xu understood in his heart, and the next day, he didn't eat any dishes and swallowed two bowls of plain rice.</p>
+<p>Now I hear that the company is going to cancel lunch and give each person a subsidy of fifty yuan. All my colleagues are complaining. Even though it's a meager lunch, if they have to pay for it themselves, what can they eat with fifty yuan? This is probably affected by price caps!</p>
+<h3>Suffering</h3>
+<p>— Lin Shansheng</p>
+<p>"Suffering" is the boundary that makes humans human. It is an eternal law. The mother must "suffer" so that her son can be born. "Life" comes from death...</p>
+<p>No country has not been tempered by suffering. We cannot eliminate this condition—the law of suffering. It is an unavoidable condition of our survival.</p>
+<p>Progress is to be measured by the amount of "pain" experienced. The greater the wound of pain, the greater the progress. - Gandhi - (Qu Choux)</p>
+<h3>Sharing the Same Boat in Wind and Rain</h3>
+<p>— He Jia Zhi</p>
+<p>(8) What to Do</p>
+<p>These rooms were originally Wei Yunqing's grain warehouse. This is the easternmost room. One-third of the space is still piled with sieves, and there are two temporary cots. In front of the cot is a table, and on the table is a bowl of steaming red bean soup. The tear stains on Xia Cuizhen's face are still faintly visible. She stood in front of the table and forced a smile. Wei Yunqing greeted her early and said, "Miss Xia, I'm sorry to trouble you. I'm so sorry. Aunt Cao, why don't you bring a stool for Miss Xia to sit on?" Cuizhen bowed and said, "I dare not sit in front of Elder Wei." Wei Yunqing said, "What are you talking about? Aunt Cao..." Aunt Cao hurriedly dragged two stools from under the table, wiping the stool surfaces haphazardly with her skirt. One was delivered to Cuizhen and the other to Wei Yunqing. Wei Yunqing first sat next to the table and said, "Sit, sit, sit." Cuizhen also sat down.</p>
+<p>Wei Yunqing laughed and said, "Miss Bian, we used to meet often. Since you went to Shidetang, we haven't seen each other much. Your uncle, Fei Changhe, invited you here. I said earlier that the method of invitation was wrong, which made Miss Bian startled. Ah! What is this red mark on your hand? Was it tied by a rope like this? Poor thing! But then again, you can't completely blame Fei Changhe. Miss Bian must have been stubborn, otherwise there would be no need for a rope. Hahaha." Cuizhen said, "Let's not talk about the past. Now I only ask Elder Wei to send me back to Shidetang. The Second Madam and the eldest young master of Shidetang treat me like a guest. They don't know that I've come here. I'm afraid that they don't know. If they knew that I was in Elder Wei's mansion, it wouldn't be a big deal. They are very relieved." Wei Yunqing waved his hand and laughed, "They know. Second Madam Ye has already been here and quarreled with me. Miss Bian, let me tell you frankly, don't make a fuss about going back. I know very well that you have no home. Later, you treated the Fei family as your home, and then you treated the Ye family as your home. Now you should treat the Wei family as your home." (175)</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.09.07.html", "next": "1942.09.09.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>

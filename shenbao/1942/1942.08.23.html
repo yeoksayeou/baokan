@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1942.08.23 Shenbao</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    /* Color Palette Inspired by index-styles.css */
+    --primary-color: #1e472e;
+    --secondary-color: #363e35;
+    --accent-color: #3c5244; /* Base green for controls */
+    --border-color-inspired: #a3b8a4;
+    --link-color-inspired: #2a4b30;
+    --link-hover-color-inspired: #436542; /* Darker green for active/hover */
+    --button-text-color: white;
+    --inactive-button-bg: #a3cca3; /* Lighter gentle green for inactive view buttons */
+
+
+    /* Original Variables */
+    --chinese-font: 'Noto Serif TC', serif;
+    --english-font: Georgia, serif;
+    --border-color: #ccc;
+    --control-bg: #f0f0f0e0;
+    --pane-padding: 15px;
+    --control-area-padding: 60px; /* Adjusted padding for controls area */
+}
+html { height: 100%; }
+body {
+    font-family: sans-serif; margin: 0;
+    box-sizing: border-box;
+    height: 100%;
+}
+.controls {
+    position: fixed; top: 10px; left: 10px;
+    display: flex; gap: 8px;
+    align-items: center;
+    z-index: 10;
+    background: var(--control-bg); /* Add slight background for visibility */
+    padding: 5px;
+    border-radius: 3px;
+}
+/* Style for the button group container */
+.view-mode-buttons {
+    display: inline-flex; /* Group buttons together */
+    border: 1px solid var(--accent-color); /* Shared border */
+}
+
+/* General button style (applies to language toggle too) */
+.controls button {
+    padding: 5px 10px; cursor: pointer;
+    background-color: var(--accent-color); /* Default for non-view buttons */
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 0; /* All buttons square now */
+    transition: background-color 0.2s ease;
+    font-size: 1em;
+    line-height: 1.2;
+    text-align: center;
+}
+.controls button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+/* Specific styles for view mode buttons within the group */
+.controls .view-mode-buttons button {
+    background-color: var(--inactive-button-bg); /* Lighter green for inactive */
+    min-width: 30px; /* Give symbols some space */
+}
+/* Add separator lines within the group */
+.controls .view-mode-buttons button:not(:last-child) {
+    border-right: 1px solid var(--button-text-color); /* White separator */
+}
+/* Override for the ACTIVE view button */
+.controls .view-mode-buttons button.active-view {
+    background-color: var(--link-hover-color-inspired); /* Darker green for active */
+    font-weight: bold;
+}
+/* Hover effect specifically for view mode buttons (can be same as active or slightly different) */
+.controls .view-mode-buttons button:hover {
+    background-color: var(--link-hover-color-inspired); /* Darker green on hover */
+}
+
+
+.container {
+    display: flex; 
+    height: 100%;
+    width: 100%;
+    overflow: hidden; box-sizing: border-box;
+}
+.pane {
+    border: 1px solid transparent;
+    padding: var(--pane-padding);
+    overflow-y: auto; box-sizing: border-box;
+}
+.pane .article-title {
+    display: none; /* Title within pane is usually hidden, shown in H1 above */
+}
+#content-t h1 { /* Style for the title added in Python */
+    font-family: var(--english-font); font-size: 1.5em; font-weight: bold;
+    color: #333; margin-top: 0; margin-bottom: 0.8em;
+    padding-top: 0; /* Removed padding-top as body padding exists */
+    padding-bottom: 0; border-bottom: none;
+}
+.pane h2, .pane h3 { margin-top: 0.5em; margin-bottom: 0.5em; }
+#content-base { font-family: var(--chinese-font); }
+#content-t { font-family: var(--english-font); }
+#content-base h3 { font-size: 1.3em; }
+
+/* Horizontal Split (| button, side-by-side panes, vertical divider) */
+body.view-hsplit .container { flex-direction: row; }
+body.view-hsplit .pane { width: 50%; height: 100%; border-color: transparent; }
+body.view-hsplit #content-base { border-right: 1px solid var(--border-color); display: block !important; }
+body.view-hsplit #content-t { display: block !important; }
+body.view-hsplit .toggle-language-btn { display: none; }
+
+/* Vertical Split (– button, top/bottom panes, horizontal divider) */
+body.view-vsplit .container { flex-direction: column; }
+body.view-vsplit .pane { width: 100%; height: 50%; border-color: transparent; }
+body.view-vsplit #content-base { border-bottom: 1px solid var(--border-color); display: block !important; }
+body.view-vsplit #content-t { display: block !important; }
+body.view-vsplit .toggle-language-btn { display: none; }
+
+/* Single View (☐ button) */
+body.view-single .container { flex-direction: column; }
+body.view-single .pane { width: 100%; height: 100%; border-color: transparent; }
+body.view-single #content-base { display: block; }
+body.view-single #content-t { display: none; }
+body.view-single.show-t #content-base { display: none !important; }
+body.view-single.show-t #content-t { display: block !important; }
+body.view-single .toggle-language-btn { display: inline-block; }
+
+footer {
+    position: fixed; bottom: 10px; right: 10px; z-index: 10;
+}
+footer a {
+    color: var(--link-color-inspired); text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px; background-color: var(--control-bg);
+    border: 1px solid var(--border-color-inspired);
+    border-radius: 0; /* Square footer link too, for consistency */
+    display: inline-block;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-right: 20px; /* Retained margin */
+}
+footer a:hover {
+    color: var(--link-hover-color-inspired);
+    background-color: #e0e0e0e0; text-decoration: none;
+}
+
+/* Small screen adjustments */
+@media (max-width: 768px) {
+    /* :root { --control-area-padding: 75px; } /* Example: Increase padding if needed */
+    /* Force single view layout regardless of body class */
+    .container { flex-direction: column !important; height: calc(100% - var(--control-area-padding)) !important; }
+    .pane { width: 100% !important; height: 100% !important; border: none !important;}
+    #content-base { display: block !important; }
+    #content-t { display: none !important; }
+    body.show-t #content-base { display: none !important; }
+    body.show-t #content-t { display: block !important; }
+    .toggle-language-btn { display: inline-block !important; } /* Always show lang toggle */
+    .controls { flex-direction: row; flex-wrap: wrap; /* Allow wrapping */ align-items: center; gap: 5px; } /* Change to row for better mobile layout */
+    .controls button { width: auto; /* Allow buttons to size naturally */ }
+    .view-mode-buttons { flex-wrap: nowrap; /* Keep view buttons together */ }
+
+    /* Hide split buttons, only show single view button */
+    #view-vsplit-btn { display: none; } /* Hide '|' */
+    #view-hsplit-btn { display: none; } /* Hide '–' */
+    #view-single-btn { display: inline-block; } /* Ensure '☐' is shown */
+
+    /* Adjust border for single button when others are hidden */
+    .controls .view-mode-buttons button:not(:last-child) { border-right: none; } /* Remove internal borders */
+    #view-single-btn { border-right: none; } /* No border needed */
+}
+</style> 
+</head>
+<body>
+
+<div class="controls">
+    <div class="view-mode-buttons">
+        <button id="view-vsplit-btn" data-view="view-hsplit">|</button>
+        <button id="view-hsplit-btn" data-view="view-vsplit">–</button>
+        <button id="view-single-btn" data-view="view-single">☐</button>
+    </div>
+    <button id="toggle-language-btn" class="toggle-language-btn">English</button>
+</div>
+
+<div class="container">
+    <div id="content-base" class="pane">
+        <h1>1942 - 441 - 4924580</h1>
+<h2>Page 1</h2>
+<h2>Page 2</h2>
+<h3>中路奧萊而前線　德軍發動新攻勢　斯大林城外圍血戰方酣　南路德軍兩翼續獲進展</h3>
+<p>柏林二十二日同盟社電　最高司令部昨夜宣布、德軍已在伏朗尼慈西北一百六十英里奧萊爾地方採取新攻勢、正沿奧萊爾業勒茲（Orel　Yeletz）鐵路向葉勒茲城推進、全程約一百十英里、該城爲　　南路軍進攻伏朗尼慈北面德軍防綫之根據、此項攻勢尚在初步階段、是否將擴大、尚　　　、</p>
+<p>柏林　十二日海通社電　關於德軍在輿萊爾之戰事、昨夜官方公布稱、德軍之突進　與蘇軍發　惡戰、蘇軍正在防守其深溝高壘之陣地、新近該區大雨滂沱、作戰頗爲困難、但由德機之助、德軍仍然渡過泥濘及滿佈地雷之陣地、奪佔敵方陣地一處蘇軍數度反攻、均不得逞、德軍反侵入敵方陣地數公里、肉搏戰後、敵方碉堡數座被佔、經飛機及坦克車之助、德步兵殲敵五千人、此區德機異常活躍、已炸燬敵砲公路給養隊汽東隊及鐵道云、</p>
+<p>蘇聯邊境某地二十一日哈瓦斯社電　本日爲德蘇戰爭第四百二十五日、東綫戰局、最惹人注意者、厥爲斯達林城附近戰事之發展、與德軍在奧來爾區益趨活躍是也、茲將各地戰况、彙誌如次、　在頓河與伏爾加河間之「瓶頸地帶」仍在激戰中、似已至最後階段、德軍巳調到大批後備兵增援　　然希望能獲得具有決定性質之大勝、良以此項勝利、對於整個戰局、關係重大故也、此在蘇聯力面、亦已調到大批援軍、是以紅軍之抵抗力、亦益見加强、紅軍總司令部派遺鐵甲車隊、在斯　林城一綫各區、開始猛烈反攻、但尚未能阻止德軍前進、北自克勒曼斯加亞城起南至柯特尼哥伏城爲止刻已展開血戰、殆爲第二次大戰中最激烈者、同時德軍又開始採取鉗形戰略、斯達林城　特自西而感受威脅、抑目自西北及西南兩面亦巳感受成脅矣、城南德軍沿克拉斯諾達爾鐵路增加壓力、紅軍之鞏固陣地已被突破、碉堡多幢亦爲德軍突擊隊所佔領、德軍及其聯軍、與伏爾加河河套相去日近、此在斯達林城之西、德國摩　化步兵一師、巳在紅軍陣地開一裂口、使紅軍在該區之交通、完全陷於紊亂狀態、　奧華爾區、　柏林方面談稱、德軍巳採取攻勢、此舉意義重大、自本月十一日開始、已俘獲紅軍士兵一萬四千名擊毀蘇聯坦克車四百輛及大砲二百門、德軍在該區所採取之攻勢、殆可目爲德國大規模攻勢之第一步、而其目的、乃在對於或　調往斯達林城區增援之紅軍、予以致命的打擊、即在蘇聯方面、亦承認德軍對於斯達林城西北一綫所加之壓力、非常猛烈、　　齊夫區、紅軍雖迭次猛烈反攻、但截至目下為止仍無成就、　高加索邦、德軍不顧天氣酷熱仍　續前進、在左右兩翼均獲進展、德軍在克拉斯諾逹爾城東南似已獲勝、　軍保衛黑海四週者似已失敗、此外德軍在格羅斯尼煤油區亦尸獲得進展云、</p>
+<p>莫斯科二十一日哈瓦斯社電紅軍總司令部頃發表公報稱、於最近二十四小時內、我軍曾在克萊斯加亞以東·柯德爾尼柯伏東北·畢亞蒂哥斯克東南·及克拉斯諾達南面作戰、其　地並無重要變動、波羅的海方面、敵方一千五百噸油船一艘、被我海軍擊沉云、</p>
+<h3>日美交換病民</h3>
+<p>里斯本二十二日海通社電在葡萄牙紅十字會主持之下、日本與美國已開始在勞倫索馬格斯交換病人及藥　食物等、此等病人及藥品等均係由瑞典輪格里浦斯霍姆號、義輪凡第伯爵號及日輪淺間丸載來者、迄至目前爲止、巳交換之食物已有四千二百包、至交換病人之人數、現尚未能探悉、</p>
+<p>搜刮烏克蘭邦資源　德在蘇境準備度冬</p>
+<p>斯丹埠廿一日哈瓦斯社電　德國宣傳部長戈培爾博士接見土耳其新聞代表團時談　、德軍本年仍將在蘇過冬、戰事亦將　續進行、惟因蘇聯作戰機構、業已大見荏弱故德軍不致遭遇重大危機、蓋去年冬季、我人處境異常艱苦、危機四伏、時至今日、蘇聯巳喪失其大部富源實力削弱、而德軍父可利用去年之經騐、準備應付來冬之困難至此有某記者、詢以英美開闢第二戰塲之可能性、戈培爾當即答稱、余不信民治國家對此、能有所作爲、自我國戰勝法國之後、我國力量遠勝英國之上、開闢第二戰塲適足以加速我人之勝利、故我人現正引領以待英美之作此決定</p>
+<p>德國邊境某地二十一日哈瓦斯社電　德國駐烏克蘭佔領區高級委員柯煦頃向報界發表談話稱、德國之勝利、厥惟烏克蘭現所進行之各種努力是賴、烏克蘭德國當局之重要任務、厥爲動員境內一切資源、烏克蘭務須供給東綫德軍以各種必需食物、並須以各項　要原料及小麥運往德國、各交通綫亦須修復、此外大批工人則應遺往德國、以便代替遺往東終作戰之德國工人工作、此項計劃雖多困難、但小麥產額佔平時百分之九十、德國人民所授口糧因是　大爲增加、烏克蘭人現在德國工作者已達五十萬人之譜云、</p>
+<h3>管理金融機關暫行辦法　周財長發表聲明　三省兩市先施行</h3>
+<p>南京二十二日電　中央社訊、財政部最近擬訂之管理金融機關　行辦法、業已公布、周部長　於此事、頃特發表聲明如　、最近本部擬訂之管理金融　關暫行辦法、業經呈奉核准施行　於公布之時、特聲明下列各點、　調查經濟、安定金融、爲本部固有夕職責銀行爲調金融之機關、而金融乃工商企業夕命脈、其緩急弛張、直接有關於各業之興替、問接影響於社會之榮枯、苟非由政府嚴訂規章、旅行　當之管理、不足　資調整、而伸遵守、民國二十年三月間、國府公布夕銀行法、以種種關係、至今未能實施、本部爲適應社會需要起見、會於國府還都後、將從前部頒之銀行註冊章程及其施行細則、酌加修止、籍資依據、惟前項章程及細則、因陋就簡、未臻完善、故特詳細釐訂管理金融機關暫行辦法都凡十丸條、　一般經營金融事業者知所取舍、而本部亦得藉收管理監督之效、　本辦法應先自蘇浙皖三省及南京上海兩市開始實施、除另以部令發表外、此後本部對於金融機國之措施、當按照木辦法各規定切實施行、所有上述各省市之銀行銀號銀公司以及其他金融機關、務各體念政府意旨一體遵行、以期調節經濟、安定金融、　本辦法第二條規定、　　經開始營業之金融機關、應自木辦法施行之日起、於一個月內、　請財政部補行註冊一節、務望注意遵照辦理、　本辦法施仃後、與現行修正銀行註冊章程及其施行細則、並無牴觸、自可相輔而行、庶於　冊手續、益臻完密、</p>
+<p>以上各點、不過舉其大要、深盼各界人士、共體斯旨、切書奉行、俾本部於維護之中、得盡監督之職、用以鞏問金融、安定民生、實有望焉、</p>
+<p>第一條　木辦法所稱金融機關、不問其名稱如何、凡經營左列各項業務者、均屬之、　收受存款、　放款或票據貼現、　匯兌或押匯、</p>
+<p>第二條　本辦法施行前、凡巳經開始營業之金融機關、應自本辦法施　之日起、於一個月內、備具呈文、載明左列事項、連同章程、呈請財部補行註冊、　名稱、　組織、　資本總額、實收資本、並出資者姓名、　店舖所在地、　營業範圍、　資產負債表、　代表者及重要職員姓　住所、</p>
+<p>第三條　本辦法施行後、凡擬設立命融機關者、應備具呈文載明左列事項、連同章程、呈請財政部核准註冊、　名稱、　組織、　資本總額及實收資本、　商舖預定地、　營業範　、　營業計劃書、　營業期限、　創辦人姓名住所、</p>
+<p>第四條　金融機關、遇有左列悄事、應呈請財政部核准　名稱之變更、　組織之變史、　資本總額及實收資本之變更、　合併或廢止、　營業處所之設置營業處之階級或地址、並變更及其廢止、　章程之變更、金融　　代表者及重　職員之仟職與卸職、應呈　財政部、</p>
+<p>第五條　“條金融機關、每　營業年度終了後、應於三個月內、編製營業報告書、資產負債表、財產目錄、及損　計算書、呈報財</p>
+<p>第六條　金融機關、應依照規定、將支付存款之準備金、存入中央儲備銀行、</p>
+<p>第七條　金融機關、除例假日外、遇有臨時休業或停止付款時、應隨時呈報財政部、</p>
+<p>第八條　金融機關、不得以供給左列資金為目的、而放款或運用資金、　有價證券及商品之期貨買賣、　團積居奇及其他有投　性之交易、金融機關本身不得以投資交易、</p>
+<p>第九條　金融機關、除因營業必要、成因淸償債務收受担保物件外、不得取得動產、（證券除外）或不動產、</p>
+<p>第十條　金融戰關除經營左列各項業務外、不得兼營他業、　證券之應募承辦或買賣、　倉庫或保管業務、　其他金融機關之代理、　金錢出納事務之代理、</p>
+<p>第十一條　財政部認爲公益上有必要時得頒佈關於余融機關業務命令、</p>
+<p>第十二條　財政部得隨時令金融機關報告業務狀况、必要時並得令其提供賬簿文件、第十三條財政部得隨時檢香金融機關　業務及財產之狀况第十四條前條所規定之　項、必要時得　委託中央儲備銀行辦理之、</p>
+<p>第十五條　金融機關組織銀行公會銀錢業公會、或其他公會時、應經財政部核准、</p>
+<p>第十六條　凡未依照第二條或第三條　請核准、而經營第一條所規定之業務者、要職員其代表及重處五萬元以下之罰金或拘役、</p>
+<p>第十七條　金融機關如有違反法令章程及財政　命令、或有妨害公益行爲時、財政部得停止具營業撤換其代表者、及重要職員、或吊銷營業執照、第十八條金融機關、遇有左列情事時、其代表者或重要職員、處一萬元以下之罰金或拘役、　業務報告記載不實、或用其他方法蒙蔽　廳或公衆時、　故意隱匿賬簿文件、或說明不實、及用其他方法妨礙檢查時、　違反第四條至第十條及十五條之規定時、　不遵守本辦法之命令時、</p>
+<p>第十九條　本辦法目公佈日施行、（卅一年八月廿日公佈）又訊、本市銀錢業同業聯合委員會負責人、表示即將召集同業會議討論依法辦理各種手續、通告各會員行莊切實遵行、</p>
+<h3>法國最老婦人　巴尼絲夫人逝世</h3>
+<p>巴黎廿　日海通社電法國最老之婦人巴尼絲夫人已於最近在音德勒省之民漢恩村逝世、享年一百零七歲、夫人平素極爲健康記憶力亦極强、</p>
+<h2>Page 3</h2>
+<h3>總統特使名義　威爾基將聘問蘇聯　俾說明美國作戰努力真相　英美民眾促政府開闢戰場</h3>
+<p>里斯本二十二日同盟社電羅斯福總統昨日接見各報記者、據談稱、共和黨上屆總統候選人威爾基蘇聯及近東之行、係屬總統特使性質、其中要任務厥在「說明美國如何作戰眞相』、威爾基且係美國第二大黨名義上之領袖、自屬物望所歸、此行除訪問蘇聯外、並當赴埃及·阿拉伯·巴力斯坦·叙利亞·土耳其·伊拉克·及伊朗等國、其名義最好稱之爲「總統之特別代表」蓋以其將携帶總統書翰、匪特以之面交各該國美國人物、且將以之面交斯達林及其他各國當局也、</p>
+<p>華盛頓二十一日哈瓦斯社電　羅斯福總統本日向報界談稱、威爾基前往中東及蘇聯時當携帶余致各國領袖之函件、故成購基此行、誠可謂余之私人代表、外國盛傳我國工業生產因罷工風潮之故、大受影響、威爾基訪問各國之後、此種見解即可消滅於無形、此外我國政府若干公務員缺乏謹愼態度、深爲遺憾、茲巳發出嚴峻訓令、飭政府各機關長官對於任何事件、即與政治無關者、亦不得任意發言云，</p>
+<p>瑞士京城二十二日海通社電　此間頃接報告稱、威爾基赴莫斯科之際、將偕美陸軍部情報局柯爾斯及巴爾奈兩氏同行</p>
+<p>莫斯科二十一日哈瓦斯社電　塔斯通訊社頃發出駐倫敦華盛頓訪員來電稱、英美兩國人民舉行示威運動、贊成立即開闢第二戰塲者風起雲湧、日來益見增加、「英美兩國工人刻正設法打破各該國政府之惰性、英美兩國官方均處於困難地位固矣、但局勢如斯、不能再等、坐失時機、英國各地均在工廠委員會主持之下舉行集會、一致通過決議、請求政府立即採取行動、此在美國工人之中亦具有同樣情緒」云、</p>
+<h3>美駐華緬印　空軍司令　由畢塞爾充任</h3>
+<p>里斯本二十二日同盟社社電母新德里消息、駐渝印美軍司令史蒂威爾中將正式宣布、畢塞爾少將已被任命爲駐華緬印空軍指揮官、慶諾德少將則仍爲駐華空軍司令、</p>
+<h3>挪威天空　殞石下墜</h3>
+<p>奧斯陸廿二日海通社電　康格斯義格昨日正午忽有火光一道、起於天空、數秒鐘後該光似起爆炸、即　向地面、據天文專家稱、此項現象係由巨大之殞石所造成、</p>
+<h3>日本移民滿洲</h3>
+<p>長春廿二日海通社電　土地開拓總局昨晚稱、第二期移民五年計劃之初部、規定自日本移民九千六百家至滿洲之工作、進行極爲順利、該移民共分四十二批、每批所包括之移民皆屬日本同省之居民、此外尚有日本移民二千四百家、包括十二批、則從事於農業以外之活動、該五年計劃之第二部現正在實施中、</p>
+<h3>重要德人一名　在美被捕</h3>
+<p>華盛頓二十一日哈瓦斯社電　據聯邦偵察局副局長本日向記者談話、重要德人一名、已被當局遠捕、惟其姓名暫不宣佈、</p>
+<p>盤谷廿二日同盟社電　據新德里訊、印度反英鬥爭在英官憲彈壓下、愈趨熾烈、廿日那格浦爾英方發表稱、印度中央州西部阿姆拉瓦齊地方、廿日下午發生大規模民衆反英運動、地方長官暨警官隊馳往彈壓、以事態過于嚴重、更出動軍隊鎭壓、地方長官受民衆襲擊負重傷、生命極爲危險、</p>
+<p>沮里克二十一日同盟社電英機數架十八日在加爾各答郊外向印度民衆投彈轟炸、並以機槍掃射、結果死傷百餘人、自十六日英機轟炸勒克瑙北方開拉波多市印度民衆後、此次係第二次、印民大爲憤慨、反英情勢益趨惡化、</p>
+<p>安達曼島獨立運動</p>
+<p>安達曼二十二日同盟社電　英軍當由此撤退時、爲欲鐘除印度獨立運動之禍根、曾將監獄中有力政洽人物　走、但該島志士多被日軍救出、重獲自由、彼等均毅然奮起、爲祖國爭取獨立自由、彼等聞悉甘　等被英方逮捕後、深爲憤懣、高呼誓以吾人之血、爭取獨立與自由不止、日來此間印人紛紛向印度獨立聯盟會長戴溫塞投効、參加義勇軍、截至十九日止、已有二千鈴人參加、現已開始訓練、據該聯盟會長戴溫塞談、余於二十年前在大學求學時、曾會見我印度革命導師甘地、當時余即誓爲甘地同志、翌年余發起獨立運動被捕、監禁於拉霍爾監獄、歷時三月、余堅奉甘地之言、靜待機會到來、故出獄後即來此間行醫、二十年來、因英政府監視嚴厲、毫無成就、不勝慚愧、日軍佔領此間後、我人重獲自由、得獲幸福之生活、今日我人巳不能漠視現實、若不乘此良機獨立、則千百年後、欲謀獨立、永不可能、甘地所言之機會、現已由日軍帶來、吾人願赤手空拳奮鬭、余決站在義勇軍先頭、立於機關槍之前、領導同胞奮鬭、</p>
+<h3>甘地函印督　重申獨立要求　印境暴動事件層出不已　英機轟炸加爾各答近郊</h3>
+<p>西貢二十二日海通社電　新德里昨日透露甘地與印度總督林利資哥交換信件之詳情、據稱、甘地有一長函致林利資哥、向之重申擁護印度大會黨耍求之意見、林利資哥之覆信極爲簡短、表示不能贊同甘地之意見、並拒絕承認甘地與國會所提要求之理由、</p>
+<p>里斯本二十一日同盟社電據此間所接美方消息、印度各地騷動未息、茲分述如次、孟買拉州、　加爾各答市、哈烏拉區不斷發生反英鬭爭、其他地區民衆與警察亦不斷　突、羣衆向警察拋擲石塊、警察開槍射擊、傷亡　衆、　加爾各答市內國民會議派機關報巳停止出版者、迄二十一日止共十三家、</p>
+<p>馬都拉斯州、　馬都拉斯市警察數度與示威羣衆衝突、印人領袖已被逮捕、　馬都拉斯南部特別支諾波利警察亦與示威羣衆　突、警察以木棒毆打、商店均停業、　馬都拉斯州東部哥答維利羣衆襲擊郵政局、焚燒郵件、</p>
+<p>聯合州、　加蒂浦　羣衆襲擊警署、縱火焚燒建築物、警官多人傷亡、</p>
+<p>仰光二十二日海通社電　據悉、印度孟加拉省工業要城巴特那又發生警察與民衆衝突事件、該地英當局已將兩報館封閉、皮哈爾省當局下令、凡未持有特別許可證者、（概不得行近鐵路綫、加爾各答有國家主義派報紙十三家、均被迫停刋、印度各報主　常設常設委員會、定於星期一在新德里召　會議、討論報界局勢、</p>
+<h3>北海上空　德美空軍大戰　狄埃浦登陸英軍損失</h3>
+<p>里斯本二十一日同盟社電據倫敦電、二十一日美陸軍大型森炸機十一架、在北海上空與德空軍大編隊展開遭遇戰、達三十分鐘之久、雙方損害不明、</p>
+<p>維希二十一日哈瓦斯社電法國政府駐淪陷區專員勃里濃、本日向政府報告稱、此次英車在狄埃浦區登陸、死傷甚衆、士具殘命者三千五百名、、被俘者一千八百名、其中大半爲加拿大人、至於法國平民殞命者三十六人、受傷者六十三人、</p>
+<p>柏林二十一日哈瓦斯社電德國狄特澤將軍今夜發表廣播演說、對於英軍在狄埃浦港登陸一事、加以批評、其言略謂、狄埃浦事件昭示我人、英國及其與國絕不能開闢第二戰塲、而找軍獲捷之迅速、可稱空前、查開關第二戰塲、喧騰已久、故此次英軍登陸、並不在意料之外、其準備情形、早爲　國偵察機所發覺、苟欲完成此項登陸軍事行動、則必須先掌握海空優勢，此在英國、旣已喪失海權、且從未能控制天空云、</p>
+<h3>巴西秘魯限制　德僑活動</h3>
+<p>阿根廷京城二十一日同盟社電　據巴京電、巴西政府二十日發布告示、謂奉總統令除德外交官外、禁止其他德人自巴西撤退、此項措置係對巴西船擊沉事件、表示報復、</p>
+<p>巴西京城廿日哈瓦斯社電海員數千名、昨日在總統府前示威、反對軸心國潛艇擊沉巴西商船、伐雨加斯總統曾接見海員代表、告以此種擊沉商船之行爲、竟圖威脅我國、但我國決不爲壓迫性的威脅所屈服、我國海空軍刻正與美國海空軍合作、必能保護我國航業、</p>
+<p>倫敦廿一日哈瓦斯社電　據里瑪電稱、秘魯參議院通過法案一件、其內容主張授權普拉多總統、採取必要步驟、以對付軸心國僑民、凡屬德義日僑民、如有鼓動反秘魯活動之嫌疑者、總統得取消其公民權利、此一法案、即當移交衆議院討論、</p>
+<h3>瑞典在東京岸　敷設水雷</h3>
+<p>瑞典京城二十二日海通社電　負責方面稱、蘇聯潛艇一再在瑞典領水內攻擊瑞典商輪、瑞典當局爲自衛起見、已在瑞典東海岸伐斯特維克口外、北起哈夫林格、南迄克魯克籠特、長百五十公里之瑞典領海內、數設水雷、</p>
+<h3>瑞典駐英使館　海軍參贊就職</h3>
+<p>倫敦二十一日哈瓦斯社電瑞典貝爾特拉姆親王、（即巨斯達夫國王之孫、今晨抵此、就任瑞典公使館海軍參贊之職、</p>
+<h3>捷克人民　廿一名遭槍決</h3>
+<p>柏林二十一日哈瓦期社電捷克保護地巴拉格人民法庭、又將前任捷克內閣總理公署情報主任希摩朗茲及其同黨土人、以通敵叛逆之罪名、判處死刑、巳於本月十九日執行、</p>
+<h3>挪威京城　發生爆炸案</h3>
+<p>瑞典京城二十一日哈瓦斯社電　據挪威京城來訊、最近爲某警察隊所佔據之工會大厦、突於今晨發生爆炸、多人受傷、房屋一部份昨毀、一般人相信此舉、係陰謀破壞份子所爲、</p>
+<h3>蘇聯機羣　大舉轟炸華沙　東普魯士亦被襲</h3>
+<p>里斯本廿二日同盟電　華沙電台昨夜宣布、蘇聯飛　多架、曾於本月二十日夜間大舉轟炸華沙、城內與東普魯士及上西萊西亞軍事設備均被襲擊、</p>
+<h2>Page 4</h2>
+<h3>電力公司與華中水電公司　擬接通主要電機　煤斤減價電力附加費加費已抑低水及煤氣兩項目下未能核减</h3>
+<p>上海電力公司因其所獲之煤每噸减價日金十四元、故已將其向用戶徵收之燃料附加費减低百分之十五、且係從六月二十日補算起、此乃得當局協助而抑低公共事業費用之第一步驟、</p>
+<p>用戶恐未注意</p>
+<p>電力公司用戶　其按月賬單上燃料附加費之核减、縱有注意及者、亦必寥寥無幾、若干大廠商嚴密調查其每月用電量者、或已知燃料附加費减低事、惟一般家庭用戶、並未注意、查　力基本費、每度儲券一元、從本年　月二十日起實　、　　减低、</p>
+<p>計每度减七分</p>
+<p>减　、乃帳單上有SC字樣之燃料附加費、從五月二十日至六月十九日期問，燃料附加費爲每度五角六分、其　　　爲每度四角九分、　减低百分之十五、　於此事、未有止式宣布、衆信　格如再减低、　則電力公司將再度核减其燃料附加費、</p>
+<p>水及煤氣不减</p>
+<p>上海自來水公司某　稱、渠　此並無所知、　自來水公司目下未　减收水費、自舊法幣改收中儲劵　來、水費迄無變動、又上　自來火公司某員聲稱、該公司於七月二十四日所發宣布、說明營業虧折、至五月二十日始實行新費、以資彌補、在虧折　經彌補之　、不能减低自來火費、至於虧折何時可獲完全彌補、渠未能斷定、蓋將視原料供給與自來火製造等事而定</p>
+<p>接綫事已討論</p>
+<p>聞上海電力公司與華中水電公司主要電綫接通、以統一電力之分配事，現仍在討論中、此項計劃、尚在初步階段、一俟獲得興亞院　可及必要之物料、該兩公司　開始集中電力供給、俾節省發電之費用、</p>
+<h3>疑似霍亂症　昨死四人</h3>
+<p>昨日兩租界受防疫注射人數共一七二八七人、其大部均係在法租界申請者、計有一二九四名、而公共租界僅佔六〇九三人、法租界　生　咋日僅接獲嫌疑霍亂三起、但死二人、同時公共和界則發現十二起、亦有二人死亡、雖現時大多數市民均已施行注射、但公共租界力面對其入境者、仍由捕房派員向其索示防疫證書、至於由南市進入法租界者、亦由法捕房加以　厲檢查香防疫證、</p>
+<h3>兩租界對截斷水電　處理辦法各別　公共租界不擬另頒條例</h3>
+<p>英文大美晚報云、部局發言人今（二十二日）晨告記者稱、工部局不擬仿從法租界當局之行動、頒布條例、禁止業主與二房東未獲官方核准而截斷水電與自來火供給、緣工部局設有房租調解委員會、以處理業主與二房東間糾紛、凡有此項糾紛及類似之困難者、均可訴諸該委員會、</p>
+<h3>滬市　分為兩防空區　一為海軍區一為陸軍區燈火管制委由保甲擔任</h3>
+<p>日海陸軍當局宣布上海將於下週二實施燈火警戒管制演習後、公共租界警務處防空科於二十一日披露該處巳於三天前組成防空委員會、週四午後在警務處供樂　舉行會議、歷時頗久、討論對街頭與戶內燈火實施管制事、</p>
+<p>交通燈火悉受管理</p>
+<p>據稱，一切燈火管制辦法、均將由日當局規定、而上海將分篇甲與乙兩個防空區、一名海軍區、一名陸軍區、由日陸海軍當局分別管理、週四會議中、決定以管理街車燈火·旅館·菜館與戶內燈火之任務、委諸保甲制、與公共租界警隊之工作、從　調整、據　　電力公司表示、街頭燈火難以管制、一切雷力、若非暫予遮斷、即根本不能遮斷、如欲調整電力分配則難辦到、惟據確悉、管理交通燈火及汽車燈光等之準備、殆已完成、如前所宣布者</p>
+<p>警處負責防空事宜</p>
+<p>警務處交通科助理處長松本五郎、今後將負責有關防空之一切事宜、防空委員會亦由松本爲首、悉員十二人均係日籍警官、防空委員會於週四會議時所討論者、爲囑自警團在燈火警戒管制期間、對汽車燈自由車燈及准許發光之限度等、如何辦理、</p>
+<p>警燈戒光期限間度</p>
+<p>擬定管制燈火計劃如次、在燈火警戒管制期間、汽車之燈、包括車頭燈側燈與探照燈在內、均予熄滅、僅許燃放兩燈、目此兩燈之光、須加調整、俾車在平坦道路上、每燈燈光照及十公尺以內、燈光之最高亮　在乙區以三光度（Lux）爲限、在甲區以〇·二光度爲限、至於此兩區之界限、警方尚未披露、蓋此事尚未有確切之宜布也、</p>
+<p>甲區較嚴乙區較寬</p>
+<p>乙區內在燈火警戒管制期間、對汽車之尾燈照會燈與停駛燈光、不加限制、但在甲區內、此等燈光亦須熄滅、僅許一燈放光、而輻射錢不得超出三百公尺、自由車塌車人力車或馬車等之燈光、及其他類似之燈光、在乙區並不限制、在甲區則須减弱、並加以一部份之遮掩、各燈均以一支光以內爲限、手　筒及其他能調整光亮之燈、以〇·三支光力為限、不頁遮掩、空襲寺、一切燈火、概須熄滅、僅戶內燈光加以遮掩而在三百公尺外不能瞭見者　、不必熄滅、據防空科披露、公共租界內將設立防空團體司令部及分部其詳細情形、將於下週二之前宣布、又悉、法租界警務總巡費伯爾法火政處長鮑梭法衛生處長巴魯特與法工務處長鮑剛、亦　組成法租界防空委員會、</p>
+<h3>大學組正在審核　小學助金待領　邱長蔭君王方神父嘉惠清寒姚母趙太夫人遺命救濟失學</h3>
+<p>申報讀者助學金、日來辦理火學組約談調查及審核事宜、，下星期間常可全部竣事、中學組助金兩日間已發出一半、小學組助金尚餘若干份、盼即日前來領取、又落選諸生、亦望即日來館取回證件、昨日續有請求改校或取消助金等事、併誌如下、　中學組三二六號陳本實、八四五號陸費銘　、八六四號徐愛梅、六四六號王祖德、二七三號劉允璋、七六四號鄭德成、六一四鮑屛煇以上諸生已在他處獲助、本報助金取消、　中二十一號趙盼兮，五十一號吳雅弟、來函照辦、　中學組三五二號楊鎭山、八七〇號竺福賡、補習組二〇號譚鎭球、一〇三號李樹英、以上諸生准予改校、　中學組八五四號吳復順、請求改校、應說明欲入何科及繳費若干及該校章程、　中學組八七一號鄭振　改校不准、　補習組二〇號鄭芳鏞、准改入劍橋英專免費額、　華華中學來函說明六一三號朱大均不能免費之理由，照辦、</p>
+<p>長蔭盃圓門球義賽</p>
+<p>邱長蔭君發起主辦之長蔭盃園門球慈善賽、業於上週圓滿結束、成績良佳、全部收入不除開支、平均捐助本報助學金、及新聞報貸學金、總計共得七千零五十一元、一切開支、皆由邱長蔭范鑫培張銘生三君負担、昨日送來捐助本報助學金三千五百二十五元五角、提倡體育之餘、復熱心助學、良堪欽佩、（附錄王思方會計師賬目證明書於下）審核長蔭盃圓門球義　賬目證明書、長蔭杯圓門球捐募貸學金義賽、售票收入、業經本會計師審核　竣、計售收榮譽券七百三十一張（每張五元）、三千六百五十元、入場券六百九十八張（每張二元）、一千三百九十六元、拍賣義球兩枚、收入支票二千元、（聚興誠銀行第G〇六六六六一號支票一紙）、所有票根現款支票、　經詳細查核無訛、特此證明、與業會計帥事務所主任會計師王思力、三十一年八月二十日、昨日收到之助學金　盃圓門球慈善塞委員會三千五百廿五元五角、張驚蟹（為其命堂六四　　節省　資）五十元、無名氏（收據號碼一五　二）五元、共計　券三千五百八十元〇五角、</p>
+<p>姚太夫人遺命助學</p>
+<p>姚母趙太夫人造命助學　本　　　　、收五百八十元正、特　　　　　銜列後、郭季英一百元、　　　六十元　郭曼鶴五十元、廣務紡織公司周繼美五十元、廣豐麺粉公司任卓羣五十元、毛鈞琦四十元、唐星海三十元、李祖楨·基·薰·三十元、盧澗泉三十元、馬祈善三十元、趙傳鼎廿元、問德孫廿元、何愛珠廿元、錢念茲廿元、浦緝庭十元、鄧栽岑十元、胡梅　十元、共計儲券五百百十元、兩共計儲券四千一百百十元〇五角、</p>
+<p>王方神父嘉惠失學</p>
+<p>徐滙公學體育主任王方師父、為嘉患失學青年起見、特發起慈善是球賽、將券資收入、不除　支、悉數捐贈本報助學基金、記共、四百九十一元正、昨　如數送至本　、以上三共四千六百七十一元五角、前存十八萬一千三百十七　二角二分、總結共存十八萬五千九百八十八元七角二分、</p>
+<h2>Page 5</h2>
+<h3>日軍防空司令部發表談話　闡述注意事項</h3>
+<p>關於防空警戒、本市日陸海軍防空司令部、業已發出第一號、第二號、第二號佈告、於第一號佈告中說明、空防實施大綱及關於警報及燈火管制之事項、於第二號佈告中指示民間防空重要措施之家庭防空事項、第三號佈告頒發實施燈火管制之命令、惟各市民對於各項規定、不無疑問之點、日陸海軍防空司令部當局爰發表談話、分述各項應加注意事項如次、</p>
+<p>一、關於空襲時之處置　空　時所發生之各項情形如下（甲）炸彈爆炸而引起破壞死傷及破壞物落下四散、受間接之損傷（乙）炸彈爆發時、發生一氧化碳及其他有毒瓦斯、（丙）同時多處發生火災、（丁）水管設備破壞、以致斷水及自來水外溢、（戊）燃料及點燈用煤氣設備破壞、以致供給斷絕、或煤氣外溢（已）敵方故意使用毒瓦斯彈時、有毒氣發散、然空襲所受之損害、並不如一般人所理想中之恐怖、故應沈着處置、則受損不致過重、標準處置大致如下、</p>
+<p>（甲）各家庭照防空司令部第二號佈告、着重於防火而取行勸、（乙）如在戶外則掩以適當之遮蔽物、（丙）需車汽車等車輛應停於適當地位、（丁）官廳及公司事務　等依照家庭防空防火指導要綱、採取警戒、</p>
+<p>二、關於燈火準備管制燈火管制分準備管制、警戒管制、空襲管制等三種、簡明言之、所謂警戒管制者、係於敵機自其根據地起飛、或將空襲上海亦未可知、或在某海面發現敵方航空母艦時、乃發出警戒管制令、</p>
+<p>空襲管制、係上海確爲空襲目標、敵機來襲時發令之謂、然考慮現代飛機之性能時、敵機未必依照預定時間來襲、故無空襲之虞時、戰時中燈火亦予以適當管制、以免在遠距離之外、對敵機顯示目標、並作準備以備實施警戒管制、此即準備管制也、</p>
+<p>鑒於上述各點，故於十二日起，命令實施準備管制，上海市亦已踏上戰時民防施策之第一步，因之準備管制必須繼續至戰爭結束時爲止，至於準備管制時期中，應予熄滅之燈火，暫時指定爲招牌燈類，然今後視情形，逐步整理非必要燈火，希望市民對居處燈火，將非必要燈火加以整理。</p>
+<p>又司令部對實施準備管制，希望</p>
+<p>（甲）儘速完成警戒管制之準備。（乙）戶外燈火，上面予以遮沒，不使在水平以上發　其光源，上半部並塗以黑色。（丙）戶內燈火，自外能見光源（發光之實體如需燈之燈泡）者，覆以警戒管制準備之覆罩，以不使在水平上發見其光源爲度。（丁）高層建築物中，十層以上房間之燈火，以丙項規定之覆罩遮沒光源，其所遮之位置，以自下方四十五度以上不見光源爲度。（戊）店鋪中有過度刺眼之燈火者，應减少燈數或電燈光力。（已）橱窗之光力，務須减少。（庚）汽車等之前燈，依照上項規定予以遮覆，但其角度，汽車水平之時，自燈所直接發出之射光，以不射至十五度以上空中爲度。</p>
+<p>三，關於燈火警戒管制，燈火警戒管制，原則上於防空警戒警報發令時實施，故在該時期中，發光應完全熄滅，然警戒管制，於繼續至相當長時期，是以一般市民不能停止業務，且在居住上書，最少限度之燈火亦屬必要者，乃根據此項要求決定警戒管制，希望市民了解此點，予以實施，警戒管制中，應繼續工作，並不使燈光洩露於戶外。</p>
+<p>四，關於燈火警戒管制中戶內燈光隱蔽程度，此業於民間防空指導要綱第二號表內規定，茲再加以解說。</p>
+<p>（甲）店外燈類（店外即指店面以外之處），如裝飾燈，掛燈，陳列橱窗照明燈其他同類之燈火，在警戒管制中，應全部熄滅。（乙）普通戶內體類，依照下列各要點减低其光度，並遮沒其燈光。</p>
+<p>直通外部之鬥口、遮以黑幕　燈火加上覆罩、且燈火之光度、視覆罩遮蔽燈光之方法而予限制、例如（室廣十二平方米〇·五支燭光以內、一燈光度不得超過二支光、</p>
+<p>六、關於燈火管制用材料、（甲）遮光用之黑幕、應使用質厚之黑布　不得巳時亦可用黑色紙、惟紙質易於破損、故希望務須用布製成、</p>
+<p>（乙）幫燈遮光覆罩、照上圖製之、</p>
+<p>七、防空司令部佈告及當局發表之談話以及其他指示事項、應予剪存、</p>
+<h3>廬山丸由港粵來滬　今日可進口靠埠　由粵載返滬華人旅客甚多因二客疫斃泊淞口已五天</h3>
+<p>今夏虎疫猖獗、本市當局防範綦嚴近來天氣略見淸凉、疫厲較减海關檢疫處對進口船隻騐疫仍嚴、尤其由南華來滬船隻、對騐疫工作更爲嚴緊、不論何船、至吳淞口外停泊二十四小時，等候騐畢始准進口、前日東亞海運公司盧山丸由港粵來滬、於本星期二（即十八日）抵吳淞口、在三夾水江面照例拋錯、聽候檢騐、但至昨日傍晚、尚未見進口、聞該輪此次由粵載來返滬華人旅客甚多、中途內有二乘客染疫殞命、故該輪騐疫手續、較普通進口船尤繁、在口外停泊已有五日之久、昨據該公司稱、騐疫工作昨日已完畢、如無特殊事故發生、今日下午當可進口矣、</p>
+<h3>各界彙訊</h3>
+<p>振中銀行　振中商業儲蓄銀行、係本市商界巨子朱景祺榮梅莘糜靜菴孫嘉穰徐圭芳戎承灝陳梅芳等諸氏所發起組織、業已成立董事會、並推定總經理、聞董事長與總經理職務、公推由朱糜兩氏分任、該行資金雄厚、組織健全、並以諸氏經營有方、將來業務前途、未可限量</p>
+<p>「原始人」　上海業餘木偶劇社、此次假座靜安寺路七二二號猶太總會、公演「原始入」情節緊張、塲面熱鬧、今日爲公演最後一天、祇有上午十時及下午三時兩塲、加演古裝歌舞「小宴」載歌載舞、唯妙唯肖、甚盼一般家長、携同子女往觀、電話購票三四二〇五、</p>
+<p>羚羊牌三輪車本埠著名瑞士工程師米呂蒂、設計羚羊牌三輪車、構造精巧、駕駛輕快、購者咸表滿意本埠由寗波路三四九號申興貿易公司獨家經理</p>
+<p>昨日本報發報時間六點二十分</p>
+<p>體育新聞</p>
+<h3>實業盃籃球聯賽　中聯今日戰强星　昨日維他富小勝雷隊</h3>
+<p>實業盃籃球聯賽、定今日下午四時、計有四塲角逐、在南陽路實業中學球塲舉行、實組本有同仁對華南之精彩項目、因故延期、故實業僅中聯對强星一組、業組阜豐對南華、將有劇戰、雷隊對Ｖ隊、設者棋高一籌可望獲勝、中聯强星之役、中聯能以最精銳部隊、出擊勝利、可操左券、否則難免慘敗、今日秩序及昨賽結果如下、</p>
+<p>（昨賽結果）維他富勝雷隊、卅五－卅二、阜豐勝緋紅、廿七－廿五、Ｖ隊勝雷隊、十三－九、同仁勝中聯、棄權、</p>
+<p>（今日秩序）　聯－緋紅、（業）下午四時、雷隊－Ｖ隊、（業）四時四十、阜豐－南華、（業）五時卅分、中聯－强星、（實）下午六時、</p>
+<h3>維他富盃排球昨賽　興仁勝維他富</h3>
+<p>女子友星維他富告捷維他富盃慈善排球賽、於昨晚七時、在八仙橋靑年會健身房舉行、戰續如下、</p>
+<h3>運動簡訊</h3>
+<p>銀綫業乒乓盟主浙江與業銀打乒乓隊、昨日應中華影片公司製作部同人組織之華影乒乓隊之約、作友誼賽、　度任栽判、結果浙興以五對二擊退華影、、徐匯公學主辦之慈善小型足球賽、日前在徐家匯該校球塲舉行、結果文靜以一對〇克小匯、匯中則以六對一大破合衆、壓軸聯保遇徐匯、因天雨未賽、經決定展至下星期二（廿五日）下午六時、仍在原處補賽、</p>
+<p>合羣盃小型球聯賽、今日自晨八時起有十三塲交綏、分別在東華東西塲舉行、</p>
+<p>商業新聞</p>
+<h3>華股業將有新發展　華商股票公會將開籌備會</h3>
+<p>昨華商投票市况、週末交易轉稀、市勢由疲轉穩、蓋因華股同業根本無買空賣空之交易、完全係經營代客投資收吸、及求現者吐售之實貨買賣、至華股同業公會業經富局之批准即成立、數日來種種未明眞相之誤傳、一掃而空、該業即有新的局面展開、是以月餘來虛疲之各方人心業已轉定、見低買戶轉殷、市價結果則仍軋小、尤以閘北水電巳破入三十元關內、軋小一元二角半爲最巨、華商電氣已轉穩低二角半、文化股僅中華書局小五元、入、一百七十兀關、商務與世界由疲終見軋平、有新買戶活動、百貨業永安降二元、入一百元內、內衣低七角半、新新公司價與上日無榮辱、新藥業較軟、新亞低七角牛、中法降一元半、退一至七十元關口、民誼降二元、信一誼獨佳、八百三十元仍有買戶、大中華火柴跌勢亦微、小一元、南洋烟公司趨平、茲分紀股市表價錄後、股　名　最　高　最　低商務書館　二七·〇〇　二六八·〇〇中華書局　一七〇·〇〇　一六七·五〇冠生園　二〇〇·〇〇　——家庭工業　三二七·五〇　三二五·〇〇永安公司　一〇一·〇〇　九五·〇〇新新公司　一〇〇·〇〇　九六·〇〇國貨公司　一〇七·五〇　一〇五·〇〇中國內衣　三二·五〇　三一·七五大生一廠　一七五·〇〇　——大中華火柴一七五·〇〇　一七二·五〇美亞綢廠　四一·五〇　四〇·〇〇漢冶萍　一九·五〇　一八·〇〇閘北水電　三〇·五〇　二九·〇〇華商電氣　二八·〇〇　二七·〇〇新亞藥廠　四一·七五　四〇·五〇中法藥房　七一·五〇　六九·五〇民誼藥廠　六三·〇〇　六二·〇〇新亞材料　三〇·〇〇　——南洋烟草　六五·〇〇　——</p>
+<p>華商股票同業所組織之上海華商股票同業公會、業經當局批准、指定俞明時·張德欽·鄭學誥·張孝賢·王瀛生·姚兆塘·鄭家駒·諸尚一·金誦甘等九人爲籌備委員會、並指定兪明時篇籌備會召集人、日內即將召　籌備會云、</p>
+<h3>公債微波盪漾　行市參差</h3>
+<p>昨日公債市况、徴波盪漾、市趨漲勢、以九元二角高價開盤、而各債隨之做開、亦多見昂、惟大戶對丙種之　出、仍未少减、故中途在多方出籠下、被逼壓小、而甲乙獨見堅定肉之買戶對丙種有所顧忌、跟蹤出丙種而進甲乙兩種、其實大戶之進出完全爲籌碼調度關係、對於各債本身、無關宏旨、即今之進甲乙出丙種、反而出甲乙進丙種、亦何獨不可、故甲乙之與其他各種恐無異趨之理由總之、觀甲乙之挺漲或可爲反映他種轉堅之覺聲、故賣者宜審愼爲穩身、全市成交約二百萬元左右、茲列表於後、類別　最高　最低　收盤　比前日統甲四一·四〇四〇·九〇四一·二〇漲〇·六〇統乙二九·四〇二九·〇〇三九·二〇又〇·一〇統丙三九·二〇三八·七〇三八·九〇又〇·一〇統丁三六·一〇三五·七〇三五·九〇　平統戊二七·三〇三六·七〇三六·九〇　平</p>
+<h3>飾金穩定逾恒</h3>
+<p>昨本布銀樓業入新同行首飾金每兩兌出價、均仍掛二千一百五十元、（收進减三百元左右）現金號門市售出二千一百元、收進價懸一千九百元、同業互做價仍在一千九百元關左右盤旋、穩定逾恒、晨爲一千九百元、俄梢升爲一千九百零五元、又見回做小至一千八百九十五元、午刻成交價一千九百元、與上日價同、最後照上價無售出者、僅十元差度、交易微細、至首飾紋銀仍掛十六元、同業互做價十元零八九角、</p>
+<h3>四行儲蓄會　分派紅利</h3>
+<p>鹽業·金城·中南·大陸·銀行儲蓄會、自民國三十一年一月一日起截至同年六月三十日止之第卅八期帳略、業經決算、茲摘錄於後、各種儲金總額爲二千五百九十五萬八千六百八十八元七角三分、內以二年定期儲金七百二十六萬四千二百三十一元二角五分爲最多、活期儲金六百十五萬七千〇四十七元〇五分次之、本期純益爲十一萬九千五百〇五元五角五分、會員紅利仍爲一厘、二年定期儲金、連同保息七厘、共計可得週息八厘、</p>
+<h3>潤源莊加入錢庫</h3>
+<p>本市銀行業聯合準備委員會、昨日通函各行莊略云、准　業準備庫函開、潤源錢莊巳於本月十八日加入該庫爲會員、自八月廿四日起、各行莊收入該莊付款票據、委託本會代收、請依照其他會員莊辦法同樣辦理、</p>
+<h3>棉布依舊虛弱</h3>
+<p>廠布　昨市因東疋續降、人心虛軟、各布售盤一致下游、白貨跌落每疋二三元不等、十六磅地球粗布一七九元、飛鴻一七六元、九磅新字一〇九元、十二磅地球細布一五八元半、富貴銀行單一四二元、大鵬銀行單手貨廉售祗一四一元半、富貴細斜一二七元、木蘭漂布一六〇元、秦良玉一五〇元、府綢因貨不當令、長壽售五元七角、排球三元九角、水浪絨與嗶嘰仍有實銷、三羊嗶嘰三元八角、九新水浪三元二角半、有吃戶、桃花女士林二五八元半開價、步降至二五六元半、至七角半、因週六關係、成交亦見减少、</p>
+<p>東布跌勢未定、十二磅龍頭細布新單一七七元半開盤、最小價做一七四元、午牧回至一七五元二角半、續跌三元二角半、銀行．單龍頭一五六元、彩球細布一六〇元五角至一元、飛魚一五七元　陽鶴一五六元、五福雙魚一五四元、均跌一二元、比較尚堅、四君子紅單嗶嘰七元三角半起、最小見七元二角二分、倐又升騰至七元二角七分、跌一角二三分、</p>
+<h3>山芋乾擇價而取</h3>
+<p>豆類零銷昨略見動、惟市勢尚難過份好轉、計開靑島　豆五十包、價爲二百三十二元、天津赤豆二十包、價一百六十二元、崇明沙赤三十包、價一百六十二元、又次貨一百五十六元、呈平穩之局、　山芋乾買戶擇價而取、呈欲振乏力之勢、昨開江北山芋乾四十包、價一百零五元自出、　麩皮、銷减轉疲、昨開三鑫小包麩皮五月份提單二百五十包、價金十九元半、</p>
+<h3>湘蓮試新數十斤</h3>
+<p>湘蓮本屆新貨、巳有數十斤運到試市、旋以爲數過少、雖有開出、與冷氣貨相仿、未能視爲正市、兼之冷氣貨近市以需要寥寥、至爲平疲、高莊爲七百五一十元、次不一、</p>
+<h2>Page 6</h2>
+<p>家庭</p>
+<h3>姚母遺命助學</h3>
+<p>— 記者</p>
+<p>讀了昨天本報「遺命助學」的紀載，我們對於姚母趙太夫人彌留的時候，還殷殷以節省喪費資助失學兒童爲念，這不僅是姚氏一家的賢母，却是今日社會偉大母敎的表率。</p>
+<p>太夫人為先烈姚定生先生德配，先生於戊戍政變後，斥資興學，在原籍嵊縣手創師曾學堂，經費不繼，夫人恒脫簪珥以助，後先生以指摘淸廷時政，於宣統二年慘遭不幸，太夫人銜哀敎子，數十年如一日，「母敎重如山」，今其哲嗣輩均已獻身社會，卓著聲譽，不負太夫人的苦心督敎，道在我們讀到瀧岡阡表　其心厚於仁必將有其後也」，「積善成德，宜享其隆」，於此有其同感。</p>
+<p>我們重視這段紀述，不僅在表揚賢母，而是期望能因太未人精誠所感召，一正今日社會的風尚，節省一切糜費，救助失學靑年，這是比任何事業爲急要。姚氏昆仲，秉承母敎，亦足稱述，此種義舉，正是「母改於父母之道，可謂孝矣」。</p>
+<p>模範的賢母，模範的家庭，造福學子，濟人利世，不獨親其親，子其子，使優秀靑年，續其學業，我們於敬佩之餘，謹略叙其所感如此。</p>
+<h3>水電節約法</h3>
+<p>— 蕭鵑</p>
+<p>處此百物昂貴的時代，做一個當家的主婦實是非常不容易的，然而貴儘管貴，生活還是要生活，於是在某些地方就不得不節省些了。水電費是每月的經常支出，節省水電不但可减低家庭經濟的開銷，而目更可節省公共事業的資源。一個家庭裏，節水與節雷只耍行之得當，節之得法，是絕對不會因少用而感不便的。下面乃是筆者經騐之談。</p>
+<p>一，節水之道</p>
+<p>自來水籠頭要注意開關：近來一種新式籠頭是手壓式的，要水時，用手一壓水便流出，不用時，手一放，水即停止。這種籠頭沒有忘閉或閉而未緊還繼續流水的毛病，在公共塲所採用得很多，通常家庭中還不常見。目下水費浩大做主婦的不妨向水實行家詢問詳情應否改裝？這是很値得顧慮的。至於籠頭漏水，若不立刻修好，這種消耗，數可驚人，萬勿忽視。衣服要集中洗滌：穿污了的衣服，尤其是夏天的單衣汗杉等，不要脫下一件就洗一件，最好是積下三五件或十幾件一起洗。這樣，水當然省了許多。</p>
+<p>廢水的利用：洗衣洗下來的第二次淸水，可以用它灑地或揩地板。洗米和洗菜的剩水，可以用來灌澆花木。</p>
+<p>日常的節約：平常洗面，洗手，洗碗、，洗菜用水亦須儘量節約。因為這些都是天天的事，甚至一天要行數次，積少成多，每次浪費一些，全部即浪費許多，反之，每次省一些，全部即省訐多，所謂「省」，並非是應該用而不用，而是省在不該用而濫用。</p>
+<p>二，節電之道</p>
+<p>注意電燈開關：這是節電中最易實行的一法，但也是最容易使人忽略的地方。往往一家人都到飯廳去吹晚飯，而臥室裹却雖無人而點得通明，這顯然是毫無理由的無謂消耗，這裏就需要主婦的留心了。最好在臨睡前巡視一遍，看一看廚房浴室走廊的燈是否都已熄滅、用檯燈看書或寫字，完畢時應立即閉關，無錢雷收音機不聽時也要閉上電門。</p>
+<p>選用良好燈泡：買價廉貨劣的燈泡是吃虧的，老牌燈泡價雖貴一些，却光亮，省電而經用，雖貴也値得。</p>
+<p>選用效能最大的燈罩：燈罩的效能由於形狀，顏色，材料的不同，而有很大的出入，這要用房間的色彩和美藝去配合的。</p>
+<p>其他雷氣機械的使用亦應注意：　電鈴所需電壓極小，故常鈴響的時候，電表並不走字。　最普通收音機用電約當十五支光，故用電也不多。　常用的十六吋桌上電扇，用電量約合四十支光。　電熨斗，電爐，均在三百瓦特以上，耗電特多，不用為妙，最好少用。</p>
+<p>最後，主婦最好能學會換保險絲，接電綫等普通小技能，以免省去電料行伙計的敲竹槓。總之，浪費是不必要的，隨便做那一件事都如此，希望大家記牢。</p>
+<h3>家事一得</h3>
+<p>— 自强</p>
+<p>咖啡污衣　凡爲茶或咖啡所污之衣　物或檯布，可以冷水濕之，候二，三小時後，再以溫水，和鷄蛋黃洗之，則污點自退。</p>
+<p>草帽去污　用硫黃粉和檸檬汁，攪勻如糊，用硬刷蘸面刷之，更用布拭乾，曝日中，即日如新。</p>
+<p>去果子漬　衣服檯布等若染果汁之跡，可以麵粉撒於跡上，數小時，共跡自去，</p>
+<p>扇面墨污　以海螺蛸磨之，自去。</p>
+<p>衣服去霉蹟　衣服有霉跡，以一匙監丹，及一杯安母尼亞水，融解於一匙之淸水中，融化之水，即塗在霉跡上擦之，擦畢，置在風中吹乾，閱數點鐘後，用淸水如普通洗衣法洗之，霉跡即能去淨。</p>
+<h3>預防傳染病蔓延（下）</h3>
+<p>— 丁福保</p>
+<p>本文俙丁福保先生所著「怎樣創造我的健康生活」中的一章，該書對於健康生活，指導周詳，實爲有價値之作品。本書即為－老先生六十晋九壽辰紀念贈品，（醫學書局出版定價每本十二元）業於本月十五日起分贈以壽儀捐助本報助學金及上海福幼院之諸親友，凡尚未　取者，希儘本月底持券前來本館領取。　（編者）</p>
+<p>凡虎列拉，赤痢，腸窒扶斯及巴拉窒扶斯有必要夕消毒者。</p>
+<p>屎尿，吐瀉物，及所用之器具，布片，紙屑等。　死體。　供病人及死體用之衣服，牀褥，搬運器具等。　看護人或與病毒接觸者，及其使用之衣服，牀褥等。　供病人用之飲食器具，病人之食物殘渣等。　病室之席薦，氈子等。　厕所，茅坑，洗手盆等。　廚房，廚房器具，井水槽等。　垃圾桶，陰溝等。</p>
+<p>凡痘瘡（天花）及猩紅熱，必須消毒之物，如次。</p>
+<p>鼻涕，唾痰，濃汁，痂皮，落屑，及其所用之器具，布片，紙屑等。　死體。　供病人用及死體用之衣服，牀褥搬運器等。　看護人及其他與病毒接觸者及其使用之衣服，牀褥等。　供病人用之飲食器具並其他器具，書籍。　病室之席薦，氈子，家具，牆壓等。凡發疹窒扶斯必須消毒者如次。</p>
+<p>鼻涕，唾痰及其所用之器具，布片，紙屑等。　死體。　供病人及死體用之衣服，牀褥，搬運器等。　看護人，其他與病毒接觸者及其使用之衣服，牀褥等。　病室之席薦，氈子等。</p>
+<p>凡實扶的里及流行性腦脊髓膜炎，必須消毒者如次。</p>
+<p>鼻涕，唾痰及其所用之布片，紙屑等。　病人所用之衣服，牀褥等。　看護人及其使用之衣服，牀褥等。　病人所使用之飲食器具，與其他之器具，書籍，玩具等。病室之席薦，氈子，家具，牆壁等。</p>
+<p>消毒方法之適用者如次。</p>
+<p>病人　病人在已痊愈時，務使入浴更衣，或用溫濕布淸拭全身，以代入浴亦佳。用過之浴湯須消毒。</p>
+<p>死體　將死體納棺後，其衣服等須充分噴露石炭酸水，煤餾油酚水，或昇汞水，或用浸漬前述藥液之布，包扎死體，或在棺內充塡普通石灰。</p>
+<p>屎尿，吐瀉物，其他排泄物　此等物，宜加同容量之石炭酸水，或煤餾油酚水，或其容量三十分之一以上煆製石灰末，或其容量五分之一以上石灰乳，或氣化石灰水，充分攪拌後，放置二小時以上，或煮沸之，或燒却，昇汞水及蟻醛溶液水，不適用於此等物之消毒。</p>
+<p>接觸病毒者　看護人，患者家人，須施打消毒法，又從事於搬運息者，死體，排泄物者亦然，餘如與病毒接觸者，應時常或每次將手足用石炭酸水，煤餾油酚水或昇汞水消毒，而後入浴。</p>
+<p>衣服，牀褥，氈于，布片等，行蒸氣或煮沸消毒，或於石炭酸水，煤餾油酚水，蟻醛溶液水中，浸漬二小時以上，或用仿謨亞爾垤菲篤消毒。綢緞，毛織品，棉織品等，務必行蒸氣消毒，或用仿謨亞爾垤菲篤亦可。</p>
+<p>搬運病人，死體，病毒污染物件之器具，搬運患者，死體或污染病毒或有疑被污染之物件之轎子，擔架，車類，每次使用，皆宜用石炭酸水，謀酸油酚水，昇汞水，或蟻醛溶液水拭凈，或將其噴霧。</p>
+<p>圖畫，書類等，用仿謨亞爾垤菲篤消毒。</p>
+<p>玻璃器，陶器，磁器，鑛製品，竹木製品等，用石炭酸水，煤餾油酚水，昇汞水，或蟻醛溶液水拭净，或將其噴霧。凡能忍熱氣之各物，須作蒸氣或煮沸消毒。飲食器具，玩具，金屬製品等之消毒，必須昇汞水。</p>
+<p>革類，革製品，漆器，及其塗漆物，橡皮製品，假象牙製品，橡皮附品，糊附品，膠附品，紙製品，毛皮，象牙，鼈甲，角等，則用石炭酸水，煤餾油酚水或蟻醛溶液水拭凈或噴霧，或用仿謨亞爾垤菲篤消毒。惟此等物不適宜於蒸氣消毒及煮沸消毒。</p>
+<p>室內各部用石炭酸水，煤餾油酚水，昇汞水或蟻醛溶液水拭凈或噴霧。若可密閉之處，則用仿謨亞爾垤菲篤亦佳</p>
+<p>厕所，垃圾，溝渠等　厕所用石炭酸水，煤餾油酚水，或蟻醛溶液水拭净或噴霧茅坑，便桶等注以煆製石灰末，石灰乳或氯化石灰水，而充分攪拌，但屎尿經消毒後若不經過一星期，則不可用作肥料。垃圾及泥土注以石灰乳，或氯化石灰水，溝渠注以煆製石灰末，石灰乳或氯化石灰水，埃塵則燒却，煆製石灰不適宜於乾燥處之消毒。</p>
+<p>井，水槽，污水等則投入水量五十分之一之乳狀煆製石灰，或水量五百分之一之氯化灰水，經充分攪拌後，須放置十二，小時以上。若有適當之裝置，而使通過熱蒸氣者，須沸騰三十分鐘以上。若昇汞水有滲透飲料水之虞之處，則不可用之。</p>
+<p>動物死體，及消毒後不再用之物，或其値較消毒費爲廉者，皆燒燬之。</p>
+<p>衣服，床褥，器具，氈子，圖書，文具及其他物件，不能行上述之消毒方法者，可在日光下曝晒，或在大氣中乾燥之。</p>
+<h3>一星期家常菜單</h3>
+<p>— 華英女十</p>
+<p>近來魚肉菜蔬以至鷄蛋鴨</p>
+<p>蛋的代價，無不突飛孟晋，使人坐到餐桌上，幾乎不敢下箸。出人意外的，却有一樣東西，特別便宜，你道是甚？原來是洋怱。你到小菜塲上去，只要出一元儲鈔，就可買到二十多個大洋怱，較小的竟可買到三四十個，在這高物價重重壓迫之下，不得不觀一聲便宜之至了。洋怱做菜，葷　自以洋怱炒牛肉絲爲出色當行，不甲牛肉，　豬肉亦可替代。此外如洋怱炒百葉，亦可充數，而洋怱番茄馬鈴薯合作起來做一碗湯，那是維他命再豐富也沒有了。星期一洋怱炒肉絲蝦米蛋花湯菠菜燒豆腐醬濱西瓜皮星期二番茄牛肉湯雪菜燜馬　百　雞上菜絲瓜燒麵筋星期三菜心燜肉圓洋蔥煎黃魚清炒蓬藁菜素油豆腐湯星期四洋蔥牛肉絲　煮煎豆腐生　金花菜麻醬拌芹菜星期五青椒肉炒醬紅燒淡　乾雪菜豆瓣湯油條炒莧菜星期六邊尖鴨雞湯干貝炒雞蛋紅燒素十景海蜇蘿蔔絲星期日炒雞片炒蟹粉捲心菜黃豆芽</p>
+<p>天廚食譜　（一一五）</p>
+<h3>（二〇九）薑烤餅</h3>
+<p>— 顧粲環</p>
+<p>預備……苞米粉　麪粉　味精　　　芝蔴　糖或鹽</p>
+<p>製法……先將苞米粉篩細，再將　切成細末，並‘麪粉，味精，芝蔴，糖或鹽一同和攏，用水調成如切　之濕度，切成餅乾狀，攤於鐵鍋上反覆烘之，見二面焦黃卽可取食，味殊香脆可口，久藏不壞，且能解毒。</p>
+<h3>（一二〇）苞米布丁</h3>
+<p>— 葉鵬</p>
+<p>預備…苞米粉　豬油或牛乳　雞蛋　香料　發酵粉　鹽</p>
+<p>製法…把糖先和入油中，並傾入雞蛋汁及香料，一併打匀，再以苞米粉，發酵粉及適量之味精，鹽等相繼加入調和，然後放在塗過之淺鍋內用文火焙三叫十分鐘卽成。</p>
+<h3>（二一一）酒腳鬆糕</h3>
+<p>— 沈雲痕</p>
+<p>預備…麵粉　酒腳（卽酵酒濾下之餘腳）加入乾麵粉內，和以赤沙糖，以冷水調成糊狀，放置四五小時，待其充份發酵，以荷葉鋪於蒸格上，將粉倒在上面，放於蒸範內，以文火蒸熟後，取出切成斜方塊，趁熱食之，則味極香鬆可口。</p>
+<p>介紹…天廚味精廠出品之「味精」，「味宗」，　「天廚醬油精液」，「天廚家用菱粉」本市各　大公司，各南貨食品店均有出售。</p>
+<h3>葛氏家書二十封</h3>
+<p>— 徐百益譯</p>
+<p>葛氏家書是美國葛賴亨食品公司的主人翁葛賴亨先生寫給他兒子的，裏面充滿着人生的哲學。他所說的話，其實也就是現代一般做父親的所要說的。共計二十封，每一封討論一個問題，本刊自從本期起，運續刋載，希望讀者注意。</p>
+<p>下面是第一封信，是葛賴亨先生的兒子剛考進哈佛大學一年級時葛賴亨先生在芝加哥所發出的。</p>
+<p>第一封信</p>
+<p>大學敎育親愛的兒子：</p>
+<p>你的母親今天安然同到家裏，她要我寫一封信夾叫你不要太用功，但我却要你格外的用功。你要知道，我們所以送你到吟佛大學是爲了使你可以在那裏得到很多的有用的敎育。你日後自會知道，敎育是此間散佈在各處而最容易得到的東西，一個人可以儘量的獲取。共他的一切東西，那就不同了，如果你要享受你的份兒，就沒有敎育那般容易。</p>
+<p>我在年輕的時候，就沒有你這樣的福氣，但是你也不會有我一樣的遭遇。有許多人以爲要知道金錢的價値是赤手空拳自己去賺，也有人以爲應該由父親傳下五萬元來而極力去用掉·有人說要知道誠實的眞理，只要和一般滑頭去做生意，有人却以爲非到星期學校裏去上課不可。有人說有了一個喝酒的父親，就可以知道惠司格酒的害處，但有人說只要有一個賢明的母親。以敎育來論，有許多人以爲可以從別人或是報紙上或是公共圖書館裏得到學問，有人却以爲是須由敎授們敎導的。但無論如何，怎樣得到學問的方式，並不是一個甫要的問題，因爲形式是無關緊要的，就像一隻美麗的匣子別人吃了裏面的束西，匣子就被棄去了。</p>
+<p>我希望你成爲一個良好的學者，但我更希望你成爲一個淸白的人。如果你在畢業的時候有一顆純潔的心，就是你的臘－文有一些缺點我也不來怪你。在大學裏你可以得到一種敎育，一種在敎室裏，一種是從同單那裹得來的，事實上第一種比較起來更爲重要，因爲第一種祇能使你成爲一個學者，第　種可以使你知道怎樣做人。敎育又好像是吃飯，你不會知道什麼東西吹了會發達你的肌肉，但你可以知道什麽東西吃了會生毛病，所以不論是臘丁或是代數，或是歷史，你儘可以讀進去，決不會予你有害，唯有享樂，甜蜜的事情，纔會使你胃痛，所以你應該愼重選擇。</p>
+<p>有人往往在間大學敎育不是値得的呢？常牠能彀促進人們思想的時候，牠是値得的。常牠可以使一個靑年在別人正咬着鉛筆對答不出的時候而回答出來時，牠是値得的。大學不會產生聰明的人，但可以造就聰明的人，因爲一個愚笨的人終究是一個笨人，是不是在大學裏讀書是　無關係的。你得知道單是讀書是沒有用處的，讀了能敬應用，纔是我所期望的。</p>
+<p>你的父親葛賴亨。</p>
+<h3>安貧味</h3>
+<p>本刋前期錄登清凉散一服，頗為讀者所注意；茲成宗</p>
+<p>家幹君函告，該文為錢塘沈竹　先生所撰之一安貧味一，原文詞意精警透澈，實爲極有價値之作品。（沈先生爲上海錢業巨子，錢業規條，即其手創，至今不替，先生並著有周易易解等醫行世。）茲以前期所刊，與原文稍有出人，特重錄一過，以餉讀者，深望細加體會，視作座右銘可也。並向宗先生誌謝。</p>
+<p>黃菜葉，用鹽炒，只要撑得肚皮飽；若因滋味妄貪求</p>
+<p>，俯仰增煩惱？</p>
+<p>破衲頭，無價寶，補上又補年年好；盈箱滿籠替人藏，何會件件穿到老！</p>
+<p>硬木床，舖軟草，高枕無憂夢不擾：錦衾繡褥不成眠，翻來覆去天尸曉！</p>
+<p>舊房屋，只要掃，及時修理便不倒；近來多少好樓台，半成瓦礫生靑草！</p>
+<h3>介紹幾本營養書籍</h3>
+<p>— 華</p>
+<p>營養間題的解決，並不是一個純粹的經濟問題，而是一個敎育問題，前次靑年會舉行衛生營養展覽會中，有中華健康雜誌的營養專號出售，每冊　元，和上海雷　氏德聲學硏究院侯祥川博士所著的「食物與養生」一響，每冊售價六角。</p>
+<p>如果讀者對於營養問題，感覺興趣，那末中華醫學曾有「吾們吃什麽」，「上海的食物」，「中國民衆最低限度之營養需要」等書，値得賻讀，尤其是主婦們讀了，可以養全家大小，獲得充足的營養。</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+    <div id="content-t" class="pane">
+        <h1>1942.08.23</h1>
+<h3>Central Route Orel Front: German Army Launches New Offensive; Fierce Fighting Rages on the Outskirts of Stalingrad; German Forces on the Southern Route Continue to Make Progress on Both Flanks</h3>
+<p>Berlin, 22nd, Allied News Agency: The Supreme Headquarters announced last night that German forces have launched a new offensive in the Orel area, 160 miles northwest of Voronezh, advancing along the Orel-Yeletz railway towards the city of Yeletz, a distance of approximately 110 miles. This city serves as the base for the Southern Army's offensive against the northern German defense line of Voronezh. This offensive is still in its initial stages, and it remains to be seen whether it will be expanded.</p>
+<p>Berlin, 12th, Huitong News Agency: Regarding the battles in the Orel area, official sources announced last night that the German advance has encountered fierce resistance from the Soviet army, which is defending its deeply entrenched positions. Recent heavy rains in the area have made combat extremely difficult. However, with the aid of German aircraft, the German forces have still managed to cross the muddy, heavily mined terrain and seize some enemy positions. The Soviet army has launched several counterattacks, all of which have failed. The German forces have pushed several kilometers into enemy territory, and after hand-to-hand combat, several enemy bunkers have been captured. With the help of aircraft and tanks, the German infantry has annihilated 5,000 enemy soldiers. German aircraft are extremely active in this area, having destroyed enemy artillery, roads, supply columns, motor vehicle units, and railways.</p>
+<p>Somewhere on the Soviet Border, 21st, Havas News Agency: Today marks the 425th day of the German-Soviet war. The most noteworthy developments on the Eastern Front are the battles near Stalingrad and the increasingly active German forces in the Orel region. The war situation in various locations is summarized as follows: The "bottleneck" between the Don and Volga rivers remains a scene of intense fighting, seemingly approaching its final stage. The German army has deployed a large number of reinforcements, hoping to achieve a decisive victory, as this victory is of great importance to the overall war situation. The Soviet side has also deployed a large number of reinforcements, strengthening the Red Army's resistance. The Red Army General Staff has dispatched armored vehicle units to launch fierce counterattacks in various sectors along the Stalingrad line, but has not been able to stop the German advance. Fierce fighting has erupted from Kletskaya in the north to Kotelnikovo in the south, possibly the most intense of the entire Second World War. At the same time, the German army has begun to employ a pincer strategy, with Stalingrad threatened from the west, and increasingly threatened from the northwest and southwest. To the south of the city, German forces are increasing pressure along the Krasnodar railway, and the Red Army's fortified positions have been breached, with many bunkers captured by German assault troops. German forces and their allies are closing in on the Volga River delta. West of Stalingrad, a German mechanized infantry division has opened a gap in the Red Army's lines, completely disrupting the Red Army's communications in that area. In the Orel region, Berlin sources claim that the German offensive is of great significance. Since the 11th of this month, 14,000 Red Army soldiers have been captured, and 400 Soviet tanks and 200 artillery pieces have been destroyed. The German offensive in this area can be seen as the first step in a large-scale German offensive, aimed at inflicting a fatal blow on the Red Army forces being transferred to the Stalingrad area as reinforcements. The Soviet side also admits that the German pressure on the northwestern line of Stalingrad is very strong. In the Zhev region, the Red Army has launched repeated fierce counterattacks, but has not achieved any success so far. In the Caucasus region, German forces continue to advance despite the extreme heat, making progress on both flanks. German forces appear to have achieved a victory southeast of Krasnodar. It seems that the attempt to defend the Black Sea has failed. In addition, German forces have also made progress in the Grozny oil region.</p>
+<p>Moscow, 21st, Havas News Agency: The Red Army General Staff has just issued a communiqué stating that in the past 24 hours, our forces have fought battles east of Kletskaya, northeast of Kotelnikovo, southeast of Pyatigorsk, and south of Krasnodar. There have been no significant changes in other areas. In the Baltic Sea, an enemy oil tanker of 1,500 tons was sunk by our navy.</p>
+<h3>Exchange of Sick and Wounded Civilians between Japan and the United States</h3>
+<p>Lisbon, 22nd, Huitong News Agency: Under the auspices of the Portuguese Red Cross, Japan and the United States have begun exchanging sick and wounded civilians, medicines, and food in Lourenço Marques. These patients, medicines, and food were transported by the Swedish ship Gripsholm, the Italian ship Count Verde, and the Japanese ship Asama Maru. To date, 4,200 packages of food have been exchanged. The number of sick and wounded civilians exchanged is not yet known.</p>
+<p>Scouring Resources of the Ukrainian State; Germany Prepares for Winter in Soviet Territory</p>
+<p>Stanford, 21st, Havas News Agency: German Minister of Propaganda Dr. Goebbels, in a meeting with a Turkish press delegation, stated that German forces will still be spending the winter in the Soviet Union this year, and the war will continue. However, because the Soviet Union's war machine has already been greatly weakened, German forces will not encounter a major crisis. Last winter, we were in an extremely difficult and precarious situation. Today, the Soviet Union has lost most of its resources and its strength has been weakened, while the German forces can utilize last year's experience to prepare for the difficulties of the coming winter. When a reporter asked about the possibility of Britain and the United States opening a second front, Goebbels immediately replied that he did not believe that democratic countries could achieve anything in this regard. Since our country defeated France, our strength has far surpassed that of Britain. Opening a second front would only accelerate our victory, so we are now eagerly awaiting Britain and the United States to make this decision.</p>
+<p>Somewhere on the German Border, 21st, Havas News Agency: German High Commissioner for the Occupied Territories of Ukraine, Koch, recently stated to the press that Germany's victory depends on the various efforts currently underway in Ukraine. The important task of the German authorities in Ukraine is to mobilize all resources within the territory. Ukraine must supply the German forces on the Eastern Front with all necessary food and must transport essential raw materials and wheat to Germany. All transportation lines must also be repaired. In addition, a large number of workers should be sent to Germany to replace the German workers who have been sent to the Eastern Front to fight. Although this plan is fraught with difficulties, the wheat yield is 90% of normal, so the rations given to the German people have been greatly increased. There are now 500,000 Ukrainians working in Germany.</p>
+<h3>Provisional Measures for the Management of Financial Institutions; Minister Zhou Issues Statement; Implemented First in Three Provinces and Two Cities</h3>
+<p>Nanjing, 22nd: Central News Agency reports that the "Provisional Measures for the Management of Financial Institutions" recently drafted by the Ministry of Finance have been promulgated. Minister Zhou, regarding this matter, has issued the following statement: The "Provisional Measures for the Management of Financial Institutions" recently drafted by this Ministry have been submitted and approved for implementation. At the time of promulgation, the following points are specifically stated: Investigating the economy and stabilizing finance are the inherent responsibilities of this Ministry. Banks are the organs for regulating finance, and finance is the lifeblood of industry and commerce. Its ebb and flow directly relate to the rise and fall of various industries and indirectly affect the prosperity and decline of society. If the government does not strictly establish regulations and implement appropriate management, it will not be sufficient for adjustment and compliance. In March of the 20th year of the Republic [1931], the National Government promulgated the Banking Law, but due to various reasons, it has not been implemented to this day. In order to meet the needs of society, this Ministry, after the National Government returned to the capital, has appropriately amended the previously promulgated "Banking Registration Regulations" and its "Implementing Rules" to serve as a basis. However, the aforementioned regulations and rules were inadequate and simplified, so the "Provisional Measures for the Management of Financial Institutions," comprising a total of seventeen articles, have been carefully formulated to allow those engaged in financial activities to know what to accept and reject, and for this Ministry to effectively supervise and manage. These measures will be implemented first in the three provinces of Jiangsu, Zhejiang, and Anhui, and in the two cities of Nanjing and Shanghai. In addition to issuing a separate ministerial order, this Ministry's measures regarding financial institutions will be strictly implemented in accordance with the provisions of these measures. All banks, silver houses, silver companies, and other financial institutions in the aforementioned provinces and cities must understand the government's intentions and comply in unison in order to regulate the economy and stabilize finance. Article 2 of these measures stipulates that financial institutions that have already commenced business must, within one month from the date of implementation of these measures, apply to the Ministry of Finance for supplementary registration. We hope that you will pay attention and comply with this requirement. After these measures are implemented, there will be no conflict with the existing "Revised Banking Registration Regulations" and its "Implementing Rules," and they can complement each other, making the registration procedures more complete.</p>
+<p>The above points are merely a summary of the main points. We sincerely hope that people from all walks of life will understand this intent and diligently implement it, so that this Ministry can fulfill its supervisory duties while safeguarding the financial system, stabilizing the people's livelihood. This is our sincere hope.</p>
+<p>Article 1: The term "financial institution" in these measures, regardless of its name, refers to any entity engaged in the following activities: (1) Accepting deposits; (2) Making loans or discounting bills; (3) Remittances or documentary bills.</p>
+<p>Article 2: Before the implementation of these measures, all financial institutions that have already commenced business must, within one month from the date of implementation of these measures, prepare a petition stating the following items, together with their articles of association, and submit them to the Ministry of Finance for supplementary registration: (1) Name; (2) Organization; (3) Total capital and paid-up capital, as well as the names of the investors; (4) Location of the store; (5) Scope of business; (6) Balance sheet; (7) Names and addresses of representatives and important personnel.</p>
+<p>Article 3: After the implementation of these measures, anyone intending to establish a financial institution must prepare a petition stating the following items, together with their articles of association, and submit them to the Ministry of Finance for approval and registration: (1) Name; (2) Organization; (3) Total capital and paid-up capital; (4) Planned location of the store; (5) Scope of business; (6) Business plan; (7) Term of business; (8) Names and addresses of the founders.</p>
+<p>Article 4: If a financial institution encounters any of the following situations, it must submit a request to the Ministry of Finance for approval: (1) Change of name; (2) Change of organization; (3) Change of total capital and paid-up capital; (4) Merger or dissolution; (5) Establishment of a business office, level, or address of a business office, as well as changes and abolition thereof; (6) Change of articles of association. Changes in representatives and important personnel of a financial institution, as well as appointments and removals, should be submitted to the Ministry of Finance.</p>
+<p>Article 5: Every year after the end of the business year, a financial institution must, within three months, prepare a business report, balance sheet, property inventory, and profit and loss statement, and submit them to the Ministry of Finance.</p>
+<p>Article 6: A financial institution must deposit the reserve fund for paying deposits into the Central Reserve Bank in accordance with regulations.</p>
+<p>Article 7: A financial institution must, except for holidays, report to the Ministry of Finance at any time when it temporarily closes or suspends payments.</p>
+<p>Article 8: A financial institution must not grant loans or use funds for the purpose of providing funds for the following: (1) Futures trading in securities and commodities; (2) Hoarding and speculation and other speculative transactions. Financial institutions themselves must not engage in investment transactions.</p>
+<p>Article 9: A financial institution must not acquire movable property (excluding securities) or immovable property, except when necessary for business or when receiving collateral to repay debts.</p>
+<p>Article 10: A financial institution must not engage in other businesses in addition to the following: (1) Underwriting or trading in securities; (2) Warehousing or safekeeping services; (3) Agency for other financial institutions; (4) Agency for cash receipts and disbursements.</p>
+<p>Article 11: When the Ministry of Finance deems it necessary for the public interest, it may issue orders regarding the business of financial institutions.</p>
+<p>Article 12: The Ministry of Finance may at any time order a financial institution to report on its business status and may, when necessary, order it to provide account books and documents.</p>
+<p>Article 13: The Ministry of Finance may at any time inspect the business and property status of a financial institution.</p>
+<p>Article 14: The tasks stipulated in the previous article may, when necessary, be entrusted to the Central Reserve Bank.</p>
+<p>Article 15: The organization of a banking association, a silver money association, or other associations by a financial institution must be approved by the Ministry of Finance.</p>
+<p>Article 16: Anyone who engages in the activities stipulated in Article 1 without applying for approval in accordance with Article 2 or Article 3 will have its representatives and important personnel fined up to 50,000 yuan or sentenced to detention.</p>
+<p>Article 17: If a financial institution violates laws, regulations, or orders of the Ministry of Finance, or engages in acts that harm the public interest, the Ministry of Finance may suspend its business, replace its representatives and important personnel, or revoke its business license.</p>
+<p>Article 18: If a financial institution encounters any of the following situations, its representatives or important personnel will be fined up to 10,000 yuan or sentenced to detention: (1) Inaccurate records in the business report, or using other methods to deceive the authorities or the public; (2) Deliberately concealing account books and documents, or making false statements, or using other methods to obstruct inspection; (3) Violating the provisions of Articles 4 to 10 and 15; (4) Failing to comply with the orders of these measures.</p>
+<p>Article 19: These measures will be implemented on the date of promulgation (promulgated on August 20th of the 31st year of the Republic [1942]). It is also reported that the person in charge of the United Committee of Silver Money Businesses in this city stated that they will convene a meeting of the industry to discuss handling various procedures in accordance with the law, and will notify all member firms to strictly comply.</p>
+<h3>Passing of France's Oldest Woman, Madame Barness</h3>
+<p>Paris, 20th, Huitong News Agency: France's oldest woman, Madame Barness, recently passed away in the village of Minhan in the Indre department, at the age of 107. Madame was usually extremely healthy and had a very strong memory.</p>
+<h2>Page 3</h2>
+<h3>As Special Envoy of the President, Willkie to Visit the Soviet Union; to Explain the Truth of America's War Efforts; British and American People Urge Governments to Open Second Front</h3>
+<p>Lisbon, 22nd, Allied News Agency: President Roosevelt met with reporters yesterday and stated that Republican presidential candidate from the last election, Willkie's, trip to the Soviet Union and the Near East is in the nature of a presidential special envoy. His main task is to "explain the truth of how America is fighting." Willkie is also the leader of the second largest party in the United States, making him the natural choice. In addition to visiting the Soviet Union, this trip will also take him to countries such as Egypt, Arabia, Palestine, Syria, Turkey, Iraq, and Iran. It is best to refer to his title as "Special Representative of the President," as he will be carrying letters from the President, not only to personally deliver them to American figures in these countries, but also to personally deliver them to Stalin and other authorities in various countries.</p>
+<p>Washington, 21st, Havas News Agency: President Roosevelt told the press today that Willkie will carry letters from me to the leaders of various countries when he travels to the Middle East and the Soviet Union. Therefore, Willkie's trip can truly be called my personal representative. There are rumors abroad that our country's industrial production has been greatly affected by labor strikes. After Willkie's visits to various countries, this view will disappear without a trace. In addition, I deeply regret that some civil servants in our government lack prudence. I have now issued strict instructions, ordering the heads of government agencies not to speak arbitrarily on any matter, even those unrelated to politics.</p>
+<p>Bern, Switzerland, 22nd, Huitong News Agency: It has just been reported here that Willkie will be accompanied by Colonel Colds and Bernal of the U.S. Army Intelligence Department when he goes to Moscow.</p>
+<p>Moscow, 21st, Havas News Agency: TASS News Agency recently issued a dispatch from its correspondents in London and Washington, stating that demonstrations are surging in Britain and the United States in support of the immediate opening of a second front, and are increasing daily. "Workers in Britain and the United States are now trying to break the inertia of their respective governments. Officials in Britain and the United States are in a difficult position, but with the situation as it is, they cannot wait any longer and miss the opportunity. Meetings are being held throughout Britain under the auspices of factory committees, unanimously passing resolutions requesting the government to take immediate action. The same sentiment exists among workers in the United States."</p>
+<h3>Bissell Appointed U.S. Air Force Commander in China, Burma, and India</h3>
+<p>Lisbon, 22nd, Allied News Agency, from New Delhi: Lieutenant General Stilwell, commander of the U.S. Army in China, India, and Burma, officially announced that Major General Bissell has been appointed as the commander of the U.S. Air Force in China, Burma, and India. Major General Chennault will remain as the commander of the U.S. Air Force in China.</p>
+<h3>Meteorite Falls in Norwegian Sky</h3>
+<p>Oslo, 22nd, Huitong News Agency: Yesterday at noon in Kongsberg, a streak of light suddenly appeared in the sky. After a few seconds, the light seemed to explode and then crashed to the ground. According to astronomical experts, this phenomenon was caused by a huge meteorite.</p>
+<h3>Japanese Immigrants to Manchuria</h3>
+<p>Changchun, 22nd, Huitong News Agency: The Land Reclamation Bureau stated last night that the initial phase of the second five-year immigration plan, which stipulates the immigration of 9,600 Japanese families to Manchuria, is progressing extremely smoothly. The immigrants are divided into 42 batches, with each batch consisting of residents from the same Japanese prefecture. In addition, there are 2,400 Japanese immigrant families, comprising 12 batches, who are engaged in activities other than agriculture. The second part of the five-year plan is currently being implemented.</p>
+<h3>Important German Arrested in the United States</h3>
+<p>Washington, 21st, Havas News Agency: The Deputy Director of the Federal Bureau of Investigation told reporters today that an important German has been arrested by the authorities. However, his name will not be announced for the time being.</p>
+<p>Bangkok, 22nd, Allied News Agency: According to a New Delhi report, the anti-British struggle in India is becoming increasingly fierce under the suppression of British officials. On the 20th, the British authorities in Nagpur announced that a large-scale anti-British movement took place in Amravati, western Central Provinces, on the afternoon of the 20th. Local officials and police forces rushed to suppress it, but as the situation was too serious, troops were also deployed to suppress it. The local magistrate was seriously injured in an attack by the crowd and is in critical condition.</p>
+<p>Zurich, 21st, Allied News Agency: It has been reported here that several British aircraft dropped bombs and strafed Indian civilians on the outskirts of Calcutta on the 18th, resulting in more than a hundred casualties. This is the second time since British aircraft bombed Indian civilians in Khairabad, north of Lucknow, on the 16th. The Indian people are greatly angered, and the anti-British sentiment is worsening.</p>
+<p>Andaman Islands Independence Movement</p>
+<p>Andaman, 22nd, Allied News Agency: When the British army withdrew from here, in order to eliminate the root of the Indian independence movement, they took away influential political figures in the prisons. However, many of the island's patriots were rescued by the Japanese army and regained their freedom. They resolutely rose up to fight for the independence and freedom of their motherland. Upon learning that Gandhi and others had been arrested by the British, they were deeply angered, shouting that they would vow to use their blood to fight for independence and freedom without ceasing. Recently, Indians here have been flocking to join the Indian Independence League, led by President Davinson, to participate in the volunteer army. As of the 19th, 2,000 Indians had joined and training has already begun. According to the league president, Davinson, he met his Indian revolutionary mentor, Gandhi, twenty years ago when he was studying at university. At that time, he vowed to become Gandhi's comrade. The following year, he initiated an independence movement and was arrested, imprisoned in Lahore prison for three months. He firmly followed Gandhi's words, waiting for the opportunity to come. Therefore, after being released from prison, he came here to practice medicine. For twenty years, he has been ashamed of having achieved nothing due to the strict surveillance of the British government. After the Japanese army occupied this place, we regained our freedom and obtained a happy life. Today, we can no longer ignore reality. If we do not seize this opportunity to become independent, then it will be impossible to seek independence even after thousands of years. The opportunity that Gandhi spoke of has now been brought by the Japanese army. We are willing to fight bare-handed. I am determined to stand at the head of the volunteer army, in front of the machine guns, and lead my compatriots to fight.</p>
+<h3>Gandhi Writes to Indian Viceroy, Reiterating Demand for Independence; Anti-Government Riots Erupt in India; British Aircraft Bomb Calcutta Suburbs</h3>
+<p>Saigon, 22nd, Huitong News Agency: Details of the exchange of letters between Gandhi and Indian Viceroy Linlithgow were revealed in New Delhi yesterday. Gandhi sent a long letter to Linlithgow, reiterating his support for the demands of the Indian National Congress. Linlithgow's reply was very brief, stating that he could not agree with Gandhi's views and rejecting the reasons given by Gandhi and the Congress.</p>
+<p>Lisbon, 21st, Allied News Agency: According to American news received here, unrest continues in India. The details are as follows: Bombay, Maharashtra, Calcutta City, and Howrah District continue to experience anti-British struggles. There are also constant clashes between civilians and police in other areas. Crowds throw stones at the police, who respond with gunfire, resulting in civilian casualties. In Calcutta, 13 newspapers affiliated with the National Congress have ceased publication as of the 21st.</p>
+<p>Madras State: Police in Madras City have clashed with demonstrators several times. Indian leaders have been arrested. Police in the special district of Chinna Botipeta in southern Madras have also clashed with demonstrators. Police used batons, and stores have closed. In the eastern part of Madras State, crowds attacked the post office in Kotaveru, burning mail.</p>
+<p>United Provinces: In Ghatipur, crowds attacked the police station, setting fire to buildings. Several police officers were injured or killed.</p>
+<p>Rangoon, 22nd, Huitong News Agency: It has been learned that another clash between police and civilians has occurred in Patna, an industrial city in Bengal, India. British authorities in the area have closed down two newspaper offices. Authorities in Bihar Province have issued an order prohibiting anyone from approaching the railway line without a special permit. Thirteen nationalist newspapers in Calcutta have been forced to cease publication. The Standing Committee of the All India Newspaper Editors' Conference is scheduled to convene a meeting in New Delhi on Monday to discuss the situation in the press.</p>
+<h3>Major Air Battle between German and American Air Forces over the North Sea; British Losses in Dieppe Landing</h3>
+<p>Lisbon, 21st, Allied News Agency: According to a London report, eleven U.S. Army heavy bombers engaged a large formation of German aircraft in an encounter battle over the North Sea on the 21st, lasting for thirty minutes. The damage on both sides is unknown.</p>
+<p>Vichy, 21st, Havas News Agency: The French government's commissioner for the occupied zone, Brinon, reported to the government today that the British suffered heavy casualties in the landing at Dieppe. 3,500 were left dead, or maimed. 1,800 were captured, most of whom were Canadians. 36 French civilians were killed and 63 were injured.</p>
+<p>Berlin, 21st, Havas News Agency: German General Dietze gave a broadcast speech tonight criticizing the British landing at Dieppe. He said, in summary, that the Dieppe incident shows that Britain and its allies cannot open a second front, and the speed of the German victory was unprecedented. The talk of opening a second front has been going on for a long time, so the British landing was not unexpected. The preparations were detected by German reconnaissance aircraft long ago. In order to complete this landing operation, it is necessary to first gain air and sea superiority, but Britain has already lost naval power and has never been able to control the skies.</p>
+<h3>Brazil and Peru Restrict German Emigrant Activities</h3>
+<p>Argentine Capital, 21st, Alliance News Agency Telegram: According to a telegram from the Brazilian Capital, the Brazilian government issued a notice on the 20th, stating that, by presidential order, all Germans, except for German diplomats, are prohibited from withdrawing from Brazil. This measure is a reprisal for the sinking of Brazilian ships.</p>
+<p>Brazilian Capital, 20th, Havas News Agency Telegram: Thousands of sailors demonstrated in front of the Presidential Palace yesterday, protesting the sinking of Brazilian merchant ships by Axis submarines. President Vargas met with representatives of the sailors and told them that this act of sinking merchant ships was an attempt to threaten our country, but our country will never succumb to oppressive threats. Our navy and air force are currently cooperating with the US navy and air force and will surely protect our shipping industry.</p>
+<p>London, 21st, Havas News Agency Telegram: According to a telegram from Lima, the Peruvian Senate passed a bill authorizing President Prado to take necessary steps to deal with Axis expatriates. If German, Italian, or Japanese expatriates are suspected of inciting anti-Peruvian activities, the President may revoke their citizenship rights. This bill will be submitted to the House of Representatives for discussion.</p>
+<h3>Sweden Lays Mines off Tokyo Shore</h3>
+<p>Swedish Capital, 22nd, Haitong News Agency Telegram: Responsible parties claim that Soviet submarines have repeatedly attacked Swedish merchant ships in Swedish territorial waters. For self-defense, the Swedish authorities have laid mines in Swedish territorial waters, extending 150 kilometers from Västervik, north of Haveringe, to Kråkelund, off the east coast of Sweden.</p>
+<h3>Swedish Naval Attaché Takes Office at the Embassy in England</h3>
+<p>London, 21st, Havas News Agency Telegram: Prince Bertram of Sweden (grandson of King Gustav) arrived here this morning to take up the post of naval attaché at the Swedish Legation.</p>
+<h3>Twenty-One Czechs Executed</h3>
+<p>Berlin, 21st, Havas News Agency Telegram: The People's Court of Prague, in the Protectorate of Bohemia and Moravia, has sentenced former Czech Prime Minister's Office Intelligence Director Himl and his local accomplices to death for treason and collaboration with the enemy. The executions were carried out on the 19th of this month.</p>
+<h3>Explosion in the Norwegian Capital</h3>
+<p>Swedish Capital, 21st, Havas News Agency Telegram: According to a report from the Norwegian Capital, the Trade Union Building, recently occupied by a police force, suddenly exploded this morning, injuring many people and destroying part of the building. It is generally believed that this was the work of saboteurs.</p>
+<h3>Soviet Aircraft Groups Bomb Warsaw Heavily; East Prussia Also Attacked</h3>
+<p>Lisbon, 22nd, Alliance Telegram: Warsaw Radio announced last night that many Soviet aircraft bombed Warsaw heavily on the night of the 20th of this month. Military facilities in the city, East Prussia, and Upper Silesia were also attacked.</p>
+<h2>Page 4</h2>
+<h3>Electricity Company and Central China Water and Electricity Company Plan to Connect Main Generators; Coal Price Reduction and Electricity Surcharge Increase Reduced; Water and Gas Items Failed to be Reduced</h3>
+<p>Because the Shanghai Electric Power Company's coal price was reduced by 14 yuan per ton, it has reduced the fuel surcharge charged to users by 15%, and it has been retroactively calculated from June 20th. This is the first step to reduce public utilities costs with the help of the authorities.</p>
+<p>Users May Not Have Noticed</p>
+<p>Few electric power company users may have noticed the reduction in the fuel surcharge on their monthly bills. Some large manufacturers who closely investigate their monthly electricity consumption may already know about the fuel surcharge reduction, but ordinary household users have not noticed. It is investigated that the basic electricity fee is one yuan per kilowatt hour in Central Reserve Certificates, implemented from [blank] of this year, [blank] reduced.</p>
+<p>Reduction of Seven Cents Per Kilowatt Hour</p>
+<p>The reduction refers to the fuel surcharge with the letters "SC" on the bill. From May 20th to June 19th, the fuel surcharge was 56 cents per kilowatt hour, and [blank] was 49 cents per kilowatt hour. After a 15% reduction, [blank] , there has been no formal announcement about this matter. The public believes that if the price [blank] is further reduced, then the electric power company will once again reduce its fuel surcharge.</p>
+<p>Water and Gas Not Reduced</p>
+<p>An [blank] of the Shanghai Waterworks Company stated that [blank] they did not know about this. [Blank] The waterworks company is currently not [blank] reducing water charges. Since the change from old legal tender to Central Reserve Certificates, water charges have not changed. Furthermore, an official from the Shanghai Gas Company stated that the company issued an announcement on July 24th explaining the business losses, and new fees were implemented on May 20th to compensate for them. Until the losses have been compensated, it is not possible to reduce gas charges. As for when the losses can be fully compensated, [blank] he could not determine, as it would depend on the supply of raw materials and the manufacture of gas, etc.</p>
+<p>Connection Under Discussion</p>
+<p>It is heard that the matter of connecting the main power lines of the Shanghai Electric Power Company and the Central China Water and Electricity Company to unify the distribution of electricity is still under discussion. This plan is still in its initial stages. Once approval is obtained from the Asia Development Board and the necessary materials are available, the two companies [blank] will begin to centralize the electricity supply in order to save on power generation costs.</p>
+<h3>Four Deaths Yesterday Suspected of Cholera</h3>
+<p>Yesterday, a total of 17,287 people in the two concessions received anti-epidemic injections, most of whom applied in the French Concession, totaling 12,94 people, while the International Settlement accounted for only 6,093 people. The [blank] Health [blank] Office of the French Concession only received three suspected cholera cases yesterday, but two people died. At the same time, twelve cases were discovered in the Public Settlement, with two deaths as well. Although most citizens have now been vaccinated, the Public Settlement is facing its entrants and is still sending personnel from the police station to ask them to show their anti-epidemic certificates. As for those entering the French Concession from Nanshi, the French police are also [blank] strictly checking the anti-epidemic certificates.</p>
+<h3>Different Handling of Water and Electricity Cutoffs in the Two Concessions; Public Settlement Does Not Intend to Issue Additional Regulations</h3>
+<p>The English "Great America Evening News" stated that a Municipal Council spokesman told reporters this morning (22nd) that the Municipal Council does not intend to imitate the actions of the French Concession authorities and issue regulations prohibiting landlords and sub-landlords from cutting off water, electricity, and gas supplies without official approval. The Municipal Council has a Rent Mediation Committee to handle disputes between landlords and sub-landlords. Anyone with such disputes or similar difficulties can appeal to the committee.</p>
+<h3>Shanghai Divided into Two Air Defense Zones; One Naval Zone, One Army Zone; Light Control Assigned to Baojia</h3>
+<p>After the Japanese naval and army authorities announced that Shanghai would conduct a blackout drill next Tuesday, the Air Defense Section of the Public Settlement Police Department disclosed on the 21st that it had formed an Air Defense Committee three days ago. The committee held a meeting at the Police Department's entertainment [blank] hall on Thursday afternoon, which lasted a long time and discussed the implementation of controls on street and indoor lighting.</p>
+<p>Traffic Lights All Under Control</p>
+<p>It is said that all lighting control measures will be stipulated by the Japanese authorities, and Shanghai will be divided into two air defense zones, A and B, one naval zone and one army zone, managed separately by the Japanese army and navy authorities. During the meeting on Thursday, it was decided to entrust the task of managing streetcar lights, hotels, restaurants, and indoor lights to the Baojia system, and the work of the Public Settlement Police Force will be [blank] adjusted accordingly. According to [blank] [blank] the electricity company, street lights are difficult to control. All thunder power, if not temporarily cut off, cannot be cut off at all. It is difficult to adjust the distribution of power. However, it is certain that preparations for managing traffic lights and car lights have been completed, as previously announced.</p>
+<p>Police Department Responsible for Air Defense Matters</p>
+<p>Goro Matsumoto, Assistant Chief of the Traffic Section of the Police Department, will be responsible for all air defense-related matters in the future. Matsumoto also leads the Air Defense Committee, whose twelve members are all Japanese police officers. The Air Defense Committee discussed at the meeting on Thursday how to instruct the volunteer guard corps to handle car lights, bicycle lights, and the limits of permissible lighting during the blackout.</p>
+<p>Police Lights Cordoned During Alert Period</p>
+<p>The proposed lighting control plan is as follows: During the blackout, the lights of cars, including headlights, sidelights, and searchlights, will be turned off. Only two lights are allowed, and the light of these two lights must be adjusted so that on a flat road, each light illuminates within ten meters, and the maximum brightness [blank] in Zone B is limited to three lux, and in Zone A it is limited to 0.2 lux. As for the boundaries of these two zones, the police have not yet disclosed them, as there has not been a definite announcement.</p>
+<p>Zone A Stricter, Zone B More Lenient</p>
+<p>In Zone B, during the blackout, there are no restrictions on the taillights, courtesy lights, and stop lights of cars, but in Zone A, these lights must also be turned off. Only one light is allowed to emit light, and the radius must not exceed 300 meters. The lights of bicycles, rickshaws, carts, or carriages, and other similar lights, are not restricted in Zone B, but must be reduced and partially covered in Zone A. Each light is limited to one candlepower. Flashlights and other lights with adjustable brightness are limited to 0.3 candlepower and do not need to be covered. During an air raid, all lights must be turned off. Only indoor lights that are covered and cannot be seen from 300 meters away [blank] do not need to be turned off. According to the Air Defense Section, an air defense group headquarters and branches will be established in the Public Settlement, and the details will be announced before next Tuesday. It is also learned that the Chief Inspector of the French Concession Police, Fabre, the Director of the Fire Department, Bausot, the Director of the Health Department, Barut, and the Director of the French Public Works Department, Baugain, have also [blank] formed the French Concession Air Defense Committee.</p>
+<h3>University Group Currently Reviewing; Primary School Aid to Be Received; Mr. Qiu Changyin, Father Wang Fang, Benefiting the Impoverished; Yao Mother Zhao Tai Madam's Will to Relieve the Uneducated</h3>
+<p>The "Shen Bao" reader scholarship program, the school affairs group is currently conducting interviews, investigations, and reviews, which can usually be completed next week. Half of the aid for the middle school group has been issued in the past two days, and some aid for the primary school group remains. It is hoped that you will come to receive it as soon as possible. It is also hoped that those who were not selected will come to the hall as soon as possible to retrieve their credentials. Yesterday, there were continued requests to change schools or cancel aid, which are noted below: Chen Benshi, No. 326 of the middle school group, Lu Feiming, No. 845 [blank], Xu Aimei, No. 864, Wang Zude, No. 646, Liu Yunzhang, No. 273, Zheng Decheng, No. 764, Bao Pinghui No. 614, the above students have received assistance elsewhere, and the scholarship from this newspaper is canceled. Zhao Panxi, No. 21 of middle school, Wu Yadi, No. 51, follow instructions in letter. Yang Zhenshan, No. 352 of the middle school group, Zhu Fugeng, No. 870, Tan Zhenqiu, No. 20 of the preparatory group, Li Shuying, No. 103, the above students are allowed to change schools. Wu Fushun, No. 854 of the middle school group, requests to change schools, and should specify which department you wish to enter, how much the tuition fee is, and the school's regulations. Zheng Zhen, No. 871 of the middle school group [blank], is not allowed to change schools. Zheng Fangyong, No. 20 of the preparatory group, is allowed to enter Cambridge English College with a free place. A letter from Huahua Middle School explains the reasons why Zhu Dajun, No. 613, cannot get a free place, follow instructions.</p>
+<p>Changyin Cup Croquet Charity Tournament</p>
+<p>The Changyin Cup croquet charity tournament, initiated and sponsored by Mr. Qiu Changyin, was successfully concluded last week with excellent results. All income, after deducting expenses, was donated equally to the scholarship fund of this newspaper and the loan scholarship fund of the "Xinwen Bao", totaling 7,051 yuan. All expenses were borne by Mr. Qiu Changyin, Fan Xinpei, and Zhang Mingsheng. Yesterday, 3,525 yuan and 5 jiao was sent to donate to the scholarship fund of this newspaper. While promoting sports, they are also enthusiastic about helping students, which is commendable. (Attached below is the account certification from Accountant Wang Sifang.) Audit of Changyin Cup Croquet Tournament Account Certification: The ticket income from the Changyin Cup Croquet Donation Loan Scholarship Charity Tournament has been audited by this accountant. The revenue was calculated as 731 honorary tickets sold (5 yuan each), 3,650 yuan; 698 admission tickets (2 yuan each), 1,396 yuan; and 2,000 yuan received from the auction of two charity balls (cheque No. G066661 from Juxingcheng Bank). All ticket stubs, cash, and cheques have been checked in detail and found to be correct. This is hereby certified. With Ye, Accountant and Director of the Accountant's Office, Wang Sili, August 20, 31st year. Yesterday, the scholarship fund received: 3,525 yuan and 5 jiao from the Changyin Cup Croquet Charity Tournament Committee; 50 yuan from Zhang Jingxie (for the [blank] [blank] hall 64 [blank] saving [blank] money); 5 yuan from an anonymous person (receipt number 15 [blank] 2). A total of [blank] Central Reserve Certificates 3,580 yuan and 0.05 jiao.</p>
+<p>Madam Yao's Will to Aid Education</p>
+<p>Madam Yao Zhao Tai Madam's will to aid education, [blank] the [blank] [blank], received 580 yuan in total, especially [blank] [blank] [blank] listed below: Guo Jiying, 100 yuan; [blank] 60 yuan [blank]; Guo Manhe, 50 yuan; Zhou Jimei of Guangwu Textile Company, 50 yuan; Ren Zhuoqun of Guangfeng Flour Company, 50 yuan; Mao Junqi, 40 yuan; Tang Xinghai, 30 yuan; Li Zuzhen, Ji, Xun, 30 yuan; Lu Jianquan, 30 yuan; Ma Qishan, 30 yuan; Zhao Chuanding, 20 yuan; Wen Desun, 20 yuan; He Aizhu, 20 yuan; Qian Nianzi, 20 yuan; Pu Jiting, 10 yuan; Deng Zaicen, 10 yuan; Hu Mei [blank], 10 yuan; A total of Central Reserve Certificates 510 yuan. The two totals are Central Reserve Certificates 4,110 yuan and 0.05 jiao.</p>
+<p>Father Wang Fang Benefits Uneducated Youth</p>
+<p>Father Wang Fang, the sports director of Xu Hui Public School, initiated a charity football match to benefit uneducated youth and donated all the proceeds after deducting [blank] expenses to the scholarship fund of this newspaper, totaling 491 yuan. Yesterday, [blank] the full amount was sent to this [blank]. The above three total 4,671 yuan and 5 jiao. The previous balance was 181,317 [blank] 2 jiao and 2 fen. The total balance is 185,988 yuan, 7 jiao, and 2 fen.</p>
+<h2>Page 5</h2>
+<h3>The Japanese Army Air Defense Headquarters Issues a Statement Elaborating on Important Precautions</h3>
+<p>Regarding air defense alerts, the Japanese Army and Navy Air Defense Headquarters in this city have issued the first, second, and third announcements. The first announcement explains the general outline of air defense implementation and matters concerning alarms and lighting control. The second announcement instructs important civil defense measures for home air defense. The third announcement promulgates the order to implement lighting control. However, citizens have questions about various regulations. The Japanese Army and Navy Air Defense Headquarters have issued a statement elaborating on the following important precautions:</p>
+<p>1.  Measures to Take During Air Raids</p>
+<p>The various situations that occur during air raids are as follows: (A) Bombs explode, causing damage, death, and injury, and debris falls and scatters, causing indirect damage. (B) When bombs explode, carbon monoxide and other toxic gases are released. (C) Fires occur in multiple locations simultaneously. (D) Water pipe equipment is damaged, causing water outages and overflowing tap water. (E) Fuel and lighting gas equipment is damaged, causing supply interruptions or gas leaks. (F) If the enemy deliberately uses poison gas bombs, toxic gas will be released. However, the damage caused by air raids is not as terrible as generally imagined. Therefore, if dealt with calmly, the damage will not be too severe. The standard measures are roughly as follows:</p>
+<p>(A) Each family should follow the second announcement of the Air Defense Headquarters and focus on fire prevention. (B) If outdoors, take cover with appropriate shelter. (C) Cars and other vehicles should be parked in appropriate places. (D) Government offices and company offices [blank] should take precautions in accordance with the home air defense and fire prevention guidelines.</p>
+<p>2.  Preparations for Lighting Control</p>
+<p>Lighting control is divided into three types: preparation control, alert control, and air raid control. In simple terms, alert control is when enemy aircraft take off from their base or may attack Shanghai, or when an enemy aircraft carrier is discovered on a certain sea surface, an alert control order is issued.</p>
+<p>Air raid control is when Shanghai is definitely the target of an air raid and enemy aircraft are attacking. However, considering the performance of modern aircraft, enemy aircraft may not attack according to the scheduled time. Therefore, even when there is no threat of an air raid, lighting is appropriately controlled during wartime to avoid displaying targets to enemy aircraft from a distance and to prepare for the implementation of alert control. This is preparation control.</p>
+<p>In view of the above points, the order to implement preparation control has been issued since the 12th, and Shanghai has also embarked on the first step of wartime civil defense measures. Therefore, preparation control must continue until the end of the war. As for the lights that should be extinguished during the preparation control period, sign lights are temporarily designated. However, depending on the circumstances in the future, unnecessary lights will be gradually sorted out. It is hoped that citizens will sort out unnecessary lights in their residences.</p>
+<p>The Air Defense Headquarters hopes to implement preparation control to:</p>
+<p>(A) Complete the preparation for alert control as soon as possible. (B) Cover outdoor lights from above so that they do not emit light above the horizontal, and paint the upper part black. (C) For indoor lights, cover the light source (the actual light-emitting body, such as the light bulb) visible from the outside with a cover prepared for alert control to the extent that its light source is not visible above the horizontal. (D) In high-rise buildings, the lights in rooms on the tenth floor and above should have their light sources covered by a cover according to the provisions of item C. The position of the cover should be such that the light source is not visible from 45 degrees above from below. (E) Shops with excessively glaring lights should reduce the number of lights or the light output of the lights. (F) The light output of display windows must be reduced. (G) Cover the headlights of cars, etc., according to the above regulations, but the angle should be such that when the car is horizontal, the direct light emitted from the light does not shine above 15 degrees into the air.</p>
+<p>3.  About Lighting Alert Control</p>
+<p>Lighting alert control is implemented in principle when an air defense alert alarm is issued. Therefore, all lights should be completely extinguished during that period. However, alert control continues for a considerable period of time, so the general public cannot stop working, and a minimum level of lighting is also necessary for living. Alert control is decided based on these requirements. It is hoped that citizens understand this point and implement it. During alert control, work should continue without leaking light outdoors.</p>
+<p>4.  Regarding the degree of concealment of indoor lighting during lighting alert control, this has been stipulated in the second table of the civil defense guidance outline, which is now explained further.</p>
+<p>(A) Outdoor lights (outdoor refers to places outside the storefront), such as decorative lights, hanging lights, display window lighting, and other similar lights, should be completely extinguished during alert control. (B) Ordinary indoor lights should reduce their brightness and cover their lights in accordance with the following points:</p>
+<p>Doorways leading directly to the outside should be covered with black curtains. Lights should be covered, and the brightness of the lights should be limited depending on how the covers obscure the light. For example (rooms with 12 square meters 0.5 candlepower or less, the light output of one light must not exceed 2 candlepower.</p>
+<p>6.  Materials for Lighting Control</p>
+<p>(A) Black curtains for light shielding should be made of thick black cloth. When it is unavoidable, black paper can also be used, but paper is easily damaged, so it is hoped that cloth will be used.</p>
+<p>(B) Light-shielding covers for auxiliary lights should be made according to the diagram above.</p>
+<p>7.  Announcements and statements issued by the Air Defense Headquarters, as well as other instructions, should be clipped and saved.</p>
+<h3>"Lushan Maru" Arrives in Shanghai from Hong Kong and Guangdong; Expected to Enter Port Today; Many Chinese Passengers Returning to Shanghai from Guangdong; Ship Has Been Docked at Wusongkou for Five Days Due to Two Passenger Deaths from Epidemic</h3>
+<p>This summer, the tiger epidemic has been rampant, and the authorities in this city have taken strict precautions. Recently, the weather has become slightly cooler, and the severity of the epidemic has decreased. The customs quarantine office is still strict with the epidemic inspection of imported ships, especially ships arriving in Shanghai from southern China. The epidemic inspection work is even stricter. No matter what ship, it must anchor outside Wusongkou for 24 hours, waiting for the inspection to be completed before being allowed to enter the port. The "Lushan Maru" of the East Asia Shipping Company arrived in Shanghai from Hong Kong and Guangdong the day before yesterday. On Tuesday of this week (the 18th), it arrived at Wusongkou, anchored in the Sanjia Water area as usual, and waited for inspection. However, it had not been seen entering the port by yesterday evening. It is heard that this time the ship carried many Chinese passengers returning to Shanghai from Guangdong, and two passengers died of the epidemic en route. Therefore, the inspection procedures for this ship are more complicated than for ordinary imported ships. It has been anchored outside the port for five days. According to the company yesterday, the inspection work was completed yesterday. If no special accidents occur, it should be able to enter the port this afternoon.</p>
+<h3>News from All Sectors</h3>
+<p>Zhenzhong Bank: Zhenzhong Commercial Savings Bank was organized by business giants in this city such as Zhu Jingqi, Rong Meixin, Mi Jing'an, Sun Jiarang, Xu Guifang, Rong Chenghao, and Chen Meifang. A board of directors has been established, and a general manager has been appointed. It is heard that the positions of chairman and general manager will be jointly held by Zhu and Mi. The bank has strong capital, a sound organization, and with the skillful management of these individuals, the future business prospects are limitless.</p>
+<p>"Primitive Man": The Shanghai Amateur Puppet Theatre Company is performing "Primitive Man" at the Jewish General Association at 722 Jing'an Temple Road. The plot is tense, and the scenes are lively. Today is the last day of the performance. There are only two performances, at 10:00 am and 3:00 pm, with an encore of the ancient costume song and dance "Small Feast", which is lifelike. It is hoped that parents will bring their children to watch. For telephone ticket purchases, call 34205.</p>
+<p>Antelope Tricycle: The famous Swiss engineer Miruti in this port designed the Antelope tricycle, with exquisite structure and easy driving. Buyers have expressed satisfaction. The sole agent in this port is Shenxing Trading Company at 349 Ningbo Road.</p>
+<p>Yesterday's Newspaper Publishing Time: 6:20 pm</p>
+<p>Sports News</p>
+<h3>Industrial Cup Basketball League: Zhonglian Battles Qiangxing Today; Yesterday, Vita-Food Narrowly Defeats Lei Team</h3>
+<p>The Industrial Cup Basketball League is scheduled for today at 4:00 pm, with a total of four games. They will be held at the Industrial Middle School court on Nanyang Road. The exciting match between Tongren and Huanan in the Industrial Group has been postponed for some reason. Therefore, in the Industrial Group, only Zhonglian vs. Qiangxing is scheduled. In the Business Group, Fufeng vs. Huanan will be a fierce battle. Lei Team vs. V Team, the setter is expected to win with better skills. In the match between Zhonglian and Qiangxing, Zhonglian can win with its most elite troops. Otherwise, it will inevitably suffer a disastrous defeat. The schedule for today and the results of yesterday's games are as follows:</p>
+<p>(Yesterday's Results) Vita-Food defeated Lei Team, 35-32; Fufeng defeated Scarlet, 27-25; V Team defeated Lei Team, 13-9; Tongren defeated Zhonglian, by default.</p>
+<p>(Today's Schedule) Lian-Scarlet, (Business) 4:00 pm; Lei Team-V Team, (Business) 4:40; Fufeng-Huanan, (Business) 5:30 pm; Zhonglian-Qiangxing, (Industrial) 6:00 pm.</p>
+<h3>Vita-Food Cup Volleyball Yesterday: Xingren Defeats Vita-Food</h3>
+<p>Women's Youxing Vita-Food Victory: The Vita-Food Cup Charity Volleyball Tournament was held at the Baxianqiao YMCA gymnasium at 7:00 pm last night. The battle continued as follows:</p>
+<h3>Sports Briefs</h3>
+<p>Silver Thread Industry Table Tennis Leader: The Zhejiang Yeyin Table Tennis Team responded to the invitation of the Huaying Table Tennis Team, organized by the colleagues of the Production Department of the China Film Company, and held a friendly match yesterday. Du Ren served as the referee. As a result, Zhejiang Xing defeated Huaying by five to two. [Blank] The charity mini-soccer tournament hosted by Xuhui Public School was held at the school's court in Xujiahui the other day. As a result, Wenjing defeated Xiaohui 1-0. Huizhong beat Hezhong 6-1. The final Lianbao met Xuhui, but the match was not played due to rain. It has been decided to postpone it to next Tuesday (25th) at 6:00 pm, still at the original location.</p>
+<p>The Hequn Cup Mini-Ball League will have 13 matches today from 8:00 am, held separately at the Donghua East and West courts.</p>
+<p>Commercial News</p>
+<h3>There Will Be New Developments in Chinese Stocks; The Chinese Stock Exchange Association Will Hold a Preparatory Meeting</h3>
+<p>Yesterday, the Chinese stock market experienced a weekend trading slowdown, with market sentiment shifting from weak to stable. This was mainly because there were no speculative short-selling transactions in the Chinese stock industry. All transactions were genuine buying and selling of physical goods based on managing customer investments, absorbing funds, and selling off existing holdings. Now that the establishment of the Chinese Stock Exchange Association has been approved by the Bureau of Finance, the various misunderstandings that have been circulating for days have been swept away, and the industry is about to undergo a new phase of development. As a result, the previously nervous investors have stabilized their sentiments. Buyers have become more eager to buy on dips, and market prices have consequently seen a squeeze, especially in the case of Zhabei Water &amp; Electricity, which broke through the 30 yuan level, squeezing up the most by 1.25 yuan. China Electric has stabilized, down by 0.25 yuan. In the cultural sector, only China Bookstore fell slightly by 5 yuan, entering the 170 yuan level. Commercial Press and World Book saw a flattening trend after initial weakness, with new buyers entering the market. In the department store sector, Wing On fell by 2 yuan, entering the 100 yuan level, while China Underwear fell by 0.75 yuan. The price of Sincere Company remained unchanged from the previous day. The pharmaceutical sector was relatively weak, with China Asia down by 0.75 yuan. Sino-French Pharmaceutical fell by 1.5 yuan, retreating to the 70 yuan level. Minyi Pharmaceutical fell by 2 yuan, while Sin-I Yi remained strong, with buyers still present at 830 yuan. The decline in Great China Match was also minimal, down by only 1 yuan. Nanyang Brothers Tobacco was trending flat. The stock market price list is recorded below:</p>
+<p>Stock Name | Highest | Lowest</p>
+<p>------- | -------- | --------</p>
+<p>Commercial Press | 270.00 | 268.00</p>
+<p>China Bookstore | 170.00 | 167.50</p>
+<p>Guanshengyuan | 200.00 | ——</p>
+<p>Home Industries | 327.50 | 325.00</p>
+<p>Wing On Company | 101.00 | 95.00</p>
+<p>Sincere Company | 100.00 | 96.00</p>
+<p>National Goods Company | 107.50 | 105.00</p>
+<p>China Underwear | 32.50 | 31.75</p>
+<p>Dasheng Textile Mill No. 1 | 175.00 | ——</p>
+<p>Great China Match | 175.00 | 172.50</p>
+<p>Mayar Silk Mill | 41.50 | 40.00</p>
+<p>Hanyehping | 19.50 | 18.00</p>
+<p>Zhabei Water &amp; Electricity | 30.50 | 29.00</p>
+<p>China Electric | 28.00 | 27.00</p>
+<p>China Asia Pharmaceutical Factory | 41.75 | 40.50</p>
+<p>Sino-French Pharmacy | 71.50 | 69.50</p>
+<p>Minyi Pharmaceutical Factory | 63.00 | 62.00</p>
+<p>China Asia Materials | 30.00 | ——</p>
+<p>Nanyang Brothers Tobacco | 65.00 | ——</p>
+<p>The Shanghai Chinese Stock Exchange Association, organized by the Chinese stock industry, has been approved by the authorities. Yu Mingshi, Zhang Deqin, Zheng Xuegao, Zhang Xiaoxian, Wang Yingsheng, Yao Zhaotang, Zheng Jiaju, Zhu Shangyi, and Jin Songgan have been designated as a nine-member preparatory committee, with Yu Mingshi designated as the convener of the preparatory committee. It is said that a preparatory meeting will be convened soon.</p>
+<h3>Government Bonds Gently Fluctuating, Market Prices Vary</h3>
+<p>Yesterday, the government bond market saw gentle fluctuations, with a generally upward trend. Trading opened at a high price of 9.20 yuan, and various bonds followed suit, mostly showing gains. However, large investors continued to reduce their holdings of Type C bonds, so the prices were pressured down during the session due to the selling pressure. Types A and B bonds remained firm, with buyers hesitant about Type C bonds, tracking the sale of Type C bonds and buying Types A and B. In fact, the buying and selling of large investors is entirely related to the allocation of funds, and has no significant impact on the bonds themselves. It is equally possible to buy Types A and B and sell Type C now, or to sell Types A and B and buy Type C in the future. Therefore, there is no reason to believe that Types A and B will have a different trend from other types of bonds. In summary, the rise in Types A and B may reflect a general strengthening trend in other types of bonds, so sellers should be cautious and maintain a stable position. Total trading volume for the city was approximately 2 million yuan. The table below lists the details:</p>
+<p>Category | Highest | Lowest | Closing Price | Compared to Previous Day</p>
+<p>------- | -------- | -------- | -------- | --------</p>
+<p>Unified A | 41.40 | 40.90 | 41.20 | Up 0.60</p>
+<p>Unified B | 39.40 | 39.00 | 39.20 | Up 0.10</p>
+<p>Unified C | 39.20 | 38.70 | 38.90 | Up 0.10</p>
+<p>Unified D | 36.10 | 35.70 | 35.90 | Flat</p>
+<p>Unified E | 36.30 | 36.70 | 36.90 | Flat</p>
+<h3>Gold Ornaments Remain Consistently Stable</h3>
+<p>Yesterday, gold shops quoted the price of new jewelry gold at 2,150 yuan per tael (buying back at around 300 yuan less). Retail prices in cash shops were 2,100 yuan, with a buy-back price of 1,900 yuan. Inter-dealer prices hovered around 1,900 yuan, remaining consistently stable. The morning price was 1,900 yuan, briefly rising to 1,905 yuan, before falling back slightly to 1,895 yuan. The noon transaction price was 1,900 yuan, the same as the previous day. There were no sales at the closing price, with only a 10 yuan difference. Trading was minimal. Silver ornaments were still quoted at 16 yuan, with an inter-dealer price of 10.89 yuan.</p>
+<h3>Four Banks Savings Society Distributes Dividends</h3>
+<p>The savings society of the Yien Yieh Commercial Bank, the Kin Cheng Banking Corporation, the China &amp; South Sea Bank, and the Continental Bank has completed the accounting for the 38th period from January 1, 1942, to June 30, 1942. A summary is extracted below. The total amount of various savings deposits is 25,958,688.73 yuan, of which two-year fixed deposits account for the largest portion at 7,264,231.25 yuan, followed by current deposits at 6,157,047.05 yuan. The net profit for the period is 119,505.55 yuan. The dividend for members remains at 1%, with two-year fixed deposits earning a total weekly interest rate of 8%, including the guaranteed interest of 7%.</p>
+<h3>Runyuan Bank Joins the Money Pool</h3>
+<p>The Joint Reserve Committee of Banks in this city yesterday sent a circular to various banks and firms, stating that the Runyuan Bank has been approved to join the reserve pool as a member on the 18th of this month. Starting from August 24th, the commission will collect payment instruments from the various banks and firms, following the same procedure as other member firms.</p>
+<h3>Cotton Cloth Remains Weak</h3>
+<p>Factory Cloth: Yesterday, the market was soft due to the continued decline in Eastern cloth prices. Sellers were unified in offering goods to downstream buyers. White goods fell by 2-3 yuan per piece. 16-pound Globe coarse cloth was 179 yuan, Flying Swan 176 yuan, 9-pound New Character 109 yuan, 12-pound Globe fine cloth 158.5 yuan, Fookai Bank single 142 yuan, Dapeng Bank single hand goods were sold cheaply at only 141.5 yuan, Fookai fine twill 127 yuan, Magnolia bleached cloth 160 yuan, Qin Liangyu 150 yuan. Poplin was not in season, with Longevity selling for 5.70 yuan, Volleyball 3.90 yuan. Water wave velvet and serge still had real sales. Three Sheep serge was 3.80 yuan, 9 New Water Wave 3.25 yuan, with buyers. Peaches Lady's Forest opened at 258.5 yuan, gradually declining to 256.5 yuan, down 7.5 yuan. Due to Saturday, transactions also decreased.</p>
+<p>Eastern cloth's decline was uncertain. 12-pound Dragon Head fine cloth opened at a new single price of 177.5 yuan, with the lowest price at 174 yuan. The noon price returned to 175.25 yuan, a further decline of 3.25 yuan. Bank/Single Dragon Head 156 yuan, Color Ball fine cloth 160.5-1 yuan, Flying Fish 157 yuan, Yang Crane 156 yuan, Five Blessings Double Fish 154 yuan, all down 1-2 yuan, relatively firm. Four Gentlemen Red Single serge started at 7.35 yuan, with the lowest at 7.22 yuan, then rising again to 7.27 yuan, down 0.12-0.3 yuan.</p>
+<h3>Sweet Potato Dry Selected Based on Price</h3>
+<p>Sales of beans were slightly active yesterday, but it is difficult to expect a significant improvement in the market. Qingdao broad beans were sold at 50 packages for 232 yuan, Tianjin red beans at 20 packages for 162 yuan, and Chongming sand red beans at 30 packages for 162 yuan, with inferior goods at 156 yuan, presenting a stable situation. Buyers were selective about the price of dried sweet potatoes, showing a lack of momentum. 40 packages of dried sweet potatoes from Jiangbei were offered at 105 yuan. Wheat bran sales decreased and weakened. 250 packages of Sanshin small package wheat bran delivery notes from May were offered at 19.5 yuan.</p>
+<h3>Xiang Lian Trials New Several Tens of Pounds</h3>
+<p>Several tens of pounds of this year's new Xiang Lian goods have been transported to the market for trial sales. Because of the small quantity, although there were offers similar to cold storage goods, it could not be regarded as the formal market. In addition, the near-market cold storage goods are very flat and weak because of few needs. Gao Zhuang is 750 yuan, and the inferior ones are different.</p>
+<h2>Page 6</h2>
+<p>Family</p>
+<h3>Mother Yao's Will to Help Students</h3>
+<p>— Reporter</p>
+<p>After reading yesterday's report in this newspaper, "Will to Help Students," we are deeply moved that Madam Zhao, Mother Yao, even in her last moments, was concerned about saving funeral expenses to help out-of-school children. This is not only a virtuous mother of the Yao family but also a role model for great maternal education in today's society.</p>
+<p>The Madam was the virtuous partner of the martyr Mr. Yao Dingsheng. After the Reform Movement of 1898, Mr. Yao invested in education and founded the Shiceng School in his hometown of Shengxian. When funding was insufficient, the Madam always donated her hairpins and jewelry to help. Later, Mr. Yao suffered misfortune in the second year of the Xuantong reign due to criticizing the Qing government. The Madam raised her children in grief, and for decades, she devoted herself to maternal education. "A mother's education is as heavy as a mountain." Now, her wise descendants have dedicated themselves to society and achieved remarkable reputations, living up to the Madam's painstaking efforts in education. When we read "The Takizuka Epitaph," we feel the same way: "Those whose hearts are rich in benevolence will surely have descendants," and "Accumulating good deeds creates virtue, and they should enjoy its prosperity."</p>
+<p>We value this account not only to praise a virtuous mother but also to hope that her sincerity will inspire a positive trend in today's society: save all unnecessary expenses and help out-of-school youth. This is more urgent than any other undertaking. The Yao brothers, carrying on their mother's teachings, are also worthy of praise. This kind of righteous act is "correcting the ways of one's parents, which can be called filial piety."</p>
+<p>A model virtuous mother, a model family, benefiting students, helping people and benefiting the world, not only cherishing their own relatives and children, but also enabling outstanding youth to continue their studies. In addition to our admiration, we would like to briefly express our feelings.</p>
+<h3>Water and Electricity Saving Methods</h3>
+<p>— Xiao Juan</p>
+<p>In this era of high prices for everything, it is really not easy to be a homemaker. However, no matter how expensive things are, life must go on, so we have to save in some areas. Water and electricity bills are regular monthly expenses. Saving water and electricity can not only reduce household expenses but also conserve public resources. In a family, saving water and electricity will absolutely not cause inconvenience if done properly. Below is my experience.</p>
+<p>1.  Ways to Save Water</p>
+<p>Pay attention to turning water taps on and off: Recently, a new type of tap is hand-operated. When water is needed, press the lever to release water, and when not needed, release the lever to stop water. This type of tap does not have the problem of being forgotten to be closed or leaking when closed but not tightly. It is widely used in public places, but not commonly seen in ordinary households. Considering the high cost of water, homemakers may want to consult water experts to determine whether to retrofit this type of tap. This is worth considering. As for leaking taps, do not ignore them, and repair them immediately. The amount of water wasted by leaky taps can be staggering. Wash clothes in bulk: Do not wash one piece of soiled clothing, especially summer shirts and undershirts, immediately after taking it off. It is best to accumulate three to five or even a dozen pieces before washing them together. In this way, much water is saved.</p>
+<p>Utilization of wastewater: The second clear water from washing clothes can be used to sprinkle the floor or wipe the floor. The remaining water from washing rice and vegetables can be used to water flowers and plants.</p>
+<p>Daily savings: Usually, save as much water as possible when washing your face, hands, dishes, and vegetables. Because these are daily occurrences, even several times a day, small amounts add up. Each time you waste a little, you waste a lot in total. Conversely, each time you save a little, you save a lot in total. The so-called "saving" is not about not using what you should use but about saving on unnecessary overuse.</p>
+<p>2.  Ways to Save Electricity</p>
+<p>Pay attention to turning lights on and off: This is the easiest way to save electricity, but it is also the most easily overlooked. Often, the whole family goes to the dining room for dinner, but the bedroom is brightly lit even though no one is there. This is clearly an unnecessary waste. This is where the homemaker needs to be mindful. It is best to inspect the house before going to bed and see if the lights in the kitchen, bathroom, and hallway are all turned off. When using a desk lamp for reading or writing, turn it off immediately after finishing. When the radio is not in use, turn off the power.</p>
+<p>Use good light bulbs: It is a waste to buy cheap and low-quality light bulbs. Old-brand light bulbs may be more expensive, but they are brighter, save electricity, and last longer. Although they are more expensive, they are worth it.</p>
+<p>Use the most effective lampshade: The effectiveness of lampshades varies greatly depending on their shape, color, and material. This needs to be coordinated with the color and aesthetics of the room.</p>
+<p>Attention should also be paid to the use of other electrical appliances: The voltage required for an electric bell is extremely small, so the electric meter does not run when the bell rings. A regular radio uses electricity equivalent to about fifteen candles, so it does not use much electricity. A commonly used 16-inch desktop fan uses electricity equivalent to about forty candles. Electric irons and electric stoves use more than 300 watts, consuming a lot of electricity. It is best to avoid using them or use them sparingly.</p>
+<p>Finally, it is best for the homemaker to learn some common small skills such as replacing fuses and connecting wires to avoid being gouged by electricians. In short, waste is unnecessary, and this applies to everything we do. I hope everyone remembers this.</p>
+<h3>One Gain From Housework</h3>
+<p>— Ziqiang</p>
+<p>Coffee Stains on Clothes: For clothes or tablecloths stained by tea or coffee, wet them with cold water and wait for two or three hours. Then wash them with lukewarm water and egg yolk, and the stain will disappear.</p>
+<p>Removing Stains from Straw Hats: Mix sulfur powder and lemon juice into a paste, dip a hard brush into the paste and brush the hat. Then wipe it dry with a cloth and expose it to the sun, and it will look like new.</p>
+<p>Removing Fruit Stains: If clothes, tablecloths, etc. are stained with fruit juice, sprinkle flour on the stain and leave it for several hours. The stain will disappear on its own.</p>
+<p>Removing Ink Stains from Fan Surfaces: Grind sea foam stone on the stain, and it will disappear.</p>
+<p>Removing Mold Stains from Clothes: If clothes have mold stains, dissolve one spoonful of blue vitriol and one cup of ammonia water in one spoonful of clean water. Apply the dissolved water to the mold stain and rub it. After rubbing, place it in the wind to dry. After a few hours, wash it with clean water using ordinary washing methods, and the mold stain will be removed.</p>
+<h3>Preventing the Spread of Infectious Diseases (Continued)</h3>
+<p>— Ding Fubao</p>
+<p>This article is a chapter from Mr. Ding Fubao's book "How to Create My Healthy Life." The book provides comprehensive guidance on healthy living and is a valuable work. This book is a gift to friends and relatives who donated to this newspaper's scholarship fund and the Shanghai Fuyou Orphanage in celebration of the elderly gentleman's 69th birthday (published by Medical Bookstore, priced at 12 yuan per copy). Those who have not yet collected their copy should bring their voucher to this office before the end of this month to collect it. (Editor)</p>
+<p>For cholera, dysentery, typhoid fever, and paratyphoid fever, it is necessary to disinfect the following:</p>
+<p>Feces, urine, vomit, and the utensils, cloths, paper scraps, etc. used. Corpses. Clothes, bedding, transportation equipment, etc. used by patients and corpses. Caregivers or those who have contact with the virus, and the clothes, bedding, etc. they use. Eating utensils used by patients, food scraps from patients, etc. Mats, blankets, etc. in the sickroom. Toilets, outhouses, washbasins, etc. Kitchens, kitchen utensils, well water tanks, etc. Garbage cans, sewers, etc.</p>
+<p>For smallpox and scarlet fever, the following items must be disinfected:</p>
+<p>Nasal mucus, saliva, sputum, pus, scabs, scales, and the utensils, cloths, paper scraps, etc. used. Corpses. Clothes, bedding, transportation equipment, etc. used by patients and corpses. Caregivers and others who have contact with the virus, and the clothes, bedding, etc. they use. Eating utensils and other utensils, books used by patients. Mats, blankets, furniture, wall hangings, etc. in the sickroom.</p>
+<p>For typhus, the following items must be disinfected:</p>
+<p>Nasal mucus, saliva, sputum, and the utensils, cloths, paper scraps, etc. used. Corpses. Clothes, bedding, transportation equipment, etc. used by patients and corpses. Caregivers, others who have contact with the virus, and the clothes, bedding, etc. they use. Mats, blankets, etc. in the sickroom.</p>
+<p>For diphtheria and epidemic cerebrospinal meningitis, the following items must be disinfected:</p>
+<p>Nasal mucus, saliva, sputum, and the cloths, paper scraps, etc. used. Clothes, bedding, etc. used by patients. Caregivers and the clothes, bedding, etc. they use. Eating utensils and other utensils, books, toys, etc. used by patients. Mats, blankets, furniture, walls, etc. in the sickroom.</p>
+<p>The following disinfection methods are applicable:</p>
+<p>Patients: When patients have recovered, they must bathe and change clothes, or wipe their entire body with a warm, damp cloth as a substitute for bathing. Used bathwater must be disinfected.</p>
+<p>Corpses: After the corpse is placed in a coffin, the clothes, etc. must be thoroughly sprayed with carbolic acid solution, cresol solution, or mercuric chloride solution, or the corpse must be wrapped with a cloth soaked in the aforementioned medicinal liquid, or ordinary lime must be filled in the coffin.</p>
+<p>Feces, urine, vomit, and other excrement: These substances should be mixed with an equal volume of carbolic acid solution, cresol solution, or more than one-thirtieth of its volume of calcined lime powder, or more than one-fifth of its volume of lime milk, or chlorinated lime water. After thoroughly stirring, let stand for more than two hours, or boil it, or burn it. Mercuric chloride solution and formic aldehyde solution are not suitable for disinfecting these substances.</p>
+<p>Those in contact with the virus: Caregivers and family members of patients must undergo disinfection. The same applies to those who transport patients, corpses, and excrement. Others who have contact with the virus should frequently or each time disinfect their hands and feet with carbolic acid solution, cresol solution, or mercuric chloride solution before bathing.</p>
+<p>Clothes, bedding, blankets, cloths, etc.: Steam or boil to disinfect, or soak in carbolic acid solution, cresol solution, or formic aldehyde solution for more than two hours, or use formol cresol solution for disinfection. Silk, woolen fabrics, cotton fabrics, etc. must be steam-disinfected or formol cresol solution can also be used.</p>
+<p>Equipment for transporting patients, corpses, and virus-contaminated objects: Carriages, stretchers, vehicles, etc. used to transport patients, corpses, or virus-contaminated objects, or objects suspected of being contaminated, should be wiped clean with carbolic acid solution, cresol solution, mercuric chloride solution, or formic aldehyde solution each time they are used, or they should be sprayed.</p>
+<p>Pictures, documents, etc.: Disinfect with formol cresol solution.</p>
+<p>Glassware, pottery, porcelain, mineral products, bamboo and wood products, etc.: Wipe clean or spray with carbolic acid solution, cresol solution, mercuric chloride solution, or formic aldehyde solution. All objects that can withstand heat should be steam-disinfected or boiled. Eating utensils, toys, metal products, etc. must be disinfected with mercuric chloride solution.</p>
+<p>Leather, leather products, lacquerware, and painted objects, rubber products, imitation ivory products, rubber attachments, glued attachments, paper products, fur, ivory, tortoiseshell, horn, etc.: Wipe clean or spray with carbolic acid solution, cresol solution, or formic aldehyde solution, or disinfect with formol cresol solution. However, these objects are not suitable for steam disinfection or boiling disinfection.</p>
+<p>All parts of the room should be wiped clean or sprayed with carbolic acid solution, cresol solution, mercuric chloride solution, or formic aldehyde solution. If the area can be sealed, formol cresol solution is also good.</p>
+<p>Toilets, garbage, ditches, etc.: Toilets should be wiped clean or sprayed with carbolic acid solution, cresol solution, or formic aldehyde solution. Calcined lime powder, lime milk, or chlorinated lime water should be poured into outhouses and latrines and thoroughly stirred. However, feces and urine should not be used as fertilizer unless they have been disinfected for one week. Lime milk or chlorinated lime water should be poured into garbage and soil. Calcined lime powder, lime milk, or chlorinated lime water should be poured into ditches. Dust should be burned. Calcined lime is not suitable for disinfection in dry places.</p>
+<p>For wells, water tanks, sewage, etc.: Add one-fiftieth of the water volume of milky calcined lime or one-five-hundredth of the water volume of chlorinated lime water and stir thoroughly. Let stand for more than twelve hours. If there is appropriate equipment, pass hot steam through it for more than thirty minutes. Mercuric chloride solution should not be used where there is a risk of it seeping into drinking water.</p>
+<p>Animal corpses and items that will not be used again after disinfection, or items whose value is less than the disinfection cost, should be burned.</p>
+<p>Clothes, bedding, utensils, blankets, books, stationery, and other objects that cannot be disinfected by the above methods can be exposed to the sun or dried in the air.</p>
+<h3>One Week of Home-Style Menus</h3>
+<p>— Hua Ying Nu Shi</p>
+<p>Recently, the prices of fish, meat, vegetables, chicken eggs, and duck eggs have soared, making people almost afraid to eat. Unexpectedly, there is one thing that is particularly cheap. What do you think it is? It is onions. If you go to the vegetable market, you can buy more than twenty large onions for just one yuan, and even thirty or forty smaller ones. Under the heavy pressure of high prices, you can't help but exclaim how cheap they are. As for cooking with onions, stir-fried beef with onions is the best dish, but if you don't have beef, you can substitute pork. In addition, stir-fried bean curd sheets with onions is also a good option. And making a soup with onions, tomatoes, and potatoes is packed with vitamins. Monday: Stir-fried shredded pork with onions, dried shrimp and egg drop soup, braised spinach with tofu, watermelon rind with soy sauce. Tuesday: Tomato beef soup, braised horse bean with pickled mustard greens, shredded chicken with bean curd sheets, loofah with gluten. Wednesday: Braised meat balls with cabbage hearts, pan-fried yellow croaker with onions, stir-fried artemisia, vegetarian tofu soup. Thursday: Stir-fried beef with onions, boiled and pan-fried tofu, raw golden needle mushroom, celery with sesame paste. Friday: Green pepper stir-fried pork with soy sauce, braised light dried goods, pickled mustard greens and broad bean soup, stir-fried amaranth with fried dough sticks. Saturday: Duck soup with duck gizzards, stir-fried crab meat with scallops, braised vegetarian dish, jellyfish with shredded radish. Sunday: Stir-fried chicken slices, stir-fried crab roe, cabbage, soybean sprouts.</p>
+<p>Tianchu Recipes (115)</p>
+<h3>(209) Ginger Baked Cake</h3>
+<p>— Gu Canhuan</p>
+<p>Ingredients... Corn flour, wheat flour, MSG, sesame seeds, sugar or salt</p>
+<p>Preparation... First, sift the corn flour finely, then cut the ginger into small pieces, and mix well with wheat flour, MSG, sesame seeds, sugar or salt. Add water to adjust to the same moisture as cut vegetables, cut into biscuit shapes, spread on an iron pot and bake repeatedly. When the two sides are golden brown, you can take it out and eat it. It tastes particularly fragrant, crispy, and delicious, can be stored for a long time without spoiling, and can detoxify.</p>
+<h3>(120) Corn Pudding</h3>
+<p>— Ye Peng</p>
+<p>Ingredients... Corn flour, lard or milk, eggs, spices, baking powder, salt</p>
+<p>Preparation... First, mix the sugar into the oil, and pour in the egg juice and spices, and beat well. Then add corn flour, baking powder, and an appropriate amount of MSG and salt successively and mix well. Then put it in a greased shallow pot and bake over low heat for three or ten minutes to finish.</p>
+<h3>(211) Wine Residue Song Gao</h3>
+<p>— Shen Yunhen</p>
+<p>Ingredients... Wheat flour, wine residue (i.e., the residue from filtering wine yeast). Add to dry flour, mix with red brown sugar, add cold water to form a paste, and let stand for four or five hours to allow it to ferment fully. Spread lotus leaves on the steaming rack, pour the powder on top, put it in the steaming mold, steam it over low heat until cooked, take it out, cut it into oblique squares, and eat it while it is hot, then it will taste extremely fragrant, soft, and delicious.</p>
+<p>Introduction... Tianchu MSG Factory's "MSG", "MSG Essence", "Tianchu Soy Sauce Essence", "Tianchu Household Arrowroot Flour" are sold in major companies and southern goods food stores in this city.</p>
+<h3>Twenty Letters from the Ge Family</h3>
+<p>— Translated by Xu Baiyi</p>
+<p>The Ge family letters are written by Mr. Ge Laiheng, the owner of the American Ge Laiheng Food Company, to his son, and are filled with the philosophy of life. What he says is actually what most fathers today want to say. There are a total of twenty letters, each discussing one issue. This publication will continuously publish them starting from this issue, hoping readers will pay attention.</p>
+<p>The following is the first letter, sent by Mr. Ge Laiheng from Chicago when his son had just entered his freshman year at Harvard University.</p>
+<p>First Letter</p>
+<p>University Education, Dear Son:</p>
+<p>Your mother returned home safely today, and she asked me to write you a letter urging you not to overwork yourself, but I want you to work even harder. You must know that the reason we sent you to Harvard University is so that you can receive a lot of useful education there. You will know in the future that education is the most easily obtained thing scattered everywhere here, and a person can acquire it as much as possible. Everything else is different. If you want to enjoy your share, it is not as easy as education.</p>
+<p>When I was young, I didn't have such good fortune as you, but you will not have the same experiences as me either. Many people think that to know the value of money, one must earn it with their own bare hands, and some think that they should inherit fifty thousand yuan from their father and try their best to spend it. Some say that to know the truth of honesty, one only needs to do business with slippery people, while others think that one must go to Sunday school. Some say that having a drinking father can make one aware of the harm of whiskey, but others say that only a virtuous mother is needed. When it comes to education, many people think that they can gain knowledge from others, newspapers, or public libraries, while others think that it must be taught by professors. But in any case, the way to gain knowledge is not an important issue, because the form is irrelevant, like a beautiful box that is discarded after others have eaten the contents inside.</p>
+<p>I hope you become a good scholar, but I hope even more that you become an upright person. If you have a pure heart when you graduate, I will not blame you even if your Latin composition has some flaws. You can get one kind of education in college, one in the classroom, and one from your classmates. In fact, the latter is more important compared to the former, because the former can only make you a scholar, while the latter can teach you how to be a person. Education is also like eating. You won't know what you eat will develop your muscles, but you can know what you eat will cause illness. So whether it is Latin, algebra, or history, you can read as much as you want, and it will never harm you. Only enjoyment and sweet things will cause you stomachache, so you should choose carefully.</p>
+<p>Some people often ask, is university education worthwhile? It is worthwhile when it can promote people's thinking. It is worthwhile when it can enable a young person to answer when others are biting their pencils and unable to answer. University will not produce intelligent people, but it can cultivate intelligent people, because a foolish person is ultimately a fool, regardless of whether they study at a university or not. You must know that reading alone is useless. What I expect is that you can apply what you have learned.</p>
+<p>Your Father, Ge Laiheng.</p>
+<h3>The Taste of Contentment in Poverty</h3>
+<p>In the previous issue, we published a dose of Refreshing Powder, which attracted considerable attention from readers. Now, Mr. Jia Gangan informs us in a letter that the article was written by Mr. Shen Zhuyu of Qiantang and is one of his "Tastes of Contentment in Poverty." The original wording is sharp and thorough, and it is indeed a valuable work. (Mr. Shen is a financial magnate in Shanghai. The regulations for the Qian industry were created by him and remain in place today. Mr. Shen has also authored medical texts such as "Zhou Yi Yi Jie" that are in circulation.) Given that the previously published version had slight differences from the original, we are reprinting it once more to share with readers. We deeply hope that you will carefully understand it and treat it as your motto. We also thank Mr. Zong.</p>
+<p>Yellow vegetable leaves, stir-fried with salt, just enough to fill the belly; if one covets taste and indulges, will one not increase troubles when looking up and down?</p>
+<p>Tattered patched clothes, priceless treasures, mended and patched year after year; filling boxes and chests for others to store, how many pieces can one wear until old age!</p>
+<p>Hardwood bed, covered with soft straw, sleeping soundly without worries, undisturbed by dreams; brocade quilts and embroidered bedding prevent sleep, tossing and turning until the sky is light!</p>
+<p>Old house, just sweep it, repair it in time so it won't collapse; how many good buildings nowadays become rubble covered with green grass!</p>
+<h3>Introducing Several Nutrition Books</h3>
+<p>— Hua</p>
+<p>Solving nutrition problems is not purely an economic issue, but an educational issue. At the recent Health and Nutrition Exhibition held by the Youth Association, special nutrition issues of the "Chinese Health Magazine" were sold for $0.20 per copy, and Dr. Hou Xiangchuan of the Shanghai Leishi Desheng Institute's "Food and Health" was sold for $0.60 per copy.</p>
+<p>If readers are interested in nutrition issues, then the "Chinese Medical Journal" has books such as "What Do We Eat," "Shanghai's Food," and "Minimum Nutritional Needs of the Chinese People," which are worth buying and reading. Especially for housewives, reading them can nourish the whole family and obtain adequate nutrition.</p>
+<h2>Page 7</h2>
+<h2>Page 8</h2>
+    </div>
+</div>
+
+<footer>
+    <a href="../index.html">Home</a>
+</footer>
+
+<script id="nav-data" type="application/json">{"prev": "1942.08.22.html", "next": "1942.08.24.html"}</script>
+
+<script>
+    const body = document.body;
+    const toggleLangBtn = document.getElementById('toggle-language-btn');
+    const viewVsplitBtn = document.getElementById('view-vsplit-btn'); // Button labeled '|' -> hsplit class
+    const viewHsplitBtn = document.getElementById('view-hsplit-btn'); // Button labeled '–' -> vsplit class
+    const viewSingleBtn = document.getElementById('view-single-btn'); // Button labeled '☐' -> single class
+    const viewButtons = [viewVsplitBtn, viewHsplitBtn, viewSingleBtn].filter(btn => btn); // Filter out nulls if hidden
+    const navData = JSON.parse(document.getElementById('nav-data').textContent);
+    const validViewClasses = ['view-vsplit', 'view-hsplit', 'view-single'];
+    const smallScreenWidth = 768; // Define max width for "small screen"
+
+    function setView(newViewClass, updateURL = false) { // Escaped { and }
+        if (!validViewClasses.includes(newViewClass)) { // Escaped { and }
+            console.warn('Invalid view class requested:', newViewClass);
+            return; // Don't proceed if the class is not valid
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Force single view on small screens
+        if (isSmallScreen && newViewClass !== 'view-single') { // Escaped { and }
+            console.log(`Screen is small or resized to small. Forcing single view instead of requested '${newViewClass}'.`); // Python format brace remains single
+            newViewClass = 'view-single';
+        } // Escaped }
+
+        // Reset classes before applying the new one
+        body.className = ''; // Clear all previous view/state classes
+        body.classList.add(newViewClass); // Add the final determined view class
+
+        // Update button active states based on the FINAL applied view class
+        viewButtons.forEach(btn => { // Escaped { and }
+             if (btn) { // Escaped { and } // Check if button exists
+                 // Check if the button's intended view matches the applied class
+                 if (btn.dataset.view === newViewClass) { // Escaped { and }
+                    btn.classList.add('active-view');
+                 } else { // Escaped { and }
+                    btn.classList.remove('active-view');
+                 } // Escaped }
+                 btn.style.backgroundColor = ''; // Let CSS handle the background colors via active-view class
+            } // Escaped }
+        }); // Escaped }
+
+        // Adjust toggle button text and visibility based on the new view
+        if (newViewClass === 'view-single') { // Escaped { and }
+            // In single view (or forced single view on small screens), show toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = ''; // Make visible
+            body.classList.remove('show-t'); // Default to showing base language first
+            if (toggleLangBtn) toggleLangBtn.textContent = 'English';
+        } else { // Escaped { and }
+            // In split views (only possible on larger screens), hide toggle button
+            if (toggleLangBtn) toggleLangBtn.style.display = 'none'; // Hide toggle button
+            body.classList.remove('show-t'); // Ensure English isn't shown if toggled previously
+        } // Escaped }
+
+        // Update URL only if requested AND view changed
+        if (updateURL && window.history && window.history.replaceState) { // Escaped { and }
+             const currentUrl = new URL(window.location.href);
+             if (currentUrl.searchParams.get('view') !== newViewClass) { // Escaped { and }
+                 currentUrl.searchParams.set('view', newViewClass);
+                 window.history.replaceState({ view: newViewClass }, '', currentUrl.toString()); // Escaped { and } for inner object literal
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+
+    function toggleLanguage() { // Escaped { and }
+        // Language toggle only makes sense in single view mode
+        if (body.classList.contains('view-single')) { // Escaped { and }
+            body.classList.toggle('show-t');
+            if (toggleLangBtn) { // Escaped { and }
+                toggleLangBtn.textContent = body.classList.contains('show-t') ? 'Chinese' : 'English';
+            } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function handleKeyDown(event) { // Escaped { and }
+        // Allow keyboard shortcuts if focus is not on an input/button
+        if (document.activeElement && ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) { // Escaped { and }
+             return;
+        } // Escaped }
+
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+        // Navigation
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { // Escaped { and }
+            const targetFile = (event.key === 'ArrowLeft') ? navData.prev : navData.next;
+            if (targetFile) { // Escaped { and }
+                let currentViewClass = 'view-single'; // Default to single view for next page on small screens
+                if (!isSmallScreen) { // Escaped { and } // Only check current view if not on small screen
+                    validViewClasses.forEach(vc => { // Escaped { and }
+                        if (body.classList.contains(vc)) { currentViewClass = vc; } // Escaped { and }
+                    }); // Escaped }
+                } // Escaped }
+                 // Python format braces remain single here
+                 window.location.href = `${targetFile}?view=${currentViewClass}`;
+            } else { // Escaped { and }
+                console.log(`Already at the ${event.key === 'ArrowLeft' ? 'first' : 'last'} file.`); // Python format brace remains single
+                body.style.transition = 'background-color 0.1s ease-in-out';
+                body.style.backgroundColor = '#ffeeee'; // Temporary flash
+                setTimeout(() => { body.style.backgroundColor = ''; body.style.transition = ''; }, 200); // Escaped { and }
+            } // Escaped }
+        } // Escaped }
+        // View Switching Keys (respect small screen override)
+        else if (event.key === 'v' || event.key === 'V') { // Escaped { and } // '|' button view
+             setView('view-hsplit', true); // Attempt horizontal split (will become single on small)
+        } else if (event.key === 'h' || event.key === 'H') { // Escaped { and } // '–' button view
+             setView('view-vsplit', true); // Attempt vertical split (will become single on small)
+        } else if (event.key === 's' || event.key === 'S') { // Escaped { and } // '☐' button view
+             setView('view-single', true); // Set single view
+        } // Escaped }
+        // Language Toggle
+        else if (event.key === 't' || event.key === 'T') { // Escaped { and }
+             // Only toggle if currently in single view mode (which includes small screens)
+             if (body.classList.contains('view-single')) { // Escaped { and }
+                 toggleLanguage();
+             } // Escaped }
+        } // Escaped }
+    } // Escaped function }
+
+    function initializeView() { // Escaped { and }
+         const urlParams = new URLSearchParams(window.location.search);
+         const viewParam = urlParams.get('view');
+         let initialViewClass = null;
+         const isSmallScreen = window.innerWidth <= smallScreenWidth;
+
+         if (viewParam && validViewClasses.includes(viewParam)) { // Escaped { and }
+             initialViewClass = viewParam;
+             // Override URL param if screen is small
+             if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+                 console.log(`URL requested view '${initialViewClass}', but screen is small. Overriding to single view.`); // Python format brace remains single
+                 initialViewClass = 'view-single';
+             } // Escaped }
+         } else { // Escaped { and }
+             // Default to single view on small screens
+             initialViewClass = isSmallScreen ? 'view-single' : 'view-hsplit'; // Default horizontal split on large, single on small
+         } // Escaped }
+
+         // Final check (redundant with above override, but safe)
+         if (isSmallScreen && initialViewClass !== 'view-single') { // Escaped { and }
+             initialViewClass = 'view-single';
+         } // Escaped }
+
+         // Use setTimeout to ensure styles are applied after initial render
+         setTimeout(() => setView(initialViewClass), 0); // Escaped { and } // Set view without updating URL on initial load
+    } // Escaped function }
+
+    // --- Event Listeners ---
+    if (viewVsplitBtn) { viewVsplitBtn.addEventListener('click', () => setView(viewVsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewHsplitBtn) { viewHsplitBtn.addEventListener('click', () => setView(viewHsplitBtn.dataset.view, true)); } // Escaped { and }
+    if (viewSingleBtn) { viewSingleBtn.addEventListener('click', () => setView(viewSingleBtn.dataset.view, true)); } // Escaped { and }
+    if (toggleLangBtn) { toggleLangBtn.addEventListener('click', toggleLanguage); } // Escaped { and }
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('DOMContentLoaded', initializeView);
+
+    // --- Resize Listener ---
+    window.addEventListener('resize', () => { // Escaped { and }
+        const isSmallScreen = window.innerWidth <= smallScreenWidth;
+        const currentlySingle = body.classList.contains('view-single');
+
+        // If screen becomes small AND we are NOT already in single view, switch to single view
+        if (isSmallScreen && !currentlySingle) { // Escaped { and }
+            console.log("Screen resized to small. Forcing single view.");
+            setView('view-single', true); // Force single view and update URL if needed
+        } // Escaped }
+        // Optional logic for resizing large can be added here in an else if block if needed
+    }); // Escaped }
+</script>
+
+</body>
+</html>
