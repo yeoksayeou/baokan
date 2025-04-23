@@ -11,5 +11,5 @@ window.SITE_INFO = {
     that are not in the repository with transcribed articles this used.</p><p>There may also have been problems with the translation. 
     Besides missing issues, keep an eye out for missing articles in the translation of 
     some issues due to errors in the translation process when breaking up large issues. More years (including various locations the newspaper was published in 1938) may be added later.</p>
-    <p>See also <a href="today.html">Today in the Japanese Occupation of China</a></p>`
+    <p>See also <a href="today.html">Today in the Shenbao</a></p>`
 };
